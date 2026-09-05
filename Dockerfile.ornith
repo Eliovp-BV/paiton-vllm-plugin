@@ -1,0 +1,89 @@
+# syntax=docker/dockerfile:1.7
+
+FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9
+
+ARG PLUGIN_REVISION
+RUN set -eu; \
+    case "${PLUGIN_REVISION}" in *[!0-9a-f]*|'') exit 1;; esac; \
+    test "${#PLUGIN_REVISION}" -eq 40
+
+LABEL org.opencontainers.image.title="Paiton Ornith 1.5 MXFP4 RDNA4 server" \
+      org.opencontainers.image.description="One-command Ornith 1.5 serving on Radeon AI PRO R9700" \
+      org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
+      org.opencontainers.image.revision="${PLUGIN_REVISION}" \
+      org.opencontainers.image.version="ornith15-mxfp4-rdna4-v1.0.0" \
+      org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
+      dev.paiton.model="Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4" \
+      dev.paiton.model.revision="9e488f46c0f7969f84c9923ee0256311cd50316e" \
+      dev.paiton.artifact.sha256="6445e098f30a54d1d9333c43658c85d2673f933696bdbdb6ff5178fa508e941d" \
+      dev.paiton.artifact-manifest.sha256="0934989d47ad7e1545f01b8e4751dac24b4a22d9bb4060de9718f8e84a3db961" \
+      dev.paiton.config.sha256="65c9cbd329d26d5a4c856a3d82a27ba28ce2129f3b8e981e1b0a9be3e8984c92" \
+      dev.paiton.gpu.arch="gfx1201" \
+      dev.paiton.rocm.version="7.14.60850" \
+      dev.paiton.vllm.revision="39bd959b582c85e78e7e0326d49042ce7c3c07ed"
+
+COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/ornith-release-source/
+COPY LICENSES /opt/paiton/ornith-release-source/LICENSES
+COPY paiton_vllm_plugin /opt/paiton/ornith-release-source/paiton_vllm_plugin
+
+RUN set -eux; \
+    rm -rf /opt/paiton/release-plugin/paiton_vllm_plugin \
+      /opt/paiton/release-plugin/paiton_vllm_plugin-*.dist-info; \
+    /opt/venv/bin/python3 -m pip install \
+      --no-build-isolation \
+      --no-deps \
+      --target /opt/paiton/release-plugin \
+      /opt/paiton/ornith-release-source; \
+    rm -rf /opt/paiton/ornith-release-source
+
+# The target model is owned by Paiton, while the small DFlash draft uses the
+# stock ROCm attention backend. Apply the two-line vLLM patch deterministically.
+RUN /opt/venv/bin/python3 - <<'PY'
+from hashlib import sha256
+from pathlib import Path
+
+path = Path("/opt/paiton/vllm/vllm/model_executor/models/qwen3_dflash.py")
+source = path.read_bytes()
+if sha256(source).hexdigest() != "1f45f5bd0857aeb99d802a5b7139a501dfa02c61d94ea9902cf4286b33a40229":
+    raise SystemExit("unexpected qwen3_dflash.py base source")
+text = source.decode("utf-8")
+text = text.replace(
+    "from vllm.v1.attention.backend import AttentionType\n",
+    "from vllm.v1.attention.backend import AttentionType\n"
+    "from vllm.v1.attention.backends.rocm_attn import RocmAttentionBackend\n",
+    1,
+)
+text = text.replace(
+    "            sinks=self.attention_sink_bias,\n        )",
+    "            sinks=self.attention_sink_bias,\n"
+    "            attn_backend=RocmAttentionBackend,\n"
+    "        )",
+    1,
+)
+path.write_text(text, encoding="utf-8")
+if sha256(path.read_bytes()).hexdigest() != "75c2b7ba9a9fdf7074452aaed4bd425283eed4e0cba988f178bfc247bcc7fc9e":
+    raise SystemExit("unexpected qwen3_dflash.py patched source")
+PY
+
+COPY --from=ornith_overlay . /opt/paiton/ornith-overlay/
+RUN set -eux; \
+    echo '6445e098f30a54d1d9333c43658c85d2673f933696bdbdb6ff5178fa508e941d  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.so' | sha256sum -c -; \
+    echo '0934989d47ad7e1545f01b8e4751dac24b4a22d9bb4060de9718f8e84a3db961  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.manifest.json' | sha256sum -c -; \
+    echo '65c9cbd329d26d5a4c856a3d82a27ba28ce2129f3b8e981e1b0a9be3e8984c92  /opt/paiton/ornith-overlay/config.json' | sha256sum -c -
+
+ENV PAITON_CHAT_MODEL=ornith \
+    PAITON_GPU_ARCH=gfx1201 \
+    AITER_ROCM_ARCH=gfx1201 \
+    VLLM_ROCM_USE_AITER=0 \
+    VLLM_USE_PAITON_PLATFORM=1 \
+    VLLM_USE_V1=1 \
+    VLLM_DISABLE_PAITON_PLATFORM=0 \
+    HF_HOME=/models/cache/huggingface \
+    HF_HUB_CACHE=/models/cache/huggingface/hub
+
+VOLUME ["/models/cache"]
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30m --retries=3 \
+  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
+
+ENTRYPOINT ["python3", "-m", "paiton_vllm_plugin.ornith_release_server"]

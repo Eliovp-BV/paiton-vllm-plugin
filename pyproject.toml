@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paiton-vllm-plugin"
-version = "0.2.0"
+version = "0.3.0"
 description = "vLLM platform plugin for Paiton compiled models"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -27,6 +27,7 @@ register_paiton_models = "paiton_vllm_plugin:register_paiton_models"
 paiton-offline-benchmark = "paiton_vllm_plugin.benchmarks.offline_benchmark:main"
 paiton-chat = "paiton_vllm_plugin.chat:main"
 paiton-qwen38-serve = "paiton_vllm_plugin.qwen38_release_server:main"
+paiton-ornith-serve = "paiton_vllm_plugin.ornith_release_server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

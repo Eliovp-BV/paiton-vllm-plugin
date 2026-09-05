@@ -9,10 +9,15 @@ tools, licenses, and checks required to run published Paiton artifacts.
 | Model | GPU | Runtime scope | Instructions |
 | --- | --- | --- | --- |
 | AMD Qwen3.8 27B Qronos | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Qwen3.8 guide](models/Qwen3.8/README.md) |
+| Ornith 1.5 35B A3B MXFP4 | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Ornith 1.5 guide](models/Ornith-1.5/README.md) |
 
 The source checkpoint is AMD's public
 [`Qwen3.8-27B-Quark-Qronos-INT4-W4A16`](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16)
 at revision `649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2`.
+
+The Ornith package uses Capicua25x's public
+[`Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4`](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4)
+checkpoint at revision `9e488f46c0f7969f84c9923ee0256311cd50316e`.
 
 ## Start the server
 
