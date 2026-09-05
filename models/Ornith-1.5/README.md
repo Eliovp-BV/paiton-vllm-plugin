@@ -65,3 +65,14 @@ variable before using the helper.
 
 The container downloads model weights directly from the public Hugging Face
 repository. It contains no checkpoint weights and no Paiton compiler source.
+
+## Performance
+
+The qualified package averaged 44.628 output tokens per second across two
+complete runs on one R9700. This is 27.03% faster than the fastest obtained
+stock vLLM result of 35.132 output tokens per second. At equal hardware cost,
+that corresponds to 27.03% more output tokens per unit of time and a 21.28%
+lower hardware cost per generated token.
+
+The [benchmark record](BENCHMARKS.md) documents the stock settings, Paiton
+settings, workload, individual results, and reproduction command.

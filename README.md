@@ -19,6 +19,12 @@ The Ornith package uses Capicua25x's public
 [`Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4`](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4)
 checkpoint at revision `9e488f46c0f7969f84c9923ee0256311cd50316e`.
 
+On one Radeon AI PRO R9700, the qualified Ornith package delivered an average
+of 44.628 output tokens per second across two runs. That is 27.03% more than
+the fastest obtained stock vLLM result of 35.132 output tokens per second.
+See the [Ornith benchmark record](models/Ornith-1.5/BENCHMARKS.md) for the
+settings and complete protocol.
+
 ## Start the server
 
 Start Ornith and enter an interactive local chat with one command:
