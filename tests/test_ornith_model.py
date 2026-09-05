@@ -80,6 +80,20 @@ class OrnithDFlashModelContractTests(unittest.TestCase):
                 cls.DFLASH_AUX_HIDDEN_STATE_LAYERS
             )
 
+    def test_inherited_logits_path_does_not_require_qwen_w4_head(self):
+        cls = self._model_class()
+        instance = cls.__new__(cls)
+        nn.Module.__init__(instance)
+        instance.config = SimpleNamespace(hidden_size=8)
+        instance.lm_head = nn.Identity()
+        expected = torch.randn(2, 8)
+        instance.logits_processor = lambda lm_head, hidden_states: expected
+
+        actual = instance.compute_logits(torch.randn(2, 8))
+
+        self.assertIs(actual, expected)
+        self.assertFalse(hasattr(instance, "w4_lm_head"))
+
     def test_exact_dflash_draft_and_speculative_metadata_contract(self):
         cls = self._model_class()
         self.assertIs(cls.is_neox_style, True)

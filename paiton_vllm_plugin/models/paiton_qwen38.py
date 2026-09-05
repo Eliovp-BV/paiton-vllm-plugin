@@ -733,11 +733,12 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         return self._format_compiled_outputs(result)
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
-        if self.w4_lm_head is not None and hidden_states.shape == (
+        w4_lm_head = getattr(self, "w4_lm_head", None)
+        if w4_lm_head is not None and hidden_states.shape == (
             1,
             self.config.hidden_size,
         ):
-            return self.w4_lm_head(hidden_states)
+            return w4_lm_head(hidden_states)
         return self.logits_processor(self.lm_head, hidden_states)
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
