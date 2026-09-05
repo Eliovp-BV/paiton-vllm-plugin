@@ -58,6 +58,7 @@ class PaitonPlatform(RocmPlatform):
             for architecture in (
                 "PaitonQwen38ForCausalLM",
                 "PaitonQwen38ForConditionalGeneration",
+                "PaitonOrnith15ForCausalLM",
             )
         ):
             configure_qwen38_cache_contract(cache_config, resolve_auto=True)
@@ -99,10 +100,29 @@ class PaitonPlatform(RocmPlatform):
         # initialization (vllm.config.compilation imports current_platform).
         from vllm.config.compilation import CUDAGraphMode, CompilationMode
 
-        serialized_external_capture = os.environ.get(
-            "PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE"
-        ) == "1"
-        if not serialized_external_capture:
+        serialized_capture_enabled = (
+            (
+                "PaitonOrnith15ForCausalLM" in architectures
+                and os.environ.get(
+                    "PAITON_ORNITH15_SERIALIZED_EXTERNAL_GRAPH_CAPTURE"
+                )
+                == "1"
+            )
+            or (
+                any(
+                    architecture in architectures
+                    for architecture in (
+                        "PaitonQwen38ForCausalLM",
+                        "PaitonQwen38ForConditionalGeneration",
+                    )
+                )
+                and os.environ.get(
+                    "PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE"
+                )
+                == "1"
+            )
+        )
+        if not serialized_capture_enabled:
             if compilation_config.mode != CompilationMode.NONE:
                 compilation_config.mode = CompilationMode.NONE
             if compilation_config.cudagraph_mode != CUDAGraphMode.NONE:

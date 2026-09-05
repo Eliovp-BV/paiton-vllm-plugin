@@ -85,6 +85,7 @@ class FakeCopyCalculator:
 class FakeCompiledModel:
     def __init__(self):
         self.inputs = None
+        self.stream_ptr = None
         self.noncontiguous_input_names = None
         self.stream_ptr = None
 
@@ -97,6 +98,7 @@ class FakeCompiledModel:
         noncontiguous_input_names=frozenset(),
     ):
         self.inputs = inputs
+        self.stream_ptr = stream_ptr
         self.noncontiguous_input_names = noncontiguous_input_names
         self.stream_ptr = stream_ptr
         outputs["hidden_states"].fill_(2)
