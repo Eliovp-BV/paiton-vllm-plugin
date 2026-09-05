@@ -298,6 +298,13 @@ def _select_model() -> Path:
     return _stage_model(_resolve_base_model(), _overlay_dir())
 
 
+def _dflash_enabled() -> bool:
+    value = os.environ.get("PAITON_ORNITH_DFLASH", "1")
+    if value not in {"0", "1"}:
+        raise ReleaseModelError("PAITON_ORNITH_DFLASH must be exactly 0 or 1")
+    return value == "1"
+
+
 def build_server_command(extra_args: list[str] | None = None) -> list[str]:
     model = _select_model()
     os.environ.setdefault("PAITON_CHAT_MODEL", "ornith")
@@ -329,21 +336,30 @@ def build_server_command(extra_args: list[str] | None = None) -> list[str]:
         "--generation-config",
         "vllm",
         "--enforce-eager",
-        "--speculative-config",
-        json.dumps(
-            {
-                "method": "dflash",
-                "model": str(model / "dflash-draft"),
-                "num_speculative_tokens": 16,
-                "attention_backend": "ROCM_ATTN",
-            },
-            separators=(",", ":"),
-        ),
-        "--host",
-        "0.0.0.0",
-        "--port",
-        os.environ.get("PAITON_PORT", "8000"),
     ]
+    if _dflash_enabled():
+        command.extend(
+            [
+                "--speculative-config",
+                json.dumps(
+                    {
+                        "method": "dflash",
+                        "model": str(model / "dflash-draft"),
+                        "num_speculative_tokens": 16,
+                        "attention_backend": "ROCM_ATTN",
+                    },
+                    separators=(",", ":"),
+                ),
+            ]
+        )
+    command.extend(
+        [
+            "--host",
+            "0.0.0.0",
+            "--port",
+            os.environ.get("PAITON_PORT", "8000"),
+        ]
+    )
     command.extend(extra_args or [])
     return command
 

@@ -59,5 +59,9 @@ provides an OpenAI-compatible endpoint at
 - MXFP4 target model with 16-token DFlash speculation
 - public checkpoint revision `9e488f46c0f7969f84c9923ee0256311cd50316e`
 
+DFlash is enabled by default. To serve the same Paiton target without
+speculation, add `-e PAITON_ORNITH_DFLASH=0` to `docker run`, or export that
+variable before using the helper.
+
 The container downloads model weights directly from the public Hugging Face
 repository. It contains no checkpoint weights and no Paiton compiler source.
