@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.system:
         messages.append({"role": "system", "content": args.system})
 
-    print("Paiton Qwen3.8 chat: /help for commands, /quit to exit.")
+    print(f"Paiton {args.model} chat: /help for commands, /quit to exit.")
     while True:
         try:
             prompt = input("\nYou> ").strip()

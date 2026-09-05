@@ -9,12 +9,31 @@ tools, licenses, and checks required to run published Paiton artifacts.
 | Model | GPU | Runtime scope | Instructions |
 | --- | --- | --- | --- |
 | AMD Qwen3.8 27B Qronos | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Qwen3.8 guide](models/Qwen3.8/README.md) |
+| Ornith 1.5 35B A3B MXFP4 | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Ornith 1.5 guide](models/Ornith-1.5/README.md) |
 
 The source checkpoint is AMD's public
 [`Qwen3.8-27B-Quark-Qronos-INT4-W4A16`](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16)
 at revision `649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2`.
 
+The Ornith package uses Capicua25x's public
+[`Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4`](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4)
+checkpoint at revision `9e488f46c0f7969f84c9923ee0256311cd50316e`.
+
+On one Radeon AI PRO R9700, the qualified Ornith package delivered an average
+of 44.628 output tokens per second across two runs. That is 27.03% more than
+the fastest obtained stock vLLM result of 35.132 output tokens per second.
+See the [Ornith benchmark record](models/Ornith-1.5/BENCHMARKS.md) for the
+settings and complete protocol.
+
 ## Start the server
+
+Start Ornith and enter an interactive local chat with one command:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+For the Qwen3.8 server:
 
 ```bash
 docker run -d \

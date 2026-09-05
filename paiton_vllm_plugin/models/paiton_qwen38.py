@@ -321,6 +321,9 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         self._stride_inputs: dict[
             tuple[str, torch.device], tuple[int, torch.Tensor]
         ] = {}
+        self._metadata_inputs: dict[
+            tuple[str, torch.device, int], torch.Tensor
+        ] = {}
         self._metadata_trace_records: list[dict[str, object]] = []
 
     def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
@@ -395,6 +398,46 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
                 f"Qwen3.8 stride input {name} changed from {cached_value} to {value}"
             )
         return tensor
+
+    def _int32_ones_input(
+        self,
+        name: str,
+        count: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if not hasattr(self, "_metadata_inputs"):
+            self._metadata_inputs = {}
+        key = (name, device, int(count))
+        cached = self._metadata_inputs.get(key)
+        if cached is not None:
+            return cached
+        if device.type == "cuda" and torch.cuda.is_current_stream_capturing():
+            raise RuntimeError(
+                f"{name} must be initialized by an eager warmup before "
+                "CUDA graph capture"
+            )
+        cached = torch.ones(count, dtype=torch.int32, device=device)
+        self._metadata_inputs[key] = cached
+        return cached
+
+    def _compiled_gdn_metadata(
+        self,
+        metadata: object,
+        device: torch.device,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
+        del device
+        if getattr(metadata, "num_spec_decodes", 0):
+            raise ValueError("Paiton Qwen3.8 does not support speculative GDN metadata")
+        query_starts = getattr(metadata, "non_spec_query_start_loc", None)
+        state_indices = getattr(metadata, "non_spec_state_indices_tensor", None)
+        if query_starts is None or state_indices is None:
+            raise RuntimeError("vLLM did not provide non-speculative GDN state metadata")
+        return (
+            query_starts,
+            state_indices,
+            getattr(metadata, "has_initial_state", None),
+            None,
+        )
 
     def _metadata(self, index: int):
         layer_type = self.layer_types[index]
@@ -481,6 +524,31 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
             json.dumps(self._metadata_trace_records, indent=2), encoding="utf-8"
         )
 
+    def _allocate_compiled_outputs(
+        self,
+        num_tokens: int,
+        device: torch.device,
+    ) -> dict[str, torch.Tensor]:
+        return {
+            "hidden_states": torch.empty(
+                (num_tokens, self.config.hidden_size),
+                dtype=torch.bfloat16,
+                device=device,
+            )
+        }
+
+    def _format_compiled_outputs(
+        self,
+        outputs: dict[str, torch.Tensor],
+    ) -> torch.Tensor | tuple[torch.Tensor, list[torch.Tensor]]:
+        return outputs["hidden_states"]
+
+    def _format_profile_output(
+        self,
+        inputs_embeds: torch.Tensor,
+    ) -> torch.Tensor | tuple[torch.Tensor, list[torch.Tensor]]:
+        return inputs_embeds
+
     def forward(
         self,
         input_ids: torch.Tensor,
@@ -488,7 +556,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         intermediate_tensors: IntermediateTensors | None = None,
         inputs_embeds: torch.Tensor | None = None,
         **kwargs: object,
-    ) -> torch.Tensor:
+    ) -> torch.Tensor | tuple[torch.Tensor, list[torch.Tensor]]:
         if intermediate_tensors is not None:
             raise ValueError("Paiton Qwen3.8 contract v3 requires PP=1")
         if inputs_embeds is None:
@@ -514,7 +582,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         # profile the runtime-owned logits/sampler path without inventing cache
         # addresses. A real scheduled forward always carries per-layer metadata.
         if get_forward_context().attn_metadata is None:
-            return inputs_embeds
+            return self._format_profile_output(inputs_embeds)
 
         full_index = next(
             index for index, kind in enumerate(self.layer_types) if kind == "full_attention"
@@ -524,20 +592,18 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         )
         full_meta = self._metadata(full_index)
         gdn_meta = self._metadata(gdn_index)
-        if getattr(gdn_meta, "num_spec_decodes", 0):
-            raise ValueError("Paiton Qwen3.8 does not support speculative GDN metadata")
-        query_starts = gdn_meta.non_spec_query_start_loc
-        if query_starts is None:
-            raise RuntimeError("vLLM did not provide non-speculative GDN state metadata")
-
         device = inputs_embeds.device
+        query_starts, _, _, num_accepted_tokens = self._compiled_gdn_metadata(
+            gdn_meta, device
+        )
+        per_layer_attention_metadata = (
+            self.contract.get("dflash_full_attention_metadata") == "per_layer"
+        )
         inputs = {
             "inputs_embeds": inputs_embeds.contiguous(),
             "position_ids": positions.to(dtype=torch.int64).contiguous(),
-            "slot_mapping": full_meta.slot_mapping.to(dtype=torch.int64).contiguous(),
             "query_start_locations": query_starts.to(dtype=torch.int32).contiguous(),
             "context_lengths": full_meta.seq_lens.to(dtype=torch.int32).contiguous(),
-            "block_tables": full_meta.block_table.to(dtype=torch.int32).contiguous(),
             "max_query_len": torch.empty(
                 (int(full_meta.max_query_len), 0), dtype=torch.int32, device=device
             ),
@@ -545,22 +611,40 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
                 (int(full_meta.max_seq_len), 0), dtype=torch.int32, device=device
             ),
         }
+        if num_accepted_tokens is not None:
+            inputs["num_accepted_tokens"] = num_accepted_tokens.to(
+                dtype=torch.int32, copy=False
+            ).contiguous()
         conv_stride = recurrent_stride = None
         for index, layer_type in enumerate(self.layer_types):
             layer = self.cache_layers[str(index)]
             if layer_type == "linear_attention":
                 layer_meta = self._metadata(index)
-                state_indices = layer_meta.non_spec_state_indices_tensor
-                if state_indices is None:
-                    raise RuntimeError(
-                        f"vLLM did not provide GDN state indices for layer {index}"
-                    )
+                (
+                    layer_query_starts,
+                    state_indices,
+                    has_initial,
+                    layer_num_accepted_tokens,
+                ) = self._compiled_gdn_metadata(layer_meta, device)
+                if tuple(layer_query_starts.shape) != tuple(query_starts.shape):
+                    raise RuntimeError("vLLM GDN query metadata shape differs by layer")
+                if (layer_num_accepted_tokens is None) != (
+                    num_accepted_tokens is None
+                ):
+                    raise RuntimeError("vLLM GDN acceptance metadata differs by layer")
+                if (
+                    layer_num_accepted_tokens is not None
+                    and tuple(layer_num_accepted_tokens.shape)
+                    != tuple(num_accepted_tokens.shape)
+                ):
+                    raise RuntimeError("vLLM GDN acceptance shape differs by layer")
                 state_indices = state_indices.to(
                     dtype=torch.int32, copy=False
                 ).contiguous()
-                has_initial = layer_meta.has_initial_state
                 if has_initial is None:
-                    has_initial = torch.ones_like(state_indices, dtype=torch.int32)
+                    has_initial = self._int32_ones_input(
+                        "has_initial_state", state_indices.shape[0], device
+                    )
                 else:
                     has_initial = has_initial.to(
                         dtype=torch.int32, copy=False
@@ -598,6 +682,21 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
                 inputs[f"recurrent_state_dummy_{index}"] = self._dummy(torch.float32, device)
                 inputs[f"state_indices_dummy_{index}"] = self._dummy(torch.int32, device)
                 inputs[f"has_initial_state_dummy_{index}"] = self._dummy(torch.int32, device)
+                layer_meta = self._metadata(index)
+                if per_layer_attention_metadata:
+                    inputs[f"slot_mapping_{index}"] = layer_meta.slot_mapping.to(
+                        dtype=torch.int64
+                    ).contiguous()
+                    inputs[f"block_tables_{index}"] = layer_meta.block_table.to(
+                        dtype=torch.int32
+                    ).contiguous()
+        if not per_layer_attention_metadata:
+            inputs["slot_mapping"] = full_meta.slot_mapping.to(
+                dtype=torch.int64
+            ).contiguous()
+            inputs["block_tables"] = full_meta.block_table.to(
+                dtype=torch.int32
+            ).contiguous()
         if conv_stride is None or recurrent_stride is None:
             raise RuntimeError("Qwen3.8 artifact has no GDN state layers")
         inputs["conv_state_line_stride"] = self._stride_input(
@@ -606,11 +705,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         inputs["recurrent_state_line_stride"] = self._stride_input(
             "recurrent_state_line_stride", recurrent_stride, device
         )
-        output = torch.empty(
-            (inputs_embeds.shape[0], self.config.hidden_size),
-            dtype=torch.bfloat16,
-            device=device,
-        )
+        outputs = self._allocate_compiled_outputs(inputs_embeds.shape[0], device)
         missing = sorted(self.compiled_input_names - set(inputs))
         if missing:
             raise RuntimeError(
@@ -628,20 +723,22 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
             if layer_type == "linear_attention"
             for state in ("conv_state", "recurrent_state")
         )
-        return self.compiled_model.run_with_tensors(
+        result = self.compiled_model.run_with_tensors(
             exact_inputs,
-            {"hidden_states": output},
+            outputs,
             sync=False,
             stream_ptr=torch.cuda.current_stream(device).cuda_stream,
             noncontiguous_input_names=strided_state_names,
-        )["hidden_states"]
+        )
+        return self._format_compiled_outputs(result)
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
-        if self.w4_lm_head is not None and hidden_states.shape == (
+        w4_lm_head = getattr(self, "w4_lm_head", None)
+        if w4_lm_head is not None and hidden_states.shape == (
             1,
             self.config.hidden_size,
         ):
-            return self.w4_lm_head(hidden_states)
+            return w4_lm_head(hidden_states)
         return self.logits_processor(self.lm_head, hidden_states)
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
