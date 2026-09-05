@@ -21,6 +21,14 @@ checkpoint at revision `9e488f46c0f7969f84c9923ee0256311cd50316e`.
 
 ## Start the server
 
+Start Ornith and enter an interactive local chat with one command:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+For the Qwen3.8 server:
+
 ```bash
 docker run -d \
   --name paiton-qwen38 \

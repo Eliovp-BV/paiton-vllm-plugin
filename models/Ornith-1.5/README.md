@@ -6,6 +6,15 @@ checkpoint on one 32 GB Radeon AI PRO R9700.
 
 ## Start
 
+For a one-line local chat experience, clone the public package and let the
+helper start the server, wait for it, and open the terminal client:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+To start only the OpenAI-compatible server, run the container directly:
+
 ```bash
 docker run -d \
   --name paiton-ornith \
@@ -31,7 +40,7 @@ docker logs -f paiton-ornith
 
 ## Chat
 
-After the server reports that it is ready:
+After a detached server reports that it is ready:
 
 ```bash
 docker exec -it paiton-ornith paiton-chat --model ornith
