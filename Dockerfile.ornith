@@ -36,8 +36,8 @@ RUN set -eux; \
       /opt/paiton/ornith-release-source; \
     rm -rf /opt/paiton/ornith-release-source
 
-# The target model is owned by Paiton, while the small DFlash draft uses the
-# stock ROCm attention backend. Apply the two-line vLLM patch deterministically.
+# The target model executes through Paiton, while the small DFlash draft uses
+# the stock ROCm attention backend. Apply the two-line vLLM patch deterministically.
 RUN /opt/venv/bin/python3 - <<'PY'
 from hashlib import sha256
 from pathlib import Path
