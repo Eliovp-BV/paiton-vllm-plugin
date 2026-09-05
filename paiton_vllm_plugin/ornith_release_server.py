@@ -34,12 +34,12 @@ ARTIFACT_NAME = (
 MANIFEST_NAME = ARTIFACT_NAME.removesuffix(".so") + ".manifest.json"
 OVERLAY_FILES = {
     ARTIFACT_NAME: (
-        4_076_000,
-        "6445e098f30a54d1d9333c43658c85d2673f933696bdbdb6ff5178fa508e941d",
+        4_096_480,
+        "6351af55b031691c170310ac93efb754868da3c7509f37d8b30eb5b9ef17c30d",
     ),
     MANIFEST_NAME: (
-        342_301,
-        "0934989d47ad7e1545f01b8e4751dac24b4a22d9bb4060de9718f8e84a3db961",
+        342_284,
+        "78e1e2abfa540fcbd8da3ca9449a8c25cecb75a6ec6c3a5d8d6b052d129aeebb",
     ),
     "config.json": (
         17_739,

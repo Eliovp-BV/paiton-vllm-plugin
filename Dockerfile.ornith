@@ -15,8 +15,8 @@ LABEL org.opencontainers.image.title="Paiton Ornith 1.5 MXFP4 RDNA4 server" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
       dev.paiton.model="Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4" \
       dev.paiton.model.revision="9e488f46c0f7969f84c9923ee0256311cd50316e" \
-      dev.paiton.artifact.sha256="6445e098f30a54d1d9333c43658c85d2673f933696bdbdb6ff5178fa508e941d" \
-      dev.paiton.artifact-manifest.sha256="0934989d47ad7e1545f01b8e4751dac24b4a22d9bb4060de9718f8e84a3db961" \
+      dev.paiton.artifact.sha256="6351af55b031691c170310ac93efb754868da3c7509f37d8b30eb5b9ef17c30d" \
+      dev.paiton.artifact-manifest.sha256="78e1e2abfa540fcbd8da3ca9449a8c25cecb75a6ec6c3a5d8d6b052d129aeebb" \
       dev.paiton.config.sha256="65c9cbd329d26d5a4c856a3d82a27ba28ce2129f3b8e981e1b0a9be3e8984c92" \
       dev.paiton.gpu.arch="gfx1201" \
       dev.paiton.rocm.version="7.14.60850" \
@@ -67,8 +67,8 @@ PY
 
 COPY --from=ornith_overlay . /opt/paiton/ornith-overlay/
 RUN set -eux; \
-    echo '6445e098f30a54d1d9333c43658c85d2673f933696bdbdb6ff5178fa508e941d  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.so' | sha256sum -c -; \
-    echo '0934989d47ad7e1545f01b8e4751dac24b4a22d9bb4060de9718f8e84a3db961  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.manifest.json' | sha256sum -c -; \
+    echo '6351af55b031691c170310ac93efb754868da3c7509f37d8b30eb5b9ef17c30d  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.so' | sha256sum -c -; \
+    echo '78e1e2abfa540fcbd8da3ca9449a8c25cecb75a6ec6c3a5d8d6b052d129aeebb  /opt/paiton/ornith-overlay/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.manifest.json' | sha256sum -c -; \
     echo '65c9cbd329d26d5a4c856a3d82a27ba28ce2129f3b8e981e1b0a9be3e8984c92  /opt/paiton/ornith-overlay/config.json' | sha256sum -c -
 
 ENV PAITON_CHAT_MODEL=ornith \
