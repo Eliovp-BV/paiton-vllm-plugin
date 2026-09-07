@@ -1,0 +1,13 @@
+Paiton image generation runtime
+Copyright ElioVP
+
+Includes runtime components derived from AITemplate.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+The runtime bindings and artifact validation originate from the public
+Paiton vLLM plugin, licensed under Apache License 2.0. This package changes
+their import namespace to allow use without the language model server.
+
+FLUX.2 klein 4B was developed by Black Forest Labs. Model weights are
+downloaded separately from the pinned upstream quantized repository.
+This package does not imply endorsement by Black Forest Labs.

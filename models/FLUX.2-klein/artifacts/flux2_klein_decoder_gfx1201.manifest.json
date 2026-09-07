@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "filename": "flux2_klein_decoder_gfx1201.so",
+    "sha256": "456f278c21a25445edd1d1d91196cd63f0f5ac7eb9bc0b146d503c526ea316cf",
+    "size_bytes": 940016
+  },
+  "binary_abi_version": 1,
+  "capability_version": 1,
+  "decoder_abi_version": 2,
+  "manifest_version": 1,
+  "model": {
+    "repository": null,
+    "revision": null,
+    "scope": "unspecified"
+  },
+  "parallelism": {
+    "tp_size": 1
+  },
+  "target": {
+    "arch": "gfx1201",
+    "capabilities": [
+      "bf16",
+      "fp16",
+      "fp32",
+      "gfx12",
+      "int8",
+      "ocp_fp8",
+      "wave32",
+      "wmma"
+    ],
+    "family": "rdna4",
+    "fp8_format": "ocp",
+    "matrix_isas": [
+      "wmma"
+    ],
+    "max_lds_bytes": 65536,
+    "wave_size": 32
+  },
+  "toolchain": {
+    "hip": "7.14.60850",
+    "torch": "2.12.0+rocm7.14.0",
+    "triton": "3.7.1"
+  }
+}

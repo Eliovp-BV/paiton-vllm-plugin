@@ -1,8 +1,9 @@
 # Paiton vLLM Plugin
 
-Paiton provides model-specific AMD GPU inference paths for vLLM. This
-repository contains the public runtime plugin, container definition, launch
-tools, licenses, and checks required to run published Paiton artifacts.
+Paiton provides model-specific AMD GPU inference. This repository contains the
+public runtime plugin, containers, launch tools, licenses, and checks required
+to run Paiton artifacts. Text serving uses vLLM; the FLUX.2 klein image package
+uses Diffusers with a ready-to-run ComfyUI workflow.
 
 ## Supported configuration
 
@@ -10,6 +11,7 @@ tools, licenses, and checks required to run published Paiton artifacts.
 | --- | --- | --- | --- |
 | AMD Qwen3.8 27B Qronos | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Qwen3.8 guide](models/Qwen3.8/README.md) |
 | Ornith 1.5 35B A3B MXFP4 | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Ornith 1.5 guide](models/Ornith-1.5/README.md) |
+| FLUX.2 klein 4B | Radeon AI PRO R9700 (`gfx1201`) | Images, 1024 × 1024, four steps, batch one; ComfyUI or terminal | [FLUX.2 klein guide](models/FLUX.2-klein/README.md) |
 
 The source checkpoint is AMD's public
 [`Qwen3.8-27B-Quark-Qronos-INT4-W4A16`](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16)
@@ -25,7 +27,30 @@ the fastest obtained stock vLLM result of 35.132 output tokens per second.
 See the [Ornith benchmark record](models/Ornith-1.5/BENCHMARKS.md) for the
 settings and complete protocol.
 
-## Start the server
+## Generate images in ComfyUI
+
+Start the local workflow with one command:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FLUX.2-klein/launch.sh
+```
+
+The helper prepares the pinned model, preserves its cache, and starts ComfyUI
+with a connected prompt-to-image workflow. Select **Paiton** or
+**Stock (Diffusers)**, enter a prompt, and click **Run**. The first image includes
+model loading and compilation; subsequent images reuse the loaded engine.
+
+The qualified R9700 comparison averages **1.054 seconds per image with Paiton**
+versus **1.258 seconds for stock**, giving **16.2% lower latency** and **19.4% more
+potential images per hour**. These are warm prompt-to-PIL timings, excluding
+startup, PNG writing and UI overhead. **Peak Torch allocation falls from 19.3 to
+12.9 GiB, a 33.4% reduction**, with no CPU offload. Maximum sampled driver VRAM
+is 14.6 GiB. [Hugging Face artifacts](https://huggingface.co/EliovpAI/FLUX.2-klein-4B-Paiton-RDNA4)
+are also available; the containers already include them. See the [image benchmark record](models/FLUX.2-klein/BENCHMARKS.md)
+and [model guide](models/FLUX.2-klein/README.md) for requirements, quality evidence,
+the simple interface and terminal commands.
+
+## Start a text server
 
 Start Ornith and enter an interactive local chat with one command:
 
@@ -78,7 +103,7 @@ and the persistent Docker volume:
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Qwen3.8/serve-docker.sh
 ```
 
-## Runtime facts
+## Qwen3.8 runtime facts
 
 - ROCm 7.14
 - vLLM commit `39bd959b582c85e78e7e0326d49042ce7c3c07ed`
@@ -106,6 +131,9 @@ paiton-qwen38-serve
 
 ## License
 
-The plugin is licensed under Apache-2.0. Third-party notices and retained
+The plugin is licensed under Apache-2.0. The image package includes separate
+GPL-3.0-only conversion/stock tools and ComfyUI containers, with their source
+and notices retained. See its [third-party notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md).
+Third-party notices and retained
 license texts are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
 [`LICENSES/`](LICENSES/).

@@ -1,0 +1,36 @@
+# syntax=docker/dockerfile:1.7
+FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9
+LABEL org.opencontainers.image.title="ComfyUI with local Paiton FLUX.2 klein workflow" \
+      org.opencontainers.image.licenses="GPL-3.0-only AND Apache-2.0"
+LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
+      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.1" \
+      org.opencontainers.image.version="flux2-comfyui-rdna4-v1.0.1" \
+      org.opencontainers.image.description="ComfyUI with Paiton and stock FLUX.2 klein engine selection" \
+      org.opencontainers.image.base.name="ghcr.io/eliovp/paiton-vllm-plugin" \
+      org.opencontainers.image.base.digest="sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9" \
+      dev.paiton.model="Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic" \
+      dev.paiton.model.revision="45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd" \
+      dev.paiton.artifact.sha256="" \
+      dev.paiton.artifact-manifest.sha256="" \
+      dev.paiton.config.sha256="" \
+      dev.paiton.lm-head-artifact.sha256="" \
+      dev.paiton.lm-head-artifact-manifest.sha256="" \
+      dev.paiton.release-metadata.sha256=""
+
+ENV PYTHONPATH=/opt/comfy-deps:/opt/paiton/venv-site-packages:/opt/paiton/site-packages \
+    VLLM_USE_PAITON_PLATFORM=0 VLLM_DISABLE_PAITON_PLATFORM=1
+COPY requirements.comfyui.txt /opt/comfy-requirements.txt
+RUN python3 -m pip install --no-cache-dir --no-deps --target /opt/comfy-deps -r /opt/comfy-requirements.txt
+RUN git clone --depth 1 --branch v0.34.0 https://github.com/Comfy-Org/ComfyUI.git /opt/comfyui \
+    && test "$(git -C /opt/comfyui rev-parse HEAD)" = 12d5279438bfefc058a269eae805ceab6047777f \
+    && rm -rf /opt/comfyui/.git
+RUN git clone --depth 1 --branch v1.49.6 https://github.com/Comfy-Org/ComfyUI_frontend.git /opt/comfyui-frontend-source \
+    && test "$(git -C /opt/comfyui-frontend-source rev-parse HEAD)" = fe51f984206178c7dcc37bf96f665f4ff5c8d3ca \
+    && rm -rf /opt/comfyui-frontend-source/.git
+COPY comfyui/custom_nodes/paiton_flux2 /opt/comfyui/custom_nodes/paiton_flux2
+COPY LICENSE /opt/comfyui/custom_nodes/paiton_flux2/LICENSE
+RUN mkdir -p /comfy-user /outputs
+WORKDIR /opt/comfyui
+EXPOSE 8188
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD python3 -c 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8188/system_stats",timeout=3).close()'
+ENTRYPOINT ["python3","main.py","--cpu","--listen","0.0.0.0","--port","8188","--disable-api-nodes","--user-directory","/comfy-user","--output-directory","/outputs"]
