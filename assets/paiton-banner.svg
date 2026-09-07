@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title description">
+  <title id="title">Paiton</title>
+  <desc id="description">Inference optimization for AMD GPUs. An orange circuit motif connects to a processor on a dark background.</desc>
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop stop-color="#111a24"/>
+      <stop offset="1" stop-color="#172731"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop stop-color="#ef713b" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#ef713b" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#c1d6e4" stroke-opacity=".035"/>
+    </pattern>
+  </defs>
+  <path fill="url(#background)" d="M0 0h1200v260H0z"/>
+  <path fill="url(#grid)" d="M0 0h1200v260H0z"/>
+  <ellipse cx="994" cy="130" rx="230" ry="200" fill="url(#glow)"/>
+  <path d="M0 0h7v260H0z" fill="#f47c48"/>
+  <g font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="60" y="55" fill="#aabac7" font-size="13" font-weight="600" letter-spacing="3">ELIOVP / AMD GPU INFERENCE</text>
+    <text x="55" y="149" fill="#f5f7fa" font-size="88" font-weight="700" letter-spacing="-4">Paiton<tspan fill="#f47c48">.</tspan></text>
+    <text x="60" y="196" fill="#c5d2db" font-size="25">Inference optimization for AMD GPUs.</text>
+  </g>
+  <g fill="none" stroke="#6e8796" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45">
+    <path d="M727 60h78l44 44h75M699 130h225M741 202h72l43-43h68"/>
+    <path d="M1064 104h55l30-30h51M1064 130h136M1064 159h42l37 37h57"/>
+    <path d="M956 84V48l-25-25V0M994 84V0M1032 84V47l24-24V0"/>
+    <path d="M956 184v31l-25 25v20M994 184v76M1032 184v33l24 24v19"/>
+  </g>
+  <g fill="#f47c48">
+    <circle cx="727" cy="60" r="4"/>
+    <circle cx="699" cy="130" r="4"/>
+    <circle cx="741" cy="202" r="4"/>
+  </g>
+  <rect x="924" y="84" width="140" height="100" rx="12" fill="#1d2b35" stroke="#f47c48" stroke-width="2"/>
+  <rect x="937" y="97" width="114" height="74" rx="5" fill="#f47c48" fill-opacity=".07" stroke="#f47c48" stroke-opacity=".25"/>
+  <g fill="#f47c48">
+    <rect x="969" y="113" width="19" height="19" rx="3"/>
+    <rect x="998" y="113" width="19" height="19" rx="3" opacity=".7"/>
+    <rect x="969" y="142" width="19" height="12" rx="3" opacity=".7"/>
+    <rect x="998" y="142" width="19" height="12" rx="3" opacity=".4"/>
+  </g>
+</svg>
