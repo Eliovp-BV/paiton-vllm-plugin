@@ -77,9 +77,10 @@ and other GPUs are outside this profile. The ComfyUI bundle runs its interface
 and image handling on the CPU; the selected local engine performs generation on
 the Radeon. General ComfyUI GPU workflows are not qualified by this bundle.
 
-The `paiton-flux2-cache` Docker volume retains the source and prepared model plus
-compilation caches. Set `PAITON_CACHE` to another volume name or an absolute host
-directory. `PAITON_OUTPUTS` selects the host image directory. The ComfyUI user
+The `paiton-flux2-cache` Docker volume retains prepared tensors, and
+`paiton-flux2-cache-runtime` retains source weights and compilation caches.
+Set `PAITON_CACHE` to another volume prefix or an absolute host directory.
+With a host directory, source and compilation caches live in its `cache/` subdirectory. `PAITON_OUTPUTS` selects the host image directory. The ComfyUI user
 volume is `paiton-flux2-comfy-user`. `PAITON_UI_PORT` changes its localhost port.
 Image tags can be overridden with `PAITON_IMAGE`, `PAITON_TOOLS_IMAGE` and
 `PAITON_COMFYUI_IMAGE` for local builds.
@@ -90,8 +91,8 @@ Stop ComfyUI with `./launch.sh --stop` before starting a separate terminal
 pipeline. From this directory, download the published runtime and prepare the cache:
 
 ```bash
-docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.0
-docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.0
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1
 ./run.sh download
 ./run.sh generate --prompt 'A teal ceramic coffee cup beside a lemon, soft window light, product photograph' --seed 42
 ```

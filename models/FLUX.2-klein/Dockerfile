@@ -3,15 +3,15 @@ FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806
 HEALTHCHECK NONE
 
 LABEL org.opencontainers.image.title="Paiton FLUX.2 klein 4B for Radeon AI PRO R9700" \
-      org.opencontainers.image.version="flux2-klein-rdna4-v1.0.0" \
+      org.opencontainers.image.version="flux2-klein-rdna4-v1.0.1" \
       org.opencontainers.image.licenses="Apache-2.0" \
       dev.paiton.model="Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic" \
       dev.paiton.model.revision="45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd" \
       dev.paiton.gpu.arch="gfx1201"
 
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
-      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.0" \
-      org.opencontainers.image.version="flux2-klein-rdna4-v1.0.0" \
+      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.1" \
+      org.opencontainers.image.version="flux2-klein-rdna4-v1.0.1" \
       org.opencontainers.image.description="Local FLUX.2 klein image generation with Paiton on Radeon" \
       org.opencontainers.image.base.name="ghcr.io/eliovp/paiton-vllm-plugin" \
       org.opencontainers.image.base.digest="sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9" \

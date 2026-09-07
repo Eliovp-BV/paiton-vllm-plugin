@@ -5,7 +5,8 @@ import sys
 import tempfile
 from types import ModuleType
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
+from huggingface_hub.errors import LocalEntryNotFoundError
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'tools'))
 from sdnq_tool import __main__ as cli
@@ -54,14 +55,25 @@ class ConversionCacheTest(unittest.TestCase):
         self.assertEqual(list(self.root.glob('.flux2-conversion-*')),[])
         self.assertEqual((self.source/'weights').read_bytes(),b'original checkpoint')
 
-    def test_pinned_cache_skips_download_and_conversion(self):
+    def prepare_existing_cache(self):
         self.output.mkdir()
         metadata={'format_version':1,'source_model':'Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic',
                   'source_revision':'45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd'}
         (self.output/'conversion.json').write_text(json.dumps(metadata))
+
+    def test_pinned_cache_uses_only_local_source_and_skips_conversion(self):
+        self.prepare_existing_cache()
         self.invoke()
-        self.pipeline.download_model.assert_not_called()
+        self.pipeline.download_model.assert_called_once_with(local_files_only=True)
         self.converter.main.assert_not_called()
+
+    def test_existing_tensors_restore_missing_source_without_reconversion(self):
+        self.prepare_existing_cache()
+        self.pipeline.download_model.side_effect=[LocalEntryNotFoundError("Missing cached source"),self.source]
+        self.invoke()
+        self.assertEqual(self.pipeline.download_model.call_args_list,[call(local_files_only=True),call()])
+        self.converter.main.assert_not_called()
+        self.assertEqual((self.source/'weights').read_bytes(),b'original checkpoint')
 
 
 if __name__=='__main__':unittest.main()

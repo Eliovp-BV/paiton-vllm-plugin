@@ -9,9 +9,10 @@ MODEL = "Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic"
 REVISION = "45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd"
 
 
-def download_model():
+def download_model(local_files_only=False):
     return Path(snapshot_download(
         MODEL, revision=REVISION, cache_dir=os.environ.get("HF_HUB_CACHE"), max_workers=2,
+        local_files_only=local_files_only,
         allow_patterns=["model_index.json", "scheduler/*", "tokenizer/*", "text_encoder/config.json",
                         "text_encoder/model.safetensors", "transformer/config.json",
                         "transformer/diffusion_pytorch_model.safetensors", "vae/*"],

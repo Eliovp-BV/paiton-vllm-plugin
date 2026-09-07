@@ -4,8 +4,8 @@ HEALTHCHECK NONE
 LABEL org.opencontainers.image.title="FLUX.2 klein conversion and stock tools" \
       org.opencontainers.image.licenses="GPL-3.0-only AND Apache-2.0"
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
-      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.0" \
-      org.opencontainers.image.version="flux2-tools-rdna4-v1.0.0" \
+      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.1" \
+      org.opencontainers.image.version="flux2-tools-rdna4-v1.0.1" \
       org.opencontainers.image.description="Pinned FLUX.2 klein conversion and stock Diffusers runtime" \
       org.opencontainers.image.base.name="ghcr.io/eliovp/paiton-vllm-plugin" \
       org.opencontainers.image.base.digest="sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9" \

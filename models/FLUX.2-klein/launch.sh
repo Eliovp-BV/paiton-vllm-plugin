@@ -24,17 +24,21 @@ docker info >/dev/null 2>&1 || { printf 'Docker is unavailable. Check that docke
 docker compose version >/dev/null
 [[ -e /dev/kfd && -d /dev/dri ]] || { printf 'ROCm GPU devices were not found. Check the Radeon driver installation.\n' >&2; exit 1; }
 export PAITON_RENDER_GID="$(stat -c '%g' /dev/kfd)"
-export PAITON_IMAGE="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.0}"
-export PAITON_TOOLS_IMAGE="${PAITON_TOOLS_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.0}"
-export PAITON_COMFYUI_IMAGE="${PAITON_COMFYUI_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-comfyui-rdna4-v1.0.0}"
+export PAITON_IMAGE="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1}"
+export PAITON_TOOLS_IMAGE="${PAITON_TOOLS_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1}"
+export PAITON_COMFYUI_IMAGE="${PAITON_COMFYUI_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-comfyui-rdna4-v1.0.1}"
 export PAITON_OUTPUTS="${PAITON_OUTPUTS:-$PWD/paiton-images}"
 export PAITON_CACHE="${PAITON_CACHE:-paiton-flux2-cache}"
 if [[ "$PAITON_CACHE" == /* ]]; then
   export PAITON_CACHE_BIND="$PAITON_CACHE"
   export PAITON_CACHE_VOLUME=paiton-flux2-cache
+  export PAITON_RUNTIME_CACHE_BIND="$PAITON_CACHE/cache"
+  export PAITON_RUNTIME_CACHE_VOLUME=paiton-flux2-cache-runtime
+  mkdir -p "$PAITON_RUNTIME_CACHE_BIND"
 else
   export PAITON_CACHE_VOLUME="$PAITON_CACHE"
-  unset PAITON_CACHE_BIND
+  export PAITON_RUNTIME_CACHE_VOLUME="${PAITON_CACHE}-runtime"
+  unset PAITON_CACHE_BIND PAITON_RUNTIME_CACHE_BIND
 fi
 compose=(docker compose -f "$package_dir/compose.yaml")
 if [[ "$action" == stop ]]; then "${compose[@]}" down; exit; fi

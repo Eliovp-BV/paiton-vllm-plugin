@@ -28,6 +28,12 @@ def main():
             metadata=json.loads((output/"conversion.json").read_text())
             if metadata.get("source_revision") != "45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd" or metadata.get("format_version") != 1 or metadata.get("source_model") != "Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic":
                 raise RuntimeError("An incompatible tensor cache is present")
+            from huggingface_hub.errors import LocalEntryNotFoundError
+            try:
+                download_model(local_files_only=True)
+            except LocalEntryNotFoundError:
+                print("Restoring the pinned source cache for the stock engine.")
+                download_model()
             print("Pinned tensor cache already prepared.")
             return
         snapshot=download_model()
