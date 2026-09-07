@@ -23,3 +23,7 @@
 !artifacts/*.json
 **/__pycache__
 **/*.pyc
+
+!assets/
+!assets/pipeline-memory.png
+!assets/pipeline-memory.svg

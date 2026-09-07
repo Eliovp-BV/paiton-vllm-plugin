@@ -90,6 +90,6 @@ other generation services, then run:
 
 [Every measured timing](benchmark-data/raw-timings.csv) and
 [settings, memory, versions and quality](benchmark-data/results.json) are included.
-The [article](https://eliovp.com/blog/paiton-flux2-klein-radeon-ai-pro-r9700)
+The [article and evidence bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/tag/paiton-flux2-klein-gfx1201-v1.0.0)
 provides charts, full-resolution quality pairs, example media, startup details
 and the complete evidence archive.

@@ -43,7 +43,10 @@ model loading and compilation; subsequent images reuse the loaded engine.
 The qualified R9700 comparison averages **1.054 seconds per image with Paiton**
 versus **1.258 seconds for stock**, giving **16.2% lower latency** and **19.4% more
 potential images per hour**. These are warm prompt-to-PIL timings, excluding
-startup, PNG writing and UI overhead. See the [image benchmark record](models/FLUX.2-klein/BENCHMARKS.md)
+startup, PNG writing and UI overhead. **Peak Torch allocation falls from 19.3 to
+12.9 GiB, a 33.4% reduction**, with no CPU offload. Maximum sampled driver VRAM
+is 14.6 GiB. [Hugging Face artifacts](https://huggingface.co/EliovpAI/FLUX.2-klein-4B-Paiton-RDNA4)
+are also available; the containers already include them. See the [image benchmark record](models/FLUX.2-klein/BENCHMARKS.md)
 and [model guide](models/FLUX.2-klein/README.md) for requirements, quality evidence,
 the simple interface and terminal commands.
 

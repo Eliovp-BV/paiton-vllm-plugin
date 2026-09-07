@@ -13,18 +13,18 @@ x-engine: &engine
 services:
   paiton:
     <<: *engine
-    image: ${PAITON_IMAGE:-ghcr.io/eliovp/paiton-flux2-klein:rdna4-v1.0.0}
+    image: ${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.0}
     build: {context: ., dockerfile: Dockerfile}
     command: [--engine, paiton]
     ports: ["127.0.0.1:${PAITON_API_PORT:-7861}:7860"]
   stock:
     <<: *engine
-    image: ${PAITON_TOOLS_IMAGE:-ghcr.io/eliovp/paiton-flux2-tools:rdna4-v1.0.0}
+    image: ${PAITON_TOOLS_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.0}
     build: {context: ., dockerfile: Dockerfile.tools}
     command: [--engine, stock]
     ports: ["127.0.0.1:${PAITON_STOCK_PORT:-7862}:7860"]
   comfyui:
-    image: ${PAITON_COMFYUI_IMAGE:-ghcr.io/eliovp/paiton-flux2-comfyui:rdna4-v1.0.0}
+    image: ${PAITON_COMFYUI_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-comfyui-rdna4-v1.0.0}
     build: {context: ., dockerfile: Dockerfile.comfyui}
     environment:
       PAITON_FLUX2_ENDPOINT: http://paiton:7860

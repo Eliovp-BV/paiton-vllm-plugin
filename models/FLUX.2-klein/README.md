@@ -11,6 +11,13 @@ configuration: **16.2% lower latency** and **19.4% more images per hour**.
 These are warm prompt-to-PIL timings, excluding startup and PNG writing.
 See the [benchmark record](BENCHMARKS.md) for settings, raw timings and quality.
 
+**Peak Torch allocation is just 12.9 GiB, versus 19.3 GiB for stock, a 33.4% reduction.**
+Peak reservation is 14.1 GiB and maximum sampled driver VRAM is 14.6 GiB.
+The complete pipeline stays on the GPU without CPU offload. These overlapping
+measurements include compilation and warmup; 12.9 GiB is not total VRAM use.
+
+![Full-pipeline memory: 12.9 GiB peak Torch allocation with Paiton](assets/pipeline-memory.png)
+
 ## Start ComfyUI with one command
 
 ```bash
@@ -80,10 +87,11 @@ Image tags can be overridden with `PAITON_IMAGE`, `PAITON_TOOLS_IMAGE` and
 ## Generate from a terminal
 
 Stop ComfyUI with `./launch.sh --stop` before starting a separate terminal
-pipeline. From this directory, build the two command-line images and prepare the cache:
+pipeline. From this directory, download the published runtime and prepare the cache:
 
 ```bash
-./build.sh
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.0
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.0
 ./run.sh download
 ./run.sh generate --prompt 'A teal ceramic coffee cup beside a lemon, soft window light, product photograph' --seed 42
 ```
@@ -142,6 +150,9 @@ All Dockerfiles pin the common base image by digest. It supplies PyTorch
 Diffusers is `0.40.0`. SDNQ `0.2.6` is in the separate conversion/stock image.
 ComfyUI is `0.34.0`, commit `12d5279438bfefc058a269eae805ceab6047777f`, with
 frontend `1.49.6`; additional packages are pinned in `requirements.comfyui.txt`.
+
+Compiled artifacts are also available on [Hugging Face](https://huggingface.co/EliovpAI/FLUX.2-klein-4B-Paiton-RDNA4).
+The containers already include them, so no separate artifact download is needed.
 
 The only downloaded checkpoint is
 [Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic](https://huggingface.co/Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic)
