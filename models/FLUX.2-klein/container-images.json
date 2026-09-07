@@ -1,0 +1,21 @@
+{
+  "release": "paiton-flux2-klein-gfx1201-v1.0.0",
+  "platform": "linux/amd64",
+  "images": {
+    "klein": {
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.0",
+      "digest": "sha256:8866c8dd29d7dfbba81156a83af75229ffc9bc05a074833bc516d8da79ebd6a8",
+      "reference": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:8866c8dd29d7dfbba81156a83af75229ffc9bc05a074833bc516d8da79ebd6a8"
+    },
+    "tools": {
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.0",
+      "digest": "sha256:9268cb0505ba4db59adfa7f7faf87ccabf3803571757add7397da40752f453ba",
+      "reference": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:9268cb0505ba4db59adfa7f7faf87ccabf3803571757add7397da40752f453ba"
+    },
+    "comfyui": {
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:flux2-comfyui-rdna4-v1.0.0",
+      "digest": "sha256:fdede6c2012be50b40207a04a6ed38b79b045b49267cf89180a0577e09de6fff",
+      "reference": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:fdede6c2012be50b40207a04a6ed38b79b045b49267cf89180a0577e09de6fff"
+    }
+  }
+}
