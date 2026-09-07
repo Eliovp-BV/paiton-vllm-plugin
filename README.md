@@ -1,139 +1,119 @@
-# Paiton vLLM Plugin
+![Paiton: Inference optimization for AMD GPUs](assets/paiton-banner.svg)
 
-Paiton provides model-specific AMD GPU inference. This repository contains the
-public runtime plugin, containers, launch tools, licenses, and checks required
-to run Paiton artifacts. Text serving uses vLLM; the FLUX.2 klein image package
-uses Diffusers with a ready-to-run ComfyUI workflow.
+<p align="center">
+  <a href="#community-releases">Explore the models</a> ·
+  <a href="#quick-start">Run locally</a> ·
+  <a href="https://github.com/Eliovp-BV/paiton-vllm-plugin/releases">Releases</a> ·
+  <a href="https://eliovp.com/products/paiton">Discover Paiton</a>
+</p>
 
-## Supported configuration
+**Paiton is an inference optimization framework for AMD GPUs.** We combine
+compiler optimizations, custom kernels and runtime integration to improve
+performance and memory efficiency for language, image and video workloads.
 
-| Model | GPU | Runtime scope | Instructions |
-| --- | --- | --- | --- |
-| AMD Qwen3.8 27B Qronos | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Qwen3.8 guide](models/Qwen3.8/README.md) |
-| Ornith 1.5 35B A3B MXFP4 | Radeon AI PRO R9700 (`gfx1201`) | Text, TP1, batch size 1, 8,192-token context | [Ornith 1.5 guide](models/Ornith-1.5/README.md) |
-| FLUX.2 klein 4B | Radeon AI PRO R9700 (`gfx1201`) | Images, 1024 × 1024, four steps, batch one; ComfyUI or terminal | [FLUX.2 klein guide](models/FLUX.2-klein/README.md) |
+Here we share our **free RDNA community releases**: optimized runtimes,
+reproducible containers and simple commands for running AI on your own hardware.
 
-The source checkpoint is AMD's public
-[`Qwen3.8-27B-Quark-Qronos-INT4-W4A16`](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16)
-at revision `649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2`.
+## Community releases
 
-The Ornith package uses Capicua25x's public
-[`Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4`](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4)
-checkpoint at revision `9e488f46c0f7969f84c9923ee0256311cd50316e`.
+These releases are our way of giving back to the AMD community: helping more
+people build, experiment and create with local AI.
 
-On one Radeon AI PRO R9700, the qualified Ornith package delivered an average
-of 44.628 output tokens per second across two runs. That is 27.03% more than
-the fastest obtained stock vLLM result of 35.132 output tokens per second.
-See the [Ornith benchmark record](models/Ornith-1.5/BENCHMARKS.md) for the
-settings and complete protocol.
+**Current target: Radeon AI PRO R9700 · 32 GB VRAM · RDNA 4 (`gfx1201`).**
 
-## Generate images in ComfyUI
+| Model & setup guide | What you can do |
+| --- | --- |
+| [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
+| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
 
-Start the local workflow with one command:
+## Quick start
+
+You need **Linux, Docker and a working AMD GPU driver**. ComfyUI also needs
+Docker Compose. Each model guide covers RAM, disk, GPU device access and
+supported generation settings.
+
+Choose a model below. The first launch downloads and prepares its weights;
+allow time for loading and compilation. Caches persist for later runs.
+Run one model at a time.
+
+<details>
+<summary><strong>Generate images with FLUX.2 klein</strong> · ComfyUI</summary>
 
 ```bash
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FLUX.2-klein/launch.sh
 ```
 
-The helper prepares the pinned model, preserves its cache, and starts ComfyUI
-with a connected prompt-to-image workflow. Select **Paiton** or
-**Stock (Diffusers)**, enter a prompt, and click **Run**. The first image includes
-model loading and compilation; subsequent images reuse the loaded engine.
+Open [ComfyUI](http://127.0.0.1:8188/?paiton=1), enter a prompt and click **Run**.
+The included workflow lets you select **Paiton** or **Stock (Diffusers)**.
 
-The qualified R9700 comparison averages **1.054 seconds per image with Paiton**
-versus **1.258 seconds for stock**, giving **16.2% lower latency** and **19.4% more
-potential images per hour**. These are warm prompt-to-PIL timings, excluding
-startup, PNG writing and UI overhead. **Peak Torch allocation falls from 19.3 to
-12.9 GiB, a 33.4% reduction**, with no CPU offload. Maximum sampled driver VRAM
-is 14.6 GiB. [Hugging Face artifacts](https://huggingface.co/EliovpAI/FLUX.2-klein-4B-Paiton-RDNA4)
-are also available; the containers already include them. See the [image benchmark record](models/FLUX.2-klein/BENCHMARKS.md)
-and [model guide](models/FLUX.2-klein/README.md) for requirements, quality evidence,
-the simple interface and terminal commands.
+[Full guide, requirements and other interfaces →](models/FLUX.2-klein/README.md)
 
-## Start a text server
+</details>
 
-Start Ornith and enter an interactive local chat with one command:
-
-```bash
-git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Ornith-1.5/serve-docker.sh --chat
-```
-
-For the Qwen3.8 server:
-
-```bash
-docker run -d \
-  --name paiton-qwen38 \
-  --device /dev/kfd \
-  --device /dev/dri \
-  --group-add video \
-  --ipc=host \
-  --network host \
-  --mount type=volume,src=paiton-qwen38-cache,dst=/models/cache \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-qronos-rdna4-v1.3.0
-```
-
-The first start downloads the 19.9 GB public checkpoint. The Docker volume
-keeps it for later starts. Model assembly with cached weights takes roughly
-10 to 12 minutes on the supported GPU.
-
-Follow startup:
-
-```bash
-docker logs -f paiton-qwen38
-```
-
-## Chat locally
-
-After the log reports that the application is ready:
-
-```bash
-docker exec -it paiton-qwen38 paiton-chat
-```
-
-Use `/reset` to clear the conversation and `/quit` to exit. The server also
-provides an OpenAI-compatible endpoint at
-`http://127.0.0.1:8000/v1/chat/completions` with model name `qwen38`.
-
-## One-line helper
-
-The checked helper handles cache discovery, device arguments, offline mode,
-and the persistent Docker volume:
+<details>
+<summary><strong>Start Qwen3.8</strong> · Chat and API</summary>
 
 ```bash
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Qwen3.8/serve-docker.sh
 ```
 
-## Qwen3.8 runtime facts
-
-- ROCm 7.14
-- vLLM commit `39bd959b582c85e78e7e0326d49042ce7c3c07ed`
-- O2 full-and-piecewise graph capture at batch size 1
-- Qronos group-128 packed weights
-- model-specific projection, attention, recurrent, and language-model-head paths
-- fitted MLP decode shadows; source W4 path retained for prefill
-- original AMD weights downloaded directly from Hugging Face
-
-The fitted decode shadows intentionally change decode quantization. The
-published scope is single-user text inference on the exact GPU and software
-configuration above.
-
-## Install the plugin in an existing environment
-
-The environment must already contain ROCm 7.14, PyTorch 2.12 for ROCm 7.14,
-and the pinned vLLM revision.
+Once the server reports that it is ready, open a terminal chat:
 
 ```bash
-python3 -m pip install --no-deps \
-  "git+https://github.com/Eliovp-BV/paiton-vllm-plugin.git@paiton-qwen38-qronos-w4a16-gfx1201-v1.3.0"
-paiton-qwen38-serve --check-runtime
-paiton-qwen38-serve
+docker exec -it paiton-qwen38 paiton-chat
 ```
 
-## License
+[Full guide, API examples and existing-environment installation →](models/Qwen3.8/README.md)
 
-The plugin is licensed under Apache-2.0. The image package includes separate
-GPL-3.0-only conversion/stock tools and ComfyUI containers, with their source
-and notices retained. See its [third-party notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md).
-Third-party notices and retained
-license texts are in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and
-[`LICENSES/`](LICENSES/).
+</details>
+
+<details>
+<summary><strong>Chat with Ornith 1.5</strong> · Chat and API</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+The helper starts the server, waits for it to become ready and opens the
+terminal chat. Use `/reset` for a new conversation and `/quit` to leave the chat.
+
+[Full guide, API examples and model options →](models/Ornith-1.5/README.md)
+
+</details>
+
+Already cloned the repository? Run the `./models/…` command for your chosen
+model from the repository root.
+
+## Performance you can inspect
+
+Our benchmarks document the hardware, settings, stock comparisons and quality
+checks behind each result:
+[Qwen3.8](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) ·
+[Ornith 1.5](models/Ornith-1.5/BENCHMARKS.md) ·
+[FLUX.2 klein](models/FLUX.2-klein/BENCHMARKS.md).
+Use the model guides for current release settings and reproduction commands.
+
+## Beyond the community releases
+
+Paiton's broader work covers **AMD Instinct (CDNA)** accelerators and multi-GPU
+inference for larger language, image and video workloads.
+
+**[Explore Paiton and discuss your workload →](https://eliovp.com/products/paiton)**
+
+## About this repository
+
+This repository distributes public runtimes and compiled artifacts. Paiton's
+compiler is developed privately. Text serving uses vLLM; image generation uses
+Diffusers with ComfyUI integration.
+
+The vLLM plugin is [Apache-2.0 licensed](LICENSE). Model weights and bundled
+components retain their own licenses, including GPL-3.0-only for the separate
+image conversion/stock tools and ComfyUI. See the
+[third-party notices](THIRD_PARTY_NOTICES.md) and
+[image package notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md).
+
+[Release downloads](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases) ·
+[Containers](https://github.com/users/Eliovp/packages/container/package/paiton-vllm-plugin) ·
+[Hugging Face](https://huggingface.co/EliovpAI) ·
+[Report an issue](https://github.com/Eliovp-BV/paiton-vllm-plugin/issues)
