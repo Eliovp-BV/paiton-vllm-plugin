@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1.7
+# Built locally by launch.sh. Do not upload this combined image.
+ARG PAITON_H3_BASE_IMAGE=ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0
+FROM ${PAITON_H3_BASE_IMAGE}
+LABEL dev.paiton.distribution="local-assembly-only"
+RUN python3 -m pip install --no-cache-dir --no-deps --target /opt/h3-deps -r /opt/h3/requirements.lock.txt
+RUN git init /opt/comfyui \
+    && git -C /opt/comfyui remote add origin https://github.com/Comfy-Org/ComfyUI.git \
+    && git -C /opt/comfyui fetch --depth 1 origin efa6c8f804bff78b46a0fd458ebd2e47bba07a30 \
+    && git -C /opt/comfyui checkout --detach FETCH_HEAD \
+    && test "$(git -C /opt/comfyui rev-parse HEAD)" = efa6c8f804bff78b46a0fd458ebd2e47bba07a30 \
+    && rm -rf /opt/comfyui/.git
+RUN git clone --depth 1 --branch v1.51.10 https://github.com/Comfy-Org/ComfyUI_frontend.git /opt/comfyui-frontend-source \
+    && test "$(git -C /opt/comfyui-frontend-source rev-parse HEAD)" = e7d1c7fc6823e330fdab524610b0000394cb1dbc \
+    && rm -rf /opt/comfyui-frontend-source/.git
+COPY comfyui/paiton_h3 /opt/comfyui/custom_nodes/paiton_h3
+COPY comfyui/workflows /opt/comfyui/custom_nodes/paiton_h3/example_workflows

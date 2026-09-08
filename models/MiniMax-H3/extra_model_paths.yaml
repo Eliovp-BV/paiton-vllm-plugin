@@ -1,0 +1,3 @@
+paiton_h3_runtime:
+  base_path: /opt/comfyui
+  custom_nodes: custom_nodes

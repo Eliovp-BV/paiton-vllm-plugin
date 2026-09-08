@@ -1,0 +1,59 @@
+{
+  "preset": "turbo8",
+  "quality_scope": "Three fixed stock clips. Every matched Paiton file is byte-identical. These checks do not establish full-precision quality parity.",
+  "clips": [
+    {
+      "case": "fox",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 0.22606652975082397,
+      "audio_rms": 0.03428542765078902,
+      "audio_fraction_at_or_above_one": 0.0
+    },
+    {
+      "case": "barista",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 0.3215755224227905,
+      "audio_rms": 0.020930961676824487,
+      "audio_fraction_at_or_above_one": 0.0
+    },
+    {
+      "case": "pour",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 1.0200700759887695,
+      "audio_rms": 0.034978609300774614,
+      "audio_fraction_at_or_above_one": 1.5070408950617283e-05
+    }
+  ],
+  "human_listening": {
+    "fox": "No dedicated Turbo8 confirmation claimed",
+    "barista": "No dedicated Turbo8 confirmation claimed"
+  },
+  "visual_limits": "Pronounced foam and incomplete bottle placement in pouring"
+}

@@ -1,0 +1,150 @@
+{
+  "artifact": {
+    "filename": "minimax_h3_projections_gfx1201.so",
+    "sha256": "8138dda01ce0fa5923b733e0242121e9f605a405aa85d5212e0160f5b28df657",
+    "size_bytes": 842528
+  },
+  "binary_abi_version": 1,
+  "capability_version": 1,
+  "h3_fusion_abi_version": 1,
+  "h3_fusions": [
+    "turbo_bf16_residual_1_16_and_unit",
+    "paired_bf16_swiglu",
+    "dense_int8_attention_d128"
+  ],
+  "h3_max_tokens": 49152,
+  "h3_packed_projection": true,
+  "h3_projection_abi_version": 1,
+  "h3_residual_scales": [
+    0.0625,
+    1.0
+  ],
+  "interface": {
+    "tensors": [
+      {
+        "dtype": "uint8",
+        "name": "a",
+        "roles": [
+          "input"
+        ],
+        "shape_values": [
+          [
+            15456
+          ],
+          [
+            5376
+          ]
+        ]
+      },
+      {
+        "dtype": "bfloat16",
+        "name": "output",
+        "roles": [
+          "output"
+        ],
+        "shape_values": [
+          [
+            15456
+          ],
+          [
+            28672
+          ]
+        ]
+      },
+      {
+        "dtype": "float32",
+        "name": "sa",
+        "roles": [
+          "input"
+        ],
+        "shape_values": [
+          [
+            15456
+          ]
+        ]
+      },
+      {
+        "dtype": "float32",
+        "name": "sw",
+        "roles": [
+          "input"
+        ],
+        "shape_values": [
+          [
+            28672
+          ]
+        ]
+      },
+      {
+        "dtype": "uint8",
+        "name": "w",
+        "roles": [
+          "input"
+        ],
+        "shape_values": [
+          [
+            28672
+          ],
+          [
+            5376
+          ]
+        ]
+      }
+    ]
+  },
+  "manifest_version": 1,
+  "memory_planning": {
+    "activation_blob_bytes": 0,
+    "compiler_owned_constant_bytes": 0,
+    "shared_workspace_bytes": 0,
+    "unique_workspace_bytes": 0
+  },
+  "model": {
+    "repository": "Comfy-Org/MiniMax-H3",
+    "revision": "a98869194787969724c7425d95d0ed73ce9202af",
+    "scope": "fl2va_pruned_int8_accumulation_projections",
+    "supported_storage": [
+      "int8_convrot",
+      "asym_w4a8_int8"
+    ]
+  },
+  "parallelism": {
+    "tp_size": 1
+  },
+  "target": {
+    "arch": "gfx1201",
+    "capabilities": [
+      "bf16",
+      "fp16",
+      "fp32",
+      "gfx12",
+      "int8",
+      "ocp_fp8",
+      "wave32",
+      "wmma"
+    ],
+    "family": "rdna4",
+    "fp8_format": "ocp",
+    "matrix_isas": [
+      "wmma"
+    ],
+    "max_lds_bytes": 65536,
+    "wave_size": 32
+  },
+  "toolchain": {
+    "ck_revision": "3df477638d05169dbe73f4d58e3a13ad3ca7b5da",
+    "compiler_revision": "cc106b804b4a8b01f59174bac902616099e2b598",
+    "hipblaslt": "/opt/rocm/core-7.14/lib/libhipblaslt.so.1.4",
+    "hipcc": "HIP version: 7.14.60850-0000000",
+    "packages": {
+      "paiton-vllm-plugin": null,
+      "torch": "2.12.0+rocm7.14.0",
+      "transformers": "5.15.1",
+      "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+      "vllm": null
+    },
+    "python": "3.12.3",
+    "rocblas": "/opt/rocm/core-7.14/lib/librocblas.so.5.5",
+    "rocm_path": "/opt/rocm"
+  }
+}

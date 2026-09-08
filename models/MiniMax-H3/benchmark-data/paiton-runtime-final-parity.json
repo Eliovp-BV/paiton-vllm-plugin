@@ -1,0 +1,6 @@
+{
+  "artifact_platform_manifest_unchanged": true,
+  "qualified_artifact_platform_manifest": "sha256:56c405453d21fd405ab0bb3f7eb0e0a2d6069ab672d617c319528e210ff2dd19",
+  "final_artifact_platform_manifest": "sha256:56c405453d21fd405ab0bb3f7eb0e0a2d6069ab672d617c319528e210ff2dd19",
+  "scope": "Identical manifest means identical artifact-image contents, including all Paiton inference code and binaries. Final local image changes only the ComfyUI first-visit viewport; 571 stock files/dependencies and the browser-exported inference graph also match."
+}

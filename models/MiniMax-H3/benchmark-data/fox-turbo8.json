@@ -1,0 +1,243 @@
+{
+  "boundary": "Fresh prompt through playable H.264/AAC file; setup/downloads excluded, component reloads included.",
+  "canvas": [
+    864,
+    480
+  ],
+  "runs": [
+    {
+      "engine": "stock",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 0,
+      "warmup": true,
+      "seconds": 138.79645964998053,
+      "before_encoding_seconds": 133.94803803198738,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 28.756784080003854,
+        "sampling": 84.62632247398142,
+        "video_decode": 16.29113424301613,
+        "audio_decode": 4.2412839899770916,
+        "encode_mux": 4.8477943550096825
+      },
+      "torch_peak_allocated_bytes": 5311125504,
+      "torch_peak_reserved_bytes": 7568621568,
+      "sampled_peak": {
+        "VmRSS_bytes": 9906651136,
+        "RssAnon_bytes": 6026764288,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32519061504,
+        "temp1_input": 59000,
+        "temp2_input": 87000,
+        "temp3_input": 73000,
+        "power1_average": 319000000
+      },
+      "host_lifetime_hwm_bytes": 9779941376,
+      "component_disk_read_bytes": {
+        "conditioning": 12955877376,
+        "sampling": 13002768384,
+        "video_decode": 1504317440,
+        "audio_decode": 259719168,
+        "encode_mux": 0
+      }
+    },
+    {
+      "engine": "stock",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 1,
+      "warmup": false,
+      "seconds": 95.66152773500653,
+      "before_encoding_seconds": 90.90614187699975,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 5.420032476016786,
+        "sampling": 66.70144596201135,
+        "video_decode": 15.546763862017542,
+        "audio_decode": 3.2092358820373192,
+        "encode_mux": 4.754754575958941
+      },
+      "torch_peak_allocated_bytes": 5312924672,
+      "torch_peak_reserved_bytes": 7570718720,
+      "sampled_peak": {
+        "VmRSS_bytes": 10181693440,
+        "RssAnon_bytes": 6306762752,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32646377472,
+        "temp1_input": 58000,
+        "temp2_input": 86000,
+        "temp3_input": 74000,
+        "power1_average": 344000000
+      },
+      "host_lifetime_hwm_bytes": 10351067136,
+      "component_disk_read_bytes": {
+        "conditioning": 2412965888,
+        "sampling": 2489933824,
+        "video_decode": 1504317440,
+        "audio_decode": 257441792,
+        "encode_mux": 0
+      }
+    },
+    {
+      "engine": "stock",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 2,
+      "warmup": false,
+      "seconds": 95.48165465099737,
+      "before_encoding_seconds": 90.7411914819968,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 5.236743534042034,
+        "sampling": 66.70237115502823,
+        "video_decode": 15.548137986974325,
+        "audio_decode": 3.216715143993497,
+        "encode_mux": 4.739886051975191
+      },
+      "torch_peak_allocated_bytes": 5312924672,
+      "torch_peak_reserved_bytes": 7570718720,
+      "sampled_peak": {
+        "VmRSS_bytes": 9274494976,
+        "RssAnon_bytes": 5399564288,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32663281664,
+        "temp1_input": 58000,
+        "temp2_input": 86000,
+        "temp3_input": 75000,
+        "power1_average": 348000000
+      },
+      "host_lifetime_hwm_bytes": 10353184768,
+      "component_disk_read_bytes": {
+        "conditioning": 2412965888,
+        "sampling": 2484834304,
+        "video_decode": 1504317440,
+        "audio_decode": 257441792,
+        "encode_mux": 0
+      }
+    },
+    {
+      "engine": "paiton",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 0,
+      "warmup": true,
+      "seconds": 131.10298629599856,
+      "before_encoding_seconds": 126.4249234739691,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 28.738609021995217,
+        "sampling": 77.09680027799914,
+        "video_decode": 16.335173177998513,
+        "audio_decode": 4.221632249013055,
+        "encode_mux": 4.67747006600257
+      },
+      "torch_peak_allocated_bytes": 5311125504,
+      "torch_peak_reserved_bytes": 7767851008,
+      "sampled_peak": {
+        "VmRSS_bytes": 9236111360,
+        "RssAnon_bytes": 5355134976,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32516935680,
+        "temp1_input": 59000,
+        "temp2_input": 86000,
+        "temp3_input": 73000,
+        "power1_average": 349000000
+      },
+      "host_lifetime_hwm_bytes": 9781346304,
+      "component_disk_read_bytes": {
+        "conditioning": 12937048064,
+        "sampling": 11035299840,
+        "video_decode": 1504305152,
+        "audio_decode": 259506176,
+        "encode_mux": 0
+      }
+    },
+    {
+      "engine": "paiton",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 1,
+      "warmup": false,
+      "seconds": 91.72879602800822,
+      "before_encoding_seconds": 87.0126210390008,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 5.531468491011765,
+        "sampling": 62.74478766601533,
+        "video_decode": 15.543579722987488,
+        "audio_decode": 3.1587832719669677,
+        "encode_mux": 4.715582517965231
+      },
+      "torch_peak_allocated_bytes": 5312924672,
+      "torch_peak_reserved_bytes": 7769948160,
+      "sampled_peak": {
+        "VmRSS_bytes": 9387868160,
+        "RssAnon_bytes": 5506269184,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32644632576,
+        "temp1_input": 58000,
+        "temp2_input": 85000,
+        "temp3_input": 75000,
+        "power1_average": 305000000
+      },
+      "host_lifetime_hwm_bytes": 10315227136,
+      "component_disk_read_bytes": {
+        "conditioning": 2552483840,
+        "sampling": 2481766400,
+        "video_decode": 1504305152,
+        "audio_decode": 257441792,
+        "encode_mux": 0
+      }
+    },
+    {
+      "engine": "paiton",
+      "prompt_id": "fox",
+      "seed": 771,
+      "run": 2,
+      "warmup": false,
+      "seconds": 91.89858691801783,
+      "before_encoding_seconds": 87.27220980299171,
+      "frames": 124,
+      "fps": 24,
+      "evaluations": 8,
+      "component_seconds": {
+        "conditioning": 5.654923635011073,
+        "sampling": 62.751875516958535,
+        "video_decode": 15.674387120001484,
+        "audio_decode": 3.157657483010553,
+        "encode_mux": 4.625786196033005
+      },
+      "torch_peak_allocated_bytes": 5312924672,
+      "torch_peak_reserved_bytes": 7769948160,
+      "sampled_peak": {
+        "VmRSS_bytes": 9279500288,
+        "RssAnon_bytes": 5397901312,
+        "VmSwap_bytes": 0,
+        "mem_info_vram_used": 32644800512,
+        "temp1_input": 58000,
+        "temp2_input": 85000,
+        "temp3_input": 75000,
+        "power1_average": 350000000
+      },
+      "host_lifetime_hwm_bytes": 10326536192,
+      "component_disk_read_bytes": {
+        "conditioning": 2377113600,
+        "sampling": 2482802688,
+        "video_decode": 1501773824,
+        "audio_decode": 257441792,
+        "encode_mux": 0
+      }
+    }
+  ]
+}
