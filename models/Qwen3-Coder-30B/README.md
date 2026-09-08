@@ -6,6 +6,7 @@ includes Paiton and the compiled artifact; no compiler or local build is needed.
 
 **[Download the ready-to-run bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/qwen3-coder-30b-awq-rdna4-v1.0.0/paiton-qwen3-coder-r9700-v1.0.0.tar.gz)** ·
 [Checksums and release files](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/tag/qwen3-coder-30b-awq-rdna4-v1.0.0) ·
+[Hugging Face artifacts and launcher](https://huggingface.co/EliovpAI/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit-Paiton-RDNA4) ·
 [Measured performance and quality](BENCHMARKS.md)
 
 ## Start coding
@@ -24,6 +25,19 @@ folder. The launcher pulls the prebuilt image and downloads the pinned
 18.1 GB INT4 checkpoint on first use. Later launches reuse the cache. Enter a
 coding question, use `/reset` for a new conversation, or `/quit` to leave chat.
 The API continues running after chat closes.
+
+You can also download the launcher and compiled artifacts from Hugging Face:
+
+```bash
+hf download EliovpAI/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit-Paiton-RDNA4 \
+  --revision v1.0.0 --local-dir ./paiton-qwen3-coder
+bash ./paiton-qwen3-coder/serve-docker.sh --chat
+```
+
+The Hub package contains artifacts, manifests, checksums, the launcher and
+documentation only. Weights are downloaded directly from the pinned cyankiwi
+checkpoint into your local cache. The container already includes the same
+compiled artifact; see the Hub model card for optional external artifact use.
 
 To start only the API, omit `--chat`. Check progress with
 `docker logs -f paiton-qwen3-coder`; stop it with
