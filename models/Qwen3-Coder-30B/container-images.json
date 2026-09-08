@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "image": "ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0",
+  "digest": "sha256:fb47f4ab6073da943e553849985c81326e33b425e1017f97f3f79fad09586a8e",
+  "source_revision": "381c77954c927f33a67ca2524e440ce320ddae85",
+  "base_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+  "platform": "linux/amd64",
+  "gpu_arch": "gfx1201",
+  "artifact_sha256": "74fb7015e285d3b7863fc8f54341204a252a2ab305921edd5b30f5724915958f"
+}

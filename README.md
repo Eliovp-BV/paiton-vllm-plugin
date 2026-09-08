@@ -26,6 +26,7 @@ people build, experiment and create with local AI.
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
+| [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Write, review and test code through terminal chat or a local coding API |
 
 ## Quick start
 
@@ -36,6 +37,21 @@ supported generation settings.
 Choose a model below. The first launch downloads and prepares its weights;
 allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
+
+<details>
+<summary><strong>Code with Qwen3-Coder 30B</strong> · Terminal chat and coding API</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Qwen3-Coder-30B/serve-docker.sh --chat
+```
+
+The prebuilt container downloads and caches the pinned INT4 model on first use.
+Coding clients can connect to `http://127.0.0.1:8010/v1`, model `qwen3-coder`.
+
+[Download the bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/qwen3-coder-30b-awq-rdna4-v1.0.0/paiton-qwen3-coder-r9700-v1.0.0.tar.gz) ·
+[Full guide, requirements and coding client settings →](models/Qwen3-Coder-30B/README.md)
+
+</details>
 
 <details>
 <summary><strong>Generate images with FLUX.2 klein</strong> · ComfyUI</summary>
@@ -91,6 +107,7 @@ Our benchmarks document the hardware, settings, stock comparisons and quality
 checks behind each result:
 [Qwen3.8](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) ·
 [Ornith 1.5](models/Ornith-1.5/BENCHMARKS.md) ·
+[Qwen3-Coder 30B](models/Qwen3-Coder-30B/BENCHMARKS.md) ·
 [FLUX.2 klein](models/FLUX.2-klein/BENCHMARKS.md).
 Use the model guides for current release settings and reproduction commands.
 
