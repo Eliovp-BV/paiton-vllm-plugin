@@ -14,7 +14,7 @@
   "compiled_max_tokens": 128,
   "serving_max_tokens": 2,
   "workspace_bytes_per_token": 45056,
-  "qualification": "Local candidate: numerical, graph replay, complete-model coding and matched short-workload inference checks; see benchmark report.",
+  "qualification": "Qualified for the documented R9700 short coding workload at concurrency 1 and 2; numerical differences and quality limitations are documented in BENCHMARKS.md.",
   "compiler_input_config_sha256": "518c89c98efe5fa7dcb8b748009337d2feaeb7b2dc4a2d5e4afa8aef77528b67",
   "checkpoint_config_sha256": "42981b44892a1940c8f93bf5fb40972bc62f2c9a6c8f0d10115175e68b11396d"
 }

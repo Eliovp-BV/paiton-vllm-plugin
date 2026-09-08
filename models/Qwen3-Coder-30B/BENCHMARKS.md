@@ -80,7 +80,8 @@ Machine-readable aggregate measurements are in [results.json](results.json).
 Exact requests, streamed responses, code checks, raw telemetry, commands and
 profiles are retained locally outside the repositories. Reproduction commands,
 runtime versions, model/license provenance and supported requirements are in
-[README.md](README.md). No artifacts or benchmark bundles have been uploaded.
+[README.md](README.md). Raw session evidence remains local; the release bundle
+contains the reusable benchmark harness and aggregate results.
 
 The local container recipe was built and its offline launch loaded the model,
 captured graphs and served the same eight quality cases (7/8, all coding checks
@@ -88,3 +89,8 @@ passed). Its terminal chat answered the deterministic arithmetic check, and
 its pinned tokenizer regenerated the identical 16 benchmark requests. The
 table above measures the same runtime/artifact through the experiment launch;
 the packaged launch was smoke tested rather than separately rebenchmarked.
+
+The public launcher also passed cache/container reuse, rejection of a conflicting
+stock/Paiton mode, and terminal chat checks. The release enables vLLM's
+`qwen3_xml` tool parser; both ordinary and streamed automatic function calls
+produced the expected tool name and parsed JSON arguments in the API check.

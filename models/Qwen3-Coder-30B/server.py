@@ -1,4 +1,4 @@
-"""Pinned Qwen3-Coder server for the local release candidate."""
+"""Pinned Qwen3-Coder coding server for Radeon AI PRO R9700."""
 
 import argparse
 import json
@@ -18,6 +18,7 @@ def command(snapshot, stock=False):
             "--max-num-batched-tokens", "512", "--kv-cache-memory-bytes", "2G",
             "--no-enable-prefix-caching", "--attention-backend", "ROCM_ATTN",
             "--moe-backend", "triton", "--generation-config", "vllm",
+            "--enable-auto-tool-choice", "--tool-call-parser", "qwen3_xml",
             "--safetensors-load-strategy", "lazy", "--seed", "1201", "-O2",
             "--compilation-config", json.dumps({"cudagraph_capture_sizes": [1, 2],
                                                  "max_cudagraph_capture_size": 2})]
