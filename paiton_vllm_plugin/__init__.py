@@ -63,6 +63,7 @@ def register_paiton_models() -> None:
         "PaitonQwen2ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen:PaitonQwen2ForCausalLM",
         "PaitonQwen3ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3:PaitonQwen3ForCausalLM",
         "PaitonQwen3MoeForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3_moe:PaitonQwen3MoeForCausalLM",
+        "PaitonQwen3CoderForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3_coder:PaitonQwen3CoderForCausalLM",
         "PaitonQwen38ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen38:PaitonQwen38ForCausalLM",
         "PaitonQwen38ForConditionalGeneration": "paiton_vllm_plugin.models.paiton_qwen38_multimodal:PaitonQwen38ForConditionalGeneration",
         "PaitonOrnith15ForCausalLM": "paiton_vllm_plugin.models.paiton_ornith15:PaitonOrnith15ForCausalLM",

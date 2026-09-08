@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "model": "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+  "revision": "4bd30395b72ea6045edd04806c4fea448d4467b3",
+  "gpu_arch": "gfx1201",
+  "artifact": "qwen3_coder_moe_w4a16_g32_gfx1201.so",
+  "sha256": "74fb7015e285d3b7863fc8f54341204a252a2ab305921edd5b30f5724915958f",
+  "abi": "PaitonQwen3CoderMoeV1",
+  "quantization": "INT4 symmetric G32 W4A16",
+  "activations": "bfloat16",
+  "expert_weights_layout": "uint8_E_N_Kdiv2_low_nibble_first_bias8",
+  "scales_layout": "bfloat16_E_N_Kdiv32",
+  "routing": "external_top8_normalized_float32",
+  "compiled_max_tokens": 128,
+  "serving_max_tokens": 2,
+  "workspace_bytes_per_token": 45056,
+  "qualification": "Local candidate: numerical, graph replay, complete-model coding and matched short-workload inference checks; see benchmark report.",
+  "compiler_input_config_sha256": "518c89c98efe5fa7dcb8b748009337d2feaeb7b2dc4a2d5e4afa8aef77528b67",
+  "checkpoint_config_sha256": "42981b44892a1940c8f93bf5fb40972bc62f2c9a6c8f0d10115175e68b11396d"
+}

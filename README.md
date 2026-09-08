@@ -27,6 +27,8 @@ people build, experiment and create with local AI.
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
 
+Local candidate: [Qwen3-Coder 30B](models/Qwen3-Coder-30B/README.md), with matched-concurrency benchmarks and local build instructions. No published download yet.
+
 ## Quick start
 
 You need **Linux, Docker and a working AMD GPU driver**. ComfyUI also needs
