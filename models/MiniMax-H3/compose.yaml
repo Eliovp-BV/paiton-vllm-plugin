@@ -1,7 +1,7 @@
 name: paiton-h3
 services:
   comfyui:
-    image: ${PAITON_H3_IMAGE:-paiton-minimax-h3:local-v1.0.0}
+    image: ${PAITON_H3_IMAGE:-paiton-minimax-h3:local-v1.0.1}
     devices: [/dev/kfd, /dev/dri]
     group_add: ["${PAITON_RENDER_GID:?Use launch.sh}"]
     user: "${PAITON_UID:?Use launch.sh}:${PAITON_GID:?Use launch.sh}"
@@ -9,7 +9,7 @@ services:
     init: true
     environment:
       HF_HUB_OFFLINE: "1"
-    ports: ["127.0.0.1:${PAITON_H3_PORT:-8190}:8188"]
+    ports: ["0.0.0.0:${PAITON_H3_PORT:-8190}:8188"]
     volumes:
       - ${PAITON_H3_DATA:?Use launch.sh}:/data
       - ${PAITON_H3_OUTPUTS:?Use launch.sh}:/outputs

@@ -46,7 +46,8 @@ Run one model at a time.
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/MiniMax-H3/launch.sh
 ```
 
-Open [ComfyUI](http://127.0.0.1:8190/?paiton=1), edit the included prompt and click **Run**.
+Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1), edit the prompt, optionally upload first/last images, set the length and resolution sliders, and click **Run**.
+From another system, use `http://<server-ip>:8190/?paiton=1&studio=1` with the host's network address.
 The first launch prepares the local runtime and downloads the model; later launches reuse both.
 
 [Generated clips, performance and setup guide →](models/MiniMax-H3/README.md)

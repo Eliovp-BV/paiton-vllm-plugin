@@ -31,7 +31,9 @@ unset PAITON_H3_BUILD
 printf 'Waiting for ComfyUI...\n'
 for ((attempt=0; attempt<90; attempt++)); do
   if "${compose[@]}" exec -T comfyui python3 -c 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8188/system_stats",timeout=2).close()' >/dev/null 2>&1; then
-    printf 'Open http://127.0.0.1:%s/?paiton=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
+    printf 'ComfyUI is listening on 0.0.0.0:%s\n' "${PAITON_H3_PORT:-8190}"
+    printf 'On this host: http://127.0.0.1:%s/?paiton=1&studio=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
+    printf 'From another system: http://<server-ip>:%s/?paiton=1&studio=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
     printf 'The included workflow opens on first visit. Edit the prompt and click Run.\n'
     printf 'Videos: %s\nLogs: %s --logs\nStop: %s --stop\n' "$PAITON_H3_OUTPUTS" "$0" "$0"
     exit 0

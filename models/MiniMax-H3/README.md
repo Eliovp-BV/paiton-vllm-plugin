@@ -14,11 +14,27 @@ Paiton takes **332.85 seconds** versus **399.40 seconds** for the matched stock 
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/MiniMax-H3/launch.sh
 ```
 
-Open [ComfyUI](http://127.0.0.1:8190/?paiton=1). The first visit opens the connected **Turbo8 15-second workflow**. Edit the prompt and click **Run**. Choose **paiton** or **stock** in **MiniMax H3 Engine**. Keep the seed fixed when comparing engines.
+Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1) on the host, or `http://<server-ip>:8190/?paiton=1&studio=1` from another system. Replace `<server-ip>` with the host's network address. The first visit opens the connected **Turbo8 studio workflow**, initially set to 15 seconds. Edit the prompt and click **Run**. Choose **paiton** or **stock** in **MiniMax H3 Engine**. Keep the seed fixed when comparing engines.
+
+Use **Video length and resolution** to change the requested duration (5–15 seconds), resolution level (1: 576×320, 2: 704×384, 3: 864×480), and Landscape/Portrait/Square aspect. Portrait swaps the dimensions; Square uses the shorter edge. The node title shows the actual dimensions, frame count and rounded duration.
+
+Upload an image in **First image · optional** to animate it. Optionally upload a **Last image** to guide the ending. Keep both set to **(none)** for text-to-video. These use the same FL2VA model and its full vision encoder; no additional checkpoint is needed. First images are stretched to the selected canvas; last images are center-cropped, so matching the canvas aspect gives more predictable composition. Audio remains enabled.
+
+Already used the interface? Open `http://<server-ip>:8190/?paiton=1&studio=1` to load the new template once, or select `turbo8-studio.json` from the workflow templates. Save your current workflow before switching.
 
 ![Included workflow](assets/comfyui-workflow.png)
 
-The helper pulls the versioned GHCR artifact image, prepares pinned ComfyUI components locally, verifies the model downloads and starts the interface. Models and caches persist in `~/.local/share/paiton/minimax-h3/` (or your XDG data directory); videos go to `~/paiton-videos/`. Both paths are independent of the working directory. Subsequent launches reuse the local image and model cache. Ports bind to localhost.
+The helper pulls the versioned GHCR artifact image, prepares pinned ComfyUI components locally, verifies the model downloads and starts the interface. Models and caches persist in `~/.local/share/paiton/minimax-h3/` (or your XDG data directory); videos go to `~/paiton-videos/`. Both paths are independent of the working directory. Subsequent launches reuse the local image and model cache. ComfyUI listens on all IPv4 interfaces (`0.0.0.0`) so other systems can connect to the host's address.
+
+To update an existing Git checkout, finish any running generation, then run these commands from the repository root:
+
+```bash
+./models/MiniMax-H3/launch.sh --stop
+git pull --ff-only
+./models/MiniMax-H3/launch.sh
+```
+
+This update prepares a new **local** ComfyUI image (`local-v1.0.1`) using the existing GHCR `minimax-h3-rdna4-v1.0.0` artifact. It reuses the model cache; no new published image or model download is required. Existing release, clip and benchmark links remain valid.
 
 From this model directory, `./launch.sh --logs` follows startup and `./launch.sh --stop` stops H3 while preserving caches, videos and user settings. `PAITON_H3_DATA`, `PAITON_H3_OUTPUTS` and `PAITON_H3_PORT` override those defaults. Stop other GPU generation workloads before starting H3.
 
@@ -28,11 +44,13 @@ With weights already present, the first 15-second requests took **423.6 s stock*
 
 | Workflow | Output | Purpose |
 | --- | --- | --- |
-| `turbo8-15s.json` | 362 frames, 15.0833 s | Default continuous scene; eight evaluations |
+| `turbo8-studio.json` | Adjustable; defaults to 362 frames | Default; optional first/last images, eight evaluations |
+| `turbo4-studio.json` | Adjustable; defaults to 124 frames | Optional first/last images, four evaluations |
+| `turbo8-15s.json` | 362 frames, 15.0833 s | Original fixed continuous scene; eight evaluations |
 | `turbo8.json` | 124 frames, 5.1667 s | Shorter eight-step scene |
 | `turbo4.json` | 124 frames, 5.1667 s | Faster four-step alternative with a quality tradeoff |
 
-All use 864×480, 24 fps and native 32 kHz stereo. Find them in the included workflow templates or load the JSON from `comfyui/workflows/`. H3 snaps frame counts upward to its `17k+5` grid: requesting 360 frames produces 362. It does not produce exactly 15.000 seconds at this setting.
+All default to 864×480, 24 fps and native 32 kHz stereo. Studio templates also expose smaller canvases. Find them in the included workflow templates or load the JSON from `comfyui/workflows/`. H3 snaps frame counts upward to its `17k+5` grid: requesting 360 frames produces 362. It does not produce exactly 15.000 seconds at this setting.
 
 To add the faster short preset, run `./run.sh download --profile turbo4` and open `turbo4.json`. To install only Turbo4 initially, use `PAITON_H3_PRESET=turbo4 ./launch.sh` and open the URL printed by the launcher.
 
@@ -91,7 +109,9 @@ The denoiser uses upstream pruned FL2VA W4A8 weights. The required Qwen3-VL-32B 
 
 The 15-second fox scene retains a consistent subject and continuous movement. The reviewer confirmed natural audio throughout. Short dialogue also passed listening review. Four-step pouring duplicates a bottle; eight-step pouring has excessive foam and incomplete placement. The pouring clips contain a brief native audio transient. These are retained limitations, not fixes applied to the soundtrack.
 
-Hosted context processing, 2K regeneration, image/reference conditioning, larger canvases, other GPUs and unlisted durations/presets are outside this qualification. Unsupported kernel shapes fall back to native operations; loading is not proof of practical performance for those settings.
+Studio functional checks on the R9700 cover first-image generation at 576×320/124 frames, first-and-last images at 320×576/158 frames and 864×480/362 frames, and text-only generation at 384×384/124 frames. The paired short first-image stock/Paiton test produced identical decoded video and audio. These checks retain 24 fps and native stereo audio; the long image-conditioned clip also passed browser playback.
+
+The published latency and quality comparison above covers the original text-to-video presets. Image conditioning and adjustable studio settings are separate functional checks, not an extension of those performance claims. Hosted context processing, 2K regeneration, Ref2VA reference conditioning, canvases beyond the studio presets and other GPUs are outside this qualification. Unsupported kernel shapes fall back to native operations; loading is not proof of practical performance for those settings.
 
 ## Downloads, artifacts and licenses
 

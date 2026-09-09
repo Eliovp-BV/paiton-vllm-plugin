@@ -2,7 +2,7 @@
 # Shared local image preparation. Sourced by run.sh and launch.sh.
 prepare_h3_image() {
   export PAITON_H3_BASE_IMAGE="${PAITON_H3_BASE_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0}"
-  export PAITON_H3_IMAGE="${PAITON_H3_IMAGE:-paiton-minimax-h3:local-v1.0.0}"
+  export PAITON_H3_IMAGE="${PAITON_H3_IMAGE:-paiton-minimax-h3:local-v1.0.1}"
   if [[ "${PAITON_H3_BUILD:-0}" == 1 ]]; then
     docker build --provenance=false -t "$PAITON_H3_BASE_IMAGE" -f "$package_dir/Dockerfile" "$package_dir"
   elif ! docker image inspect "$PAITON_H3_BASE_IMAGE" >/dev/null 2>&1; then
