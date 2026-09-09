@@ -1,0 +1,724 @@
+{
+  "description": "One warmup fox and two measured fresh requests each for barista and pouring water; identical preset on both engines. Prompt-to-playable-MP4 including encoding and muxing. Fixed 864x480, 124 frames, 24 fps, native stereo audio.",
+  "image_id": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
+  "artifact_sha256": "06c7232319e48b8332e75f7980ee4a6e596dad7d99a2875640858a94f14aca56",
+  "preset": "turbo8",
+  "engines": {
+    "stock": {
+      "image_id": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
+      "measured_run_indices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "mean_seconds": 95.8318422397424,
+      "mean_pipeline_before_encoding_seconds": 91.73760649973701,
+      "mean_clips_per_hour": 37.565801886536676,
+      "mean_video_seconds_per_wall_second": 0.053913882337159116,
+      "runs": [
+        {
+          "run": 0,
+          "case": "fox",
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "seconds": 141.43113727401942,
+          "pipeline_before_encoding_seconds": 136.63795254100114,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.2265232801437378,
+          "image_finite": true,
+          "clips_per_hour": 25.454083657865855,
+          "video_seconds_per_wall_second": 0.036531323768233405,
+          "measured": false,
+          "component_seconds": {
+            "conditioning": 28.854015089047607,
+            "sampling": 85.54338070598897,
+            "video_decode": 18.072698399948422,
+            "audio_decode": 4.137692792981397,
+            "encode_mux": 4.792568174016196
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 12979011584,
+            "sampling": 13276590080,
+            "video_decode": 2508476416,
+            "audio_decode": 267128832,
+            "encode_mux": 7368704
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            19583.8671875,
+            8105.57470703125,
+            8138.26904296875,
+            8170.75634765625,
+            8200.3037109375,
+            8217.6630859375,
+            8217.3681640625,
+            8204.40234375
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9656446976,
+            "RssAnon_bytes": 5395783680,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32519254016,
+            "temp1_input": 62000,
+            "temp2_input": 90000,
+            "temp3_input": 75000,
+            "power1_average": 366000000
+          },
+          "sampled_host_available_min_bytes": 8780603392,
+          "torch_peak_allocated_bytes": 5311125504,
+          "torch_peak_reserved_bytes": 7568621568,
+          "process_lifetime_high_water_mark_bytes": 9714499584,
+          "aimdo_phase_end_max_bytes": 31958499328,
+          "mp4_sha256": "795b60fdfd9d8a6c91239fc11292e7f4a6f23fedcbb8681ee3fc0f78328a4812"
+        },
+        {
+          "run": 1,
+          "case": "barista",
+          "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music.",
+          "seed": 772,
+          "seconds": 96.307396966964,
+          "pipeline_before_encoding_seconds": 92.22247464797692,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.32377177476882935,
+          "image_finite": true,
+          "clips_per_hour": 37.380306325119506,
+          "video_seconds_per_wall_second": 0.05364766185549559,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 5.130120354995597,
+            "sampling": 66.78753184300149,
+            "video_decode": 17.141731125011574,
+            "audio_decode": 3.128644111973699,
+            "encode_mux": 4.0842768820002675
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 2291068928,
+            "sampling": 2680754176,
+            "video_decode": 2440916992,
+            "audio_decode": 257490944,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            8362.36328125,
+            8166.88134765625,
+            8189.88037109375,
+            8194.220703125,
+            8204.841796875,
+            8204.2666015625,
+            8200.41015625,
+            8204.7646484375
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9630232576,
+            "RssAnon_bytes": 5848043520,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32716337152,
+            "temp1_input": 58000,
+            "temp2_input": 85000,
+            "temp3_input": 74000,
+            "power1_average": 327000000
+          },
+          "sampled_host_available_min_bytes": 8299409408,
+          "torch_peak_allocated_bytes": 5320612864,
+          "torch_peak_reserved_bytes": 7585398784,
+          "process_lifetime_high_water_mark_bytes": 10256924672,
+          "aimdo_phase_end_max_bytes": 32025608192,
+          "mp4_sha256": "eb1899e94fff8d36fb72cc649fac154339f96ec908eb155acc56cf38a2db03ef"
+        },
+        {
+          "run": 2,
+          "case": "barista",
+          "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music.",
+          "seed": 772,
+          "seconds": 95.90036653203424,
+          "pipeline_before_encoding_seconds": 91.82405902200844,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.32377177476882935,
+          "image_finite": true,
+          "clips_per_hour": 37.53895975775513,
+          "video_seconds_per_wall_second": 0.05387535891159301,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 4.8221317359711975,
+            "sampling": 66.76735357596772,
+            "video_decode": 17.109792292001657,
+            "audio_decode": 3.09249972703401,
+            "encode_mux": 4.075666935008485
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 2023940096,
+            "sampling": 2675593216,
+            "video_decode": 2435297280,
+            "audio_decode": 257490944,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            8356.6728515625,
+            8175.54296875,
+            8184.0546875,
+            8192.9873046875,
+            8201.6376953125,
+            8204.74609375,
+            8204.3564453125,
+            8202.7666015625
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9277636608,
+            "RssAnon_bytes": 5495447552,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32699711488,
+            "temp1_input": 58000,
+            "temp2_input": 85000,
+            "temp3_input": 75000,
+            "power1_average": 307000000
+          },
+          "sampled_host_available_min_bytes": 8668352512,
+          "torch_peak_allocated_bytes": 5320612864,
+          "torch_peak_reserved_bytes": 7585398784,
+          "process_lifetime_high_water_mark_bytes": 10264219648,
+          "aimdo_phase_end_max_bytes": 32008830976,
+          "mp4_sha256": "eb1899e94fff8d36fb72cc649fac154339f96ec908eb155acc56cf38a2db03ef"
+        },
+        {
+          "run": 3,
+          "case": "pouring_water",
+          "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music.",
+          "seed": 773,
+          "seconds": 95.63517416099785,
+          "pipeline_before_encoding_seconds": 91.59002671198687,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 1.0,
+          "image_finite": true,
+          "clips_per_hour": 37.643053736061056,
+          "video_seconds_per_wall_second": 0.05402475304712467,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 4.625979342032224,
+            "sampling": 66.72729494498344,
+            "video_decode": 17.078427191998344,
+            "audio_decode": 3.1298510300111957,
+            "encode_mux": 4.044505246973131
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 1858154496,
+            "sampling": 2671034368,
+            "video_decode": 2413547520,
+            "audio_decode": 257490944,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            8338.55859375,
+            8178.765625,
+            8185.482421875,
+            8190.03955078125,
+            8197.13671875,
+            8203.796875,
+            8201.49609375,
+            8199.48046875
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 10218594304,
+            "RssAnon_bytes": 6436732928,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32699723776,
+            "temp1_input": 58000,
+            "temp2_input": 85000,
+            "temp3_input": 74000,
+            "power1_average": 332000000
+          },
+          "sampled_host_available_min_bytes": 7704358912,
+          "torch_peak_allocated_bytes": 5316604416,
+          "torch_peak_reserved_bytes": 7585398784,
+          "process_lifetime_high_water_mark_bytes": 10267426816,
+          "aimdo_phase_end_max_bytes": 32008830976,
+          "mp4_sha256": "1e4991169ac55810090084fac8d0935a7d92f685e2c1d991ca66f7e4ec181de8"
+        },
+        {
+          "run": 4,
+          "case": "pouring_water",
+          "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music.",
+          "seed": 773,
+          "seconds": 95.4844312989735,
+          "pipeline_before_encoding_seconds": 91.31386561697582,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 1.0,
+          "image_finite": true,
+          "clips_per_hour": 37.70248145195479,
+          "video_seconds_per_wall_second": 0.05411004282456475,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 4.40588515100535,
+            "sampling": 66.72926887997892,
+            "video_decode": 17.05589240801055,
+            "audio_decode": 3.092502959014382,
+            "encode_mux": 4.169905696995556
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 1738035200,
+            "sampling": 2669334528,
+            "video_decode": 2396696576,
+            "audio_decode": 257490944,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            8346.076171875,
+            8179.51611328125,
+            8184.01318359375,
+            8186.9140625,
+            8195.5283203125,
+            8200.2890625,
+            8201.3427734375,
+            8197.1884765625
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9757143040,
+            "RssAnon_bytes": 5975281664,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32699731968,
+            "temp1_input": 58000,
+            "temp2_input": 85000,
+            "temp3_input": 74000,
+            "power1_average": 343000000
+          },
+          "sampled_host_available_min_bytes": 8149991424,
+          "torch_peak_allocated_bytes": 5316604416,
+          "torch_peak_reserved_bytes": 7585398784,
+          "process_lifetime_high_water_mark_bytes": 10267463680,
+          "aimdo_phase_end_max_bytes": 32008830976,
+          "mp4_sha256": "1e4991169ac55810090084fac8d0935a7d92f685e2c1d991ca66f7e4ec181de8"
+        }
+      ],
+      "setup_seconds": 17.327398059889674
+    },
+    "paiton": {
+      "image_id": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
+      "measured_run_indices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "mean_seconds": 80.60134817450307,
+      "mean_pipeline_before_encoding_seconds": 76.47896668901376,
+      "mean_clips_per_hour": 44.664265319805175,
+      "mean_video_seconds_per_wall_second": 0.06410149189416484,
+      "runs": [
+        {
+          "run": 0,
+          "case": "fox",
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "seconds": 129.47175975196296,
+          "pipeline_before_encoding_seconds": 124.62561351398472,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.2265232801437378,
+          "image_finite": true,
+          "clips_per_hour": 27.80529133841034,
+          "video_seconds_per_wall_second": 0.03990574219864447,
+          "measured": false,
+          "component_seconds": {
+            "conditioning": 28.50792325299699,
+            "sampling": 73.8107932760031,
+            "video_decode": 18.054830331995618,
+            "audio_decode": 4.212668257998303,
+            "encode_mux": 4.845515386958141
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 12962185216,
+            "sampling": 13274554368,
+            "video_decode": 2507509760,
+            "audio_decode": 266129408,
+            "encode_mux": 7077888
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            19247.59375,
+            6525.89892578125,
+            6549.60009765625,
+            6561.96484375,
+            6572.498046875,
+            6592.98291015625,
+            6612.1669921875,
+            6613.20751953125
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9641951232,
+            "RssAnon_bytes": 5399052288,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32493912064,
+            "temp1_input": 62000,
+            "temp2_input": 88000,
+            "temp3_input": 75000,
+            "power1_average": 355000000
+          },
+          "sampled_host_available_min_bytes": 8730800128,
+          "torch_peak_allocated_bytes": 4450961920,
+          "torch_peak_reserved_bytes": 5328863232,
+          "process_lifetime_high_water_mark_bytes": 9744252928,
+          "aimdo_phase_end_max_bytes": 31933333504,
+          "mp4_sha256": "795b60fdfd9d8a6c91239fc11292e7f4a6f23fedcbb8681ee3fc0f78328a4812",
+          "fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        },
+        {
+          "run": 1,
+          "case": "barista",
+          "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music.",
+          "seed": 772,
+          "seconds": 80.97201954800403,
+          "pipeline_before_encoding_seconds": 76.85798179201083,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.32377177476882935,
+          "image_finite": true,
+          "clips_per_hour": 44.45980253543942,
+          "video_seconds_per_wall_second": 0.0638080499351214,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 2.7279323450056836,
+            "sampling": 53.76617623801576,
+            "video_decode": 17.17819436098216,
+            "audio_decode": 3.157310761976987,
+            "encode_mux": 4.113404719973914
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 740438016,
+            "sampling": 2672259072,
+            "video_decode": 2439999488,
+            "audio_decode": 257048576,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            6685.5771484375,
+            6559.8115234375,
+            6562.71630859375,
+            6574.39599609375,
+            6585.51806640625,
+            6582.12451171875,
+            6585.2060546875,
+            6587.16162109375
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 10123272192,
+            "RssAnon_bytes": 6307733504,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32718651392,
+            "temp1_input": 58000,
+            "temp2_input": 84000,
+            "temp3_input": 74000,
+            "power1_average": 317000000
+          },
+          "sampled_host_available_min_bytes": 7825915904,
+          "torch_peak_allocated_bytes": 4457336320,
+          "torch_peak_reserved_bytes": 5339348992,
+          "process_lifetime_high_water_mark_bytes": 10293616640,
+          "aimdo_phase_end_max_bytes": 32027705344,
+          "mp4_sha256": "eb1899e94fff8d36fb72cc649fac154339f96ec908eb155acc56cf38a2db03ef",
+          "fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        },
+        {
+          "run": 2,
+          "case": "barista",
+          "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music.",
+          "seed": 772,
+          "seconds": 80.19970062799985,
+          "pipeline_before_encoding_seconds": 76.18165331799537,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 0.32377177476882935,
+          "image_finite": true,
+          "clips_per_hour": 44.887948107167176,
+          "video_seconds_per_wall_second": 0.06442251811676772,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 2.608687050989829,
+            "sampling": 53.31484708801145,
+            "video_decode": 17.1011250949814,
+            "audio_decode": 3.12978649296565,
+            "encode_mux": 4.017410166969057
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 774811648,
+            "sampling": 1893588992,
+            "video_decode": 2423787520,
+            "audio_decode": 257040384,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            6673.82470703125,
+            6566.83056640625,
+            6573.732421875,
+            6573.98095703125,
+            6581.92333984375,
+            6586.81640625,
+            6593.64453125,
+            6596.05859375
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9375498240,
+            "RssAnon_bytes": 5559959552,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32718798848,
+            "temp1_input": 58000,
+            "temp2_input": 83000,
+            "temp3_input": 74000,
+            "power1_average": 352000000
+          },
+          "sampled_host_available_min_bytes": 8506265600,
+          "torch_peak_allocated_bytes": 4457336320,
+          "torch_peak_reserved_bytes": 5339348992,
+          "process_lifetime_high_water_mark_bytes": 10300121088,
+          "aimdo_phase_end_max_bytes": 32027705344,
+          "mp4_sha256": "eb1899e94fff8d36fb72cc649fac154339f96ec908eb155acc56cf38a2db03ef",
+          "fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        },
+        {
+          "run": 3,
+          "case": "pouring_water",
+          "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music.",
+          "seed": 773,
+          "seconds": 80.85185931500746,
+          "pipeline_before_encoding_seconds": 76.65290019504027,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 1.0,
+          "image_finite": true,
+          "clips_per_hour": 44.52587770398719,
+          "video_seconds_per_wall_second": 0.06390288003812977,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 2.613098494010046,
+            "sampling": 53.806387412012555,
+            "video_decode": 17.054422676039394,
+            "audio_decode": 3.1464116139686666,
+            "encode_mux": 4.198358202993404
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 774811648,
+            "sampling": 1808478208,
+            "video_decode": 2407407616,
+            "audio_decode": 257040384,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            6708.80517578125,
+            6565.19921875,
+            6570.57666015625,
+            6579.21728515625,
+            6587.42822265625,
+            6592.55224609375,
+            6589.443359375,
+            6590.8359375
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 9961955328,
+            "RssAnon_bytes": 6146416640,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32785920000,
+            "temp1_input": 59000,
+            "temp2_input": 83000,
+            "temp3_input": 74000,
+            "power1_average": 341000000
+          },
+          "sampled_host_available_min_bytes": 7952662528,
+          "torch_peak_allocated_bytes": 4455748608,
+          "torch_peak_reserved_bytes": 5339348992,
+          "process_lifetime_high_water_mark_bytes": 10300289024,
+          "aimdo_phase_end_max_bytes": 32027705344,
+          "mp4_sha256": "1e4991169ac55810090084fac8d0935a7d92f685e2c1d991ca66f7e4ec181de8",
+          "fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        },
+        {
+          "run": 4,
+          "case": "pouring_water",
+          "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music.",
+          "seed": 773,
+          "seconds": 80.38181320700096,
+          "pipeline_before_encoding_seconds": 76.22333145100856,
+          "actual_frames": 124,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            165600
+          ],
+          "audio_sample_rate": 32000,
+          "audio_finite": true,
+          "audio_abs_peak": 1.0,
+          "image_finite": true,
+          "clips_per_hour": 44.78625022714035,
+          "video_seconds_per_wall_second": 0.06427656282598847,
+          "measured": true,
+          "component_seconds": {
+            "conditioning": 2.6109816770185716,
+            "sampling": 53.291887744970154,
+            "video_decode": 17.09005120996153,
+            "audio_decode": 3.205339798994828,
+            "encode_mux": 4.1578481599572115
+          },
+          "component_disk_read_bytes": {
+            "conditioning": 774811648,
+            "sampling": 1820377088,
+            "video_decode": 2414239744,
+            "audio_decode": 257040384,
+            "encode_mux": 4096
+          },
+          "actual_denoiser_evaluations": 8,
+          "nfe_gpu_ms": [
+            6667.984375,
+            6578.39306640625,
+            6573.60205078125,
+            6582.9609375,
+            6584.8330078125,
+            6588.7900390625,
+            6593.6298828125,
+            6595.81689453125
+          ],
+          "sampled_peak": {
+            "VmRSS_bytes": 10053361664,
+            "RssAnon_bytes": 6237822976,
+            "VmSwap_bytes": 0,
+            "mem_info_vram_used": 32718811136,
+            "temp1_input": 59000,
+            "temp2_input": 84000,
+            "temp3_input": 74000,
+            "power1_average": 359000000
+          },
+          "sampled_host_available_min_bytes": 7881232384,
+          "torch_peak_allocated_bytes": 4455748608,
+          "torch_peak_reserved_bytes": 5339348992,
+          "process_lifetime_high_water_mark_bytes": 10309214208,
+          "aimdo_phase_end_max_bytes": 32027705344,
+          "mp4_sha256": "1e4991169ac55810090084fac8d0935a7d92f685e2c1d991ca66f7e4ec181de8",
+          "fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        }
+      ],
+      "setup_seconds": 14.05177366908174
+    }
+  },
+  "stock_turbo4_uses_identical_stock_code_in_prior_image": false,
+  "latency_reduction_percent": 15.892936741357033,
+  "paired_mp4_byte_equal": [
+    true,
+    true,
+    true,
+    true,
+    true
+  ]
+}

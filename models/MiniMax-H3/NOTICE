@@ -1,0 +1,13 @@
+Paiton MiniMax H3 runtime integration
+Copyright ElioVP
+
+The compiled artifact runtime includes AITemplate-derived host support.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+Triton-generated host/device code retains the notice in LICENSES/Triton-MIT.txt.
+
+MiniMax H3 is developed by MiniMax. Weights are downloaded separately from
+the immutable upstream checkpoints listed in checkpoints.lock.json.
+This package does not imply endorsement by MiniMax or the quantization authors.
+
+MiniMax H3 is licensed under the MiniMax H3 Community License Agreement,
+Copyright © 2026 MiniMax. All Rights Reserved.

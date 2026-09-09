@@ -24,3 +24,13 @@ license texts are provided in [`LICENSES/`](LICENSES/).
 
 The compiled `.so` dynamically links ROCm libraries supplied by the runtime
 container, including HIP, rocBLAS, hipBLASLt, hipBLAS, rocRAND, and RCCL.
+
+## MiniMax H3 video package
+
+MiniMax H3 derivative weights retain the custom MiniMax H3 Community License.
+The H3 attention artifact includes Apache-2.0 code derived from comfy-kitchen.
+ComfyUI, its frontend and AIMDO are installed from pinned upstream components
+when the user assembles the local video engine. They are not part of the
+published H3 artifact image. See the [complete video package notices](models/MiniMax-H3/THIRD_PARTY_NOTICES.md)
+for attribution, encoder provenance and the distinction between the distributed
+artifacts and the locally assembled engine.

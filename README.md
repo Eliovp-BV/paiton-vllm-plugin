@@ -23,6 +23,7 @@ people build, experiment and create with local AI.
 
 | Model & setup guide | What you can do |
 | --- | --- |
+| [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
@@ -37,6 +38,20 @@ supported generation settings.
 Choose a model below. The first launch downloads and prepares its weights;
 allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
+
+<details>
+<summary><strong>Create videos with MiniMax H3</strong> · ComfyUI with stereo audio</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/MiniMax-H3/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8190/?paiton=1), edit the included prompt and click **Run**.
+The first launch prepares the local runtime and downloads the model; later launches reuse both.
+
+[Generated clips, performance and setup guide →](models/MiniMax-H3/README.md)
+
+</details>
 
 <details>
 <summary><strong>Code with Qwen3-Coder 30B</strong> · Terminal chat and coding API</summary>
@@ -108,7 +123,8 @@ checks behind each result:
 [Qwen3.8](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) ·
 [Ornith 1.5](models/Ornith-1.5/BENCHMARKS.md) ·
 [Qwen3-Coder 30B](models/Qwen3-Coder-30B/BENCHMARKS.md) ·
-[FLUX.2 klein](models/FLUX.2-klein/BENCHMARKS.md).
+[FLUX.2 klein](models/FLUX.2-klein/BENCHMARKS.md) ·
+[MiniMax H3](models/MiniMax-H3/BENCHMARKS.md).
 Use the model guides for current release settings and reproduction commands.
 
 ## Beyond the community releases
@@ -122,13 +138,15 @@ inference for larger language, image and video workloads.
 
 This repository distributes public runtimes and compiled artifacts. Paiton's
 compiler is developed privately. Text serving uses vLLM; image generation uses
-Diffusers with ComfyUI integration.
+Diffusers with ComfyUI integration. MiniMax H3 uses the native ComfyUI video
+pipeline with Paiton artifacts, assembled locally from pinned components.
 
 The vLLM plugin is [Apache-2.0 licensed](LICENSE). Model weights and bundled
 components retain their own licenses, including GPL-3.0-only for the separate
 image conversion/stock tools and ComfyUI. See the
 [third-party notices](THIRD_PARTY_NOTICES.md) and
-[image package notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md).
+[image package notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md) and
+[video package notices](models/MiniMax-H3/THIRD_PARTY_NOTICES.md).
 
 [Release downloads](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases) ·
 [Containers](https://github.com/users/Eliovp/packages/container/package/paiton-vllm-plugin) ·

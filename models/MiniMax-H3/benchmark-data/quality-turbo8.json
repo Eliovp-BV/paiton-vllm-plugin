@@ -1,0 +1,90 @@
+{
+  "barista": {
+    "video_frames": 124,
+    "duplicate_frame_pairs": [],
+    "audio_shape": [
+      2,
+      165888
+    ],
+    "audio_sample_rates": [
+      32000
+    ],
+    "audio_finite": true,
+    "audio_peak": 0.3215755224227905,
+    "audio_rms": 0.020930961676824487,
+    "audio_fraction_at_or_above_one": 0.0,
+    "max_adjacent_mean_abs_difference": 6.859555244445801,
+    "metadata": {
+      "tool": "PyAV",
+      "version": "18.1.0",
+      "duration_seconds": 5.167,
+      "format": "mov,mp4,m4a,3gp,3g2,mj2",
+      "streams": [
+        {
+          "type": "video",
+          "codec": "h264",
+          "frames": 124,
+          "time_base": "1/12288",
+          "duration_seconds": 5.166666666666667,
+          "width": 864,
+          "height": 480,
+          "average_rate": "24",
+          "pixel_format": "yuv420p"
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "frames": 163,
+          "time_base": "1/32000",
+          "duration_seconds": 5.167,
+          "sample_rate": 32000,
+          "channels": 2
+        }
+      ]
+    }
+  },
+  "pouring": {
+    "video_frames": 124,
+    "duplicate_frame_pairs": [],
+    "audio_shape": [
+      2,
+      165888
+    ],
+    "audio_sample_rates": [
+      32000
+    ],
+    "audio_finite": true,
+    "audio_peak": 1.0200700759887695,
+    "audio_rms": 0.034978609300774614,
+    "audio_fraction_at_or_above_one": 1.5070408950617283e-05,
+    "max_adjacent_mean_abs_difference": 7.98028564453125,
+    "metadata": {
+      "tool": "PyAV",
+      "version": "18.1.0",
+      "duration_seconds": 5.167,
+      "format": "mov,mp4,m4a,3gp,3g2,mj2",
+      "streams": [
+        {
+          "type": "video",
+          "codec": "h264",
+          "frames": 124,
+          "time_base": "1/12288",
+          "duration_seconds": 5.166666666666667,
+          "width": 864,
+          "height": 480,
+          "average_rate": "24",
+          "pixel_format": "yuv420p"
+        },
+        {
+          "type": "audio",
+          "codec": "aac",
+          "frames": 163,
+          "time_base": "1/32000",
+          "duration_seconds": 5.167,
+          "sample_rate": 32000,
+          "channels": 2
+        }
+      ]
+    }
+  }
+}

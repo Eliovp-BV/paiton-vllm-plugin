@@ -1,0 +1,27 @@
+[
+  {
+    "id": "fox",
+    "seed": 771,
+    "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech."
+  },
+  {
+    "id": "barista",
+    "seed": 772,
+    "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music."
+  },
+  {
+    "id": "barista",
+    "seed": 772,
+    "prompt": "Realistic cinematic medium close-up in a quiet cafe. An adult woman barista in a dark apron gently sets a white cup of coffee on the wooden counter, looks at the customer beside the camera, smiles and says clearly, \"Here is your coffee.\" One continuous shot, natural facial motion, consistent hands and cup. Audio: her natural voice synchronized with her lips, a soft ceramic clink and quiet cafe ambience; no music."
+  },
+  {
+    "id": "pouring_water",
+    "seed": 773,
+    "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music."
+  },
+  {
+    "id": "pouring_water",
+    "seed": 773,
+    "prompt": "Realistic macro product film. A hand tilts a clear glass bottle and pours sparkling water into a clear drinking glass on a wooden table. A continuous visible stream of water, rising water level and tiny bubbles. Soft window light, a gentle camera push-in, one continuous shot with consistent glass geometry. Audio: close-up water pouring and fizzing, the bottle softly touching the table at the end; no speech or music."
+  }
+]

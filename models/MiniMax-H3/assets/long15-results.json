@@ -1,0 +1,453 @@
+{
+  "settings": {
+    "preset": "turbo8",
+    "scheduler": "Euler/simple",
+    "guidance": "BasicGuider (one evaluation per step)",
+    "video_shift": 6,
+    "audio_shift": 3,
+    "batch": 1,
+    "offload": "smart memory, dynamic VRAM, two streams, fast disk, 2 GB reserve"
+  },
+  "measurement": "Fresh conditioning for each request, complete H.264/AAC MP4 writing included. One warmup and two measured requests of the same prompt/seed.",
+  "image_ids": {
+    "paiton-minimax-h3:fused-v4-review": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
+    "paiton-minimax-h3:local-v1.0.0": "sha256:b130c15e177c6112240da09e7e77d7cea761b2d4e19e5f683f7ef6ac22f58362"
+  },
+  "stock_runtime_identical_files": 571,
+  "engines": {
+    "stock": {
+      "records": [
+        {
+          "seconds": 423.58530087501276,
+          "pipeline_before_encoding_seconds": 409.5015952560352,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "stock",
+          "run": 0,
+          "warmup": true,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            47389.28125,
+            39532.87890625,
+            39546.109375,
+            39556.9921875,
+            39543.62109375,
+            39540.62109375,
+            39541.5390625,
+            39517.37109375
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 8.498878484601267,
+          "video_seconds_per_wall_second": 0.03560872698409327,
+          "components": {
+            "conditioning": 28.825488800008316,
+            "sampling": 333.1686155240168,
+            "video_decode": 43.115726619027555,
+            "audio_decode": 4.361871908011381,
+            "encode_mux": 14.083025324041955
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 12965388288,
+            "sampling": 13274132480,
+            "video_decode": 2507296768,
+            "audio_decode": 265981952,
+            "encode_mux": 6897664
+          },
+          "gpu_allocated_peak_bytes": 11436869120,
+          "gpu_reserved_peak_bytes": 17626562560,
+          "sampled_driver_peak_bytes": 32480808960,
+          "sampled_rss_peak_bytes": 11793178624,
+          "process_lifetime_rss_hwm_bytes": 11794833408,
+          "sampled_process_swap_peak_bytes": 524005376,
+          "sampled_gpu_energy_joules": 108513.8705521822,
+          "sampled_gpu_average_watts": 256.17949992131895,
+          "temperatures_c": {
+            "temp1_input": 57.0,
+            "temp2_input": 91.0,
+            "temp3_input": 71.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": null
+        },
+        {
+          "seconds": 400.0116519519943,
+          "pipeline_before_encoding_seconds": 386.1780639910139,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "stock",
+          "run": 1,
+          "warmup": false,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            39963.33203125,
+            39567.109375,
+            39550.54296875,
+            39514.87890625,
+            39553.50390625,
+            39556.7890625,
+            39543.79296875,
+            39560.078125
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 8.999737838716856,
+          "video_seconds_per_wall_second": 0.037707234926105344,
+          "components": {
+            "conditioning": 22.33130657300353,
+            "sampling": 317.98016516899224,
+            "video_decode": 42.51337597897509,
+            "audio_decode": 3.323443340952508,
+            "encode_mux": 13.83295258396538
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 11362435072,
+            "sampling": 2880499712,
+            "video_decode": 2443993088,
+            "audio_decode": 262791168,
+            "encode_mux": 7290880
+          },
+          "gpu_allocated_peak_bytes": 11438668288,
+          "gpu_reserved_peak_bytes": 17628659712,
+          "sampled_driver_peak_bytes": 32515661824,
+          "sampled_rss_peak_bytes": 12473020416,
+          "process_lifetime_rss_hwm_bytes": 12830040064,
+          "sampled_process_swap_peak_bytes": 193302528,
+          "sampled_gpu_energy_joules": 107724.2712213993,
+          "sampled_gpu_average_watts": 269.3028332942846,
+          "temperatures_c": {
+            "temp1_input": 59.0,
+            "temp2_input": 91.0,
+            "temp3_input": 71.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": null
+        },
+        {
+          "seconds": 398.7912128379685,
+          "pipeline_before_encoding_seconds": 385.0226329129655,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "stock",
+          "run": 2,
+          "warmup": false,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            39886.578125,
+            39575.46484375,
+            39573.70703125,
+            39586.5703125,
+            39576.41015625,
+            39563.09375,
+            39579.359375,
+            39541.125
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 9.027280150886133,
+          "video_seconds_per_wall_second": 0.03782263211366644,
+          "components": {
+            "conditioning": 21.10517598700244,
+            "sampling": 317.9929297560011,
+            "video_decode": 42.52777449297719,
+            "audio_decode": 3.36721168999793,
+            "encode_mux": 13.76798050798243
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 10736152576,
+            "sampling": 2863620096,
+            "video_decode": 2441166848,
+            "audio_decode": 257757184,
+            "encode_mux": 2531328
+          },
+          "gpu_allocated_peak_bytes": 11438668288,
+          "gpu_reserved_peak_bytes": 17628659712,
+          "sampled_driver_peak_bytes": 32440188928,
+          "sampled_rss_peak_bytes": 11412324352,
+          "process_lifetime_rss_hwm_bytes": 12982808576,
+          "sampled_process_swap_peak_bytes": 179052544,
+          "sampled_gpu_energy_joules": 107983.95404434204,
+          "sampled_gpu_average_watts": 270.77816804408036,
+          "temperatures_c": {
+            "temp1_input": 58.0,
+            "temp2_input": 90.0,
+            "temp3_input": 72.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": null
+        }
+      ],
+      "measured_runs": [
+        1,
+        2
+      ],
+      "mean_seconds": 399.4014323949814,
+      "mean_before_encoding_seconds": 385.6003484519897,
+      "clips_per_hour": 9.01348795474484,
+      "video_seconds_per_wall_second": 0.037764845365944814,
+      "components": {
+        "conditioning": 21.718241280002985,
+        "sampling": 317.9865474624967,
+        "video_decode": 42.52057523597614,
+        "audio_decode": 3.345327515475219,
+        "encode_mux": 13.800466545973904
+      },
+      "setup_seconds": 11.826112743001431
+    },
+    "paiton": {
+      "records": [
+        {
+          "seconds": 381.0111278350232,
+          "pipeline_before_encoding_seconds": 367.2038730040076,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "paiton",
+          "run": 0,
+          "warmup": true,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            40946.03515625,
+            32570.126953125,
+            32613.61328125,
+            32603.181640625,
+            32612.09375,
+            32582.349609375,
+            32602.494140625,
+            32597.107421875
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 9.4485429348373,
+          "video_seconds_per_wall_second": 0.03958764516679517,
+          "components": {
+            "conditioning": 40.59303782496136,
+            "sampling": 278.5095112210256,
+            "video_decode": 43.56852045201231,
+            "audio_decode": 4.486568441032432,
+            "encode_mux": 13.803206095995847
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 13813325824,
+            "sampling": 13536452608,
+            "video_decode": 2516598784,
+            "audio_decode": 272797696,
+            "encode_mux": 13598720
+          },
+          "gpu_allocated_peak_bytes": 8378547200,
+          "gpu_reserved_peak_bytes": 10947133440,
+          "sampled_driver_peak_bytes": 32508645376,
+          "sampled_rss_peak_bytes": 12227616768,
+          "process_lifetime_rss_hwm_bytes": 12375257088,
+          "sampled_process_swap_peak_bytes": 1330253824,
+          "sampled_gpu_energy_joules": 92521.49828839302,
+          "sampled_gpu_average_watts": 242.83148582593256,
+          "temperatures_c": {
+            "temp1_input": 59.0,
+            "temp2_input": 88.0,
+            "temp3_input": 73.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": {
+            "residual": 1200,
+            "swiglu": 400,
+            "attention": 400
+          }
+        },
+        {
+          "seconds": 333.0991834769957,
+          "pipeline_before_encoding_seconds": 319.1458328749868,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "paiton",
+          "run": 1,
+          "warmup": false,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            32712.966796875,
+            32636.853515625,
+            32633.619140625,
+            32633.759765625,
+            32641.03125,
+            32651.7890625,
+            32644.724609375,
+            32615.712890625
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 10.807591788193685,
+          "video_seconds_per_wall_second": 0.04528180818664484,
+          "components": {
+            "conditioning": 11.129513196006883,
+            "sampling": 262.3585207199794,
+            "video_decode": 42.29873049602611,
+            "audio_decode": 3.349287522956729,
+            "encode_mux": 13.95269886701135
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 5455114240,
+            "sampling": 2880598016,
+            "video_decode": 2442645504,
+            "audio_decode": 257515520,
+            "encode_mux": 4096
+          },
+          "gpu_allocated_peak_bytes": 8380346368,
+          "gpu_reserved_peak_bytes": 10949230592,
+          "sampled_driver_peak_bytes": 32574922752,
+          "sampled_rss_peak_bytes": 12302155776,
+          "process_lifetime_rss_hwm_bytes": 12618862592,
+          "sampled_process_swap_peak_bytes": 371703808,
+          "sampled_gpu_energy_joules": 90853.47183263302,
+          "sampled_gpu_average_watts": 272.7520100297919,
+          "temperatures_c": {
+            "temp1_input": 59.0,
+            "temp2_input": 86.0,
+            "temp3_input": 74.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": {
+            "residual": 2400,
+            "swiglu": 800,
+            "attention": 800
+          }
+        },
+        {
+          "seconds": 332.60668801300926,
+          "pipeline_before_encoding_seconds": 318.8128901820164,
+          "actual_frames": 362,
+          "width": 864,
+          "height": 480,
+          "fps": 24,
+          "audio_shape": [
+            1,
+            2,
+            482400
+          ],
+          "audio_sample_rate": 32000,
+          "audio_abs_peak": 0.07107515633106232,
+          "prompt": "A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.",
+          "seed": 771,
+          "engine": "paiton",
+          "run": 2,
+          "warmup": false,
+          "denoiser_evaluations": 8,
+          "denoiser_gpu_ms": [
+            32684.763671875,
+            32607.11328125,
+            32626.775390625,
+            32624.669921875,
+            32640.9765625,
+            32642.255859375,
+            32643.9921875,
+            32628.337890625
+          ],
+          "video_seconds": 15.083333333333334,
+          "clips_per_hour": 10.823594743408146,
+          "video_seconds_per_wall_second": 0.045348857605483205,
+          "components": {
+            "conditioning": 10.512102122011129,
+            "sampling": 262.23375083500287,
+            "video_decode": 42.64658755698474,
+            "audio_decode": 3.3905790349817835,
+            "encode_mux": 13.793151163961738
+          },
+          "phase_disk_read_bytes": {
+            "conditioning": 5123256320,
+            "sampling": 2819194880,
+            "video_decode": 2435690496,
+            "audio_decode": 256458752,
+            "encode_mux": 20480
+          },
+          "gpu_allocated_peak_bytes": 8380346368,
+          "gpu_reserved_peak_bytes": 10949230592,
+          "sampled_driver_peak_bytes": 32530407424,
+          "sampled_rss_peak_bytes": 11930005504,
+          "process_lifetime_rss_hwm_bytes": 12618862592,
+          "sampled_process_swap_peak_bytes": 366247936,
+          "sampled_gpu_energy_joules": 90832.26776814461,
+          "sampled_gpu_average_watts": 273.09212665198083,
+          "temperatures_c": {
+            "temp1_input": 59.0,
+            "temp2_input": 85.0,
+            "temp3_input": 72.0
+          },
+          "video_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+          "cumulative_fusion_calls": {
+            "residual": 3600,
+            "swiglu": 1200,
+            "attention": 1200
+          }
+        }
+      ],
+      "measured_runs": [
+        1,
+        2
+      ],
+      "mean_seconds": 332.85293574500247,
+      "mean_before_encoding_seconds": 318.9793615285016,
+      "clips_per_hour": 10.815587346232535,
+      "video_seconds_per_wall_second": 0.04531530809416873,
+      "components": {
+        "conditioning": 10.820807659009006,
+        "sampling": 262.29613577749114,
+        "video_decode": 42.472659026505426,
+        "audio_decode": 3.369933278969256,
+        "encode_mux": 13.872925015486544
+      },
+      "setup_seconds": 12.998304200009443
+    }
+  },
+  "latency_reduction_percent": 16.662057582248945,
+  "throughput_gain_percent": 19.993363285508625,
+  "mp4_all_equal": true,
+  "telemetry_note": "0.5-second samples may miss brief peaks. Torch, driver and AIMDO memory overlap. Device power excludes the host and is not a wall-energy measurement."
+}
