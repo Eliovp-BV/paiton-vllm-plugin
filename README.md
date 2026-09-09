@@ -23,7 +23,8 @@ people build, experiment and create with local AI.
 
 | Model & setup guide | What you can do |
 | --- | --- |
-| [**Wan2.2 / FastWan 5B**](models/Wan2.2/README.md) | Generate silent text/image video in ComfyUI or the terminal; local release candidate |
+| [**FastWan FullAttn 5B**](models/FastWan/README.md) | Generate silent videos from text with three denoiser evaluations |
+| [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Animate an input image or generate silent video from text |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
@@ -41,15 +42,28 @@ allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
 
 <details>
-<summary><strong>Create silent videos with Wan2.2</strong> · Text and optional image input</summary>
+<summary><strong>Create fast text-to-video with FastWan 5B</strong> · Three-evaluation generation</summary>
 
 ```bash
-./models/Wan2.2/launch.sh
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FastWan/launch.sh
 ```
 
-From a checkout containing the Wan release candidate, open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast). Use FastWan for fast text previews or the base workflow for image upload. Select stock/Paiton, duration and resolution in the connected workflow.
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast), enter a prompt and click Run. Choose stock/Paiton, duration and resolution in the connected workflow.
 
-[Setup, measured performance and example clips →](models/Wan2.2/README.md)
+[Setup, measurements and example clips →](models/FastWan/README.md)
+
+</details>
+
+<details>
+<summary><strong>Animate images with Wan2.2 TI2V-5B</strong> · Text and optional image input</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Wan2.2/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=base), upload an optional image, edit the prompt and click Run. The base workflow defaults to stock because its image benchmarks did not show an end-to-end Paiton gain.
+
+[Setup, measurements and example clips →](models/Wan2.2/README.md)
 
 </details>
 

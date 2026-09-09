@@ -1,22 +1,22 @@
-# Wan2.2 on Radeon AI PRO R9700
+# Wan2.2 TI2V-5B on Radeon AI PRO R9700
 
-Local text-to-video and image-to-video with separate **stock** and **Paiton** choices. FastWan FullAttn 5B provides a three-evaluation text preview; original Wan2.2 TI2V-5B provides optional image input. Both produce silent video. This package is prepared locally for review; publication is pending.
+Local text-to-video and image-to-video with separate **stock** and **Paiton** choices. FastWan FullAttn 5B provides a three-evaluation text preview; original Wan2.2 TI2V-5B provides optional image input. Both produce silent video. [Hugging Face runtime package](https://huggingface.co/EliovpAI/Wan2.2-FastWan-5B-Paiton-RDNA4) · [FastWan text guide](../FastWan/README.md).
 
 FastWan Paiton reduced complete-clip latency by **2.8–4.7%** in the fixed R9700 set. The base image cases did not improve end to end, so they default to stock. [See the measurements](BENCHMARKS.md) and [retained clips](QUALITY.md).
 
 ## Launch ComfyUI
 
-From this repository checkout:
+Start the base text/image model:
 
 ```bash
-./models/Wan2.2/launch.sh
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Wan2.2/launch.sh
 ```
 
 Open [FastWan text workflow](http://127.0.0.1:8192/?paiton=1&preset=fast) or [Wan image/text workflow](http://127.0.0.1:8192/?paiton=1&preset=base). The connected workflow opens on first visit. Choose `stock` or `paiton` in its loader, edit the prompt, set duration/resolution and click **Run**. The base workflow includes image upload; choose `(none)` for text-only generation. Use portrait orientation for the supplied portrait example. Native Wan image conditioning resizes and center-crops to the chosen canvas; it does not preserve every input edge.
 
 ComfyUI listens on **0.0.0.0:8192**. From another machine, replace `127.0.0.1` with the server's address. This is a separate service and port from H3. Existing models, caches and outputs are not replaced.
 
-The first launch builds the pinned local runtime and downloads both presets. Subsequent launches reuse model and runtime caches. To download only the text preset, set `PAITON_WAN_DOWNLOAD_PRESET=fast`; the base workflow then needs a later base/all download. Workflow files are also in [comfyui/workflows](comfyui/workflows), with matching API examples.
+The first launch builds the pinned local runtime and downloads the base preset. Subsequent launches reuse model and runtime caches. For FastWan text generation, use `./models/FastWan/launch.sh`; it adds the fast preset and opens its workflow. Both launchers share one service and cache. Set `PAITON_WAN_DOWNLOAD_PRESET=all` to download both. Workflow files are also in [comfyui/workflows](comfyui/workflows), with matching API examples.
 
 ```bash
 ./models/Wan2.2/launch.sh --logs
@@ -96,7 +96,7 @@ The VAE optimization produces small pixel-rounding differences; it does not chan
 
 `Dockerfile` prepares a separate artifact image using the existing pinned community runtime. `Dockerfile.local` assembles pinned ComfyUI core/frontend locally, following the existing community packaging convention. The launch script builds local tags `paiton-wan22-artifacts:local-v1` and `paiton-wan22:local-v1`; it does not require an unpublished Wan image. Use `launch.sh --build` after modifying package code.
 
-A proposed publication would need a **new Wan artifact image**, not an H3 retag. The combined ComfyUI image is local assembly only. No model weights or private compiler source are distributed in this directory. Nothing has been pushed or published by this preparation.
+A proposed publication would need a **new Wan artifact image**, not an H3 retag. The combined ComfyUI image is local assembly only. No model weights or private compiler source are distributed in this directory. The [Hugging Face runtime package](https://huggingface.co/EliovpAI/Wan2.2-FastWan-5B-Paiton-RDNA4) provides both presets, compiled artifacts and retained evidence. The Wan GHCR image remains a proposed publication; launchers build locally from the pinned public base image.
 
 
 ## Measured warm clips

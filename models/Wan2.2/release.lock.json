@@ -1,5 +1,5 @@
 {
-  "status": "local release candidate; unpublished",
+  "status": "qualified runtime package; GHCR publication pending",
   "target": {
     "gpu": "AMD Radeon AI PRO R9700",
     "architecture": "gfx1201",
@@ -50,5 +50,6 @@
     "pytorch_cpu_threads": 4,
     "usable_ram_gib_approx": 15,
     "swap_gib": 4
-  }
+  },
+  "huggingface_repository": "EliovpAI/Wan2.2-FastWan-5B-Paiton-RDNA4"
 }

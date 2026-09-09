@@ -26,14 +26,14 @@ esac
 source "$package_dir/image.sh"
 prepare_wan_image
 unset PAITON_WAN_BUILD
-"$package_dir/run.sh" download --preset "${PAITON_WAN_DOWNLOAD_PRESET:-all}"
+"$package_dir/run.sh" download --preset "${PAITON_WAN_DOWNLOAD_PRESET:-base}"
 "${compose[@]}" up -d --no-build
 printf 'Waiting for ComfyUI...\n'
 for ((attempt=0; attempt<90; attempt++)); do
   if "${compose[@]}" exec -T comfyui python3 -c 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8188/system_stats",timeout=2).close()' >/dev/null 2>&1; then
     printf 'ComfyUI is listening on 0.0.0.0:%s\n' "${PAITON_WAN_PORT:-8192}"
-    printf 'On this host: http://127.0.0.1:%s/?paiton=1&preset=%s\n' "${PAITON_WAN_PORT:-8192}" "${PAITON_WAN_PRESET:-fast}"
-    printf 'From another system: http://<server-ip>:%s/?paiton=1&preset=%s\n' "${PAITON_WAN_PORT:-8192}" "${PAITON_WAN_PRESET:-fast}"
+    printf 'On this host: http://127.0.0.1:%s/?paiton=1&preset=%s\n' "${PAITON_WAN_PORT:-8192}" "${PAITON_WAN_PRESET:-base}"
+    printf 'From another system: http://<server-ip>:%s/?paiton=1&preset=%s\n' "${PAITON_WAN_PORT:-8192}" "${PAITON_WAN_PRESET:-base}"
     printf 'The included workflow opens on first visit. Edit the prompt and click Run.\n'
     printf 'Videos: %s\nLogs: %s --logs\nStop: %s --stop\n' "$PAITON_WAN_OUTPUTS" "$0" "$0"
     exit 0
