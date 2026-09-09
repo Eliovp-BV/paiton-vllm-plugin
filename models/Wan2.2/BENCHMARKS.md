@@ -76,7 +76,7 @@ GiB; peaks include startup and warmups. Driver figures are sampled; allocation/r
 | base-480-2 / paiton | 3.923 | 5.361 | 23.032 | 4.674 | 0.000 |
 
 ### Startup and first generation
-First-generation seconds include lazy GPU loading and JIT compilation. The second warmup is also excluded from the table above. Downloads/builds are separate. The final Paiton artifact build took 9.26 seconds locally; users receive that compiled artifact.
+First-generation seconds are for a new process using existing persistent caches, not an empty-cache installation benchmark. They include lazy GPU loading and JIT compilation. The second warmup is also excluded from the table above. Downloads/builds are separate. The final Paiton artifact rebuild took 9.26 seconds locally with existing build caches; users receive that compiled artifact.
 
 | Case / engine | Runtime import s | Component setup s | First generation s | Second warmup s |
 | --- | ---: | ---: | ---: | ---: |
