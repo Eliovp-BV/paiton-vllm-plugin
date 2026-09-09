@@ -1,0 +1,12 @@
+{
+  "latents_exact": true,
+  "max_abs_difference": 0.0,
+  "dtype": "torch.bfloat16",
+  "shape": [
+    1,
+    48,
+    13,
+    30,
+    52
+  ]
+}

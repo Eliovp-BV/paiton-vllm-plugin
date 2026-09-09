@@ -1,0 +1,1490 @@
+[
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 654.4660000000003
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 16.57800000000134
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 13.401000000001659
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.613000000001193
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.885999999998603
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.505999999997584
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.692999999999302
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.395999999997002
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.61699999999837
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.843000000000757
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 13.001000000000204
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.745999999999185
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.684999999997672
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.184000000001106
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.997000000003027
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.401999999998225
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.278000000002066
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.351000000002387
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.769000000000233
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.54399999999805
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.565999999998894
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.434999999997672
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.643999999996595
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 12.241000000001804
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 65.17000000000189
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.97700000000259
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 65.11899999999878
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.62199999999939
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.85599999999977
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 48.16599999999744
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 68.88499999999476
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.09999999999854
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.4059999999954
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.88100000000122
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.2280000000028
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 67.27400000000489
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.09500000000116
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.111999999993714
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 111.45900000000256
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.31999999999971
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.60899999999674
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.99600000000646
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.33400000000256
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.903999999994994
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 71.86000000000058
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 66.72200000000157
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.52799999999843
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 80.99799999999959
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.5109999999986
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.917999999997846
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.30299999999988
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.1929999999993
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.575999999993655
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.52799999999843
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.822000000000116
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.49300000000221
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 75.01499999999942
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.62799999999697
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.054999999993015
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.38799999999901
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.697000000000116
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.31999999999971
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.52900000000227
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.629000000000815
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 65.60199999999895
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 47.50600000000122
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 69.03800000000047
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.940999999998894
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 65.31999999999971
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 60.254000000000815
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.9010000000053
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 64.2300000000032
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 63.55800000000454
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 68.75499999999738
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 11.60099999999511
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 62.87999999999738
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.285000000003492
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 11.347999999998137
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 14.560000000004948
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.906999999999243
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.360000000000582
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.724999999998545
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.125999999996566
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.750999999996566
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.769999999996799
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.518000000003667
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.620999999999185
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.082000000002154
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.301000000006752
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.644000000000233
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.644000000000233
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.029999999998836
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 10.158000000003085
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.69600000000355
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.005000000004657
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.13300000000163
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.887999999991735
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.662000000011176
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.995999999999185
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.506999999997788
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.331000000005588
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.932000000000698
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 22.422000000005937
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.820999999996275
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.242000000012922
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.051000000006752
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.547000000005937
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.243999999991502
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.134000000005472
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.880999999993946
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.384999999994761
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.45799999999872
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.430999999996857
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.21600000000035
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.26699999999255
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.057000000000698
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.532999999995809
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.361000000004424
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.351999999998952
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.739999999990687
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.0
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.107000000003609
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.269000000000233
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.955000000001746
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.218999999997322
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.60000000000582
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.536999999996624
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.986999999993714
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.21600000000035
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.926000000006752
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.095999999990454
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.271999999997206
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.615999999994528
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.711000000010245
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.33299999999872
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.205999999991036
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.765999999988708
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.911000000007334
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.469000000011874
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.652000000001863
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.5740000000078
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.172000000005937
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.389999999999418
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.968000000008033
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.438000000009197
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.539000000004307
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.562000000005355
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.909000000014203
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.213999999992666
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.063999999998487
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.650000000008731
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.785000000003492
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.394999999989523
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.05000000000291
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.802999999999884
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.282999999995809
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 17.639999999999418
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.944000000003143
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.664000000004307
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.5740000000078
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.976999999998952
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.612999999997555
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.129000000000815
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.220999999990454
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.887000000002445
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.705000000001746
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.097999999998137
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.877000000007683
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.728000000002794
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.400999999998021
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.078000000008615
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.578000000008615
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.722000000008848
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.251999999993131
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.543000000005122
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 13.512000000002445
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 18.690999999991618
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.145000000004075
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 17.85000000000582
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.705999999991036
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.273000000001048
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.718999999997322
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.665999999997439
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.362000000008265
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.081000000005588
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.99100000000908
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 14.282999999995809
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.737999999997555
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.849000000001979
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.950000000011642
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.403999999994994
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.377000000007683
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.019000000000233
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.923999999999069
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.664999999993597
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.790999999997439
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 17.969000000011874
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.30000000000291
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.173999999999069
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.146000000007916
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.10899999999674
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.728999999992084
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.191999999980908
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.986000000004424
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.654999999998836
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.420000000012806
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.047000000020489
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.731999999989057
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.740999999979977
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.737000000022817
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.71799999999348
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.461999999999534
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.37400000001071
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.065000000002328
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.934999999997672
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.61799999998766
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.03200000000652
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.010999999998603
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.53200000000652
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.442000000010012
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.318999999988591
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.00199999997858
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.86600000000908
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.924999999988358
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.281999999977415
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.60099999999511
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.511999999987893
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.34299999999348
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.579999999987194
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.64000000001397
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.99199999999837
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.89199999999255
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.535000000003492
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.433999999979278
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.929000000003725
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 15.2269999999844
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.423999999999069
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.562999999994645
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.546999999991385
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.432000000000698
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.273999999975786
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.948000000003958
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 9.021999999997206
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.759000000020023
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 8.584999999991851
+  },
+  {
+    "name": "hipMemcpyAsync",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 7.191000000020722
+  },
+  {
+    "name": "hipMemcpyWithStream",
+    "device_type": "DeviceType.CPU",
+    "microseconds": 0,
+    "cpu_microseconds": 378758.5129999999
+  },
+  {
+    "name": "Memcpy DtoH (Device -> Host)",
+    "device_type": "DeviceType.CUDA",
+    "microseconds": 726.125,
+    "cpu_microseconds": 0
+  }
+]

@@ -23,6 +23,8 @@ people build, experiment and create with local AI.
 
 | Model & setup guide | What you can do |
 | --- | --- |
+| [**FastWan FullAttn 5B**](models/FastWan/README.md) | Generate silent videos from text with three denoiser evaluations |
+| [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Animate an input image or generate silent video from text |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
@@ -38,6 +40,32 @@ supported generation settings.
 Choose a model below. The first launch downloads and prepares its weights;
 allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
+
+<details>
+<summary><strong>Create fast text-to-video with FastWan 5B</strong> · Three-evaluation generation</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FastWan/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast), enter a prompt and click Run. Choose stock/Paiton, duration and resolution in the connected workflow.
+
+[Setup, measurements and example clips →](models/FastWan/README.md)
+
+</details>
+
+<details>
+<summary><strong>Animate images with Wan2.2 TI2V-5B</strong> · Text and optional image input</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/Wan2.2/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=base), upload an optional image, edit the prompt and click Run. The base workflow defaults to stock because its image benchmarks did not show an end-to-end Paiton gain.
+
+[Setup, measurements and example clips →](models/Wan2.2/README.md)
+
+</details>
 
 <details>
 <summary><strong>Create videos with MiniMax H3</strong> · ComfyUI with stereo audio</summary>

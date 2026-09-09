@@ -1,0 +1,155 @@
+[
+  {
+    "run": 0,
+    "warmup": true,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq4-seko4/clip-0.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 76.75498006097041,
+    "pipeline_seconds": 75.41033435199643,
+    "phases": {
+      "conditioning_and_encoder_offload": 11.953574748011306,
+      "denoise": 54.92128062696429,
+      "decode": 8.529834771004971,
+      "encoding": 1.3423763129976578
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 18946.744140625,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 11920.7021484375,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 11965.75390625,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 11986.390625,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 9765676
+  },
+  {
+    "run": 1,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq4-seko4/clip-1.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 60.02359930501552,
+    "pipeline_seconds": 58.59754079399863,
+    "phases": {
+      "conditioning_and_encoder_offload": 2.3298035060288385,
+      "denoise": 47.98164510895731,
+      "decode": 8.278922338038683,
+      "encoding": 1.4237843970186077
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 11966.060546875,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 11975.2587890625,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 11978.1005859375,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 11983.2880859375,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 10696088
+  },
+  {
+    "run": 2,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq4-seko4/clip-2.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 58.86823587602703,
+    "pipeline_seconds": 58.12100598303368,
+    "phases": {
+      "conditioning_and_encoder_offload": 2.06395312899258,
+      "denoise": 47.98594289901666,
+      "decode": 8.063687746995129,
+      "encoding": 0.7444757709745318
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 11963.0341796875,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 11982.505859375,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 11984.109375,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 11981.47265625,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 10774524
+  }
+]
