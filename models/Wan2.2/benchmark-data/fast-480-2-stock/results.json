@@ -1,0 +1,222 @@
+[
+  {
+    "run": 0,
+    "warmup": true,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/outputs/fast-480-2-stock/clip-0.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 55.76418625097722,
+    "end_to_end_seconds": 56.965438438986894,
+    "clips_per_hour": 63.19621332952256,
+    "video_seconds_per_wall_second": 0.03584044505956718,
+    "phases": {
+      "conditioning": 11.617942797020078,
+      "denoise": 35.12877703498816,
+      "decode": 9.00861545704538,
+      "encoding": 1.1982473319512792
+    },
+    "paiton_vae_calls": 0,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      33690.08203125,
+      780.4688110351562,
+      536.3255004882812
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 4570592
+  },
+  {
+    "run": 1,
+    "warmup": true,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/outputs/fast-480-2-stock/clip-1.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 7.814261446997989,
+    "end_to_end_seconds": 9.484346960030962,
+    "clips_per_hour": 379.5727861044265,
+    "video_seconds_per_wall_second": 0.21526697360089,
+    "phases": {
+      "conditioning": 0.5219439489883371,
+      "denoise": 1.7240826539928094,
+      "decode": 5.559003286994994,
+      "encoding": 1.6668254770338535
+    },
+    "paiton_vae_calls": 0,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      539.5111083984375,
+      539.4620361328125,
+      539.6700439453125
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 4571304
+  },
+  {
+    "run": 2,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/outputs/fast-480-2-stock/clip-2.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 7.84174854401499,
+    "end_to_end_seconds": 9.334029763995204,
+    "clips_per_hour": 385.68550679863137,
+    "video_seconds_per_wall_second": 0.2187336786242238,
+    "phases": {
+      "conditioning": 0.523004551010672,
+      "denoise": 1.7297076979884878,
+      "decode": 5.580295677005779,
+      "encoding": 1.4891033599851653
+    },
+    "paiton_vae_calls": 0,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      540.2839965820312,
+      541.5791625976562,
+      541.7538452148438
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 4572724
+  },
+  {
+    "run": 3,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/outputs/fast-480-2-stock/clip-3.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 7.863698108994868,
+    "end_to_end_seconds": 9.2267994810245,
+    "clips_per_hour": 390.1677940876063,
+    "video_seconds_per_wall_second": 0.22127571655431374,
+    "phases": {
+      "conditioning": 0.5252879690378904,
+      "denoise": 1.7307368499459699,
+      "decode": 5.5988223269814625,
+      "encoding": 1.3608464910066687
+    },
+    "paiton_vae_calls": 0,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      541.7376098632812,
+      541.8024291992188,
+      541.8435668945312
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ],
+      [
+        1,
+        48,
+        13,
+        30,
+        52
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 4572724
+  }
+]

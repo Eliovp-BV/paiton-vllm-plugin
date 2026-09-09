@@ -23,6 +23,7 @@ people build, experiment and create with local AI.
 
 | Model & setup guide | What you can do |
 | --- | --- |
+| [**Wan2.2 / FastWan 5B**](models/Wan2.2/README.md) | Generate silent text/image video in ComfyUI or the terminal; local release candidate |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
@@ -38,6 +39,19 @@ supported generation settings.
 Choose a model below. The first launch downloads and prepares its weights;
 allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
+
+<details>
+<summary><strong>Create silent videos with Wan2.2</strong> · Text and optional image input</summary>
+
+```bash
+./models/Wan2.2/launch.sh
+```
+
+From a checkout containing the Wan release candidate, open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast). Use FastWan for fast text previews or the base workflow for image upload. Select stock/Paiton, duration and resolution in the connected workflow.
+
+[Setup, measured performance and example clips →](models/Wan2.2/README.md)
+
+</details>
 
 <details>
 <summary><strong>Create videos with MiniMax H3</strong> · ComfyUI with stereo audio</summary>

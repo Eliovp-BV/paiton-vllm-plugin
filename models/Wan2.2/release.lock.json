@@ -1,0 +1,54 @@
+{
+  "status": "local release candidate; unpublished",
+  "target": {
+    "gpu": "AMD Radeon AI PRO R9700",
+    "architecture": "gfx1201",
+    "vram_gib": 32,
+    "compute_units": 64,
+    "wgps": 32
+  },
+  "base_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+  "local_artifact_image": "paiton-wan22-artifacts:local-v1",
+  "local_comfy_image": "paiton-wan22:local-v1",
+  "proposed_artifact_publication": "ghcr.io/eliovp/paiton-vllm-plugin:wan22-rdna4-v1.0.0",
+  "combined_comfy_image_publication": false,
+  "artifact": {
+    "file": "artifacts/wan22_ti2v_fusions_gfx1201.so",
+    "sha256": "adf11e67294e0a4baa89f4399b915b26cf82733c83acc1fa96d89575e6a26307",
+    "abi": 1
+  },
+  "runtime": {
+    "torch": "2.12.0+rocm7.14.0",
+    "hip": "7.14.60850",
+    "comfyui": "0.34.0",
+    "frontend": "1.51.10",
+    "attention": "comfy-kitchen CK INT8 attention",
+    "vae": "BF16 MIOpen",
+    "denoiser": "BF16 torch.compile block fullgraph=False dynamic=False",
+    "full_pipeline_graph_capture": false
+  },
+  "compiler_source_included": false,
+  "weights_included": false,
+  "benchmark_artifact_sha256": "162e67a5e443e5cbade973ddbacf1f95de186895af3915f7c88c657548ce31d6",
+  "benchmark_runtime_image_id": "sha256:0ab5deb7f521d3bc2e94fa7c61bff0a51eddbf1772191b580a13706bcd4b992c",
+  "validated_runtime_image_id": "sha256:9f9ec035900625fc64eccf6fb3f2ee839cfd9aaa14babbc48c9884cd0c86420f",
+  "validated_artifact_image_id": "sha256:e15a088624f68ba4d8bb1338bc96335a23b02ab52c1380a37d1b89334dcde4d2",
+  "benchmark_to_final_change": "Artifact metadata now includes VAE scope and separate normalization epsilons; generated kernel/ABI translation unit is byte-identical. Runtime changes add transfer diagnostics, license notices and evidence-based UI defaults; explicit benchmark inference settings are unchanged.",
+  "kernel_translation_unit_sha256": "cd594970beb31699ea403c230f4fc9c32de0941cb08b8fe9041f94bdbdbe9e20",
+  "validation": {
+    "gpu_tests_passed": 4,
+    "primary_configurations": 14,
+    "primary_clips_including_warmups": 56,
+    "paired_measured_latents_equal": true,
+    "browser_videos_played": 17,
+    "ui_upload_and_repeat_passed": true
+  },
+  "measurement_date_utc": "2026-09-09",
+  "host": {
+    "cpu": "Intel Core i5-8400 @ 2.80GHz",
+    "logical_cpus": 6,
+    "pytorch_cpu_threads": 4,
+    "usable_ram_gib_approx": 15,
+    "swap_gib": 4
+  }
+}

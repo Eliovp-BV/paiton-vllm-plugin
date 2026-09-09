@@ -1,0 +1,12 @@
+Paiton Wan2.2 runtime integration
+Copyright ElioVP
+
+The compiled artifact runtime includes AITemplate-derived host support.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+Triton-generated code retains LICENSES/Triton-MIT.txt.
+
+Wan2.2 is developed by the Alibaba Wan Team. FastWan is developed by
+FastVideo. This package does not imply endorsement by either project.
+Weights are downloaded separately from pinned upstream repositories.
+The FastVideo DMD sampler is adapted for the ComfyUI Wan model interface;
+see checkpoints.lock.json for the exact upstream source revision.

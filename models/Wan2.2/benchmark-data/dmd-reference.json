@@ -1,0 +1,26 @@
+[
+  {
+    "seed": 1201,
+    "latent_frames": 1,
+    "exact": true,
+    "rng_equal": true
+  },
+  {
+    "seed": 1201,
+    "latent_frames": 7,
+    "exact": true,
+    "rng_equal": true
+  },
+  {
+    "seed": 42,
+    "latent_frames": 1,
+    "exact": true,
+    "rng_equal": true
+  },
+  {
+    "seed": 42,
+    "latent_frames": 7,
+    "exact": true,
+    "rng_equal": true
+  }
+]

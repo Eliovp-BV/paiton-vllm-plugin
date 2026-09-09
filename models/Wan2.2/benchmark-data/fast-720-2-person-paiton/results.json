@@ -1,0 +1,222 @@
+[
+  {
+    "run": 0,
+    "warmup": true,
+    "prompt": "A woman in a yellow raincoat walks along a wet city sidewalk, stops beside a flower stall and smiles at the flowers. Raindrops glisten on the pavement. Natural human movement, consistent face and clothing, a steady medium-wide camera shot.",
+    "seed": 2702,
+    "clip": "/outputs/fast-720-2-person-paiton/clip-0.mp4",
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 62.7928450939944,
+    "end_to_end_seconds": 65.5072010300355,
+    "clips_per_hour": 54.95579025501907,
+    "video_seconds_per_wall_second": 0.03116705697333257,
+    "phases": {
+      "conditioning": 13.55929666699376,
+      "denoise": 33.96125724102603,
+      "decode": 15.261643989011645,
+      "encoding": 2.71180968999397
+    },
+    "paiton_vae_calls": 341,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      30703.23828125,
+      1667.3704833984375,
+      1423.9366455078125
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 5525532
+  },
+  {
+    "run": 1,
+    "warmup": true,
+    "prompt": "A woman in a yellow raincoat walks along a wet city sidewalk, stops beside a flower stall and smiles at the flowers. Raindrops glisten on the pavement. Natural human movement, consistent face and clothing, a steady medium-wide camera shot.",
+    "seed": 2702,
+    "clip": "/outputs/fast-720-2-person-paiton/clip-1.mp4",
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 17.002113035996445,
+    "end_to_end_seconds": 20.27547627099557,
+    "clips_per_hour": 177.5543988157686,
+    "video_seconds_per_wall_second": 0.1006963604394984,
+    "phases": {
+      "conditioning": 0.5313853059778921,
+      "denoise": 4.4660780430422164,
+      "decode": 11.995976824022364,
+      "encoding": 3.270743571978528
+    },
+    "paiton_vae_calls": 341,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      1436.68017578125,
+      1438.2027587890625,
+      1438.2490234375
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 5530972
+  },
+  {
+    "run": 2,
+    "warmup": false,
+    "prompt": "A woman in a yellow raincoat walks along a wet city sidewalk, stops beside a flower stall and smiles at the flowers. Raindrops glisten on the pavement. Natural human movement, consistent face and clothing, a steady medium-wide camera shot.",
+    "seed": 2702,
+    "clip": "/outputs/fast-720-2-person-paiton/clip-2.mp4",
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 17.072024127002805,
+    "end_to_end_seconds": 19.80966885999078,
+    "clips_per_hour": 181.72943856072493,
+    "video_seconds_per_wall_second": 0.10306414918374444,
+    "phases": {
+      "conditioning": 0.533020019007381,
+      "denoise": 4.4844295409857295,
+      "decode": 12.046090604970232,
+      "encoding": 2.7351556190405972
+    },
+    "paiton_vae_calls": 341,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      1443.569580078125,
+      1441.6971435546875,
+      1443.630859375
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 5532028
+  },
+  {
+    "run": 3,
+    "warmup": false,
+    "prompt": "A woman in a yellow raincoat walks along a wet city sidewalk, stops beside a flower stall and smiles at the flowers. Raindrops glisten on the pavement. Natural human movement, consistent face and clothing, a steady medium-wide camera shot.",
+    "seed": 2702,
+    "clip": "/outputs/fast-720-2-person-paiton/clip-3.mp4",
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "duration": 2.0416666666666665,
+    "pipeline_seconds": 17.057942919025663,
+    "end_to_end_seconds": 19.78440982400207,
+    "clips_per_hour": 181.9614551065632,
+    "video_seconds_per_wall_second": 0.10319573264145365,
+    "phases": {
+      "conditioning": 0.5323024079552852,
+      "denoise": 4.495217121962924,
+      "decode": 12.021739079034887,
+      "encoding": 2.7234950130223297
+    },
+    "paiton_vae_calls": 341,
+    "paiton_fusion_calls": 0,
+    "evaluations": 3,
+    "evaluation_ms": [
+      1448.1446533203125,
+      1447.29052734375,
+      1447.4945068359375
+    ],
+    "evaluation_shapes": [
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ],
+      [
+        1,
+        48,
+        13,
+        44,
+        80
+      ]
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 5532028
+  }
+]

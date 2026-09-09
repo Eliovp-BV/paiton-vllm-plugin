@@ -1,0 +1,155 @@
+[
+  {
+    "run": 0,
+    "warmup": true,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq-w4a8-seko4/clip-0.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 129.71267498197267,
+    "pipeline_seconds": 128.45538434002083,
+    "phases": {
+      "conditioning_and_encoder_offload": 6.4619730889680795,
+      "denoise": 113.46122222498525,
+      "decode": 8.52558350097388,
+      "encoding": 1.2550039109773934
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 81666.1328125,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 10562.9765625,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 10564.8251953125,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 10557.0419921875,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 10050484
+  },
+  {
+    "run": 1,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq-w4a8-seko4/clip-1.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 53.969070809020195,
+    "pipeline_seconds": 53.03349324100418,
+    "phases": {
+      "conditioning_and_encoder_offload": 2.6242690089857206,
+      "denoise": 42.33088179596234,
+      "decode": 8.072499096975662,
+      "encoding": 0.9322760299546644
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 10561.763671875,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 10559.919921875,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 10565.2294921875,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 10564.3134765625,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 10780448
+  },
+  {
+    "run": 2,
+    "warmup": false,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right.",
+    "seed": 1201,
+    "clip": "/data/outputs/stock-a14b-sdnq-w4a8-seko4/clip-2.mp4",
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 16,
+    "duration": 3.0625,
+    "end_to_end_seconds": 53.601448653964326,
+    "pipeline_seconds": 52.81568882195279,
+    "phases": {
+      "conditioning_and_encoder_offload": 2.418655421002768,
+      "denoise": 42.32638585404493,
+      "decode": 8.064960390969645,
+      "encoding": 0.7828389870119281
+    },
+    "sigmas": [
+      1.0,
+      0.9375,
+      0.8333333134651184,
+      0.625,
+      0.0
+    ],
+    "evaluations": [
+      {
+        "expert": "high",
+        "ms": 10567.2294921875,
+        "timestep": 1000.0
+      },
+      {
+        "expert": "high",
+        "ms": 10561.6005859375,
+        "timestep": 937.5
+      },
+      {
+        "expert": "low",
+        "ms": 10560.8056640625,
+        "timestep": 833.3333129882812
+      },
+      {
+        "expert": "low",
+        "ms": 10560.828125,
+        "timestep": 625.0
+      }
+    ],
+    "finite": true,
+    "peak_host_rss_kib": 10780520
+  }
+]

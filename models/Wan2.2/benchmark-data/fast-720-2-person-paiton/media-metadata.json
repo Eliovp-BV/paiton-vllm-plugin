@@ -1,0 +1,19 @@
+{
+  "tool": "PyAV",
+  "version": "18.1.0",
+  "duration_seconds": 2.041667,
+  "format": "mov,mp4,m4a,3gp,3g2,mj2",
+  "streams": [
+    {
+      "type": "video",
+      "codec": "h264",
+      "frames": 49,
+      "time_base": "1/12288",
+      "duration_seconds": 2.0416666666666665,
+      "width": 1280,
+      "height": 704,
+      "average_rate": "24",
+      "pixel_format": "yuv420p"
+    }
+  ]
+}
