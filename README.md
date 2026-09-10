@@ -23,6 +23,7 @@ people build, experiment and create with local AI.
 
 | Model & setup guide | What you can do |
 | --- | --- |
+| [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Quick local chat, concise coding help and tools; separate small-model package |
 | [**FastWan FullAttn 5B**](models/FastWan/README.md) | Generate silent videos from text with three denoiser evaluations |
 | [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Animate an input image or generate silent video from text |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
