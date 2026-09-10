@@ -35,7 +35,7 @@ loading. Host RAM and disk requirements are separate and listed in each guide.
 | Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
 | --- | --- | --- | --- |
 | [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Small, concise chat; lightweight code and tools; 8K context, OpenAI-compatible API | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
-| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat and code; text input, 8K context, one active request | 32 GB | Not reported in the model guide |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat and code; optional thinking (see reasoning below), text input, 8K context | 32 GB | Not reported in the model guide |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | General chat; 8K context, one active request; DFlash enabled by default | 32 GB | Not reported in the model guide |
 
 MiniCPM5 is the smallest download here: **2.11 GB**, with a **27.98 s median**
@@ -48,8 +48,10 @@ quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
 | Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
 | --- | --- | --- | --- |
 | [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat and reasoning with optional thinking mode; disabled by default, 8K context, one active request | 32 GB | Not reported in the model guide |
 
-Reasoning consumes the output budget. MiniCPM5's optional thinking mode is
+Models can appear in more than one category: text-only describes the input modality,
+while reasoning describes a generation mode. Reasoning consumes the output budget. MiniCPM5's optional thinking mode is
 experimental in this package; its qualified default is direct-answer chat.
 
 ### Coding
@@ -131,7 +133,7 @@ docker run --rm --name paiton-minicpm5 \
 </details>
 
 <details>
-<summary><strong>Start Qwen3.8</strong> · Chat and API</summary>
+<summary><strong>Start Qwen3.8</strong> · Chat, optional reasoning and API</summary>
 
 ```bash
 ./models/Qwen3.8/serve-docker.sh
@@ -142,6 +144,14 @@ Once the server reports that it is ready, open a terminal chat:
 ```bash
 docker exec -it paiton-qwen38 paiton-chat
 ```
+
+Thinking is disabled by default. To enable reasoning:
+
+```bash
+docker exec -it paiton-qwen38 paiton-chat --thinking
+```
+
+API clients can set `chat_template_kwargs.enable_thinking` to `true`.
 
 [Full guide, API examples and existing-environment installation →](models/Qwen3.8/README.md)
 
