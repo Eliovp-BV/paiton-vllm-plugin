@@ -48,7 +48,8 @@ quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
 | Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
 | --- | --- | --- | --- |
 | [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
-| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat and reasoning with optional thinking mode; disabled by default, 8K context, one active request | 32 GB | Not reported in the model guide |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat and reasoning with optional thinking; terminal default off, 8K context, one active request | 32 GB | Not reported in the model guide |
+| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md#thinking--reasoning-mode) | Optional thinking toggle; terminal default off; published DFlash benchmark uses thinking off | 32 GB | Not reported in the model guide |
 
 Models can appear in more than one category: text-only describes the input modality,
 while reasoning describes a generation mode. Reasoning consumes the output budget. MiniCPM5's optional thinking mode is
@@ -145,10 +146,10 @@ Once the server reports that it is ready, open a terminal chat:
 docker exec -it paiton-qwen38 paiton-chat
 ```
 
-Thinking is disabled by default. To enable reasoning:
+The terminal client disables thinking by default. To enable reasoning:
 
 ```bash
-docker exec -it paiton-qwen38 paiton-chat --thinking
+docker exec -it paiton-qwen38 paiton-chat --thinking --max-tokens 4096
 ```
 
 API clients can set `chat_template_kwargs.enable_thinking` to `true`.
@@ -166,6 +167,7 @@ API clients can set `chat_template_kwargs.enable_thinking` to `true`.
 
 The helper starts the server, waits for it to become ready and opens the
 terminal chat. Use `/reset` for a new conversation and `/quit` to leave the chat.
+For optional thinking, use `docker exec -it paiton-ornith paiton-chat --model ornith --thinking --max-tokens 4096`. The published benchmark used thinking off.
 
 [Full guide, API examples and model options →](models/Ornith-1.5/README.md)
 

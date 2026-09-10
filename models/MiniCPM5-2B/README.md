@@ -56,6 +56,40 @@ A ready model is reused for 120 seconds while eligible; switching releases the
 owned model before loading another. The separate Studio change must be installed
 with this image; it does not modify an active Studio service.
 
+## Optional thinking mode — experimental for W4
+
+The pinned template supports thinking. This release defaults it **off in both the
+server and terminal client**. Direct mode is the qualified fast-chat profile;
+thinking-on W4 is available for experimentation, not a qualified reasoning result.
+
+Using the updated repository client against the existing published container:
+
+```bash
+python3 models/MiniCPM5-2B/chat.py --thinking --max-tokens 4096 --timeout 600
+```
+
+Run that command from the repository root. The extra budget/timeout flags belong
+to the updated host script; the immutable v1.0.0 image still contains its original
+client. No image rebuild is required to send these API settings. Omit `--thinking`
+for direct answers. The client displays final-answer text, so it may stay quiet
+while reasoning is generated.
+
+The same setting works directly through the API:
+
+```bash
+curl --fail http://127.0.0.1:8036/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"minicpm5-2b","messages":[{"role":"user","content":"Solve 3x + 7 = 22 and check the result."}],"max_tokens":4096,"temperature":0,"chat_template_kwargs":{"enable_thinking":true}}'
+```
+
+Set `"enable_thinking":false` to turn it off. The parser separates reasoning from
+`message.content`; API clients can inspect `reasoning`/`reasoning_content` and the
+corresponding streaming delta fields. Reasoning and the final answer share the
+output budget, and prompt plus output must fit the tested 8,192-token context.
+Reduce the output budget as conversation history grows. Thinking may repeat or
+consume the budget before a useful answer; 4,096 tokens does not guarantee completion.
+The published 14/20 quality result and loading/speed figures use thinking **off**.
+
 ## Reproduce
 
 [Loading and generation measurements](BENCHMARKS.md) include cache boundaries,
