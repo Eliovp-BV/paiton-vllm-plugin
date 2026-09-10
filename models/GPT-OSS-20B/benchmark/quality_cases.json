@@ -1,0 +1,191 @@
+[
+  {
+    "id": "instruction-json",
+    "category": "instruction",
+    "prompt": "Return exactly this JSON object with no commentary: {\"status\":\"ready\",\"count\":3}",
+    "check": "json",
+    "expected": {
+      "status": "ready",
+      "count": 3
+    }
+  },
+  {
+    "id": "instruction-list",
+    "category": "instruction",
+    "prompt": "Return only the three lowercase words red, green, blue in alphabetical order, separated by commas, with no spaces.",
+    "check": "exact",
+    "expected": "blue,green,red"
+  },
+  {
+    "id": "arithmetic",
+    "category": "reasoning",
+    "prompt": "A shop sells 3 notebooks for $7 each and 2 pens for $4 each. A $5 discount applies to the total. What is the final price? Answer only the integer, without a currency symbol.",
+    "check": "exact",
+    "expected": "24"
+  },
+  {
+    "id": "logic",
+    "category": "reasoning",
+    "prompt": "All wugs are daxes. No dax is a pel. Can any wug be a pel? Answer only yes or no.",
+    "check": "exact",
+    "expected": "no"
+  },
+  {
+    "id": "fact",
+    "category": "factual",
+    "prompt": "What is the chemical symbol for tungsten? Answer with only the symbol.",
+    "check": "exact",
+    "expected": "W"
+  },
+  {
+    "id": "uncertainty",
+    "category": "factual",
+    "prompt": "What is the exact number of people currently standing in my kitchen? If you cannot know, reply exactly UNKNOWN.",
+    "check": "exact",
+    "expected": "UNKNOWN"
+  },
+  {
+    "id": "code-dedupe",
+    "category": "coding",
+    "prompt": "Write Python function dedupe(xs) that removes duplicates while preserving first occurrence order, including for unhashable list elements. Return only code, no markdown, imports, input or output calls.",
+    "check": "code",
+    "tests": "assert dedupe([3,1,3,2,1]) == [3,1,2]\nassert dedupe([[1],[2],[1]]) == [[1],[2]]\nassert dedupe([]) == []"
+  },
+  {
+    "id": "code-balanced",
+    "category": "coding",
+    "prompt": "Write Python function balanced(s) returning whether parentheses in s are balanced, ignoring other characters. Return only code, no markdown, imports, input or output calls.",
+    "check": "code",
+    "tests": "assert balanced('a(b)c')\nassert not balanced(')(')\nassert balanced('')\nassert not balanced('(()')"
+  },
+  {
+    "id": "structured",
+    "category": "structured",
+    "prompt": "Extract the name and age from: Mira is 27 years old. Return a JSON object with name and age only.",
+    "check": "json",
+    "expected": {
+      "name": "Mira",
+      "age": 27
+    },
+    "structured": true
+  },
+  {
+    "id": "tool-weather",
+    "category": "tool",
+    "prompt": "Use the weather tool to get the temperature in Paris in Celsius.",
+    "check": "tool",
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "weather",
+          "description": "Get temperature for a city",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "city": {
+                "type": "string"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "celsius",
+                  "fahrenheit"
+                ]
+              }
+            },
+            "required": [
+              "city",
+              "unit"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "expected": {
+      "city": "Paris",
+      "unit": "celsius"
+    }
+  },
+  {
+    "id": "instruction-filter",
+    "category": "instruction",
+    "prompt": "From 2, 3, 4, 5, 6, return only the odd numbers as a JSON array. No commentary.",
+    "check": "json",
+    "expected": [
+      3,
+      5
+    ]
+  },
+  {
+    "id": "instruction-reverse",
+    "category": "instruction",
+    "prompt": "Reverse the order of these three words: cat dog bird. Return only the words separated by a single space.",
+    "check": "exact",
+    "expected": "bird dog cat"
+  },
+  {
+    "id": "logic-order",
+    "category": "reasoning",
+    "prompt": "Lena arrived before Omar. Omar arrived before Pia. Who arrived last? Return only the name.",
+    "check": "exact",
+    "expected": "Pia"
+  },
+  {
+    "id": "reasoning-rate",
+    "category": "reasoning",
+    "prompt": "Five machines make five parts in five minutes. How many minutes do 100 equally fast machines need to make 100 parts? Return only the integer.",
+    "check": "exact",
+    "expected": "5"
+  },
+  {
+    "id": "reasoning-negative",
+    "category": "reasoning",
+    "prompt": "What is (-3) * (-7) - 8? Return only the integer.",
+    "check": "exact",
+    "expected": "13"
+  },
+  {
+    "id": "factual-planet",
+    "category": "factual",
+    "prompt": "Which planet is closest to the Sun? Return only its English name.",
+    "check": "exact",
+    "expected": "Mercury"
+  },
+  {
+    "id": "factual-sorting",
+    "category": "factual",
+    "prompt": "What is the worst-case time complexity of comparison-based merge sort? Return exactly one of: O(n), O(n log n), O(n^2).",
+    "check": "exact",
+    "expected": "O(n log n)"
+  },
+  {
+    "id": "code-merge",
+    "category": "coding",
+    "prompt": "Write Python function merge(a,b) that merges two sorted integer lists into a new sorted list, retaining duplicates. Return only code, no markdown, imports, input or output calls.",
+    "check": "code",
+    "tests": "assert merge([1,3,3],[2,3]) == [1,2,3,3,3]\nassert merge([],[]) == []\nassert merge([],[-2,4]) == [-2,4]\nassert merge([-4,0],[-3,2]) == [-4,-3,0,2]"
+  },
+  {
+    "id": "code-runs",
+    "category": "coding",
+    "prompt": "Write Python function runs(s) returning a list of (character, count) tuples for consecutive runs in a string. Return only code, no markdown, imports, input or output calls.",
+    "check": "code",
+    "tests": "assert runs('aaabbcaa') == [('a',3),('b',2),('c',1),('a',2)]\nassert runs('') == []\nassert runs('x') == [('x',1)]"
+  },
+  {
+    "id": "json-types",
+    "category": "structured",
+    "prompt": "Return a JSON object with exactly these entries: active is boolean false, missing is null, ids is the array [2, 1]. No commentary.",
+    "check": "json",
+    "expected": {
+      "active": false,
+      "missing": null,
+      "ids": [
+        2,
+        1
+      ]
+    }
+  }
+]

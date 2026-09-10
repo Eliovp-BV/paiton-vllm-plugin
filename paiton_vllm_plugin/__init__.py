@@ -59,6 +59,7 @@ def register_paiton_models() -> None:
     # Register Paiton model architectures
     # Users can specify these in their model config's architectures field
     model_registrations = {
+        "PaitonGptOssForCausalLM": "paiton_vllm_plugin.models.paiton_gptoss:PaitonGptOssForCausalLM",
         "PaitonLlamaForCausalLM": "paiton_vllm_plugin.models.paiton_llama:PaitonLlamaForCausalLM",
         "PaitonQwen2ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen:PaitonQwen2ForCausalLM",
         "PaitonQwen3ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3:PaitonQwen3ForCausalLM",
