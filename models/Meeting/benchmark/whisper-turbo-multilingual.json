@@ -1,0 +1,200 @@
+{
+  "model": "whisper-turbo",
+  "dtype": "float16",
+  "language_mode": "automatic",
+  "dataset_revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "loading_seconds": 5.229204235016368,
+  "results": [
+    {
+      "language": "en_us",
+      "path": "en_us-0.wav",
+      "sha256": "33aca50159ec2e3cbcc894eb26faa916d6badb1b49fb75994973561540a7f012",
+      "duration": 10.56,
+      "reference": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+      "text": " However, due to the slow communication channels, styles in the West could lag behind by 25-30 years.",
+      "wer": 0.10526315789473684,
+      "cer": 0.04040404040404041,
+      "generation_seconds": [
+        9.468638263992034,
+        0.18593448505271226
+      ]
+    },
+    {
+      "language": "en_us",
+      "path": "en_us-1.wav",
+      "sha256": "7603cae3294309ef70d234180cefccc3b13865ee525262228a636069b9b62841",
+      "duration": 8.76,
+      "reference": "all nouns alongside the word sie for you always begin with a capital letter even in the middle of a sentence",
+      "text": " All nouns alongside the words say for you always begin with a capital letter, even in the middle of a sentence.",
+      "wer": 0.09523809523809523,
+      "cer": 0.027777777777777776,
+      "generation_seconds": [
+        0.19475416105706245,
+        0.18967503192834556
+      ]
+    },
+    {
+      "language": "en_us",
+      "path": "en_us-2.wav",
+      "sha256": "260bdd1a15e1d35bcc5d91667516ca3bc659285e10f94872182715bcd7880398",
+      "duration": 11.46,
+      "reference": "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron",
+      "text": " To the north and within easy reach is the romantic and fascinating town of Cintra and which was made famous to foreigners after a glowing account of its splendorous recorded by Lord Byron.",
+      "wer": 0.06060606060606061,
+      "cer": 0.021505376344086023,
+      "generation_seconds": [
+        0.25950528599787503,
+        0.2555919080041349
+      ]
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-0.wav",
+      "sha256": "1603ed8fcea31a7f32f51d137eaa3516d15aca947898b81a136f4a9732f08ad2",
+      "duration": 17.94,
+      "reference": "für die besten aussichten auf hongkong sollten sie die insel verlassen und zum gegenüberliegenden ufer von kowloon fahren",
+      "text": " Für die besten Aussichten auf Hongkong sollten sie die Insel verlassen und zum gegenüberliegenden Ufer von Kowloon fahren.",
+      "wer": 0.0,
+      "cer": 0.0,
+      "generation_seconds": [
+        0.23104525997769088,
+        0.22484646597877145
+      ]
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-1.wav",
+      "sha256": "90d0470adf728783e98cc8dddd51e2c2cbf0d6bf360da65f7d2ac5c3e65876aa",
+      "duration": 11.16,
+      "reference": "er griff auch alles an was ins wasser kam selbst ein großer dinosaurier wie der t rex war ihm nicht gewachsen",
+      "text": " Er griff auch alles an, was ins Wasser kam. Selbst ein großer Dinosaurier wie der T-Rex war ihm nicht gewachsen.",
+      "wer": 0.0,
+      "cer": 0.0,
+      "generation_seconds": [
+        0.23510968498885632,
+        0.23512783308979124
+      ]
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-2.wav",
+      "sha256": "13041e21e6a44d30da9595905fbb4367056191a513245b84e64a13449c8d08ea",
+      "duration": 12.42,
+      "reference": "wenn sie den film das vermächtnis der tempelritter gesehen haben denken sie vielleicht dass auf die rückseite der unabhängigkeitserklärung eine schatzkarte gezeichnet wurde",
+      "text": " Wenn Sie den Film Das Vermächtnis der Tempelritter gesehen haben, denken Sie vielleicht, dass auf der Rückseite der Unabhängigkeitserklärung eine Schatzkarte gezeichnet wurde.",
+      "wer": 0.043478260869565216,
+      "cer": 0.011627906976744186,
+      "generation_seconds": [
+        0.3101692170603201,
+        0.30459877592511475
+      ]
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-0.wav",
+      "sha256": "c834367fd212902124bdd0e0f6c1f16b5561af6386600f145e5aec50008b298d",
+      "duration": 10.2,
+      "reference": "l'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant",
+      "text": " L'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant.",
+      "wer": 0.0,
+      "cer": 0.0,
+      "generation_seconds": [
+        0.23611239297315478,
+        0.23409558308776468
+      ]
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-1.wav",
+      "sha256": "9b9450e1cb9ea3badb2223f726adabb754cd6ff2278b9fc4dc2ad86c73791db7",
+      "duration": 23.4,
+      "reference": "nous sommes d'accord avec la déclaration de l'usoc comité olympique des états-unis selon laquelle les intérêts de nos athlètes et de nos clubs ainsi que de leur sport pourraient être mieux servis. cela peut être fait en allant de l'avant et en procédant plutôt à des changements significatifs au sein de notre organisation qu'à la révocation d'accréditation",
+      "text": " Nous sommes d'accord avec la déclaration de l'USOC, Comité Olympique des Etats-Unis, selon laquelle les intérêts de nos athlètes et de nos clubs ainsi que de leur sport pour être mieux servis. Cela peut être fait en allant de l'avant et en procédant plutôt à des changements significatifs au sein de notre organisation qu'à la révocation d'accréditation.",
+      "wer": 0.034482758620689655,
+      "cer": 0.019662921348314606,
+      "generation_seconds": [
+        0.5462812629994005,
+        0.5411316440440714
+      ]
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-2.wav",
+      "sha256": "05ccf3ccc2ab4b72d056c3f02e3ffcf6ea0f37b1c42bea5c35789c85291fbdc5",
+      "duration": 8.28,
+      "reference": "il a ajouté qu’« on ne devrait cependant pas leur demander d’assumer des obligations qui dépassent leur stade de développement leur responsabilité et leurs capacités. »",
+      "text": " Il a ajouté qu'on ne devrait cependant pas leur demander d'assumer des obligations qui dépassent leur stade de développement, leurs responsabilités et leurs capacités.",
+      "wer": 0.23076923076923078,
+      "cer": 0.024539877300613498,
+      "generation_seconds": [
+        0.2670435890322551,
+        0.2660164519911632
+      ]
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-0.wav",
+      "sha256": "861ceedc4d50fbe52fc89b6d0c0fa740b9cd6fa668388e754064847386af0faf",
+      "duration": 12.84,
+      "reference": "se recomienda enfáticamente a los viajeros que se informen sobre cualquier riesgo de clima extremo en el área que visitan dado que ello puede afectar sus planes de viaje",
+      "text": " Se recomienda enfáticamente a los viajeros que se informen sobre cualquier riesgo del clima extremo en el área que visitan, dado que ello puede afectar sus planes de viaje.",
+      "wer": 0.034482758620689655,
+      "cer": 0.005917159763313609,
+      "generation_seconds": [
+        0.27698233199771494,
+        0.27788626903202385
+      ]
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-1.wav",
+      "sha256": "5b0fcf5b42064d33a36d26dab527cb230b4751587b4066ef11157ea603586d8d",
+      "duration": 21.36,
+      "reference": "el uso adecuado de los blogs «puede empoderar a los alumnos para que sean más analíticos y críticos a través de la respuesta activa a los contenidos de internet pueden definir sus posturas en el contexto de los escritos de otros además de establecer sus perspectivas sobre temas específicos» oravec 2002",
+      "text": " El uso adecuado de los blogs puede empoderar a los alumnos para que sean más analíticos y críticos a través de la respuesta activa a los contenidos de Internet. Pueden definir sus posturas en el contexto de los escritos de otros, además de establecer sus perspectivas sobre temas específicos. Orabec 2002",
+      "wer": 0.0196078431372549,
+      "cer": 0.0033222591362126247,
+      "generation_seconds": [
+        0.4347109879599884,
+        0.43808275391347706
+      ]
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-2.wav",
+      "sha256": "0576e73da35ef17b6ce6396d31b32830b7ab19cea98f9f5db68de3756dc3d4fc",
+      "duration": 9.72,
+      "reference": "fue tanta la cantidad de gente que se concentró que no todos pudieron acceder al funeral en la plaza de san pedro",
+      "text": " Fue tanta la cantidad de gente que se concentró que no todos pudieron acceder al funeral en la plaza de San Pedro.",
+      "wer": 0.0,
+      "cer": 0.0,
+      "generation_seconds": [
+        0.21848086593672633,
+        0.2170893430011347
+      ]
+    }
+  ],
+  "summary": {
+    "de_de": {
+      "samples": 3,
+      "wer": 0.016129032258064516,
+      "cer": 0.004962779156327543
+    },
+    "en_us": {
+      "samples": 3,
+      "wer": 0.0821917808219178,
+      "cer": 0.027989821882951654
+    },
+    "es_419": {
+      "samples": 3,
+      "wer": 0.0196078431372549,
+      "cer": 0.003430531732418525
+    },
+    "fr_fr": {
+      "samples": 3,
+      "wer": 0.07766990291262135,
+      "cer": 0.017488076311605722
+    }
+  },
+  "note": "Three read-speech samples per language; not broad meeting-language qualification. Greedy decoding, segment timestamps; no extra alignment or diarization in this ASR comparison."
+}

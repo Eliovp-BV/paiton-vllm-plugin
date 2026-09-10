@@ -30,6 +30,19 @@ Community-1's full recording run took 77.53 seconds; the production memory-mappe
 
 Among 5,522 lexically matched stock words against manual AMI word annotations, median absolute start error was 80 ms (p90 210 ms, p95 270 ms); median end error was 90 ms (p90 310 ms, p95 about 440 ms). Large alignment/overlap outliers reached about 20–21 seconds and must not be hidden by the median. These figures apply only to matched words. Around chunk boundaries, the diagnostic found 41 deletions and four insertions among 283 reference words; it does not prove chunking caused those errors. Paiton results were essentially unchanged. See `benchmark/timestamp-boundary-comparison.json`.
 
+## Supplementary multilingual speech
+
+The [Google FLEURS dataset](https://huggingface.co/datasets/google/fleurs), CC-BY-4.0, supplied three test recordings per language. Selection used the first three referenced audio members in each pinned archive, without selecting based on model output. Both implementations used FP16 SDPA, automatic language handling and greedy transcription with timestamps. These are short read-speech examples, not multilingual meetings or a summary-language qualification.
+
+| Language | Parakeet WER / CER | Whisper Turbo WER / CER |
+|---|---:|---:|
+| English (US) | 4.11% / 1.53% | 8.22% / 2.80% |
+| German | 4.84% / 1.24% | 1.61% / 0.50% |
+| French | 5.83% / 0.64% | 7.77% / 1.75% |
+| Spanish (Latin America) | 2.94% / 0.51% | 1.96% / 0.34% |
+
+Exact source revision, audio hashes, references and outputs are retained in `benchmark/fleurs-manifest.json` and the two `*-multilingual.json` results. `python benchmark/prepare_fleurs.py --output /path/to/fleurs-small` reproduces the bounded download selection without fetching full archives. The small sample count does not establish robust language or accent accuracy.
+
 ## Short complete-workflow example
 
 The generated 38.90-second spoken test ran through the packaged command in 154.00 seconds on first use: ASR/startup 32.76 s, diarization/startup 40.77 s, attribution 0.06 s, playback normalization 0.19 s and summary/startup 80.19 s. The actual Studio queue completed the same input in 145.82 seconds. These small cold-start-dominated examples are functional evidence, not throughput claims.

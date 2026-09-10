@@ -71,3 +71,16 @@ def test_exact_quote_does_not_override_explicit_recap():
     draft=empty();draft['decisions']=[dict(text='Use universal control.',segment_ids=['decision'],quote=segments[1]['text'])]
     result,audit=verify_summary(draft,segments,lambda *_:pytest.fail('Explicit recap should be omitted before model audit.'))
     assert result['decisions']==[] and 'recap' in audit[0]['reason']
+
+
+@pytest.mark.parametrize("owner,deadline", [("Al", "unspecified"), ("unspecified", "5")])
+def test_attribution_cannot_match_inside_another_word_or_number(owner, deadline):
+    segments=[dict(id='s1',start=0,end=2,speaker='SPEAKER_00',text='Please call the team by 15 September.')]
+    draft=empty();draft['actions']=[dict(text='Call the team.',quote=segments[0]['text'],segment_ids=['s1'],owner=owner,deadline=deadline)]
+    with pytest.raises(ValueError, match='not stated'):
+        validate_summary(draft,segments)
+
+def test_attribution_accepts_complete_names_and_dates_with_punctuation():
+    segments=[dict(id='s1',start=0,end=2,speaker='SPEAKER_00',text="Al, please call O'Neil by 15 September.")]
+    draft=empty();draft['actions']=[dict(text="Call O'Neil.",quote=segments[0]['text'],segment_ids=['s1'],owner='Al',deadline='15 September')]
+    assert validate_summary(draft,segments)==draft

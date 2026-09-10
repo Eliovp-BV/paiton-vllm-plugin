@@ -24,6 +24,14 @@ def parse_json(text):
     return result
 
 
+def attribution_is_stated(value, text):
+    """Require complete literal fields, so Al/call and 5/15 cannot match.
+
+    This only checks presence; the separate claim audit checks assignment.
+    """
+    return re.search(r"(?<!\w)" + re.escape(value.casefold()) + r"(?!\w)", text.casefold()) is not None
+
+
 def validate_summary(summary, segments):
     by_id={s['id']:s for s in segments}
     if set(summary)!={'overview','topics','decisions','actions','open_questions'}:
@@ -51,7 +59,7 @@ def validate_summary(summary, segments):
                 value=claim[field]
                 if not isinstance(value,str) or not value or len(value)>200:
                     raise ValueError('Invalid action attribution.')
-                if value!='unspecified' and not any(value.casefold() in by_id[i]['text'].casefold() for i in ids):
+                if value!='unspecified' and not any(attribution_is_stated(value, by_id[i]['text']) for i in ids):
                     raise ValueError('Action attribution is not stated in its source.')
     return summary
 
@@ -89,7 +97,7 @@ Every level is structurally validated against original transcript, not invented 
                 if category=='actions':
                     for field in ('owner','deadline'):
                         value=claim.get(field)
-                        if isinstance(value,str) and not any(value.casefold() in by_id[i]['text'].casefold() for i in ids):
+                        if isinstance(value,str) and not any(attribution_is_stated(value, by_id[i]['text']) for i in ids):
                             claim[field]='unspecified'
         return validate_summary(result,segments)
     batches=list(transcript_batches(segments,count_tokens))

@@ -17,4 +17,6 @@ Public evaluation uses the [AMI Meeting Corpus](https://groups.inf.ed.ac.uk/ami/
 
 The generated spoken regression fixture contains newly authored test text rendered with eSpeak NG. It uses synthetic voices, not recordings or clones of participants. Its text and generated test audio are designated CC0; the test-only eSpeak NG software retains its GPL license and is not added to the inference image. Generated fixtures are not substitutes for natural speech evaluation.
 
+The supplementary multilingual samples and references come from [Google FLEURS](https://huggingface.co/datasets/google/fleurs), CC-BY-4.0, with attribution to its dataset authors. The exact dataset revision and selected file hashes are in `benchmark/fleurs-manifest.json`. References are case/punctuation-normalized for WER/CER comparison; recognition outputs are generated derivatives. The small selection is for reproducible evaluation and is not presented as a representative meeting benchmark.
+
 No private recording, transcript or summary is included in public release evidence. Example uploads and publication remain subject to explicit approval.
