@@ -43,6 +43,10 @@ The [Google FLEURS dataset](https://huggingface.co/datasets/google/fleurs), CC-B
 
 Exact source revision, audio hashes, references and outputs are retained in `benchmark/fleurs-manifest.json` and the two `*-multilingual.json` results. `python benchmark/prepare_fleurs.py --output /path/to/fleurs-small` reproduces the bounded download selection without fetching full archives. The small sample count does not establish robust language or accent accuracy.
 
+## Non-speech regression
+
+The selected Paiton ASR plus Silero VAD produced zero words on three newly generated 30-second signals: silence, seeded white noise and harmonic instrumental tones. All windows were skipped by VAD; processing after model loading took 0.42–0.54 seconds per signal. This is not a claim about all music, singing or background audio. The signals are CC0, contain no human voices, and can be regenerated with `python benchmark/nonspeech.py --models /models/meeting --output /path/to/new-signals --artifact /path/to/meeting_lstm_float16_gfx1201.so`. Hashes, timings and outputs are in `benchmark/nonspeech-qualification.json`.
+
 ## Short complete-workflow example
 
 The generated 38.90-second spoken test ran through the packaged command in 154.00 seconds on first use: ASR/startup 32.76 s, diarization/startup 40.77 s, attribution 0.06 s, playback normalization 0.19 s and summary/startup 80.19 s. The actual Studio queue completed the same input in 145.82 seconds. These small cold-start-dominated examples are functional evidence, not throughput claims.
