@@ -106,11 +106,41 @@ Commands:
 - `/help` shows client help
 - `/quit` exits
 
-Thinking mode is disabled by default. Enable it with:
+## Thinking / reasoning mode
+
+The pinned checkpoint's chat template supports thinking, and the packaged server
+uses the `qwen3` reasoning parser. The **terminal client disables thinking by
+default**. Enable it per chat session with a larger output budget:
 
 ```bash
-docker exec -it paiton-qwen38 paiton-chat --thinking
+docker exec -it paiton-qwen38 paiton-chat --model qwen38 --thinking --max-tokens 4096
 ```
+
+Omit `--thinking` for direct answers. No server restart or different checkpoint is
+required. The terminal client displays the final answer, not the separate reasoning
+stream, so it may stay quiet while the model thinks.
+
+API callers should explicitly choose the mode. The server does not impose the
+terminal client's thinking-off default; an omitted setting follows the upstream
+chat template. To enable thinking:
+
+```bash
+curl --fail http://127.0.0.1:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"qwen38","messages":[{"role":"user","content":"Solve 3x + 7 = 22 and check the result."}],"max_tokens":4096,"temperature":0.6,"chat_template_kwargs":{"enable_thinking":true}}'
+```
+
+Set `"enable_thinking":false` for direct mode. Reasoning is returned separately
+from `message.content` (in `reasoning` or `reasoning_content`, depending on the
+runtime); streaming clients should handle the equivalent delta fields. Do not
+assume a `reasoning_effort` setting replaces this template toggle.
+
+The token budget includes reasoning **and** the final answer. Keep prompt plus
+output within the configured 8,192-token context; reduce the output budget for
+long conversations. A budget exhausted during thinking can leave no final answer.
+The 4,096-token example is a starting budget, not a quality or completion guarantee.
+
+Thinking availability does not establish a separate reasoning-quality benchmark. Use the direct-mode release measurements only for their documented settings.
 
 ## API
 
