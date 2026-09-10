@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "model": "openai/gpt-oss-20b",
+  "revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+  "gpu_arch": "gfx1201",
+  "artifact": "gptoss_mxfp4_decode_gfx1201.so",
+  "sha256": "db2d6d6b4855b7cc3e97be0f499630c40758ebebdf97cb8abf34bb6c2a8f2e5b",
+  "config_sha256": "3a2a26ded679375b7928ddeca59764df7cea83220c1961035f6d6e232659e9ce",
+  "abi": "PaitonGptOssMoeV1",
+  "quantization": "original MXFP4 E2M1 G32 E8M0 scales",
+  "compute": "FP32 vector accumulation, BF16 activation and weighted partial outputs",
+  "padded_hidden": 3072,
+  "padded_intermediate": 3072,
+  "max_tokens": 2,
+  "workspace_bytes": 98304,
+  "validation_required": [
+    "numerical",
+    "serving"
+  ]
+}
