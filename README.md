@@ -27,6 +27,7 @@ people build, experiment and create with local AI.
 | [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Animate an input image or generate silent video from text |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
+| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding and tools through an OpenAI-compatible API; local release candidate |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
 | [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Write, review and test code through terminal chat or a local coding API |
