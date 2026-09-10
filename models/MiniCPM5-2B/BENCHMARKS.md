@@ -73,3 +73,9 @@ Loading traces identified an unused FlashAttention/AITER import that initialized
 BF16 standalone GEMV microbenchmarks initially appeared faster than generic Torch linear, but native vLLM skinny GEMM removed that advantage. Fused gate, row-layout, alternate runner, import-time read-ahead and wider kernel variants did not produce a useful serving improvement and were rejected. The first microbenchmark had an empty captured graph and is invalid; corrected replay tests replaced it. Native offline profiling also exposed reversed GPU timestamps in this SDK; no precise stage-percentages are inferred from those traces.
 
 A separately converted llama.cpp BF16 screen completed its first useful answer in 9.57 s, materially faster startup than vLLM. It had only six screening prompts and no complete API/product qualification or Paiton path. This evidence remains visible: the package does not claim vLLM is the fastest possible small-model loader.
+
+## Final versioned image validation
+
+Both stock and Paiton passed 8/8 protocol checks in the final versioned image, including retrieval with 8,040 input tokens and over-context rejection. Its integration and artifact hashes match the full benchmark records; the shared runtime patch matches the retained source. The superseded intermediate image was unavailable for a complete filesystem comparison. Final-image chat observations are retained separately and do not replace the paired measurements above. Stock again changed latency within a run, reinforcing the variability limitation.
+
+The final Studio adapter/image smoke test measured 29.38 s initial useful response, 0.61 s warm reply using the same container, 1.01 s unload, and 28.38 s reload. These are single final validation observations; repeated startup trials and the separate larger-model switching measurements above remain the performance evidence. Nine focused Studio tests passed.

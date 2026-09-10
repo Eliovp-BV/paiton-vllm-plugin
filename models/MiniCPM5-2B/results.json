@@ -2468,5 +2468,266 @@
       "total": 20,
       "note": "Transport IDs and timings are excluded. Tool semantics are checked by the protocol suite."
     }
-  }
+  },
+  "final_image": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
+  "final_smoke": {
+    "package": {
+      "protocol_passed": 8,
+      "protocol_total": 8,
+      "near_context_input_tokens": 8040,
+      "first_completed_response_seconds": 30.786191797989886,
+      "chat_summary": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.2679704429829144,
+            "median": 0.2674355549970642,
+            "stdev": 0.0009188823101986668,
+            "min": 0.26707567897392437,
+            "max": 0.2695166309713386
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052188914611178916,
+            "median": 0.05214311397867277,
+            "stdev": 0.0002821938488770994,
+            "min": 0.051957880961708724,
+            "max": 0.052852457971312106
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05552253025234677,
+            "median": 0.05523489249753766,
+            "stdev": 0.0007611204795142852,
+            "min": 0.05511853197822347,
+            "max": 0.05738140898756683
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.05140496288368013,
+            "median": 0.05112236403510906,
+            "stdev": 0.0007406246139312306,
+            "min": 0.050927490985486656,
+            "max": 0.0531931669684127
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.2319251203807653,
+            "median": 0.23190135951153934,
+            "stdev": 0.0006661013743077542,
+            "min": 0.2311469439882785,
+            "max": 0.2331033839727752
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052222637241357006,
+            "median": 0.05217254348099232,
+            "stdev": 0.0003503924347518428,
+            "min": 0.05174426099983975,
+            "max": 0.05292295396793634
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ],
+      "note": "Validation run; does not replace the paired performance trials."
+    },
+    "stock": {
+      "protocol_passed": 8,
+      "protocol_total": 8,
+      "near_context_input_tokens": 8040,
+      "first_completed_response_seconds": 29.002922783955,
+      "chat_summary": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.837955816743488,
+            "median": 0.8372474139905535,
+            "stdev": 0.004287946305249214,
+            "min": 0.8334886389784515,
+            "max": 0.8465237210039049
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052031368875759654,
+            "median": 0.05155834250035696,
+            "stdev": 0.0032253769945130117,
+            "min": 0.048064007016364485,
+            "max": 0.058651224011555314
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.06158386812603567,
+            "median": 0.060189488489413634,
+            "stdev": 0.004136158955049406,
+            "min": 0.0596824079984799,
+            "max": 0.07180658599827439
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.047594115261745173,
+            "median": 0.04612293350510299,
+            "stdev": 0.004171528799836322,
+            "min": 0.04588303598575294,
+            "max": 0.05790320801315829
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5644432064946159,
+            "median": 0.6954027189931367,
+            "stdev": 0.1901898640929199,
+            "min": 0.33438505500089377,
+            "max": 0.7117888880311511
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04756168375752168,
+            "median": 0.046026488998904824,
+            "stdev": 0.004698867416568372,
+            "min": 0.04509151302045211,
+            "max": 0.05915420898236334
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ],
+      "note": "Validation run; does not replace the paired performance trials."
+    }
+  },
+  "studio_final_smoke": [
+    {
+      "label": "initial",
+      "seconds": 29.37702676601475,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 27,
+          "total_tokens": 30,
+          "completion_tokens": 3
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "Mercury",
+      "container": "719bca08b4f9ce71b91fabce9cf1548521f91defdff6402eccd639646f4033ad",
+      "job": "ae07942aa9f44c2e80b407e0a1638b20"
+    },
+    {
+      "label": "warm",
+      "seconds": 0.6145564269972965,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 32,
+          "total_tokens": 38,
+          "completion_tokens": 6
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "red, green, blue",
+      "container": "719bca08b4f9ce71b91fabce9cf1548521f91defdff6402eccd639646f4033ad",
+      "job": "73e93f2b7f0b4b8cbbd0b6888ed36471"
+    },
+    {
+      "label": "unload",
+      "seconds": 1.0114626979921013
+    },
+    {
+      "label": "reload",
+      "seconds": 28.381419859011658,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 24,
+          "total_tokens": 46,
+          "completion_tokens": 22
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "The sky appears blue because our atmosphere scatters shorter blue wavelengths of light more effectively than longer red wavelengths.",
+      "container": "1b477132da038e2bf6dcf81870acc5e517ab8f611ad22882dc9686146e69a5d5",
+      "job": "549c31c8e63f4a1ba290b9f623dba8bb"
+    }
+  ]
 }

@@ -10,7 +10,9 @@ From the repository root, with the reviewed artifact directory containing
 `minicpm5_awq_decode_gfx1201.so` and its SHA-256 manifest:
 
 ```bash
-docker buildx build --load \
+docker buildx build --load --provenance=false \
+  --build-arg SOURCE_DATE_EPOCH=1789031647 \
+  --build-arg PLUGIN_REVISION=3a17c227e1cfd63de53012e927401231e6ef1a70 \
   --build-context minicpm_overlay=/absolute/path/to/reviewed-artifacts \
   -f models/MiniCPM5-2B/Dockerfile \
   -t ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0 .
@@ -62,3 +64,7 @@ python3 benchmark/chat_benchmark.py --model minicpm5-2b --warmup-repeats 4 --out
 The compressed raw records use portable placeholders for local paths. Complete
 local commands, snapshots, logs and telemetry remain in the qualification archive.
 The public artifact manifest and container metadata pin the exact binary/runtime.
+
+The reviewed image uses plugin build revision `3a17c227e1cfd63de53012e927401231e6ef1a70`; check out that revision when reproducing its input tree. Later commits add evidence only. See `container-images.json` for the exact local manifest and component hashes. The standalone wheel is for inspection; use the pinned container for this qualified runtime.
+
+A clean compiler rebuild generated identical source after output-path normalization and passed all eight numerical/repack/nonempty-graph checks plus a fresh Torch-free load. Its binary checksum differed, so byte-identical compiler output across build directories is **not established**. `benchmark/results/compiler-reproduction.json` records both hashes. Distribution uses the exact serving-qualified binary, whose manifest must be preserved.
