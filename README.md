@@ -27,10 +27,23 @@ people build, experiment and create with local AI.
 | [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Animate an input image or generate silent video from text |
 | [**MiniMax H3**](models/MiniMax-H3/README.md) | Generate video with native stereo audio in ComfyUI or the terminal |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Create images in ComfyUI, a simple web interface or the terminal |
-| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding and tools through an OpenAI-compatible API; local release candidate |
+| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding and tools; **2.18× speedup / 54% lower latency** in the tested generation scenario |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat, code and generate text with a terminal client or OpenAI-compatible API |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and generate text with a terminal client or OpenAI-compatible API |
 | [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Write, review and test code through terminal chat or a local coding API |
+
+### GPT-OSS-20B: 2.18× speedup on one R9700
+
+**4.819 s → 2.214 s median end-to-end latency** with original MXFP4 weights:
+512 input / 256 output tokens, concurrency one, 32 requests per mode.
+The stock baseline already uses **O2 and full decode graph capture**. This is a
+conservative comparison against the fastest tested stock result; later stock runs
+were slower, with an unresolved timing shift. Both modes scored 18/20 on the fixed
+quality set, with no task-level regressions. This is not an all-workload speedup.
+
+[Run GPT-OSS-20B](models/GPT-OSS-20B/README.md) ·
+[Full benchmarks and caveats](models/GPT-OSS-20B/BENCHMARKS.md) ·
+[Hugging Face artifacts](https://huggingface.co/EliovpAI/GPT-OSS-20B-MXFP4-Paiton-RDNA4)
 
 ## Quick start
 
@@ -41,6 +54,20 @@ supported generation settings.
 Choose a model below. The first launch downloads and prepares its weights;
 allow time for loading and compilation. Caches persist for later runs.
 Run one model at a time.
+
+<details>
+<summary><strong>Chat, reason and code with GPT-OSS-20B</strong> · 2.18× tested speedup</summary>
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/GPT-OSS-20B/serve-docker.sh
+```
+
+In another terminal, run `python3 models/GPT-OSS-20B/chat.py` or use the
+OpenAI-compatible API on port 8020. Supports streaming, tools and JSON schemas.
+
+[Setup, benchmarks and tested limits →](models/GPT-OSS-20B/README.md)
+
+</details>
 
 <details>
 <summary><strong>Create fast text-to-video with FastWan 5B</strong> · Three-evaluation generation</summary>

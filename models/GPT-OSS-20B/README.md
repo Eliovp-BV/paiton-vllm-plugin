@@ -1,8 +1,12 @@
 # GPT-OSS-20B on Radeon AI PRO R9700
 
-Local community release candidate: original OpenAI MXFP4 weights with Paiton
+Free community release: original OpenAI MXFP4 weights with Paiton
 expert decode kernels, served through vLLM's OpenAI-compatible API. One R9700
-(gfx1201), 32 GB VRAM. Publication is pending; no new registry image is public yet.
+(gfx1201), 32 GB VRAM.
+
+**2.18× speedup — 54% lower end-to-end latency** in the tested generation
+scenario, using the original checkpoint. Stock already uses **O2 and full decode
+graph capture**. [Compiled artifacts on Hugging Face](https://huggingface.co/EliovpAI/GPT-OSS-20B-MXFP4-Paiton-RDNA4).
 
 The model is pinned to `6cee5e81ee83917806bbde320786a8fb61efebee`.
 It has approximately 21B total / 3.6B active parameters. All experts remain on
@@ -26,14 +30,14 @@ reasoning tokens. See [all measurements and limitations](BENCHMARKS.md).
 
 ## Launch
 
-For local review, build the image using [REPRODUCE.md](REPRODUCE.md), then run from this directory:
+Run from this model directory:
 
 ```bash
-PAITON_IMAGE=paiton-gpt-oss:local ./serve-docker.sh
+./serve-docker.sh
 ```
 
-After publication, `./serve-docker.sh` defaults to the new versioned GHCR image.
-That registry tag is currently a proposed publication target. The first launch
+`./serve-docker.sh` uses `ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0`.
+The first launch
 downloads only the pinned model files. Model, Triton and vLLM
 caches persist in `~/.cache/paiton-gpt-oss`. The pinned Harmony vocabulary is
 embedded in the image, so cached-model offline launches also support chat. The API listens on `0.0.0.0:8020`
@@ -42,10 +46,10 @@ to your intended clients; this launch has no authentication configured.
 
 ```bash
 # Same checkpoint and serving settings, stock expert implementation:
-PAITON_IMAGE=paiton-gpt-oss:local PAITON_CONTAINER=paiton-gpt-oss-stock ./serve-docker.sh --stock
+PAITON_CONTAINER=paiton-gpt-oss-stock ./serve-docker.sh --stock
 
 # Reuse an existing Hugging Face cache without modifying it:
-PAITON_IMAGE=paiton-gpt-oss:local PAITON_HF_CACHE="$HOME/.cache/huggingface" ./serve-docker.sh --offline
+PAITON_HF_CACHE="$HOME/.cache/huggingface" ./serve-docker.sh --offline
 
 # Terminal client (Python standard library only):
 python3 chat.py
@@ -117,3 +121,8 @@ multi-GPU serving. It does not change clock, power, fan or voltage settings.
 
 See [selection](SELECTION.md), [measured results](BENCHMARKS.md),
 [reproduction](REPRODUCE.md), and [licenses/provenance](NOTICE.md).
+
+For an immutable image reference, set `PAITON_IMAGE` to
+`ghcr.io/eliovp/paiton-vllm-plugin@sha256:0cf9c11304ade58e91d97db876a4462781fa2c18d2d4846f26d56fe5d207669d`.
+To rebuild locally with the compiled overlay from Hugging Face, see
+[REPRODUCE.md](REPRODUCE.md).

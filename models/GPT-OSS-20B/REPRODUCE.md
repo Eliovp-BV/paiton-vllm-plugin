@@ -101,3 +101,15 @@ first non-whitespace answer content, reasoning, final content and EOS behavior.
 Raw requests, returned token IDs, streamed events, responses, metrics and telemetry
 are retained with the result archive. The quality runner executes generated Python
 in a separate unprivileged, networkless, resource-bounded Docker container.
+
+## Download the compiled overlay
+
+```bash
+hf download EliovpAI/GPT-OSS-20B-MXFP4-Paiton-RDNA4 --revision v1.0.0 \
+  --include 'overlay/*' --local-dir ./paiton-gptoss-hf
+cp -a ./paiton-gptoss-hf/overlay ./gptoss_overlay
+```
+
+Use this directory as the `gptoss_overlay` build context in the recipe above.
+The overlay contains the tested compiled region and manifest; model weights
+continue to come from the pinned OpenAI repository.

@@ -1,6 +1,5 @@
 {
-  "proposed_ghcr_tag": "ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0",
-  "publication_status": "Not published; approval pending",
+  "publication_status": "Published",
   "local_image": "paiton-gpt-oss:local",
   "final_image_index_digest": "sha256:0cf9c11304ade58e91d97db876a4462781fa2c18d2d4846f26d56fe5d207669d",
   "final_amd64_manifest_digest": "sha256:e543cc4ad594accaa99c5bc43f93aa57cf086fc3fab9d4fc6427f1e308798ce0",
@@ -34,5 +33,7 @@
     "hip_count_unit": "WGP on this RDNA4 target",
     "target_compute_units": 64,
     "target_wgps": 32
-  }
+  },
+  "ghcr_tag": "ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0",
+  "huggingface_repo": "EliovpAI/GPT-OSS-20B-MXFP4-Paiton-RDNA4"
 }
