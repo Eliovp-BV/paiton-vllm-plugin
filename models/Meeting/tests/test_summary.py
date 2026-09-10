@@ -84,3 +84,21 @@ def test_attribution_accepts_complete_names_and_dates_with_punctuation():
     segments=[dict(id='s1',start=0,end=2,speaker='SPEAKER_00',text="Al, please call O'Neil by 15 September.")]
     draft=empty();draft['actions']=[dict(text="Call O'Neil.",quote=segments[0]['text'],segment_ids=['s1'],owner='Al',deadline='15 September')]
     assert validate_summary(draft,segments)==draft
+
+
+def test_market_fact_is_not_an_unresolved_question_even_if_model_accepts_it():
+    import json
+    from paiton_meeting.summary import verify_summary
+    segments=[dict(id='s1',start=0,end=3,speaker='SPEAKER_00',text='The vast majority of the under-35 group would like a liquid crystal display.')]
+    draft=empty();draft['open_questions']=[dict(text='Validate age-group feature requests.',segment_ids=['s1'],quote=segments[0]['text'])]
+    final,audit=verify_summary(draft,segments,lambda *_:json.dumps(dict(supported=True,reason='The feature was discussed.')))
+    assert final['open_questions']==[] and not audit[0]['supported']
+
+
+def test_explicit_undecided_issue_survives_supported_audit():
+    import json
+    from paiton_meeting.summary import verify_summary
+    segments=[dict(id='s1',start=0,end=3,speaker='SPEAKER_00',text='The launch date remains undecided.')]
+    draft=empty();draft['open_questions']=[dict(text='Launch date.',segment_ids=['s1'],quote=segments[0]['text'])]
+    final,_=verify_summary(draft,segments,lambda *_:json.dumps(dict(supported=True,reason='Explicitly undecided.')))
+    assert len(final['open_questions'])==1

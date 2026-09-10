@@ -145,6 +145,9 @@ VERIFY_SCHEMA={'type':'object','properties':{'supported':{'type':'boolean'},'rea
 RECAP_CUE=re.compile(r'\b(?:(?:agreed|decided)(?:\s+\w+){0,6}\s+(?:last|previous|earlier)\s+(?:meeting|call|session)|(?:last|previous|earlier)\s+(?:meeting|call|session)(?:\s+\w+){0,6}\s+(?:agreed|decided))\b',re.I)
 
 
+UNRESOLVED_CUE=re.compile(r"\?|\b(?:undecided|unresolved|unclear|unsure|uncertain|not sure|don['’]t know|do not know|haven['’]t decided|have not decided|yet to decide|need to decide|need to determine|open question)\b",re.I)
+
+
 def verify_summary(summary,segments,judge):
     """Conservative local second pass, retaining audit outcomes for user review.
 
@@ -184,6 +187,13 @@ numbers must come from annotated/manual checks, not this model's self-score.
             decision=parse_json(judge(VERIFY_SYSTEM,json.dumps({'category':category,'claim':claim,'transcript_context':context},ensure_ascii=False)))
             if set(decision)!={'supported','reason'} or not isinstance(decision['supported'],bool) or not isinstance(decision['reason'],str):
                 raise ValueError('Invalid factuality-check response.')
+            # An ordinary fact or suggestion is not itself an unresolved
+            # question. Require an explicit English question/uncertainty cue
+            # in the cited source, even if the local model accepts the claim.
+            # This deliberately sacrifices recall in a partial draft.
+            evidence=' '.join(segments[by_id[i]]['text'] for i in claim['segment_ids'])
+            if category=='open_questions' and decision['supported'] and not UNRESOLVED_CUE.search(evidence):
+                decision=dict(supported=False,reason='Cited source contains no explicit question or uncertainty; omitted conservatively from unresolved issues.')
             audit.append(dict(category=category,claim=claim,**decision))
             if decision['supported']:accepted[category].append(claim)
     # An overview must not continue claiming rejected assignments. This brief
