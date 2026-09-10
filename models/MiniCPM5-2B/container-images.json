@@ -1,0 +1,58 @@
+{
+  "publication_status": "published",
+  "image": "ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0",
+  "manifest_digest": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
+  "build": {
+    "command": [
+      "docker",
+      "buildx",
+      "build",
+      "--load",
+      "--provenance=false",
+      "--progress",
+      "plain",
+      "--build-context",
+      "minicpm_overlay=<REVIEWED_ARTIFACT_DIRECTORY>",
+      "--build-arg",
+      "PLUGIN_REVISION=3a17c227e1cfd63de53012e927401231e6ef1a70",
+      "--build-arg",
+      "SOURCE_DATE_EPOCH=1789031647",
+      "-f",
+      "models/MiniCPM5-2B/Dockerfile",
+      "-t",
+      "ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0",
+      "."
+    ],
+    "plugin_revision": "3a17c227e1cfd63de53012e927401231e6ef1a70",
+    "seconds": 7.9108927509514615,
+    "image": "ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0",
+    "image_id": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
+    "reported_size_bytes": 11792423885
+  },
+  "base_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:0cf9c11304ade58e91d97db876a4462781fa2c18d2d4846f26d56fe5d207669d",
+  "container_root_allocated_bytes": 27840765952,
+  "checkpoint_download_bytes": 2109727920,
+  "prepared_runtime_cache_approx_bytes": {
+    "paiton": 39100000,
+    "stock": 39400000
+  },
+  "first_base_image_pull_measured": false,
+  "component_verification": {
+    "final": {
+      "/opt/paiton/minicpm-plugin/paiton_vllm_plugin/models/paiton_minicpm5_awq.py": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "/opt/paiton/minicpm5/server.py": "cb55f5ec897219923bf1e5360ca35e6de48eac12b68510daa690e16927694815",
+      "/opt/paiton/minicpm5-artifacts/minicpm5_awq_decode_gfx1201.so": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "/opt/python/lib/python3.14/site-packages/vllm/v1/attention/backends/fa_utils.py": "0747df79742406491cc26063894cb4129cc786f71268ea47df4fdee2d076a7fd"
+    },
+    "integration_and_artifact_match_full_benchmark_record": true,
+    "runtime_patch_matches_retained_benchmark_source": true,
+    "launcher_matches_reviewed_source": true,
+    "note": "The intermediate local image tag was superseded; comparisons use retained component hashes, source and launch logs."
+  },
+  "artifact_manifest": "benchmark/results/artifact-manifest.json",
+  "note": "Metadata and benchmark records were added after the image build and are excluded from its source COPY. Use the build.plugin_revision to reproduce the reviewed image sources.",
+  "anonymous_manifest_verified": true,
+  "huggingface_repository": "https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4",
+  "huggingface_revision": "v1.0.0",
+  "huggingface_commit": "4bcf80e1bcf1bc8f5c2d657086121958cfe145cb"
+}
