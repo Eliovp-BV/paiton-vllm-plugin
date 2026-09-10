@@ -1,5 +1,5 @@
 {
-  "publication_status": "pending",
+  "publication_status": "published",
   "image": "ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0",
   "manifest_digest": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
   "build": {
@@ -50,5 +50,9 @@
     "note": "The intermediate local image tag was superseded; comparisons use retained component hashes, source and launch logs."
   },
   "artifact_manifest": "benchmark/results/artifact-manifest.json",
-  "note": "Metadata and benchmark records were added after the image build and are excluded from its source COPY. Use the build.plugin_revision to reproduce the reviewed image sources."
+  "note": "Metadata and benchmark records were added after the image build and are excluded from its source COPY. Use the build.plugin_revision to reproduce the reviewed image sources.",
+  "anonymous_manifest_verified": true,
+  "huggingface_repository": "https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4",
+  "huggingface_revision": "v1.0.0",
+  "huggingface_commit": "4bcf80e1bcf1bc8f5c2d657086121958cfe145cb"
 }

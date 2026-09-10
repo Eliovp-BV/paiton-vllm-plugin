@@ -19,8 +19,7 @@ a larger reasoning model. [Selection and alternatives](SELECTION.md). [Quantizat
 
 ## Run
 
-Publication is pending approval after local qualification. The version below is
-prepared locally; it is not yet a downloadable published tag.
+The versioned GHCR image is published. [Compiled artifacts and manifests](https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4/tree/v1.0.0) are also available on Hugging Face; weights download from the pinned upstream checkpoint.
 
 ```bash
 ./serve-docker.sh
