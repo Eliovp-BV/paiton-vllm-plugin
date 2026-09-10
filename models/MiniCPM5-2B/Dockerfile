@@ -4,6 +4,7 @@ FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:0cf9c11304ade58e91d97db876a4462781
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/minicpm-release-source/
 COPY LICENSES /opt/paiton/minicpm-release-source/LICENSES
 COPY paiton_vllm_plugin /opt/paiton/minicpm-release-source/paiton_vllm_plugin
+ARG SOURCE_DATE_EPOCH=1789031647
 RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/minicpm-plugin /opt/paiton/minicpm-release-source
 ENV PYTHONPATH=/opt/paiton/minicpm-plugin:/opt/python/lib/python3.14/site-packages/_rocm_sdk_core/share/amd_smi \
     VLLM_DISABLE_PAITON_PLATFORM=1 VLLM_ROCM_USE_AITER=0 OMP_NUM_THREADS=1 \
