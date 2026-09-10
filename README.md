@@ -19,8 +19,8 @@ guides with measured performance and tested limits.
 Linux and Docker are required; ComfyUI launchers also need Docker Compose.
 
 Choose by the task you want to do:
-[Text-only chat](#text-only-chat) · [Text + reasoning](#text--reasoning) ·
-[Coding](#coding) · [Image generation](#image-generation) · [Video](#video) ·
+[Text, reasoning and coding](#text-reasoning-and-coding) ·
+[Image generation](#image-generation) · [Video](#video) ·
 [Image understanding and editing](#image-understanding-and-editing).
 
 **GPU memory:** “Tested GPU capacity” is the hardware qualification, not a claim
@@ -30,40 +30,31 @@ has not been verified.** Do not treat checkpoint size or a sampled peak as a
 minimum-VRAM guarantee; leave headroom for context, concurrency, resolution and
 loading. Host RAM and disk requirements are separate and listed in each guide.
 
-### Text-only chat
+### Text, reasoning and coding
 
-| Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
-| --- | --- | --- | --- |
-| [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Small, concise chat; lightweight code and tools; 8K context, OpenAI-compatible API | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
-| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat and code; optional thinking (see reasoning below), text input, 8K context | 32 GB | Not reported in the model guide |
-| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | General chat; 8K context, one active request; DFlash enabled by default | 32 GB | Not reported in the model guide |
+| Model & setup guide | Best use / tested interface | Inputs in this Paiton release | Tested GPU capacity | Measured GPU use |
+| --- | --- | --- | --- | --- |
+| [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Concise chat, lightweight coding and tools; direct answers by default, experimental W4 thinking; 8K context, OpenAI-compatible API | Text | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API | **Text only**; upstream vision components are not qualified here¹ | 32 GB | Not reported in the model guide |
+| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API; DFlash benchmarks use thinking off | **Text only**; upstream vision path is disabled by the launcher¹ | 32 GB | Not reported in the model guide |
+| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context, terminal/OpenAI-compatible API | Text | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
+| [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Dedicated code writing, review and testing; terminal chat or local coding API, 4K context | Text | 32 GB | [~20.1 GiB](models/Qwen3-Coder-30B/BENCHMARKS.md) |
+
+¹ The pinned [Qwen3.8 configuration](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16/blob/649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2/config.json)
+and [Ornith configuration](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4/blob/9e488f46c0f7969f84c9923ee0256311cd50316e/config.json)
+include vision components and image tokens. That upstream multimodal architecture
+is distinct from the shipped Paiton interface: Qwen3.8 qualifies text input only,
+and Ornith runs with `--language-model-only`. **Image uploads / visual chat are not
+supported by these community releases.**
 
 MiniCPM5 is the smallest download here: **2.11 GB**, with a **27.98 s median**
 prepared-cache launch to a completed useful answer (three trials). Its small
 quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
 [Loading, quality and generation evidence →](models/MiniCPM5-2B/BENCHMARKS.md)
 
-### Text + reasoning
-
-| Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
-| --- | --- | --- | --- |
-| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
-| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | Chat and reasoning with optional thinking; terminal default off, 8K context, one active request | 32 GB | Not reported in the model guide |
-| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md#thinking--reasoning-mode) | Optional thinking toggle; terminal default off; published DFlash benchmark uses thinking off | 32 GB | Not reported in the model guide |
-
-Models can appear in more than one category: text-only describes the input modality,
-while reasoning describes a generation mode. Reasoning consumes the output budget. MiniCPM5's optional thinking mode is
-experimental in this package; its qualified default is direct-answer chat.
-
-### Coding
-
-| Model & setup guide | Best use / tested interface | Tested GPU capacity | Measured GPU use |
-| --- | --- | --- | --- |
-| [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Dedicated code writing, review and testing; terminal chat or local coding API, 4K context | 32 GB | [~20.1 GiB](models/Qwen3-Coder-30B/BENCHMARKS.md) |
-
-For lightweight code questions, start with MiniCPM5. For coding with explicit
-reasoning, see GPT-OSS above. Coding-client compatibility and tool support are
-specific to each package; the model guides describe what was tested.
+Reasoning consumes the output budget. Each model guide shows its thinking controls,
+tool support and tested limits; MiniCPM5 W4 thinking remains experimental. Input
+modality, reasoning and coding are separate capabilities, listed per model above.
 
 ### Image generation
 
@@ -81,11 +72,16 @@ specific to each package; the model guides describe what was tested.
 
 ### Image understanding and editing
 
-**Text + image → text** (visual chat/captioning) and **text + image → image**
-(editing) do not yet have a qualified community package here. Qwen3.8's release
-accepts text only; FLUX.2 klein's release qualifies text-to-image only. To animate
-an image into video, use Wan2.2 or MiniMax H3 above. Categories describe the
-shipped runtime, not every capability of an upstream model family.
+Use the input/output columns to distinguish these workflows:
+
+- **Text + image → text** (visual chat/captioning): no qualified Paiton package yet.
+  Qwen3.8 and Ornith have upstream vision components, but the released runtimes
+  above serve text only.
+- **Text + image → image** (image editing): not qualified in the FLUX.2 klein
+  package; its supported workflow is text → image.
+- **Text + image → video** (image animation): supported by **Wan2.2** with an
+  optional input image, and **MiniMax H3** with optional first/last images.
+  **FastWan** qualifies text input only.
 
 ## Quick start
 
