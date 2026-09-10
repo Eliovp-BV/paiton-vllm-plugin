@@ -13,7 +13,11 @@ The pipeline separates audio capture/import, Silero voice activity detection, Pa
 
 Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
 
+No separate forced-alignment model is shipped: word timing and punctuation come from Parakeet, followed by speaker-turn attribution. Timestamp limitations are measured separately from WER.
+
 ## Recording import and capture
+
+See [CAPTURE.md](CAPTURE.md) for the browser/OS capability matrix and a complete source-selection workflow. Shared audio may omit the local microphone; this version records one source at a time.
 
 Studio accepts bounded, ordered uploads and preserves the imported original. Real codec round trips have been tested for WAV, FLAC, MP3, M4A/AAC, MP4/AAC, Ogg/Opus and WebM/Opus. An extension does not guarantee that every codec inside a container is supported. Invalid/no-audio files fail explicitly. The current limits are 4 GiB per imported file and eight hours of decoded audio.
 

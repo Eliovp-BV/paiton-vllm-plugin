@@ -79,6 +79,12 @@ A graph-enabled native Granite probe executed on gfx1201 using BF16 and Triton a
 
 The actual `process --summary-backend vllm` command then completed the spoken audio fixture in 191.89 seconds: ASR/startup 26.95 s, diarization/startup 21.14 s, attribution 0.06 s, playback 0.20 s and summary/startup 143.51 s. Summary model loading/graph initialization took 88.60 s and generation/auditing 27.43 s. This first-use short example is slower overall than the previous Transformers example; inference speed alone does not establish startup or end-to-end superiority. Worker allocator peaks were 14.67 GB allocated / 14.77 GB reserved, including KV and graph pools. A named local worker extension retrieves these counters without enabling pickle-based RPC serialization. Repeated long-pipeline comparison is pending.
 
+## Summary coverage against the human AMI reference
+
+The initial vLLM runs were compared to AMI's human-authored abstract, four grouped final-decision sentences and one action sentence. Both initial outputs recovered **0/4 final-decision groups and 0/1 action items**. Stock included a transcript-supported TV-only/no-teletext scope statement; Paiton retained eight discussion-topic labels with no decision/action claims. The scope statement is not counted as recovery of a different reference decision. Action precision is undefined when no actions are emitted.
+
+Missing reference items include the target buyer, one-design decision, Video Plus/seashell shape, docking/manual/casing choices and the marketing task to research instruction manuals. This is a major coverage limitation in topic-focused partial drafts. It is accepted as incomplete v1 output, not presented as exhaustive notes or measured 60–75% recall. The full transcript remains available. The short synthetic fixture separately checks correct included decisions/actions and rejection of fictional commitments. The protocol, reference text, source hash and run counts are in `benchmark/ami-summary-reference-check.json`; this is not an independent human factuality rating.
+
 ## Footprint and limits
 
 Prepared role directories occupied about 2.51 GB Parakeet, 33.7 MB community-1, 7.33 GB Granite and 2.27 MB VAD. Each separately initialized runtime cache occupied about 815 MB after these tests. The candidate image reports 11.90 GB uncompressed, with layers shared with the existing Studio runtime. These are measured logical bytes, not promised incremental download sizes. Keep space for original audio, normalized playback, model downloads and Docker build layers.
