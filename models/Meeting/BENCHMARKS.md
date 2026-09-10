@@ -1,0 +1,45 @@
+# R9700 qualification
+
+Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute units / 32 WGPs. Host RAM: 16 GiB. Runtime: Python 3.14.6, Torch 2.11 / ROCm 7.14, Transformers 5.14, native SDPA. No hosted judge or paid inference service was used.
+
+## Declared primary scenario
+
+The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. Complete-pipeline repetitions are in progress; the objective is not claimed achieved. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
+
+RTF is processing seconds / audio seconds. Audio hours per wall-clock hour is its reciprocal. Offline capture has no provisional/final streaming transcript latency; processing begins after recording stops or an import finishes.
+
+## Measured ASR stage
+
+Three warm repetitions per variant, following a separate first pass, use the same FP16 Parakeet checkpoint, SDPA, Silero VAD, 30-second windows, two-second margins, greedy TDT decoding budget and timestamps. Only prediction LSTM execution changes.
+
+| Metric | Stock | Paiton |
+|---|---:|---:|
+| Median ASR seconds | 87.4439 | 77.3205 |
+| Minimum–maximum seconds | 87.0684–88.7259 | 77.1292–77.8862 |
+| Sample standard deviation | 0.8691 | 0.3936 |
+| RTF | 0.037282 | 0.032966 |
+| Audio hours / wall hour | 26.8228 | 30.3347 |
+| WER | 20.4216% | 20.4362% |
+| CER | 15.7432% | 15.7750% |
+
+Paiton reduces ASR wall time by **11.58%**. This is not complete-pipeline acceleration. Outputs were stable across the four passes within each variant; stock/Paiton output edit WER was 0.0334%. The reference comparison uses ordered single-stream text, so overlap and unannotated room speech affect errors. Raw aggregate results are in `benchmark/asr-comparison.json`.
+
+## Attribution and timestamps
+
+Community-1's full recording run took 77.53 seconds; the production memory-mapped decoder path subsequently took 81.62 seconds and produced exactly the same 448 speaker turns. Six anonymous clusters were produced for the AMI participants plus room/technician speech and oversegmentation. A 250 ms collar with original manual utterance labels, full recording interval and overlap included yields 14.90% DER, versus 49.21% for the rejected Sortformer alternative. Zero-collar DER was 19.21%. This is not the upstream forced-alignment benchmark protocol.
+
+Among 5,522 lexically matched stock words against manual AMI word annotations, median absolute start error was 80 ms (p90 210 ms, p95 270 ms); median end error was 90 ms (p90 310 ms, p95 about 440 ms). Large alignment/overlap outliers reached about 20–21 seconds and must not be hidden by the median. These figures apply only to matched words. Around chunk boundaries, the diagnostic found 41 deletions and four insertions among 283 reference words; it does not prove chunking caused those errors. Paiton results were essentially unchanged. See `benchmark/timestamp-boundary-comparison.json`.
+
+## Short complete-workflow example
+
+The generated 38.90-second spoken test ran through the packaged command in 154.00 seconds on first use: ASR/startup 32.76 s, diarization/startup 40.77 s, attribution 0.06 s, playback normalization 0.19 s and summary/startup 80.19 s. The actual Studio queue completed the same input in 145.82 seconds. These small cold-start-dominated examples are functional evidence, not throughput claims.
+
+Both outputs retained the Morgan/Tuesday action and undecided-launch issue, rejected the fictional injected approval and email invitation, and omitted the explicit USB-C decision. Included references were checked against the actual transcript. The partial-summary scope accepts omissions; no 60–75% empirical recall score is asserted. A local model audit is not an independent factuality judge.
+
+## Footprint and limits
+
+Prepared role directories occupied about 2.51 GB Parakeet, 33.7 MB community-1, 7.33 GB Granite and 2.27 MB VAD. Each separately initialized runtime cache occupied about 815 MB after these tests. The candidate image reports 11.90 GB uncompressed, with layers shared with the existing Studio runtime. These are measured logical bytes, not promised incremental download sizes. Keep space for original audio, normalized playback, model downloads and Docker build layers.
+
+Stages release GPU allocations before the next model loads. A prior full compact-summary run peaked at about 8.04 GB allocated / 8.58 GB reserved; diarization at 1.78 GB / 2.25 GB. Driver memory is sampled separately because it includes allocations outside Torch. Complete-pipeline telemetry and repeat statistics remain pending. Quantization probes and their failure cases are documented in `QUANTIZATION.md`.
+
+Tests cover codecs, bounded decoding, chunk stitching, evidence references, exports, cleanup, and spoken/text instruction attacks. Natural English AMI and one-speaker LibriSpeech probes support a limited qualification, not universal accuracy across accents or languages. Real microphone/tab/system capture and native Teams sessions are not validated by the simulated Chromium microphone test.

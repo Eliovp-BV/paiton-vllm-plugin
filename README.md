@@ -20,6 +20,7 @@ Linux and Docker are required; ComfyUI launchers also need Docker Compose.
 
 Choose by the task you want to do:
 [Text, reasoning and coding](#text-reasoning-and-coding) ·
+[Meeting audio](#meeting-audio) ·
 [Image generation](#image-generation) · [Video](#video) ·
 [Image understanding and editing](#image-understanding-and-editing).
 
@@ -55,6 +56,10 @@ quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
 Reasoning consumes the output budget. Each model guide shows its thinking controls,
 tool support and tested limits; MiniCPM5 W4 thinking remains experimental. Input
 modality, reasoning and coding are separate capabilities, listed per model above.
+
+### Meeting audio
+
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous community-1 speaker labels and a compact Granite helper for partial, timestamp-linked summaries. English recording import and the Studio processing workflow have local tests on R9700. Live Teams capture is not qualified; the candidate is not published. [Setup and limits](models/Meeting/REPRODUCE.md) · [Measured results](models/Meeting/BENCHMARKS.md).
 
 ### Image generation
 
