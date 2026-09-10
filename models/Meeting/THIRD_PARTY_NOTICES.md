@@ -20,3 +20,5 @@ The generated spoken regression fixture contains newly authored test text render
 The supplementary multilingual samples and references come from [Google FLEURS](https://huggingface.co/datasets/google/fleurs), CC-BY-4.0, with attribution to its dataset authors. The exact dataset revision and selected file hashes are in `benchmark/fleurs-manifest.json`. References are case/punctuation-normalized for WER/CER comparison; recognition outputs are generated derivatives. The small selection is for reproducible evaluation and is not presented as a representative meeting benchmark.
 
 No private recording, transcript or summary is included in public release evidence. Example uploads and publication remain subject to explicit approval.
+
+The candidate applies one pinned-source change to vLLM's optional TorchCodec video import: an unavailable native video library (`OSError`) follows its existing unavailable-backend fallback. The inherited CUDA TorchCodec wheel is not used for meeting audio; CPU PyAV decoding is unchanged. The patch does not add CUDA libraries. vLLM retains its Apache-2.0 license and contributor notices.

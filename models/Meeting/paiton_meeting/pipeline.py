@@ -9,7 +9,7 @@ import time
 
 
 def process(recording, models, output, artifact=None, track=0, channel=None,
-            keep_intermediates=False):
+            keep_intermediates=False, summary_backend='transformers'):
     recording = Path(recording).resolve(strict=True)
     models = Path(models).resolve(strict=True)
     output = Path(output).resolve()
@@ -45,7 +45,7 @@ def process(recording, models, output, artifact=None, track=0, channel=None,
         stage('playback_with_startup', ['normalize', recording, '--output',
               output/'playback.wav', *selection])
         stage('summary_with_startup', ['summarize', scratch/'transcript.json',
-              '--checkpoint', models/'granite-summary', '--output', scratch/'result.json'])
+              '--checkpoint', models/'granite-summary', '--summary-backend', summary_backend, '--output', scratch/'result.json'])
         result = json.loads((scratch/'result.json').read_text())
         timing['complete_pipeline_seconds'] = time.perf_counter() - started
         result['pipeline_timings'] = timing

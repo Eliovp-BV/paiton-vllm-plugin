@@ -1,6 +1,6 @@
 # Local meeting notes for Paiton Studio
 
-**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Long-recording complete-pipeline measurements are still in progress. Do not treat partial drafts as approved meeting records.
+**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. The original long-recording complete-pipeline comparison is complete; a faster summary backend is undergoing full-workflow qualification. Do not treat partial drafts as approved meeting records.
 
 The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local summarizer under qualification. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
 
@@ -9,7 +9,7 @@ The pipeline separates audio capture/import, Silero voice activity detection, Pa
 | Speech recognition | NVIDIA Parakeet TDT 0.6B v3 | Transformers, FP16 SDPA; optional Paiton prediction LSTM |
 | Voice activity | Silero VAD | CPU TorchScript, silence gating without shifting the audio clock |
 | Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
-| Partial summary | Granite 4.2 3B (3.7B actual parameters) | Separate compact text helper; evidence-linked partial notes with limited semantic qualification |
+| Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native Transformers and optional vLLM backends, evidence-linked partial notes |
 
 Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
 
@@ -34,6 +34,8 @@ Capture is recording-first, followed by offline processing. It is not a qualifie
 ## Local stage commands
 
 See [REPRODUCE.md](REPRODUCE.md) for pinned model preparation, the required compiled-artifact build context and the one-command recording workflow. The base image is pinned by digest, and added Python dependencies are pinned in `requirements.lock`. The candidate runs under an unprivileged UID. Keep `/models/cache` persistent and mount original recordings read-only.
+
+The optional `--summary-backend vllm` works with `process` and checkpoint-based `summarize`; `transformers` remains the default pending repeated complete-pipeline qualification. vLLM uses native BF16 Granite, Triton attention and graph caching; audio components remain outside vLLM.
 
 The package CLI provides one-command `process`, plus `inspect`, `normalize`, `transcribe`, `diarize`, `attribute`, `summarize`, `export` and `benchmark-asr`; run `python -m paiton_meeting --help` for their arguments. Separate ASR and diarization processes release their GPU allocations before the summary model starts. Studio schedules these stages through its existing GPU queue and only stops containers it owns.
 

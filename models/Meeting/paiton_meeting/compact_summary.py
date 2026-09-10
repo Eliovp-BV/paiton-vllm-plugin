@@ -19,6 +19,12 @@ def final_content(text, finished):
 
 class CompactSummarizer:
     """BF16 SDPA, bounded context, seeded sampling, no remote inference or code."""
+    backend = 'transformers'
+
+    def memory_metrics(self):
+        return dict(summary_peak_allocated=self.torch.cuda.max_memory_allocated(),
+                    summary_peak_reserved=self.torch.cuda.max_memory_reserved())
+
     def __init__(self, directory):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -73,5 +79,4 @@ class CompactSummarizer:
                     summary_loading_seconds=self.loading_seconds,
                     summary_seconds=time.perf_counter()-started,
                     summary_status='generated-draft',
-                    summary_peak_allocated=self.torch.cuda.max_memory_allocated(),
-                    summary_peak_reserved=self.torch.cuda.max_memory_reserved())
+                    summary_backend=self.backend, **self.memory_metrics())

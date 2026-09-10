@@ -40,6 +40,7 @@ docker run --rm --network none --entrypoint python3 \
 ```bash
 ./run-docker.sh /path/to/meeting.mp4 /path/to/new-meeting-result
 ./run-docker.sh --stock /path/to/meeting.mp4 /path/to/new-stock-result
+./run-docker.sh /path/to/meeting.mp4 /path/to/new-vllm-result --summary-backend vllm
 ```
 
 Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
@@ -54,6 +55,8 @@ For a complete-pipeline comparison, the host-side harness runs an initial pair a
 python benchmark/complete_pipeline.py --launcher "$PWD/run-docker.sh" \
   --recording /path/to/meeting.wav --output /path/to/new-benchmark --repeats 3
 ```
+
+Use `--summary-backend vllm` on the benchmark command to qualify that optional text backend consistently across both ASR variants. The Linux harness also samples the named owned container's process RSS; summed RSS can double-count shared pages.
 
 Launcher wall time can include waiting for another workload. The reported pipeline time starts after lease acquisition and excludes Docker startup; individual stage times include interpreter/model startup and switching. This serial deployment is intentionally separate from a resident-model warm ASR microbenchmark.
 

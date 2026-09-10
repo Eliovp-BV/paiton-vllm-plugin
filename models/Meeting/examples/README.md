@@ -7,3 +7,5 @@ The file deliberately includes a spoken prompt-injection attempt about a fiction
 Playback references use the decoded recording clock. Speaker clusters are anonymous estimates: the two synthetic voices were largely merged, so this fixture does not establish speaker-count accuracy. The natural multi-speaker AMI evaluation is reported separately.
 
 These files are prepared locally for review. Publication of the example and derived output requires explicit approval along with the package.
+
+The authored spoken reference, timing, generator version and audio SHA are in `spoken-reference.json`. ASR preserved R9700, 32 GB, 64 compute units, GFX1201, BF16 and 8-bit weights with normalized spelling, but rendered “AI PRO” as “iPro.” This is a small inspectable technical-vocabulary check, not a general names/numbers accuracy rate.

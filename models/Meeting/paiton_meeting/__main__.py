@@ -52,10 +52,13 @@ def main():
     pipeline.add_argument('recording');pipeline.add_argument('--models',required=True);pipeline.add_argument('--output',required=True)
     pipeline.add_argument('--artifact');pipeline.add_argument('--track',type=int,default=0);pipeline.add_argument('--channel',type=int)
     pipeline.add_argument('--keep-intermediates',action='store_true')
+    for command in (summary, pipeline):
+        command.add_argument('--summary-backend', choices=['transformers','vllm'],
+            default=os.environ.get('PAITON_MEETING_SUMMARY_BACKEND','transformers'))
     args = parser.parse_args()
     if args.command=='process':
         from .pipeline import process
-        process(args.recording,args.models,args.output,args.artifact,args.track,args.channel,args.keep_intermediates)
+        process(args.recording,args.models,args.output,args.artifact,args.track,args.channel,args.keep_intermediates,args.summary_backend)
         return
     if args.command=='benchmark-asr':
         from .benchmark import benchmark
@@ -86,8 +89,12 @@ def main():
     elif args.command == 'summarize':
         result = json.loads(Path(args.transcript).read_text())
         if args.checkpoint:
-            from .compact_summary import CompactSummarizer
-            model = CompactSummarizer(args.checkpoint)
+            if args.summary_backend == 'vllm':
+                from .vllm_summary import VLLMSummarizer
+                model = VLLMSummarizer(args.checkpoint)
+            else:
+                from .compact_summary import CompactSummarizer
+                model = CompactSummarizer(args.checkpoint)
         else:
             if not args.model or not args.tokenizer:
                 parser.error('--endpoint requires --model and --tokenizer')
