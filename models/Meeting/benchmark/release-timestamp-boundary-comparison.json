@@ -1,0 +1,179 @@
+{
+  "paiton-0": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "paiton-1": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "paiton-2": {
+    "lexically_matched_words": 5523,
+    "reference_words": 6831,
+    "hypothesis_words": 5985,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.43899999999986994,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 959,
+    "all_insertions": 113
+  },
+  "paiton-3": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "stock-0": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "stock-1": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "stock-2": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "stock-3": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113
+  },
+  "protocol": "Original manual AMI word times, lexical edit alignment, full recording. Timestamp errors measured only on exact word matches; overlap and annotation segmentation affect alignment. Boundary region is +/-0.5 seconds around 28+26*n seconds. Deletions/insertions here are diagnostics, not proof of chunk-caused errors. No timestamp tuning against this reference."
+}
