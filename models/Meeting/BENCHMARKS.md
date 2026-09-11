@@ -92,3 +92,18 @@ Prepared role directories occupied about 2.51 GB Parakeet, 33.7 MB community-1, 
 Stages release GPU allocations before the next model loads. A prior full compact-summary run peaked at about 8.04 GB allocated / 8.58 GB reserved; diarization at 1.78 GB / 2.25 GB. Driver memory is sampled separately because it includes allocations outside Torch. The Transformers complete-pipeline telemetry and repeat statistics are reported above; final-backend qualification remains in progress. Quantization probes and their failure cases are documented in `QUANTIZATION.md`.
 
 Tests cover codecs, bounded decoding, chunk stitching, evidence references, exports, cleanup, and spoken/text instruction attacks. Natural English AMI and one-speaker LibriSpeech probes support a limited qualification, not universal accuracy across accents or languages. Real microphone/tab/system capture and native Teams sessions are not validated by the simulated Chromium microphone test.
+
+## Native vLLM complete-pipeline diagnostic
+
+Eight runs completed on the same 39:05 recording using the frozen pre-source-build image: an initial pair followed by three cached repetitions per ASR variant. Native vLLM supplied the same Granite checkpoint, prompts, limits and sampling configuration in both variants.
+
+| Cached complete pipeline | Stock ASR | Paiton ASR |
+|---|---:|---:|
+| Median seconds | 414.19 | 374.90 |
+| Range seconds | 385.78–424.20 | 347.56–398.66 |
+| Sample standard deviation seconds | 19.93 | 25.57 |
+| RTF (processing seconds / audio seconds) | 0.17659 | 0.15984 |
+| Audio hours / wall-clock hour | 5.663 | 6.256 |
+| Median sampled driver peak, decimal GB | 15.790 | 15.790 |
+
+The observed median reduction is 9.49%, below the 20% objective. Generated summary lengths differ between variants, so this complete-pipeline change is not a pure compiler-kernel speedup. A canceled NASM configure/compile attempt overlapped Paiton repetition 3 for approximately 16 seconds; retain that repetition as potentially affected by host contention. This batch is diagnostic and does not qualify the replacement source-built media image. Its exact image revision, per-stage results, allocator/process-memory measurements and limitations are in [the detailed report](benchmark/vllm-complete-pipeline-diagnostic.json); all eight raw timing rows are in [the timing file](benchmark/vllm-complete-pipeline-diagnostic-timings.json). No run was discarded from the reported statistics.

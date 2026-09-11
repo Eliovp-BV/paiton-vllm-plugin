@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "av_version": "18.1.0",
+  "license": "LGPL version 3 or later",
+  "configuration": "--prefix=/opt/meeting-media --enable-shared --disable-static --enable-version3 --disable-gpl --disable-nonfree --disable-autodetect --disable-network --disable-programs --disable-doc --disable-debug --enable-libmp3lame --enable-libopus --extra-cflags=-I/opt/meeting-media/include --extra-ldflags='-L/opt/meeting-media/lib -Wl,-rpath,/opt/meeting-media/lib'",
+  "loaded_media_libraries": [
+    "libavcodec.so.62.28.102",
+    "libavdevice.so.62.3.102",
+    "libavfilter.so.11.14.102",
+    "libavformat.so.62.12.102",
+    "libavutil.so.60.26.102",
+    "libmp3lame.so.0.0.0",
+    "libopus.so.0.11.1",
+    "libswresample.so.6.3.102",
+    "libswscale.so.9.5.102"
+  ],
+  "source_files_verified": 6,
+  "codec_dependency_closure": "\tlinux-vdso.so.1 (0x000073ede233a000)\n\tlibswresample.so.6 => /opt/meeting-media/lib/libswresample.so.6 (0x000073ede0b53000)\n\tlibavutil.so.60 => /opt/meeting-media/lib/libavutil.so.60 (0x000073ede094d000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000073ede0862000)\n\tlibmp3lame.so.0 => /opt/meeting-media/lib/libmp3lame.so.0 (0x000073ede07ea000)\n\tlibopus.so.0 => /opt/meeting-media/lib/libopus.so.0 (0x000073ede0780000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000073ede056c000)\n\t/lib64/ld-linux-x86-64.so.2 (0x000073ede233c000)\n"
+}
