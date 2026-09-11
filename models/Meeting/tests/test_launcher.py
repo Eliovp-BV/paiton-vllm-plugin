@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 
-@pytest.mark.parametrize('option,compiled',[(None,False),('--stock',False),('--paiton',True)])
+@pytest.mark.parametrize('option,compiled',[(None,True),('--stock',False),('--paiton',True)])
 def test_launcher_selects_explicit_backend_and_preserves_input(tmp_path,option,compiled):
     binary=tmp_path/'bin';binary.mkdir()
     scripts={

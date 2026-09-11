@@ -1,0 +1,122 @@
+[
+  {
+    "backend": "stock",
+    "repeat": 0,
+    "cached": false,
+    "launcher_wall_seconds": 292.1745069026947,
+    "asr_with_startup_seconds": 46.87632162705995,
+    "diarization_with_startup_seconds": 67.9392095070798,
+    "attribution_with_startup_seconds": 0.642878093989566,
+    "playback_with_startup_seconds": 1.9540990290697664,
+    "summary_with_startup_seconds": 173.65591624297667,
+    "complete_pipeline_seconds": 291.07856121705845
+  },
+  {
+    "backend": "paiton",
+    "repeat": 0,
+    "cached": false,
+    "launcher_wall_seconds": 282.5512681007385,
+    "asr_with_startup_seconds": 41.456827830988914,
+    "diarization_with_startup_seconds": 67.15239694702905,
+    "attribution_with_startup_seconds": 0.625715165049769,
+    "playback_with_startup_seconds": 1.8928485509241,
+    "summary_with_startup_seconds": 170.3767393400194,
+    "complete_pipeline_seconds": 281.5146252500126
+  },
+  {
+    "backend": "paiton",
+    "repeat": 1,
+    "cached": true,
+    "launcher_wall_seconds": 285.0616044998169,
+    "asr_with_startup_seconds": 43.17428606399335,
+    "diarization_with_startup_seconds": 68.12058905698359,
+    "attribution_with_startup_seconds": 0.6288118229713291,
+    "playback_with_startup_seconds": 1.9940650339704007,
+    "summary_with_startup_seconds": 169.87377603701316,
+    "complete_pipeline_seconds": 283.84118284098804
+  },
+  {
+    "backend": "stock",
+    "repeat": 1,
+    "cached": true,
+    "launcher_wall_seconds": 314.20566606521606,
+    "asr_with_startup_seconds": 45.38538862101268,
+    "diarization_with_startup_seconds": 68.13716435502283,
+    "attribution_with_startup_seconds": 0.6272223809501156,
+    "playback_with_startup_seconds": 1.9096295090857893,
+    "summary_with_startup_seconds": 196.81951008795295,
+    "complete_pipeline_seconds": 312.88948062004056
+  },
+  {
+    "backend": "stock",
+    "repeat": 2,
+    "cached": true,
+    "launcher_wall_seconds": 292.23456025123596,
+    "asr_with_startup_seconds": 45.885458359029144,
+    "diarization_with_startup_seconds": 68.48098600690719,
+    "attribution_with_startup_seconds": 0.6254464939702302,
+    "playback_with_startup_seconds": 1.9061158850090578,
+    "summary_with_startup_seconds": 174.00054251099937,
+    "complete_pipeline_seconds": 290.90879193891305
+  },
+  {
+    "backend": "paiton",
+    "repeat": 2,
+    "cached": true,
+    "launcher_wall_seconds": 303.02731466293335,
+    "asr_with_startup_seconds": 39.118715228978544,
+    "diarization_with_startup_seconds": 69.13419497897848,
+    "attribution_with_startup_seconds": 0.6282022600062191,
+    "playback_with_startup_seconds": 1.9291857739444822,
+    "summary_with_startup_seconds": 190.66374119801912,
+    "complete_pipeline_seconds": 301.48419117101
+  },
+  {
+    "backend": "paiton",
+    "repeat": 3,
+    "cached": true,
+    "launcher_wall_seconds": 285.5371513366699,
+    "asr_with_startup_seconds": 41.41004829900339,
+    "diarization_with_startup_seconds": 68.96274475404061,
+    "attribution_with_startup_seconds": 0.6265004229499027,
+    "playback_with_startup_seconds": 1.9141540779964998,
+    "summary_with_startup_seconds": 170.99705095600802,
+    "complete_pipeline_seconds": 283.92063858697657
+  },
+  {
+    "backend": "stock",
+    "repeat": 3,
+    "cached": true,
+    "launcher_wall_seconds": 291.77955412864685,
+    "asr_with_startup_seconds": 45.42104838101659,
+    "diarization_with_startup_seconds": 66.60271465405822,
+    "attribution_with_startup_seconds": 0.6423551250481978,
+    "playback_with_startup_seconds": 1.9420798819046468,
+    "summary_with_startup_seconds": 176.526370786014,
+    "complete_pipeline_seconds": 291.14488713198807
+  },
+  {
+    "backend": "stock",
+    "repeat": 4,
+    "cached": true,
+    "launcher_wall_seconds": 290.81447172164917,
+    "asr_with_startup_seconds": 46.277318756096065,
+    "diarization_with_startup_seconds": 68.43871065007988,
+    "attribution_with_startup_seconds": 0.6298893210478127,
+    "playback_with_startup_seconds": 1.9316515559330583,
+    "summary_with_startup_seconds": 172.50914364296477,
+    "complete_pipeline_seconds": 289.7968653140124
+  },
+  {
+    "backend": "paiton",
+    "repeat": 4,
+    "cached": true,
+    "launcher_wall_seconds": 285.623592376709,
+    "asr_with_startup_seconds": 40.98709025408607,
+    "diarization_with_startup_seconds": 69.08822472998872,
+    "attribution_with_startup_seconds": 0.6320041029248387,
+    "playback_with_startup_seconds": 1.9292286690324545,
+    "summary_with_startup_seconds": 172.42409835208673,
+    "complete_pipeline_seconds": 285.0708220229717
+  }
+]

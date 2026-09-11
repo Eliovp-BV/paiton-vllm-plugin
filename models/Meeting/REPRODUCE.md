@@ -4,7 +4,7 @@ Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All in
 
 ## Standalone user workflow
 
-This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication requires matched Paiton end-to-end performance at least as fast as stock. The shared-loader candidate now meets the declared median gate on the tested meeting; final package review and publication approval are still pending.
+This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication requires matched Paiton end-to-end performance at least as fast as stock. The final candidate meets the declared median gate on the tested meeting; it is prepared locally for review, with publication approval pending.
 
 1. Prepare the pinned model cache once, with your own approved community-1 access.
 2. Build the local image with the reviewed binary overlay. After an approved release, users can pull its versioned image instead; the proposed tag is not available yet.
@@ -42,7 +42,7 @@ docker build --build-context "meeting_media_sources=$PAITON_MEETING_MEDIA_SOURCE
 export PAITON_MEETING_IMAGE=paiton-meeting:local-candidate
 ```
 
-The Dockerfile pins its inherited runtime digest and added dependencies. It builds PyAV 18.1.0 against unmodified FFmpeg 8.1.2 with GPL/nonfree components and networking disabled, retaining LAME and Opus for audio codecs. It installs that wheel before the Python requirements, avoiding the upstream binary wheel and its bundled video encoders. The six source/build inputs are hash-pinned in `media-sources.lock.json`; source archives, build recipe and component notices are retained under `/opt/meeting-media/share/paiton-media` in the image. The source-built runtime passed all 42 package tests and produced bit-identical decoded samples for 23 cases, including the complete 39-minute AMI recording. The artifact loads through a plain C ABI without importing Torch; tensor handling stays in the Python integration layer. No checkpoint is modified or embedded in this image.
+The Dockerfile pins its inherited runtime digest and added dependencies. It builds PyAV 18.1.0 against unmodified FFmpeg 8.1.2 with GPL/nonfree components and networking disabled, retaining LAME and Opus for audio codecs. It installs that wheel before the Python requirements, avoiding the upstream binary wheel and its bundled video encoders. The six source/build inputs are hash-pinned in `media-sources.lock.json`; source archives, build recipe and component notices are retained under `/opt/meeting-media/share/paiton-media` in the image. The source-built runtime passed all 45 package tests and produced bit-identical decoded samples for 23 cases, including the complete 39-minute AMI recording. The artifact loads through a plain C ABI without importing Torch; tensor handling stays in the Python integration layer. No checkpoint is modified or embedded in this image.
 
 The reviewed artifact hash and compiler build revision are recorded in `artifact.lock.json`. Verify its dependency closure and standalone loading without GPU execution or a Torch import:
 
@@ -61,7 +61,7 @@ docker run --rm --network none --entrypoint python3 \
 ./run-docker.sh /path/to/meeting.mp4 /path/to/new-transformers-result --summary-backend transformers
 ```
 
-Stock ASR remains the review launcher default from the earlier rejected candidate; the shared-loader comparison now has a lower Paiton median. `--paiton` explicitly enables the compiled prediction LSTM; `--stock` remains an accepted explicit stock selector. Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
+Paiton ASR is the launcher default. `--paiton` explicitly selects the same compiled prediction LSTM; `--stock` selects the matched native baseline. Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
 
 For separate sources, pass `--track 1` or `--channel 0` as appropriate. Track numbering is zero-based among audio streams. Select `--track` by position in the audio-track list returned by `inspect`; its `index` field is the underlying container stream ID. Do not downmix duplicated microphone/system feeds. All original tracks remain in the source recording. `--keep-intermediates` retains stage results for local diagnosis or benchmarking; otherwise they are removed. Delete the output directory to remove CLI-derived content; the source recording is preserved.
 
@@ -80,11 +80,11 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
 
 Export refuses to replace an existing file. Use `--format txt` for a plain transcript or `--format vtt` for WebVTT. Anonymous labels describe speaker clusters, not verified participant identities. To name a known speaker, add a top-level `"speaker_names": {"SPEAKER_00": "Morgan"}` mapping to a copy of `result.json`, then export that copy. Transcript and subtitle exports use these aliases while the underlying speaker IDs and timestamps remain available. Names are supplied by the user; they are not recognized from voices.
 
-For a complete-pipeline comparison, the host-side harness runs an initial pair and three alternating cached repetitions of each variant. It preserves raw logs, stage results and sampled host/driver memory. Allow enough time for eight full processing runs; all use the shared GPU lease.
+For a complete-pipeline comparison, the host-side harness runs an initial pair and four alternating cached repetitions of each variant. It preserves raw logs, stage results and sampled host/driver memory. Allow enough time for ten full processing runs; all use the shared GPU lease.
 
 ```bash
 python benchmark/complete_pipeline.py --launcher "$PWD/run-docker.sh" \
-  --recording /path/to/meeting.wav --output /path/to/new-benchmark --repeats 3
+  --recording /path/to/meeting.wav --output /path/to/new-benchmark --repeats 4 --summary-backend vllm
 ```
 
 Specify `--summary-backend vllm` on the benchmark command to match the candidate image default consistently across both ASR variants. The Linux harness also samples the named owned container's process RSS; summed RSS can double-count shared pages.

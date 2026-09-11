@@ -1,16 +1,38 @@
 # R9700 qualification
 
-**Publication gate reopened:** the standalone Paiton package must at least match the fastest matched stock complete-pipeline median. The shared-loader candidate now passes the declared median gate; the earlier failed result is retained below as the regression baseline. Final package review is still in progress. Further Studio implementation is outside this task.
+**Local release candidate ready for review.** The final matched Paiton complete-pipeline median clears speed parity. The 20% stretch objective remains unmet. Earlier experiments, including the rejected slower candidate, are retained below. Nothing has been pushed or published.
 
 Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute units / 32 WGPs. Host RAM: 16 GiB. Runtime: Python 3.14.6, Torch 2.11 / ROCm 7.14, Transformers 5.14, native SDPA. No hosted judge or paid inference service was used.
 
 ## Declared primary scenario
 
-The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The shared-loader native-vLLM comparison clears median speed parity but does not meet the 20% stretch objective. The launcher retains stock as its review default; use explicit `--paiton` for the compiled variant. A summary backend change is never counted as compiler acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
+The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The final native-vLLM comparison clears median speed parity but does not meet the 20% stretch objective. The launcher selects the compiled variant by default; use `--stock` for the native baseline. A summary backend change is never counted as compiler acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
 
 RTF is processing seconds / audio seconds. Audio hours per wall-clock hour is its reciprocal. Offline capture has no provisional/final streaming transcript latency; processing begins after recording stops or an import finishes.
 
-## Shared-loader candidate: completed comparison
+## Final candidate: complete matched comparison
+
+Frozen image `sha256:f7e6a83e38d41f0c89fc8175e8cf5d0080b333ea0a802d52369360069612e986`; initial pair plus four alternating cached repetitions per variant. Both use native safetensors prefetch and resolved timestamp postprocessing. These shared improvements are not compiler acceleration. Only prediction-LSTM execution differs between variants. No interleaved GPU probes or builds ran during the batch.
+
+The declared median result is **291.03 seconds stock / 284.50 seconds Paiton**, a **6.53-second (2.24%) reduction**. Small samples and run-to-run variability limit generalization; the saving is not guaranteed for every recording or every run. Summary lengths can differ following small ASR differences.
+
+| Cached complete pipeline | Stock | Paiton |
+|---|---:|---:|
+| Median seconds | 291.0268 | 284.4957 |
+| Minimum–maximum seconds | 289.7969–312.8895 | 283.8412–301.4842 |
+| Sample standard deviation | 11.1518 | 8.6216 |
+| RTF | 0.124079 | 0.121295 |
+| Audio hours / wall hour | 8.0594 | 8.2444 |
+| ASR processing seconds | 35.3931 | 30.8138 |
+| Diarization with startup seconds | 68.2879 | 69.0255 |
+| Summary with startup seconds | 175.2635 | 171.7106 |
+| Sampled driver peak, decimal GB | 15.790 | 15.790 |
+
+All ten final transcripts scored WER 20.4362% / CER 15.7750%. All 448 speaker turns exactly match the previously scored community-1 baseline (14.90% DER under the documented 250 ms collar protocol). Timestamp and boundary metrics were recomputed on each final output; all mechanical source-reference checks passed. Summary objects match the earlier reviewed partial notes: the AMI example still recovers none of the four human-reference final-decision groups or the one action. The synthetic fixture separately retains its supported USB-C decision and Morgan/Tuesday action and rejects injected commitments. No 60–75% recall claim is made.
+
+[Full stage/startup/memory statistics](benchmark/final-complete-pipeline.json) · [All ten timing rows](benchmark/final-complete-pipeline-timings.json) · [Final transcript/timestamp/reference scores](benchmark/final-output-quality.json) · [Summary assessment](benchmark/final-summary-reference-check.json).
+
+## Earlier shared-loader candidate: completed comparison
 
 The frozen loader-review image `sha256:492f23f9e739a28b52839b330b1df88381c10e66d2096d5b616624cc35e2b511` adds native safetensors prefetch for both stock and Paiton. Models, precision, decoding, chunking, diarization and summary settings match. Only the prediction LSTM implementation differs between variants. Initial pair plus three alternating cached repetitions each; no interleaved GPU probes or builds.
 
@@ -47,7 +69,7 @@ Eight runs used the same frozen source-built image, audio, pinned models, FP16 A
 | Sampled driver peak, median decimal GB | 15.79 | 15.79 |
 | Peak summed process RSS, median decimal GB | 6.70 | 7.45 |
 
-**Paiton was 2.37% slower by the declared complete-pipeline median; the 20% objective was not met.** Its faster ASR and shorter summary generation did not produce a lower complete median in this sequential deployment. Startup varied substantially; this does not establish that the compiler caused the summary-loading difference. The faster individual Paiton run is retained in the range, not substituted for the median. Stock is therefore the default, with the tested compiled ASR available through `--paiton` or Studio's explicit compiler configuration.
+**Paiton was 2.37% slower by the declared complete-pipeline median; the 20% objective was not met.** Its faster ASR and shorter summary generation did not produce a lower complete median in this sequential deployment. Startup varied substantially; this does not establish that the compiler caused the summary-loading difference. The faster individual Paiton run is retained in the range, not substituted for the median. That earlier candidate therefore retained stock as its default; the final qualified launcher above now selects Paiton.
 
 The initial pair took 424.50 s stock / 382.98 s Paiton after prior caches existed. These are fresh stage processes, not cleared OS caches. The first stock launcher also waited for the separately validated Studio job; that wait is excluded from its 424.50-second processing time. For an already available recording, end-of-meeting latency is complete processing plus import, queue and launch overhead. This is offline processing; streaming partial/final latency is not applicable.
 
@@ -159,6 +181,6 @@ The observed median reduction is 9.49%, below the 20% objective. Generated summa
 
 The earlier five-excerpt FP16 qualification recorded synchronized generation wall time and encoder HIP events separately. Median warm encoder time was 33.42 ms stock / 32.77 ms Paiton; the remaining generation time was 169.25 ms / 151.98 ms. The remainder includes decoder execution and Python/control overhead, and is not an isolated decoder GPU measurement. Median feature extraction plus host-to-device transfer was 18.68 ms / 18.80 ms. These short probes motivated the prediction-LSTM hot path; they do not replace the complete-pipeline benchmark. Per-excerpt measurements and their exact interpretation are in [asr-stage-profile.json](benchmark/asr-stage-profile.json).
 
-## Final transcript quality verification
+## Earlier source-runtime transcript quality verification
 
 Direct rescoring of all eight final outputs gives stock WER 20.4362% / CER 15.7750% in every run. Paiton WER ranges from 20.4070% to 20.4362%, and CER from 15.7345% to 15.7750%; one compiled repetition differs slightly. These final-output scores supersede any assumption that the earlier ASR-only texts were identical. All 448 speaker turns match the previously scored community-1 result exactly in every run. See [per-run transcript scores](benchmark/release-transcript-quality.json) and the [final timestamp/boundary assessment](benchmark/release-timestamp-boundary-comparison.json). Timestamp and boundary metrics were recalculated on these actual outputs using the same manual-reference protocol; no reference-based tuning was performed.
