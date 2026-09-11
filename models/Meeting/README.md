@@ -1,6 +1,8 @@
-# Local meeting notes for Paiton Studio
+# Local meeting audio — standalone package
 
-**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
+**Development candidate, 1.0.0rc1 — publication blocked on speed parity.** Paiton must at least match stock end-to-end before publication. The current candidate does not pass that gate. Studio integration is a separate task; this package runs independently through its CLI/container.
+
+**Prepared locally, not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
 
 The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
 
@@ -17,25 +19,20 @@ Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept
 
 No separate forced-alignment model is shipped: word timing and punctuation come from Parakeet, followed by speaker-turn attribution. Timestamp limitations are measured separately from WER.
 
-## Recording import and capture
+## Recording import
 
-See [CAPTURE.md](CAPTURE.md) for the browser/OS capability matrix and a complete source-selection workflow. Shared audio may omit the local microphone; this version records one source at a time.
+Export a consented recording from Teams or another meeting application, then run this package locally. Tested formats include WAV, FLAC, MP3, M4A/MP4 with AAC, and Ogg/WebM with Opus. The input is read-only; choose a new output directory for each run. Select separate audio tracks/channels rather than automatically combining duplicate microphone/system feeds. Decoding is bounded to eight hours; supported containers can still contain unsupported codecs.
 
-Studio accepts bounded, ordered uploads and preserves the imported original. Real codec round trips have been tested for WAV, FLAC, MP3, M4A/AAC, MP4/AAC, Ogg/Opus and WebM/Opus. An extension does not guarantee that every codec inside a container is supported. Invalid/no-audio files fail explicitly. The current limits are 4 GiB per imported file and eight hours of decoded audio.
+```bash
+# After the one-time model preparation and local image build:
+./run-docker.sh --paiton /path/to/meeting.mp4 /path/to/new-result
+# Matched stock comparison, using a different output directory:
+./run-docker.sh --stock /path/to/meeting.mp4 /path/to/new-stock-result
+```
 
-Select an audio track or channel for separate feeds. Ordinary stereo can be downmixed; separate microphone/system feeds are never combined automatically. An original with multiple tracks remains intact. Transcript playback uses a normalized WAV whose zero is the selected decoded audio start, avoiding video-container start-offset errors.
+Results contain `result.json` (timestamped transcript, anonymous speakers, partial notes and source references) and `playback.wav`. [REPRODUCE.md](REPRODUCE.md) contains the complete setup, cache, launch and export instructions. No Studio installation or manually managed vLLM server is required.
 
-| Capture path | Status and limitation |
-|---|---|
-| Exported/uploaded Teams or other meeting recording | Recording import tested; this is not a Teams application integration |
-| Browser microphone | Visible user-started controls implemented; automated Chromium test uses a simulated microphone, not a real meeting |
-| Browser tab sharing with audio | Implemented but not validated against a real Teams session; Chromium support depends on browser/OS and the selected sharing surface |
-| Native Teams/system loopback | Not validated; tab sharing does not capture a native application |
-| Server audio devices | The server cannot capture a microphone or system audio on a different client machine |
-
-Browser microphone and display capture require HTTPS with a certificate trusted by the client, or localhost. Remote plain HTTP is not a working microphone-capture deployment. Studio's secure launcher accepts `PAITON_TLS_CERT` and `PAITON_TLS_KEY`; use the launcher's documented environment names when configuring it. The secure launcher passed a local HTTPS request with certificate verification and a Chromium secure-context/API check using an explicitly pinned test certificate. This does not validate a real remote client's trust configuration or capture hardware. Browser sharing prompts determine which audio is available. Chrome/Edge tab audio and Windows/ChromeOS system-audio capabilities differ; Firefox/Safari do not provide equivalent display-audio support. See [MDN screen capture](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia).
-
-Capture is recording-first, followed by offline processing. It is not a qualified streaming transcript. The UI shows start/stop state, stops on ended devices, and bounds queued capture uploads. Microphone and shared-audio capture are separate choices. Obtain participants' consent and follow your organization's recording rules.
+This package does not capture Teams audio or provide a streaming transcript. Browser capture and the existing Studio prototype are separate integration work; historical platform findings are retained in [CAPTURE.md](CAPTURE.md) and [STUDIO_HANDOFF.md](STUDIO_HANDOFF.md).
 
 ## Local stage commands
 
@@ -43,13 +40,13 @@ See [REPRODUCE.md](REPRODUCE.md) for pinned model preparation, the required comp
 
 The candidate image defaults to `vllm` for `process` and checkpoint-based `summarize`; pass `--summary-backend transformers` for the alternate helper. Direct source execution defaults to Transformers unless `PAITON_MEETING_SUMMARY_BACKEND` is set. vLLM uses native BF16 Granite, Triton attention and graph caching; audio components remain outside vLLM.
 
-The package CLI provides one-command `process`, plus `inspect`, `normalize`, `transcribe`, `diarize`, `attribute`, `summarize`, `export` and `benchmark-asr`; run `python -m paiton_meeting --help` for their arguments. Separate ASR and diarization processes release their GPU allocations before the summary model starts. Studio schedules these stages through its existing GPU queue and only stops containers it owns.
+The package CLI provides one-command `process`, plus `inspect`, `normalize`, `transcribe`, `diarize`, `attribute`, `summarize`, `export` and `benchmark-asr`; run `python -m paiton_meeting --help` for their arguments. Separate ASR and diarization processes release their GPU allocations before the summary model starts. The standalone launcher uses a host GPU lease to avoid colliding with cooperating local workloads.
 
 `benchmark-asr` records one first-processing pass plus at least three warm runs, transcripts, raw timings and sampled driver/allocator telemetry. RTF means processing seconds divided by audio seconds; its reciprocal is audio hours processed per wall-clock hour. This command measures the ASR stage, not end-to-end meeting processing. See [BENCHMARKS.md](BENCHMARKS.md) for measured model switching, summary latency and image-specific limitations.
 
 JSON, plain transcript, SRT, VTT and plain-text summary exports preserve source IDs/timestamps. Speaker names are user-entered labels; no voice-based identity recognition is claimed. Summary owners and deadlines remain unspecified unless supported by the transcript. Summary generation treats spoken instructions as untrusted data and rejects invalid references or incomplete model output. Hierarchical reduction carries source quotes and IDs; a separate local audit checks claims against nearby transcript context. Unresolved-issue entries additionally require an explicit question or uncertainty cue in the cited English text, so facts and suggestions are conservatively omitted from that category. These checks do not prove factuality: outputs remain partial drafts for review against playback. This initial version accepts incomplete coverage; the full transcript remains available. No measured 60–75% recall claim is made.
 
-Recordings, transcripts and summaries remain local. Delete controls remove the owned meeting and derived files; optional retention removes the original import copy and normalized playback after successful processing. Deleting a Studio copy does not delete the user's original source file. Redundant intermediate job files are removed after successful persistence. No raw meeting content needs to be sent to an external API.
+Recordings, transcripts and summaries remain local. Delete a CLI output directory to remove its derived content; the original recording is preserved. Intermediate stage files are removed unless `--keep-intermediates` is requested. No meeting content is sent to an external API.
 
 ## Qualification results so far
 

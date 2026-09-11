@@ -1,5 +1,7 @@
 # R9700 qualification
 
+**Publication gate reopened:** the standalone Paiton package must at least match the fastest matched stock complete-pipeline median. The existing result below fails that gate; it is retained as the regression baseline. Further Studio implementation is outside this task.
+
 Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute units / 32 WGPs. Host RAM: 16 GiB. Runtime: Python 3.14.6, Torch 2.11 / ROCm 7.14, Transformers 5.14, native SDPA. No hosted judge or paid inference service was used.
 
 ## Declared primary scenario

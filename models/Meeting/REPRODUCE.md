@@ -2,6 +2,17 @@
 
 Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All inference runs locally with Docker networking disabled. The current image is a local candidate; the proposed GHCR tag is not published.
 
+## Standalone user workflow
+
+This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication is blocked until matched Paiton end-to-end performance is at least as fast as stock. The existing candidate does not pass that gate.
+
+1. Prepare the pinned model cache once, with your own approved community-1 access.
+2. Build the local image with the reviewed binary overlay. After an approved release, users can pull its versioned image instead; the proposed tag is not available yet.
+3. Run `./run-docker.sh --paiton meeting.mp4 new-result`. For comparison, use `--stock` and a different output directory.
+4. Review `new-result/result.json` and `new-result/playback.wav`; export transcript/subtitles/notes with the `export` subcommand.
+
+Record or export the meeting using your meeting application or an authorized local recorder first. This standalone package imports recordings; it does not capture Teams audio. Obtain the applicable recording consent.
+
 ## Prepare persistent models
 
 Accept the community-1 access conditions with your own Hugging Face account, then authenticate with `hf auth login`. Preparation downloads model files only; it never accesses recordings. Run from this model directory in an environment containing `huggingface_hub`:
@@ -23,8 +34,8 @@ export PAITON_MEETING_MEDIA_SOURCES="$PAITON_MEETING_CACHE/media-sources"
 python scripts/prepare_media_sources.py --output "$PAITON_MEETING_MEDIA_SOURCES"
 docker build --build-context "meeting_media_sources=$PAITON_MEETING_MEDIA_SOURCES" \
   --build-context "meeting_overlay=$PAITON_MEETING_OVERLAY" \
-  -t paiton-meeting:studio-candidate .
-export PAITON_MEETING_IMAGE=paiton-meeting:studio-candidate
+  -t paiton-meeting:local-candidate .
+export PAITON_MEETING_IMAGE=paiton-meeting:local-candidate
 ```
 
 The Dockerfile pins its inherited runtime digest and added dependencies. It builds PyAV 18.1.0 against unmodified FFmpeg 8.1.2 with GPL/nonfree components and networking disabled, retaining LAME and Opus for audio codecs. It installs that wheel before the Python requirements, avoiding the upstream binary wheel and its bundled video encoders. The six source/build inputs are hash-pinned in `media-sources.lock.json`; source archives, build recipe and component notices are retained under `/opt/meeting-media/share/paiton-media` in the image. The source-built runtime passed all 42 package tests and produced bit-identical decoded samples for 23 cases, including the complete 39-minute AMI recording. The artifact loads through a plain C ABI without importing Torch; tensor handling stays in the Python integration layer. No checkpoint is modified or embedded in this image.
@@ -52,6 +63,19 @@ For separate sources, pass `--track 1` or `--channel 0` as appropriate. Track nu
 
 The CLI also exposes `inspect`, `normalize`, `transcribe`, `diarize`, `attribute`, `summarize`, `export` and `benchmark-asr`. Run the image with `--help`, or a subcommand with `--help`, to inspect arguments. `export` supports JSON, TXT, SRT, VTT and summary text. Summary output is a partial draft with source references; absence of an extracted decision is not evidence that no decision occurred.
 
+To export readable notes and subtitles from an existing result, mount that result directory and run the same image (no GPU is needed for export):
+
+```bash
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+  -v "/path/to/new-result:/results" "$PAITON_MEETING_IMAGE" \
+  export /results/result.json --format summary.txt --output /results/notes.txt
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+  -v "/path/to/new-result:/results" "$PAITON_MEETING_IMAGE" \
+  export /results/result.json --format srt --output /results/transcript.srt
+```
+
+Export refuses to replace an existing file. Use `--format txt` for a plain transcript or `--format vtt` for WebVTT. Anonymous labels describe speaker clusters, not verified participant identities.
+
 For a complete-pipeline comparison, the host-side harness runs an initial pair and three alternating cached repetitions of each variant. It preserves raw logs, stage results and sampled host/driver memory. Allow enough time for eight full processing runs; all use the shared GPU lease.
 
 ```bash
@@ -63,63 +87,7 @@ Specify `--summary-backend vllm` on the benchmark command to match the candidate
 
 Launcher wall time can include waiting for another workload. The reported pipeline time starts after lease acquisition and excludes Docker startup; individual stage times include interpreter/model startup and switching. This serial deployment is intentionally separate from a resident-model warm ASR microbenchmark.
 
-## Studio configuration
 
-Use the coordinated Studio feature version with meeting controls. Set these keys in that instance's local configuration, using paths accessible to its Docker daemon:
+## Separate Studio work
 
-```json
-{
-  "meeting_enabled": true,
-  "meeting_compiler_enabled": false,
-  "meeting_image": "paiton-meeting:studio-candidate",
-  "meeting_models_dir": "/path/to/paiton-meeting/models"
-}
-```
-
-Set `meeting_compiler_enabled` to `true` only to opt into the tested Paiton ASR path. Each queued job keeps its selected backend; changing configuration does not silently change an already queued job. Completed Studio exports record `asr_backend`. Studio verifies the prepared provenance receipt before queuing inference. Open Meetings, import a recording, select the audio source, then choose **Transcribe and summarize locally**. The queue shares the GPU with existing Studio tools. Review anonymous speaker labels, enter known participant names, follow timestamp links, export the result or delete the owned recording and derived content.
-
-For a browser on another machine, configure `PAITON_TLS_CERT` and `PAITON_TLS_KEY` with a certificate trusted by that client and launch `run-meetings-secure.sh`. The default port is 8877; `PAITON_STUDIO_PORT` overrides it. The server's microphone is not the remote browser's microphone. Recording import is separately validated from browser capture; see the capture table in the README.
-
-## Studio API
-
-The coordinated Studio version exposes the same recording workflow under `/api/meetings`. First request `GET /api/session`, retain its `studio_session` cookie, and send the returned token in `x-studio-token` for mutations. Keep that token local; it is not a model-download credential. Remote clients must use the configured trusted HTTPS endpoint.
-
-| Method and path | Purpose / body |
-|---|---|
-| `POST /api/meetings` | Create an import: `{"name":"Design review","filename":"meeting.mp4","source":"import","retention":"keep"}` |
-| `POST /api/meetings/{id}/chunks/{index}` | Upload ordered, zero-based multipart `file` chunks, each at most 4 MiB; identical retries are accepted |
-| `POST /api/meetings/{id}/finish` | Finalize and inspect the recording after the last chunk |
-| `POST /api/meetings/{id}/process` | Queue local transcription, speaker attribution and notes: `{"track":0,"channel":null}` |
-| `GET /api/meetings/{id}` | Poll state and retrieve the completed transcript/notes |
-| `GET /api/meetings/{id}/recording` | Playback on the transcript clock after processing |
-| `GET /api/meetings/{id}/export` | Export recording metadata, transcript, notes and references as JSON |
-| `POST /api/meetings/{id}/cancel` | Cancel the owned processing job |
-| `POST /api/meetings/{id}/speakers/{speaker}` | Rename an assigned anonymous cluster: `{"name":"Morgan"}` |
-| `POST /api/meetings/{id}/retention` | Set `{"retention":"delete-recording-after-processing"}` or `"keep"` |
-| `DELETE /api/meetings/{id}` | Delete the owned recording and derived content when no job is active |
-
-For a recording already imported through Studio, this standard-library Python command queues processing without printing the session credential. Obtain the recording ID from `GET /api/meetings` or its existing import response. Processing uses the configured local image and the shared GPU queue.
-
-```bash
-export PAITON_STUDIO_URL=http://127.0.0.1:8877
-export PAITON_MEETING_ID=recording-id-from-import
-python3 - <<'PY'
-import http.cookiejar, json, os, urllib.request
-base = os.environ['PAITON_STUDIO_URL'].rstrip('/')
-identity = os.environ['PAITON_MEETING_ID']
-client = urllib.request.build_opener(
-    urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
-with client.open(base + '/api/session') as response:
-    token = json.load(response)['token']
-request = urllib.request.Request(
-    base + '/api/meetings/' + identity + '/process',
-    data=json.dumps({'track': 0, 'channel': None}).encode(),
-    headers={'Content-Type': 'application/json', 'x-studio-token': token},
-    method='POST')
-with client.open(request) as response:
-    result = json.load(response)
-print(json.dumps({key: result[key] for key in ('id', 'job', 'state')}))
-PY
-```
-
-This API submits imported recordings; it does not capture a remote microphone or Teams audio. Start browser capture visibly in Studio, or import a complete authorized recording. For headless batch use, the `run-docker.sh` command above avoids the Studio HTTP/session layer.
+Studio is not a dependency or a deliverable of this standalone package task. Existing integration notes are preserved in [STUDIO_HANDOFF.md](STUDIO_HANDOFF.md) for the separate implementation task.
