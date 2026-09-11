@@ -26,10 +26,14 @@ class VLLMSummarizer(CompactSummarizer):
         started = time.perf_counter()
         self.tokenizer = AutoTokenizer.from_pretrained(directory, local_files_only=True,
                                                        trust_remote_code=False)
+        # Prefetch checkpoint pages before GPU weight copies.
+        # Native vLLM uses bounded read buffers and the reclaimable OS page cache;
+        # this loader is shared by stock and compiled ASR pipelines.
         self.model = LLM(model=str(directory), dtype='bfloat16', max_model_len=16384,
             max_num_seqs=1, max_num_batched_tokens=4096, gpu_memory_utilization=0.45,
             enforce_eager=False, enable_prefix_caching=False, trust_remote_code=False,
-            load_format='safetensors', disable_log_stats=True, seed=1201,
+            load_format='safetensors', safetensors_load_strategy='prefetch',
+            disable_log_stats=True, seed=1201,
             attention_backend='TRITON_ATTN',
             worker_extension_cls='paiton_meeting.vllm_summary.MeetingMetricsWorkerExtension')
         self.loading_seconds = time.perf_counter()-started

@@ -15,9 +15,13 @@ Record or export the meeting using your meeting application or an authorized loc
 
 ## Prepare persistent models
 
-Accept the community-1 access conditions with your own Hugging Face account, then authenticate with `hf auth login`. Preparation downloads model files only; it never accesses recordings. Run from this model directory in an environment containing `huggingface_hub`:
+Run these commands from `models/Meeting`. Accept the community-1 access conditions with your own Hugging Face account. Preparation downloads model files only; it never accesses recordings. A small separate environment provides the pinned download client:
 
 ```bash
+python3 -m venv "$HOME/.cache/paiton-meeting-download-env"
+source "$HOME/.cache/paiton-meeting-download-env/bin/activate"
+python -m pip install "huggingface_hub==1.23.0"
+hf auth login
 export PAITON_MEETING_CACHE="$HOME/.cache/paiton-meeting"
 python scripts/prepare.py --models "$PAITON_MEETING_CACHE/models"
 ```
