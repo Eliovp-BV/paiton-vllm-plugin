@@ -1,16 +1,33 @@
 # R9700 qualification
 
-**Publication gate reopened:** the standalone Paiton package must at least match the fastest matched stock complete-pipeline median. The existing result below fails that gate; it is retained as the regression baseline. Further Studio implementation is outside this task.
+**Publication gate reopened:** the standalone Paiton package must at least match the fastest matched stock complete-pipeline median. The shared-loader candidate now passes the declared median gate; the earlier failed result is retained below as the regression baseline. Final package review is still in progress. Further Studio implementation is outside this task.
 
 Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute units / 32 WGPs. Host RAM: 16 GiB. Runtime: Python 3.14.6, Torch 2.11 / ROCm 7.14, Transformers 5.14, native SDPA. No hosted judge or paid inference service was used.
 
 ## Declared primary scenario
 
-The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The final native-vLLM complete-pipeline comparison is complete and did not meet the objective. Stock ASR is the default because it had the lower cached median; Paiton remains explicit opt-in. A summary backend change is never counted as compiler acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
+The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The shared-loader native-vLLM comparison clears median speed parity but does not meet the 20% stretch objective. The launcher retains stock as its review default; use explicit `--paiton` for the compiled variant. A summary backend change is never counted as compiler acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
 
 RTF is processing seconds / audio seconds. Audio hours per wall-clock hour is its reciprocal. Offline capture has no provisional/final streaming transcript latency; processing begins after recording stops or an import finishes.
 
-## Final source-runtime complete pipeline
+## Shared-loader candidate: completed comparison
+
+The frozen loader-review image `sha256:492f23f9e739a28b52839b330b1df88381c10e66d2096d5b616624cc35e2b511` adds native safetensors prefetch for both stock and Paiton. Models, precision, decoding, chunking, diarization and summary settings match. Only the prediction LSTM implementation differs between variants. Initial pair plus three alternating cached repetitions each; no interleaved GPU probes or builds.
+
+| Complete processing seconds | Stock | Paiton |
+|---|---:|---:|
+| Cached runs | 341.2266, 349.7866, 343.3326 | 351.9769, 329.9314, 333.6445 |
+| Median | 343.3326 | 333.6445 |
+| Sample standard deviation | 4.4603 | 11.8030 |
+| Initial run (existing caches) | 377.5911 | 331.0003 |
+
+**Paiton is 2.82% faster by the declared complete-pipeline median.** This clears median speed parity on this recording, with visible variability and a small sample; it does not meet the original 20% objective or guarantee a speedup on every run. Native prefetch benefits both variants and is not compiler acceleration. Generated summary lengths differ and are reported separately.
+
+All eight final transcripts scored WER 20.4362% / CER 15.7750%. Their speaker turns exactly match the previously scored community-1 result. Timestamp metrics were recomputed on the final outputs; all mechanical source-reference checks passed. Summary coverage limitations remain: none recovers the four grouped final decisions or the one action in the human abstract.
+
+[Complete stage, loading, memory and variability report](benchmark/loader-complete-pipeline.json) · [Raw timing rows](benchmark/loader-complete-pipeline-timings.json) · [Direct final-output scores](benchmark/loader-final-quality.json) · [Summary reference assessment](benchmark/loader-summary-reference-check.json).
+
+## Earlier rejected source-runtime complete pipeline
 
 Eight runs used the same frozen source-built image, audio, pinned models, FP16 ASR, BF16 native-vLLM summary, VAD, speaker diarization, timestamps, chunking and decoding settings. An initial pair is followed by three alternating cached repetitions per variant; only the prediction LSTM implementation differs. No builds or other GPU probes ran during this batch.
 

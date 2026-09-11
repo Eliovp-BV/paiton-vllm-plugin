@@ -1,6 +1,6 @@
 # Local meeting audio — standalone package
 
-**Development candidate, 1.0.0rc1 — publication blocked on speed parity.** Paiton must at least match stock end-to-end before publication. The new loader candidate has not yet cleared that gate; the prior complete-pipeline result below failed. Studio integration is a separate task; this package runs independently through its CLI/container.
+**Development candidate, 1.0.0rc1 — local review, not published.** The shared-loader candidate meets the declared median speed-parity gate on the tested meeting. The subsequent timestamp-postprocessing improvement still needs its complete-pipeline qualification; final package review continues. Studio integration is a separate task; this package runs independently through its CLI/container.
 
 **Prepared locally, not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
 
@@ -13,7 +13,7 @@ The pipeline separates audio capture/import, Silero voice activity detection, Pa
 | Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
 | Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native vLLM with a Transformers alternative, evidence-linked partial notes |
 
-The final cached complete-pipeline median was **413.87 seconds stock / 423.67 seconds Paiton** on the 39:05 meeting. The 20% objective was not met. Use `--paiton` for the tested compiled ASR option; its earlier warm ASR-only gain was 11.58%. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries.
+The shared-loader cached complete-pipeline median is **343.33 seconds stock / 333.64 seconds Paiton** on the 39:05 meeting (three runs each): **2.82% lower Paiton median**, with visible variability. The original 20% objective was not met. Use `--paiton` for the tested compiled ASR option; its earlier warm ASR-only gain was 11.58%. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries.
 
 Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
 

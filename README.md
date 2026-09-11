@@ -59,7 +59,7 @@ modality, reasoning and coding are separate capabilities, listed per model above
 
 ### Meeting audio
 
-[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous community-1 speaker labels and a compact Granite helper for partial, timestamp-linked summaries. Standalone recording import and CLI processing have local tests on R9700; Studio integration is a separate task. Publication is blocked until Paiton matches stock end-to-end speed. The current candidate does not pass that gate. Live Teams capture is not qualified. [Setup and limits](models/Meeting/REPRODUCE.md) · [Measured results](models/Meeting/BENCHMARKS.md).
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous community-1 speaker labels and a compact Granite helper for partial, timestamp-linked summaries. Standalone recording import and CLI processing have local tests on R9700; Studio integration is a separate task. The shared-loader candidate clears the declared median speed-parity gate; final package review and publication approval are pending. Live Teams capture is not qualified. [Setup and limits](models/Meeting/REPRODUCE.md) · [Measured results](models/Meeting/BENCHMARKS.md).
 
 ### Image generation
 

@@ -4,7 +4,7 @@ Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All in
 
 ## Standalone user workflow
 
-This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication is blocked until matched Paiton end-to-end performance is at least as fast as stock. The prior candidate failed that gate; the new loader candidate is still being qualified.
+This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication requires matched Paiton end-to-end performance at least as fast as stock. The shared-loader candidate now meets the declared median gate on the tested meeting; final package review and publication approval are still pending.
 
 1. Prepare the pinned model cache once, with your own approved community-1 access.
 2. Build the local image with the reviewed binary overlay. After an approved release, users can pull its versioned image instead; the proposed tag is not available yet.
@@ -61,7 +61,7 @@ docker run --rm --network none --entrypoint python3 \
 ./run-docker.sh /path/to/meeting.mp4 /path/to/new-transformers-result --summary-backend transformers
 ```
 
-Stock ASR is the default because it had the lower measured complete-pipeline median. `--paiton` explicitly enables the compiled prediction LSTM; `--stock` remains an accepted explicit stock selector. Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
+Stock ASR remains the review launcher default from the earlier rejected candidate; the shared-loader comparison now has a lower Paiton median. `--paiton` explicitly enables the compiled prediction LSTM; `--stock` remains an accepted explicit stock selector. Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
 
 For separate sources, pass `--track 1` or `--channel 0` as appropriate. Track numbering is zero-based among audio streams. Do not downmix duplicated microphone/system feeds. All original tracks remain in the source recording. `--keep-intermediates` retains stage results for local diagnosis or benchmarking; otherwise they are removed. Delete the output directory to remove CLI-derived content; the source recording is preserved.
 
@@ -97,6 +97,32 @@ Launcher wall time can include waiting for another workload. The reported pipeli
 The native helper now explicitly prefetches checkpoint pages before loading weights. The same setting applies to stock and Paiton. This does not alter precision or generation settings. Three alternating loader probes measured median initialization of 41.10 seconds with lazy loading and 34.41 seconds with prefetch; this is not a complete-pipeline speedup claim. Full results are in [benchmark/summary-loader-comparison.json](benchmark/summary-loader-comparison.json).
 
 The reproducible loader probe accepts `--model`, `--transcript` (a CLI `result.json`), `--strategy lazy|prefetch`, and a new `--output` file. Run it inside the prepared GPU container with the benchmark directory mounted, using `python /benchmark/summary_loader.py`. It generates exactly 128 tokens three times per fresh engine and records token hashes; those probes are intentionally incomplete summaries. Use identical input and cache paths and alternate strategies across separate processes.
+
+## Timestamp postprocessing
+
+Older checkpoint metadata leaves the Parakeet decoder type unspecified. With the pinned Transformers runtime, that triggers a full-vocabulary lookup repeatedly during timestamp decoding. The integration now resolves the existing inferred type once per processor and copies completed token/duration tensors to CPU together. It preserves the inferred mode and does not change model generation, decoding limits or timestamps.
+
+Three real 30-second chunks passed exact decoded text/timestamp equality for stock and compiled ASR. Median postprocessing fell from about 0.64 seconds to 0.0016 seconds per tested chunk. This is a native integration improvement shared by both variants, not compiler acceleration or a complete-pipeline result. See [timestamp-decoding-comparison.json](benchmark/timestamp-decoding-comparison.json).
+
+`benchmark/timestamp_decode.py` reproduces the comparison using the original checkpoint processor, even when the pipeline has the optimization. Pass `--model`, `--recording`, optional `--artifact`, and a new `--output`; the recording must include 30-second chunks 3, 12 and 70. Run it inside the GPU image with the benchmark directory mounted. It replays identical generated tensors through both postprocessors, includes CPU transfer time, alternates order, and rejects any output difference.
+
+## Score final outputs
+
+`benchmark/score_transcripts.py` accepts a timed reference JSON list of `text`, `start` and `end` word objects, in the original reference order. It scores every `*/result.json` in a complete benchmark directory. It reports WER/CER, lexical-match timestamp errors, boundary diagnostics and mechanical citation/quote checks. These do not establish semantic summary factuality or decision coverage. The command reproduced all eight earlier published-in-source score rows exactly before scoring the loader-review outputs.
+
+Run it in the prepared image without GPU access, mounting the benchmark scripts, a reference directory and the result directory:
+
+```bash
+docker run --rm --network none --user "$(id -u):$(id -g)" \
+  -v "$PWD/benchmark:/benchmark:ro" \
+  -v "/path/to/reference-directory:/reference:ro" \
+  -v "/path/to/complete-benchmark:/results" \
+  --entrypoint python3 "$PAITON_MEETING_IMAGE" \
+  /benchmark/score_transcripts.py --reference-words /reference/reference.json \
+  --runs /results --output /results/quality.json
+```
+
+An optional `--baseline` accepts a previously scored CLI result for exact speaker-turn comparison; it does not compute DER without annotations. The quality output file must be new. Retain the reference source, license and normalization protocol with your results.
 
 ## Separate Studio work
 
