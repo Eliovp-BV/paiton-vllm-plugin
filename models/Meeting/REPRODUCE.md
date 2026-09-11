@@ -1,13 +1,13 @@
-# Reproduce the local meeting candidate
+# Run or reproduce the meeting candidate
 
-Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All inference runs locally with Docker networking disabled. The current image is a local candidate; the proposed GHCR tag is not published.
+Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All inference runs locally with Docker networking disabled. The versioned release-candidate image is available on GHCR.
 
 ## Standalone user workflow
 
-This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication requires matched Paiton end-to-end performance at least as fast as stock. The final candidate meets the declared median gate on the tested meeting; it is prepared locally for review, with publication approval pending.
+This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication requires matched Paiton end-to-end performance at least as fast as stock. The final candidate meets the declared median gate on the tested meeting; its image is published and the source branch is ready for PR review.
 
 1. Prepare the pinned model cache once, with your own approved community-1 access.
-2. Build the local image with the reviewed binary overlay. After an approved release, users can pull its versioned image instead; the proposed tag is not available yet.
+2. Pull the versioned image using the command below. Building from source is optional.
 3. Run `./run-docker.sh --paiton meeting.mp4 new-result`. For comparison, use `--stock` and a different output directory.
 4. Review `new-result/result.json` and `new-result/playback.wav`; export transcript/subtitles/notes with the `export` subcommand.
 
@@ -28,9 +28,18 @@ python scripts/prepare.py --models "$PAITON_MEETING_CACHE/models"
 
 The script uses the exact revisions and download patterns in `models.lock.json`, creates persistent snapshot links and records file hashes. It preserves existing checkpoints and refuses to replace a different role directory. Use a new cache location if you already have incompatible files. Gated credentials are needed for preparation only; do not pass them to inference containers.
 
-## Build the image
+## Pull the image
 
-The named `meeting_overlay` context must contain the release-provided `meeting_lstm_float16_gfx1201.so` and adjacent JSON manifest. The manifest pins its SHA-256, C ABI, dtype, shape and target. The candidate overlay is prepared locally; approved release distribution is pending. It contains compiled artifacts, not compiler source.
+```bash
+export PAITON_MEETING_IMAGE=ghcr.io/eliovp/paiton-vllm-plugin:meeting-rdna4-v1.0.0-rc1
+docker pull "$PAITON_MEETING_IMAGE"
+```
+
+The published OCI index digest is `sha256:f7e6a83e38d41f0c89fc8175e8cf5d0080b333ea0a802d52369360069612e986`. For an immutable selection, set `PAITON_MEETING_IMAGE` to `ghcr.io/eliovp/paiton-vllm-plugin@sha256:f7e6a83e38d41f0c89fc8175e8cf5d0080b333ea0a802d52369360069612e986` and pull that reference. The launcher performs no automatic pulls.
+
+## Build the image (optional)
+
+The named `meeting_overlay` context must contain the release-provided `meeting_lstm_float16_gfx1201.so` and adjacent JSON manifest. The manifest pins its SHA-256, C ABI, dtype, shape and target. The overlay is included in the published image under `/opt/paiton/meeting-artifacts`. A separate archive remains local and has not been uploaded. The overlay contains compiled artifacts, not compiler source.
 
 ```bash
 export PAITON_MEETING_OVERLAY=/path/to/approved-meeting-overlay

@@ -1,6 +1,6 @@
 # R9700 qualification
 
-**Local release candidate ready for review.** The final matched Paiton complete-pipeline median clears speed parity. The 20% stretch objective remains unmet. Earlier experiments, including the rejected slower candidate, are retained below. Nothing has been pushed or published.
+**Release candidate image published; source ready for PR review.** The final matched Paiton complete-pipeline median clears speed parity. The 20% stretch objective remains unmet. Earlier experiments, including the rejected slower candidate, are retained below. The versioned image is available on GHCR; see [RELEASE.md](RELEASE.md).
 
 Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute units / 32 WGPs. Host RAM: 16 GiB. Runtime: Python 3.14.6, Torch 2.11 / ROCm 7.14, Transformers 5.14, native SDPA. No hosted judge or paid inference service was used.
 

@@ -59,7 +59,7 @@ modality, reasoning and coding are separate capabilities, listed per model above
 
 ### Meeting audio
 
-[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous speaker labels and compact Granite partial notes with timestamp references. Standalone recording import tested on R9700; Paiton saves 6.53 seconds (2.24%) by the matched full-pipeline median. Prepared locally, not published. [Setup](models/Meeting/REPRODUCE.md) · [Benchmarks](models/Meeting/BENCHMARKS.md). Studio integration is separate; live Teams capture is not qualified.
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous speaker labels and compact Granite partial notes with timestamp references. Standalone recording import tested on R9700; Paiton saves 6.53 seconds (2.24%) by the matched full-pipeline median. Versioned GHCR image available. [Setup](models/Meeting/REPRODUCE.md) · [Benchmarks](models/Meeting/BENCHMARKS.md). Studio integration is separate; live Teams capture is not qualified.
 
 ### Image generation
 

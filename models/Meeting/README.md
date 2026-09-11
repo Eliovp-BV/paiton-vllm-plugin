@@ -1,6 +1,6 @@
 # Local meeting audio — standalone package
 
-**Local release candidate, 1.0.0rc1 — prepared for review; nothing published.** The tested Paiton pipeline meets the declared median speed-parity gate. Studio integration is a separate task; this package runs independently through its CLI/container.
+**Release candidate, 1.0.0rc1 — image published on GHCR; source branch ready for PR review.** The tested Paiton pipeline meets the declared median speed-parity gate. Studio integration is a separate task; this package runs independently through its CLI/container.
 
 Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test and a repeated 39-minute meeting benchmark. Summaries are partial drafts for review against the recording.
 
@@ -13,7 +13,7 @@ The pipeline separates audio capture/import, Silero voice activity detection, Pa
 | Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
 | Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native vLLM with a Transformers alternative, evidence-linked partial notes |
 
-The final cached complete-pipeline median is **291.03 seconds stock / 284.50 seconds Paiton**, a **6.53-second (2.24%) reduction** on the 39:05 meeting (four runs each). The original 20% objective was not met. The launcher enables Paiton by default; `--stock` runs the matched native baseline. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries, and [RELEASE.md](RELEASE.md) for the local image and proposed publication targets.
+The final cached complete-pipeline median is **291.03 seconds stock / 284.50 seconds Paiton**, a **6.53-second (2.24%) reduction** on the 39:05 meeting (four runs each). The original 20% objective was not met. The launcher enables Paiton by default; `--stock` runs the matched native baseline. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries, and [RELEASE.md](RELEASE.md) for the published image digest and artifact status.
 
 Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
 
