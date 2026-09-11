@@ -58,7 +58,7 @@ Granite Speech 5.0 470M TurboCTC executes in BF16 and FP32 on gfx1201. It was su
 
 Voxtral Mini (4.7B total) executed locally but hallucinated during raw silence and failed the correction/instruction-attack summary fixture. It is not the default. VAD protects the selected ASR pipeline from processing silent chunks, but does not establish general hallucination immunity.
 
-The current standalone compiled command processed the 38.90-second synthetic recording in 155.72 seconds including startup. It retained the USB-C decision, Morgan/Tuesday action and undecided launch, with valid source references, and rejected injected commitments. [Actual CLI transcript and notes](examples/spoken-standalone.json). This short first-use test is not a stock/Paiton comparison or broad summary/speaker accuracy evidence.
+The current standalone compiled command processed the 38.90-second synthetic recording in 120.66 seconds including startup. It retained the USB-C decision, Morgan/Tuesday action and undecided launch, with valid source references, and rejected injected commitments. [Actual CLI transcript and notes](examples/spoken-timestamp-runtime.json). This short first-use test is not a stock/Paiton comparison or broad summary/speaker accuracy evidence.
 
 The compact Granite adapter uses bounded context and hierarchical summaries. Large Qwen3.8 and GPT-OSS models are excluded from this small configuration. Summary coverage is intentionally accepted as partial for this initial version; included claims still need review against source timestamps. See [SELECTION.md](SELECTION.md), [QUANTIZATION.md](QUANTIZATION.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
