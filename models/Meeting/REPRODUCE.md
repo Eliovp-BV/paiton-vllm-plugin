@@ -4,7 +4,7 @@ Linux, Docker and an accessible gfx1201 Radeon AI PRO R9700 are required. All in
 
 ## Standalone user workflow
 
-This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication is blocked until matched Paiton end-to-end performance is at least as fast as stock. The existing candidate does not pass that gate.
+This is a CLI/container package in `paiton-vllm-plugin`; no Studio installation or running vLLM HTTP server is required. Audio stages run directly and the package starts native vLLM internally for the summary. Publication is blocked until matched Paiton end-to-end performance is at least as fast as stock. The prior candidate failed that gate; the new loader candidate is still being qualified.
 
 1. Prepare the pinned model cache once, with your own approved community-1 access.
 2. Build the local image with the reviewed binary overlay. After an approved release, users can pull its versioned image instead; the proposed tag is not available yet.
@@ -78,7 +78,7 @@ docker run --rm --network none --user "$(id -u):$(id -g)" \
   export /results/result.json --format srt --output /results/transcript.srt
 ```
 
-Export refuses to replace an existing file. Use `--format txt` for a plain transcript or `--format vtt` for WebVTT. Anonymous labels describe speaker clusters, not verified participant identities.
+Export refuses to replace an existing file. Use `--format txt` for a plain transcript or `--format vtt` for WebVTT. Anonymous labels describe speaker clusters, not verified participant identities. To name a known speaker, add a top-level `"speaker_names": {"SPEAKER_00": "Morgan"}` mapping to a copy of `result.json`, then export that copy. Transcript and subtitle exports use these aliases while the underlying speaker IDs and timestamps remain available. Names are supplied by the user; they are not recognized from voices.
 
 For a complete-pipeline comparison, the host-side harness runs an initial pair and three alternating cached repetitions of each variant. It preserves raw logs, stage results and sampled host/driver memory. Allow enough time for eight full processing runs; all use the shared GPU lease.
 

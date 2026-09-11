@@ -1,6 +1,6 @@
 # Local meeting audio — standalone package
 
-**Development candidate, 1.0.0rc1 — publication blocked on speed parity.** Paiton must at least match stock end-to-end before publication. The current candidate does not pass that gate. Studio integration is a separate task; this package runs independently through its CLI/container.
+**Development candidate, 1.0.0rc1 — publication blocked on speed parity.** Paiton must at least match stock end-to-end before publication. The new loader candidate has not yet cleared that gate; the prior complete-pipeline result below failed. Studio integration is a separate task; this package runs independently through its CLI/container.
 
 **Prepared locally, not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
 
