@@ -20,6 +20,7 @@ Linux and Docker are required; ComfyUI launchers also need Docker Compose.
 
 Choose by the task you want to do:
 [Text, reasoning and coding](#text-reasoning-and-coding) ·
+[Meeting audio](#meeting-audio) ·
 [Image generation](#image-generation) · [Video](#video) ·
 [Image understanding and editing](#image-understanding-and-editing).
 
@@ -55,6 +56,10 @@ quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
 Reasoning consumes the output budget. Each model guide shows its thinking controls,
 tool support and tested limits; MiniCPM5 W4 thinking remains experimental. Input
 modality, reasoning and coding are separate capabilities, listed per model above.
+
+### Meeting audio
+
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous speaker labels and compact Granite partial notes with timestamp references. Standalone recording import tested on R9700; Paiton saves 6.53 seconds (2.24%) by the matched full-pipeline median. Versioned GHCR image available. [Setup](models/Meeting/REPRODUCE.md) · [Benchmarks](models/Meeting/BENCHMARKS.md). Studio integration is separate; live Teams capture is not qualified.
 
 ### Image generation
 

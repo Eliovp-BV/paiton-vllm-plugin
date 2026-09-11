@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "status": "qualification-in-progress",
+  "models": {
+    "asr": {
+      "repository": "nvidia/parakeet-tdt-0.6b-v3",
+      "revision": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+      "license": "CC-BY-4.0",
+      "dtype": "float16",
+      "implementation": "transformers.ParakeetForTDT",
+      "attention": "sdpa",
+      "download_patterns": [
+        "*.json",
+        "*.safetensors",
+        "*.model",
+        "*.txt",
+        "LICENSE*",
+        "README.md"
+      ]
+    },
+    "diarization": {
+      "repository": "pyannote/speaker-diarization-community-1",
+      "revision": "3533c8cf8e369892e6b79ff1bf80f7b0286a54ee",
+      "license": "CC-BY-4.0",
+      "gated": true,
+      "access": "The user must accept the model's access conditions with their own Hugging Face account before downloading.",
+      "implementation": "pyannote.audio==4.0.7"
+    },
+    "summary": {
+      "repository": "ibm-granite/granite-4.2-3b",
+      "revision": "e459acceac81e5fe67c07d9cfc72329a332e7eb1",
+      "license": "Apache-2.0",
+      "dtype": "bfloat16",
+      "implementation": "transformers.GraniteForCausalLM",
+      "attention": "sdpa",
+      "context_tokens": 16384,
+      "thinking": "low-effort",
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "seed": 1201,
+      "download_patterns": [
+        "*.json",
+        "model*.safetensors",
+        "*.jinja",
+        "merges.txt",
+        "README.md",
+        "LICENSE*"
+      ]
+    },
+    "vad": {
+      "revision": "867c2aa692646a1f1de3e94a15c9dd9f614c0acb",
+      "url": "https://raw.githubusercontent.com/snakers4/silero-vad/867c2aa692646a1f1de3e94a15c9dd9f614c0acb/src/silero_vad/data/silero_vad.jit",
+      "license": "MIT",
+      "sha256": "e1122837f4154c511485fe0b9c64455f7b929c96fbb8d79fbdb336383ebd3720"
+    }
+  }
+}

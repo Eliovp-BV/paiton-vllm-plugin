@@ -1,0 +1,54 @@
+{
+  "protocol": "Direct comparison of initial-run outputs to the human-authored AMI abstract, four grouped final-decision sentences and one action sentence. This is a transparent reference-coverage check, not an independent human factuality rating or a hosted judge. No 60\u201375% overall coverage score is asserted.",
+  "reference_source": "AMI manual annotations v1.6.2, ES2004b.abssumm.xml",
+  "reference_sha256": "71a14e9843ed671e8986f0949eaa1d75155f61ef524cee960b1d5ba69abcb691",
+  "license": "CC-BY-4.0",
+  "reference_final_decisions": [
+    "It was decided that the group will produce one product design instead of creating alternate designs in an attempt to accomodate different users' preferences.",
+    "The marketing will be focused towards a young, business-class buyer.",
+    "The remote will feature Video Plus capabilities and a seashell-like shape to accomodate the LCD display and the flip screen.",
+    "The remote will be bundled with a docking station to recharge the remote's batteries and a user-friendly instruction manual, and multiple casings will be made available."
+  ],
+  "reference_action_items": [
+    "The Marketing Expert will research consumers' opinions on instruction manuals."
+  ],
+  "runs": [
+    {
+      "backend": "stock",
+      "run": "initial",
+      "generated_decisions": 1,
+      "generated_actions": 0,
+      "generated_open_questions": 0,
+      "reference_decision_groups": 4,
+      "matched_reference_decision_groups": 0,
+      "reference_action_items": 1,
+      "matched_reference_action_items": 0,
+      "decision_reference_recall": 0.0,
+      "action_reference_recall": 0.0,
+      "action_precision": null,
+      "scope_note": "Stock output contains a TV-only/no-teletext scope statement supported by the transcript and reference abstract, but it does not recover any of the four annotated final decision groups."
+    },
+    {
+      "backend": "paiton",
+      "run": "initial",
+      "generated_decisions": 0,
+      "generated_actions": 0,
+      "generated_open_questions": 0,
+      "reference_decision_groups": 4,
+      "matched_reference_decision_groups": 0,
+      "reference_action_items": 1,
+      "matched_reference_action_items": 0,
+      "decision_reference_recall": 0.0,
+      "action_reference_recall": 0.0,
+      "action_precision": null,
+      "scope_note": "Paiton output retains eight discussion-topic labels and no decision/action claims. This is a topic-focused partial draft."
+    }
+  ],
+  "limitations": [
+    "The output outlines opening/middle discussion but misses the reference final decisions: one design, young business-class market, Video Plus/seashell shape, and docking/manual/casing choices.",
+    "The marketing task to research consumers' opinions on instruction manuals is missing.",
+    "The reference decision groups are not an exhaustive list of every supported statement. A supported scope fact is not counted as recovery of an unrelated reference decision.",
+    "Do not mistake source-reference validation for semantic factuality or high recall. Missing items are permitted by the partial-draft scope and remain visible in the full transcript.",
+    "The synthetic fixture separately verifies extraction of an explicit USB-C decision, Morgan/Tuesday action and undecided launch while rejecting injected fictional commitments."
+  ]
+}

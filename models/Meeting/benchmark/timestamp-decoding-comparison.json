@@ -1,0 +1,725 @@
+{
+  "comparisons": [
+    {
+      "backend": "stock",
+      "stats": {
+        "gpu-scalars": {
+          "n": 9,
+          "median": 0.6441526409471408,
+          "minimum": 0.3761928250314668,
+          "maximum": 0.7443006979301572
+        },
+        "fixed-mode-cpu": {
+          "n": 9,
+          "median": 0.0016095670871436596,
+          "minimum": 0.0010358620202168822,
+          "maximum": 0.002022931003011763
+        }
+      },
+      "raw": {
+        "compiler_enabled": false,
+        "exact_decoded_equality": true,
+        "rows": [
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.40820873400662094,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.0013286200119182467,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.0010358620202168822,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.3766702649882063,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.3761928250314668,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.0013671059859916568,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0011495619546622038,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.3776060859672725,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.7246644150000066,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.002107917913235724,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.0018491200171411037,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.7416277520824224,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.7418949860148132,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.002022931003011763,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0019085999811068177,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.7443006979301572,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "a59dbd79c42552b4dda3d4d9331646962eed302cc4577924970e055be2bacdce"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.6306565349223092,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.0019295410020276904,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.0016095670871436596,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.6441526409471408,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.6445257349405438,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.0018382989801466465,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0016095530008897185,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.6437265080166981,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          }
+        ],
+        "note": "Same generated GPU sequences/durations replayed through existing processor; fixed-mode CPU mode preserves the inferred decoder type and includes both tensor copies. Isolated postprocessing only, not complete ASR or pipeline performance."
+      }
+    },
+    {
+      "backend": "paiton",
+      "stats": {
+        "gpu-scalars": {
+          "n": 9,
+          "median": 0.6326358279911801,
+          "minimum": 0.3725593250710517,
+          "maximum": 0.7325290329754353
+        },
+        "fixed-mode-cpu": {
+          "n": 9,
+          "median": 0.001658321009017527,
+          "minimum": 0.0010403390042483807,
+          "maximum": 0.0020210359944030643
+        }
+      },
+      "raw": {
+        "compiler_enabled": true,
+        "exact_decoded_equality": true,
+        "rows": [
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.4046939219115302,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.0013177209766581655,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.001121779903769493,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.3725593250710517,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.3752251999685541,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.0012610380072146654,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0010403390042483807,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 3,
+            "start": 78.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.3752520540729165,
+            "sequence_shape": [
+              1,
+              137
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "406b78151f170acc62c13eeafbc5c84bacb1d1e692814d9948a1c6500f5d16e8"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.7188277250388637,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.001992773963138461,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.0018562499899417162,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.7325290329754353,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.7318671230459586,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.0020210359944030643,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0019525060197338462,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 12,
+            "start": 312.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.731155269080773,
+            "sequence_shape": [
+              1,
+              245
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "bf26e51ee2382f381919559faea8fbd2320924d84da1617a6decf75844b38ebb"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.621303079999052,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 0,
+            "cached": false,
+            "seconds": 0.0019339219434186816,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.001658321009017527,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 1,
+            "cached": true,
+            "seconds": 0.6325683109462261,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.6327709150500596,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 2,
+            "cached": true,
+            "seconds": 0.0019173519685864449,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "fixed-mode-cpu",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.0016222799895331264,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          },
+          {
+            "chunk": 70,
+            "start": 1820.0,
+            "mode": "gpu-scalars",
+            "repeat": 3,
+            "cached": true,
+            "seconds": 0.6326358279911801,
+            "sequence_shape": [
+              1,
+              210
+            ],
+            "durations_dtype": "torch.int64",
+            "decoded_sha256": "350d9330e507bc800bde2ec23c97df998ce3b907d7534b537612bf00de5a3175"
+          }
+        ],
+        "note": "Same generated GPU sequences/durations replayed through existing processor; fixed-mode CPU mode preserves the inferred decoder type and includes both tensor copies. Isolated postprocessing only, not complete ASR or pipeline performance."
+      }
+    }
+  ],
+  "limitation": "Native postprocessing improvement applies equally to stock and Paiton; not compiler acceleration. Three actual 30-second chunks, initial pair plus three alternating cached calls per mode/chunk. Exact decoded output equality enforced per chunk. Full pipeline must be measured separately."
+}

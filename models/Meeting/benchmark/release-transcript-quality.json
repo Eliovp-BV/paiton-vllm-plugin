@@ -1,0 +1,93 @@
+{
+  "method": "Same original AMI word reference, lowercase/underscore-removal/punctuation-to-space normalization and jiwer as earlier full-ASR evaluation. Speaker turns match the scored community-1 output exactly. Baseline timestamp metrics are representative; exact object equality is reported per run instead of assumed.",
+  "runs": [
+    {
+      "run": "paiton-0",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": true,
+      "word_edit_rate_from_baseline": 0.0,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "paiton-1",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": true,
+      "word_edit_rate_from_baseline": 0.0,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "paiton-2",
+      "wer": 0.2040696823305519,
+      "cer": 0.15734498423078036,
+      "text_sha256": "70bc1cd9e5cb5a916fc4ffe5f3481e599b132cd8433018cac9b7c6fdcc4011f9",
+      "word_count": 5979,
+      "word_and_timestamp_objects_match_baseline": false,
+      "word_edit_rate_from_baseline": 0.0005014206919605549,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "paiton-3",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": true,
+      "word_edit_rate_from_baseline": 0.0,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "stock-0",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": false,
+      "word_edit_rate_from_baseline": 0.0003341687552213868,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "stock-1",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": false,
+      "word_edit_rate_from_baseline": 0.0003341687552213868,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "stock-2",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": false,
+      "word_edit_rate_from_baseline": 0.0003341687552213868,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    },
+    {
+      "run": "stock-3",
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_count": 5977,
+      "word_and_timestamp_objects_match_baseline": false,
+      "word_edit_rate_from_baseline": 0.0003341687552213868,
+      "speaker_turns_exact_match_scored_baseline": true,
+      "speaker_turn_count": 448
+    }
+  ]
+}

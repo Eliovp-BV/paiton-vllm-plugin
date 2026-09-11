@@ -1,0 +1,74 @@
+{
+  "note": "Newly generated non-human test signals. Tonal music is not representative of all music or singing. Tests the actual selected VAD+ASR path, not raw ungated ASR.",
+  "results": [
+    {
+      "name": "silence",
+      "license": "CC0-1.0",
+      "sha256": "40abc924dc63f75aafb2400bb99fd66741e22eb9ff2450973a18db53a06286ac",
+      "duration": 30,
+      "segments": [],
+      "word_count": 0,
+      "seconds": 0.5391182119492441,
+      "chunks": [
+        {
+          "start": 0.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        },
+        {
+          "start": 26.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        }
+      ]
+    },
+    {
+      "name": "white_noise",
+      "license": "CC0-1.0",
+      "sha256": "a6a82c53f405b711ee7c8dff32535c807b0ccef9f21a0df8c9731c79eab9ff97",
+      "duration": 30,
+      "segments": [],
+      "word_count": 0,
+      "seconds": 0.42489152296911925,
+      "chunks": [
+        {
+          "start": 0.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        },
+        {
+          "start": 26.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        }
+      ]
+    },
+    {
+      "name": "synthetic_tonal_music",
+      "license": "CC0-1.0",
+      "sha256": "37bebb5c10a01df33c5a99f1edd1a3160e2145dbc31174cd4c9e1e43400fb77c",
+      "duration": 30,
+      "segments": [],
+      "word_count": 0,
+      "seconds": 0.43954402999952435,
+      "chunks": [
+        {
+          "start": 0.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        },
+        {
+          "start": 26.0,
+          "end": 30.0,
+          "seconds": 0,
+          "vad_skipped": true
+        }
+      ]
+    }
+  ]
+}
