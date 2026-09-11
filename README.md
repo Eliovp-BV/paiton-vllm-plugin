@@ -59,7 +59,7 @@ modality, reasoning and coding are separate capabilities, listed per model above
 
 ### Meeting audio
 
-[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous community-1 speaker labels and a compact Granite helper for partial, timestamp-linked summaries. English recording import and the Studio processing workflow have local tests on R9700. Live Teams capture is not qualified; the candidate is not published. [Setup and limits](models/Meeting/REPRODUCE.md) · [Measured results](models/Meeting/BENCHMARKS.md).
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous community-1 speaker labels and a compact Granite helper for partial, timestamp-linked summaries. English recording import and the Studio processing workflow have local tests on R9700. Stock ASR is the measured default, with Paiton opt-in. Live Teams capture is not qualified; the candidate is not published. [Setup and limits](models/Meeting/REPRODUCE.md) · [Measured results](models/Meeting/BENCHMARKS.md).
 
 ### Image generation
 

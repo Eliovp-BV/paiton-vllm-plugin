@@ -1,6 +1,6 @@
 # Local meeting notes for Paiton Studio
 
-**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate passed actual Studio processing; its final repeated long-meeting benchmark is running. Do not treat partial drafts as approved meeting records.
+**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
 
 The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
 
@@ -10,6 +10,8 @@ The pipeline separates audio capture/import, Silero voice activity detection, Pa
 | Voice activity | Silero VAD | CPU TorchScript, silence gating without shifting the audio clock |
 | Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
 | Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native vLLM with a Transformers alternative, evidence-linked partial notes |
+
+The final cached complete-pipeline median was **413.87 seconds stock / 423.67 seconds Paiton** on the 39:05 meeting. The 20% objective was not met. Use `--paiton` for the tested compiled ASR option; its earlier warm ASR-only gain was 11.58%. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries.
 
 Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
 
@@ -68,3 +70,5 @@ The compact Granite adapter uses bounded context and hierarchical summaries. Lar
 Package integration code follows this repository's Apache-2.0 license. NVIDIA Parakeet v3 and pyannote community-1 are CC-BY-4.0 checkpoints; Silero VAD is MIT; Voxtral Mini, Granite 4.2 and Granite Speech TurboCTC are Apache-2.0. Consult each upstream model card and the inherited runtime's notices. Gated access is separate from copyright licensing, and this package does not accept access conditions on a user's behalf.
 
 The public AMI evaluation recording and annotations are from the [AMI Meeting Corpus](https://groups.inf.ed.ac.uk/ami/corpus/), distributed under CC-BY-4.0. Cite the AMI corpus creators when redistributing those recordings or derived examples. No private meeting audio or derived content belongs in release evidence.
+
+The final stock-default Studio check produced [this transcript and partial summary](examples/spoken-stock-default.json), retaining the USB-C decision, Morgan/Tuesday action and undecided launch with source references. Import, completion, speaker renaming, playback seeking and export passed without browser errors. The earlier compiled-ASR Studio example remains available separately.

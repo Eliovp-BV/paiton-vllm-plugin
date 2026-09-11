@@ -42,11 +42,11 @@ docker run --rm --network none --entrypoint python3 \
 
 ```bash
 ./run-docker.sh /path/to/meeting.mp4 /path/to/new-meeting-result
-./run-docker.sh --stock /path/to/meeting.mp4 /path/to/new-stock-result
+./run-docker.sh --paiton /path/to/meeting.mp4 /path/to/new-paiton-result
 ./run-docker.sh /path/to/meeting.mp4 /path/to/new-transformers-result --summary-backend transformers
 ```
 
-Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
+Stock ASR is the default because it had the lower measured complete-pipeline median. `--paiton` explicitly enables the compiled prediction LSTM; `--stock` remains an accepted explicit stock selector. Each output directory must be new. Results contain `result.json` and synchronized `playback.wav`. Original audio is mounted read-only. ASR, diarization and summary execute sequentially in separate processes, releasing GPU allocations between stages. The launcher cooperates with Studio's GPU lease and uses a persistent runtime cache. First use can take longer while ROCm kernels initialize.
 
 For separate sources, pass `--track 1` or `--channel 0` as appropriate. Track numbering is zero-based among audio streams. Do not downmix duplicated microphone/system feeds. All original tracks remain in the source recording. `--keep-intermediates` retains stage results for local diagnosis or benchmarking; otherwise they are removed. Delete the output directory to remove CLI-derived content; the source recording is preserved.
 
@@ -70,12 +70,13 @@ Use the coordinated Studio feature version with meeting controls. Set these keys
 ```json
 {
   "meeting_enabled": true,
+  "meeting_compiler_enabled": false,
   "meeting_image": "paiton-meeting:studio-candidate",
   "meeting_models_dir": "/path/to/paiton-meeting/models"
 }
 ```
 
-Studio verifies the prepared provenance receipt before queuing inference. Open Meetings, import a recording, select the audio source, then choose **Transcribe and summarize locally**. The queue shares the GPU with existing Studio tools. Review anonymous speaker labels, enter known participant names, follow timestamp links, export the result or delete the owned recording and derived content.
+Set `meeting_compiler_enabled` to `true` only to opt into the tested Paiton ASR path. Each queued job keeps its selected backend; changing configuration does not silently change an already queued job. Completed Studio exports record `asr_backend`. Studio verifies the prepared provenance receipt before queuing inference. Open Meetings, import a recording, select the audio source, then choose **Transcribe and summarize locally**. The queue shares the GPU with existing Studio tools. Review anonymous speaker labels, enter known participant names, follow timestamp links, export the result or delete the owned recording and derived content.
 
 For a browser on another machine, configure `PAITON_TLS_CERT` and `PAITON_TLS_KEY` with a certificate trusted by that client and launch `run-meetings-secure.sh`. The default port is 8877; `PAITON_STUDIO_PORT` overrides it. The server's microphone is not the remote browser's microphone. Recording import is separately validated from browser capture; see the capture table in the README.
 

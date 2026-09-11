@@ -4,11 +4,39 @@ Hardware: one AMD Radeon AI PRO R9700, 32 GiB VRAM, RDNA4 gfx1201, 64 compute un
 
 ## Declared primary scenario
 
-The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The Transformers-based complete-pipeline comparison is complete and did not meet the objective. A faster native vLLM summary backend is undergoing full-pipeline qualification; a backend change is never counted as Paiton acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
+The engineering objective is a 20% reduction in median warm complete-pipeline processing time on the 2,345.493375-second (39:05) AMI ES2004b distant-microphone recording, batch one, English, with matched checkpoint revisions, precision, decoding, VAD, diarization and summary settings. The final native-vLLM complete-pipeline comparison is complete and did not meet the objective. Stock ASR is the default because it had the lower cached median; Paiton remains explicit opt-in. A summary backend change is never counted as compiler acceleration. Sequential stage processes include model-switching costs. Persistent checkpoint and kernel caches are retained. First processing in a series is separate from repeated cached processing and is not described as a cleared OS page cache.
 
 RTF is processing seconds / audio seconds. Audio hours per wall-clock hour is its reciprocal. Offline capture has no provisional/final streaming transcript latency; processing begins after recording stops or an import finishes.
 
-## Complete pipeline with the Transformers helper
+## Final source-runtime complete pipeline
+
+Eight runs used the same frozen source-built image, audio, pinned models, FP16 ASR, BF16 native-vLLM summary, VAD, speaker diarization, timestamps, chunking and decoding settings. An initial pair is followed by three alternating cached repetitions per variant; only the prediction LSTM implementation differs. No builds or other GPU probes ran during this batch.
+
+| Cached metric (three runs each) | Stock | Paiton |
+|---|---:|---:|
+| Median complete seconds | 413.8706 | 423.6724 |
+| Minimum–maximum seconds | 410.5330–415.1802 | 367.3708–424.2612 |
+| Sample standard deviation, seconds | 2.3962 | 32.6770 |
+| RTF: processing / audio seconds | 0.176454 | 0.180633 |
+| Audio hours / wall-clock hour | 5.6672 | 5.5361 |
+| ASR with startup, median seconds | 107.00 | 101.29 |
+| Diarization with startup, median seconds | 70.94 | 68.89 |
+| Summary with startup, median seconds | 230.91 | 247.80 |
+| Summary load/graph initialization, median seconds | 59.88 | 86.19 |
+| Summary generation/audit, median seconds | 141.06 | 133.47 |
+| Summary worker allocated / reserved, decimal GB | 15.08 / 15.21 | 15.08 / 15.21 |
+| Sampled driver peak, median decimal GB | 15.79 | 15.79 |
+| Peak summed process RSS, median decimal GB | 6.70 | 7.45 |
+
+**Paiton was 2.37% slower by the declared complete-pipeline median; the 20% objective was not met.** Its faster ASR and shorter summary generation did not produce a lower complete median in this sequential deployment. Startup varied substantially; this does not establish that the compiler caused the summary-loading difference. The faster individual Paiton run is retained in the range, not substituted for the median. Stock is therefore the default, with the tested compiled ASR available through `--paiton` or Studio's explicit compiler configuration.
+
+The initial pair took 424.50 s stock / 382.98 s Paiton after prior caches existed. These are fresh stage processes, not cleared OS caches. The first stock launcher also waited for the separately validated Studio job; that wait is excluded from its 424.50-second processing time. For an already available recording, end-of-meeting latency is complete processing plus import, queue and launch overhead. This is offline processing; streaming partial/final latency is not applicable.
+
+Stage medians need not sum to the complete median. Allocator counters cover the native vLLM worker; ASR and diarization allocation probes are reported separately. Driver sampling covers the complete owned pipeline; samples may miss peaks. Summed RSS can double-count shared pages. Three repetitions are a small sample, and summary lengths differ between ASR variants.
+
+The [detailed report](benchmark/release-complete-pipeline.json) includes exact image/source provenance, all stage/loading timings, memory sample counts, variability and limitations. [Raw timing rows](benchmark/release-complete-pipeline-timings.json) retain all eight runs. The final summaries remain topic-focused partial drafts: none recovers the four grouped final decisions or the one action in the AMI human abstract; stock includes one supported TV-only/no-teletext scope statement. See the [per-run reference check](benchmark/release-summary-reference-check.json). No 60–75% recall or broad factuality score is claimed.
+
+## Earlier complete pipeline with the Transformers helper
 
 Eight full recording runs comprise an initial pair and three alternating cached repetitions per variant. Every run starts fresh stage processes with persistent file/kernel caches. The same pinned models, precision, decoding, timestamps, diarization and summary policy are used; only the ASR prediction LSTM changes.
 
@@ -77,7 +105,7 @@ Both outputs retained the Morgan/Tuesday action and undecided-launch issue, reje
 
 A graph-enabled native Granite probe executed on gfx1201 using BF16 and Triton attention. Complete summary-only processing took 24.96 seconds on the spoken fixture and 138.60 seconds on the AMI transcript after a 40.13-second model load. It retained the fixture's USB-C decision, Morgan/Tuesday action and undecided launch, while rejecting the fictional approval and email invitation. The AMI notes retained later discussion and a referenced TV-only/no-teletext scope statement; open-question extraction remained imperfect.
 
-The actual `process --summary-backend vllm` command then completed the spoken audio fixture in 191.89 seconds: ASR/startup 26.95 s, diarization/startup 21.14 s, attribution 0.06 s, playback 0.20 s and summary/startup 143.51 s. Summary model loading/graph initialization took 88.60 s and generation/auditing 27.43 s. This first-use short example is slower overall than the previous Transformers example; inference speed alone does not establish startup or end-to-end superiority. Worker allocator peaks were 14.67 GB allocated / 14.77 GB reserved, including KV and graph pools. A named local worker extension retrieves these counters without enabling pickle-based RPC serialization. Repeated long-pipeline comparison is pending.
+The actual `process --summary-backend vllm` command then completed the spoken audio fixture in 191.89 seconds: ASR/startup 26.95 s, diarization/startup 21.14 s, attribution 0.06 s, playback 0.20 s and summary/startup 143.51 s. Summary model loading/graph initialization took 88.60 s and generation/auditing 27.43 s. This first-use short example is slower overall than the previous Transformers example; inference speed alone does not establish startup or end-to-end superiority. Worker allocator peaks were 14.67 GB allocated / 14.77 GB reserved, including KV and graph pools. A named local worker extension retrieves these counters without enabling pickle-based RPC serialization. The final repeated comparison is reported above.
 
 ## Summary coverage against the human AMI reference
 
@@ -87,9 +115,9 @@ Missing reference items include the target buyer, one-design decision, Video Plu
 
 ## Footprint and limits
 
-Prepared role directories occupied about 2.51 GB Parakeet, 33.7 MB community-1, 7.33 GB Granite and 2.27 MB VAD. Each separately initialized runtime cache occupied about 815 MB after these tests. The candidate image reports 11.90 GB uncompressed, with layers shared with the existing Studio runtime. These are measured logical bytes, not promised incremental download sizes. Keep space for original audio, normalized playback, model downloads and Docker build layers.
+Prepared role directories occupied about 2.51 GB Parakeet, 33.7 MB community-1, 7.33 GB Granite and 2.27 MB VAD. Each separately initialized runtime cache occupied about 815 MB after these tests. The candidate image reports 11.92 GB uncompressed, with layers shared with the existing Studio runtime. These are measured logical bytes, not promised incremental download sizes. Keep space for original audio, normalized playback, model downloads and Docker build layers.
 
-Stages release GPU allocations before the next model loads. A prior full compact-summary run peaked at about 8.04 GB allocated / 8.58 GB reserved; diarization at 1.78 GB / 2.25 GB. Driver memory is sampled separately because it includes allocations outside Torch. The Transformers complete-pipeline telemetry and repeat statistics are reported above; final-backend qualification remains in progress. Quantization probes and their failure cases are documented in `QUANTIZATION.md`.
+Stages release GPU allocations before the next model loads. A prior full compact-summary run peaked at about 8.04 GB allocated / 8.58 GB reserved; diarization at 1.78 GB / 2.25 GB. Driver memory is sampled separately because it includes allocations outside Torch. The Transformers complete-pipeline telemetry and repeat statistics are reported above; the final source-runtime measurements are reported above. Quantization probes and their failure cases are documented in `QUANTIZATION.md`.
 
 Tests cover codecs, bounded decoding, chunk stitching, evidence references, exports, cleanup, and spoken/text instruction attacks. Natural English AMI and one-speaker LibriSpeech probes support a limited qualification, not universal accuracy across accents or languages. Real microphone/tab/system capture and native Teams sessions are not validated by the simulated Chromium microphone test.
 

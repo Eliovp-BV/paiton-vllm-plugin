@@ -2,12 +2,17 @@
 set -euo pipefail
 umask 077
 if [[ $# -eq 0 || ${1:-} == --help ]]; then
-  echo 'Usage: run-docker.sh [--stock] RECORDING NEW_OUTPUT_DIRECTORY [process options]'
+  echo 'Usage: run-docker.sh [--stock|--paiton] RECORDING NEW_OUTPUT_DIRECTORY [process options]'
+  echo 'Stock is the default; --paiton enables the compiled ASR prediction LSTM.'
   echo 'Set PAITON_MEETING_CACHE to the prepared cache and PAITON_MEETING_IMAGE to a local image.'
   exit 0
 fi
-backend=(--artifact /opt/paiton/meeting-artifacts/meeting_lstm_float16_gfx1201.so)
-if [[ ${1:-} == --stock ]]; then backend=(); shift; fi
+backend=()
+if [[ ${1:-} == --paiton ]]; then
+  backend=(--artifact /opt/paiton/meeting-artifacts/meeting_lstm_float16_gfx1201.so); shift
+elif [[ ${1:-} == --stock ]]; then
+  shift
+fi
 if [[ $# -lt 2 ]]; then echo 'A recording and new output directory are required.' >&2; exit 2; fi
 recording=$(realpath -e -- "$1")
 output=$(realpath -m -- "$2")

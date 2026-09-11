@@ -18,7 +18,7 @@ rows=[]
 for repeat in range(a.repeats+1):
  for backend in (('stock','paiton') if repeat%2==0 else ('paiton','stock')):
   output=root/f'{backend}-{repeat}';log=root/f'{backend}-{repeat}.log'
-  command=[a.launcher]+(['--stock'] if backend=='stock' else [])+[a.recording,str(output),'--keep-intermediates']
+  command=[a.launcher,'--stock' if backend=='stock' else '--paiton',a.recording,str(output),'--keep-intermediates']
   if a.summary_backend:command+=['--summary-backend',a.summary_backend]
   started=time.time()
   with log.open('x') as stream:
