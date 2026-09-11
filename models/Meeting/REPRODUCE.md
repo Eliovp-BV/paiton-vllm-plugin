@@ -92,6 +92,12 @@ Specify `--summary-backend vllm` on the benchmark command to match the candidate
 Launcher wall time can include waiting for another workload. The reported pipeline time starts after lease acquisition and excludes Docker startup; individual stage times include interpreter/model startup and switching. This serial deployment is intentionally separate from a resident-model warm ASR microbenchmark.
 
 
+## Investigate summary startup
+
+The native helper now explicitly prefetches checkpoint pages before loading weights. The same setting applies to stock and Paiton. This does not alter precision or generation settings. Three alternating loader probes measured median initialization of 41.10 seconds with lazy loading and 34.41 seconds with prefetch; this is not a complete-pipeline speedup claim. Full results are in [benchmark/summary-loader-comparison.json](benchmark/summary-loader-comparison.json).
+
+The reproducible loader probe accepts `--model`, `--transcript` (a CLI `result.json`), `--strategy lazy|prefetch`, and a new `--output` file. Run it inside the prepared GPU container with the benchmark directory mounted, using `python /benchmark/summary_loader.py`. It generates exactly 128 tokens three times per fresh engine and records token hashes; those probes are intentionally incomplete summaries. Use identical input and cache paths and alternate strategies across separate processes.
+
 ## Separate Studio work
 
 Studio is not a dependency or a deliverable of this standalone package task. Existing integration notes are preserved in [STUDIO_HANDOFF.md](STUDIO_HANDOFF.md) for the separate implementation task.

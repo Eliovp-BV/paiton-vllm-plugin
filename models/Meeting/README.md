@@ -2,7 +2,7 @@
 
 **Development candidate, 1.0.0rc1 — publication blocked on speed parity.** Paiton must at least match stock end-to-end before publication. The current candidate does not pass that gate. Studio integration is a separate task; this package runs independently through its CLI/container.
 
-**Prepared locally, not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
+**Prepared locally, not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate completed the repeated long-meeting benchmark. Stock ASR is the default; the compiled ASR path is explicit opt-in. Do not treat partial drafts as approved meeting records.
 
 The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
 
@@ -58,7 +58,7 @@ Granite Speech 5.0 470M TurboCTC executes in BF16 and FP32 on gfx1201. It was su
 
 Voxtral Mini (4.7B total) executed locally but hallucinated during raw silence and failed the correction/instruction-attack summary fixture. It is not the default. VAD protects the selected ASR pipeline from processing silent chunks, but does not establish general hallucination immunity.
 
-The complete command processed a 38.90-second synthetic spoken regression recording in 154.00 seconds on first use, including stage startup. Studio processed it in 145.82 seconds using its actual GPU queue. Both produced the same supported Morgan/Tuesday action and undecided-launch issue without accepting the fictional injected budget or email invitation as commitments. The explicit USB-C decision was omitted. Browser checks covered import, completion, speaker renaming, synchronized playback seeking and JSON export with no page errors. These short first-use results are not long-meeting throughput measurements or a broad factuality score.
+The current standalone compiled command processed the 38.90-second synthetic recording in 155.72 seconds including startup. It retained the USB-C decision, Morgan/Tuesday action and undecided launch, with valid source references, and rejected injected commitments. [Actual CLI transcript and notes](examples/spoken-standalone.json). This short first-use test is not a stock/Paiton comparison or broad summary/speaker accuracy evidence.
 
 The compact Granite adapter uses bounded context and hierarchical summaries. Large Qwen3.8 and GPT-OSS models are excluded from this small configuration. Summary coverage is intentionally accepted as partial for this initial version; included claims still need review against source timestamps. See [SELECTION.md](SELECTION.md), [QUANTIZATION.md](QUANTIZATION.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
@@ -67,5 +67,3 @@ The compact Granite adapter uses bounded context and hierarchical summaries. Lar
 Package integration code follows this repository's Apache-2.0 license. NVIDIA Parakeet v3 and pyannote community-1 are CC-BY-4.0 checkpoints; Silero VAD is MIT; Voxtral Mini, Granite 4.2 and Granite Speech TurboCTC are Apache-2.0. Consult each upstream model card and the inherited runtime's notices. Gated access is separate from copyright licensing, and this package does not accept access conditions on a user's behalf.
 
 The public AMI evaluation recording and annotations are from the [AMI Meeting Corpus](https://groups.inf.ed.ac.uk/ami/corpus/), distributed under CC-BY-4.0. Cite the AMI corpus creators when redistributing those recordings or derived examples. No private meeting audio or derived content belongs in release evidence.
-
-The final stock-default Studio check produced [this transcript and partial summary](examples/spoken-stock-default.json), retaining the USB-C decision, Morgan/Tuesday action and undecided launch with source references. Import, completion, speaker renaming, playback seeking and export passed without browser errors. The earlier compiled-ASR Studio example remains available separately.

@@ -62,3 +62,9 @@ PY
 ```
 
 This API submits imported recordings; it does not capture a remote microphone or Teams audio. Start browser capture visibly in Studio, or import a complete authorized recording. For headless batch use, the `run-docker.sh` command above avoids the Studio HTTP/session layer.
+
+## Preserved prototype qualification history
+
+The complete command processed a 38.90-second synthetic spoken regression recording in 154.00 seconds on first use, including stage startup. Studio processed it in 145.82 seconds using its actual GPU queue. Both produced the same supported Morgan/Tuesday action and undecided-launch issue without accepting the fictional injected budget or email invitation as commitments. The explicit USB-C decision was omitted. Browser checks covered import, completion, speaker renaming, synchronized playback seeking and JSON export with no page errors. These short first-use results are not long-meeting throughput measurements or a broad factuality score.
+
+The final stock-default Studio check produced [this transcript and partial summary](examples/spoken-stock-default.json), retaining the USB-C decision, Morgan/Tuesday action and undecided launch with source references. Import, completion, speaker renaming, playback seeking and export passed without browser errors. The earlier compiled-ASR Studio example remains available separately.
