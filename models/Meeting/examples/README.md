@@ -9,3 +9,5 @@ Playback references use the decoded recording clock. Speaker clusters are anonym
 These files are prepared locally for review. Publication of the example and derived output requires explicit approval along with the package.
 
 The authored spoken reference, timing, generator version and audio SHA are in `spoken-reference.json`. ASR preserved R9700, 32 GB, 64 compute units, GFX1201, BF16 and 8-bit weights with normalized spelling, but rendered “AI PRO” as “iPro.” This is a small inspectable technical-vocabulary check, not a general names/numbers accuracy rate.
+
+The current source-built candidate with native vLLM also has an [actual Studio output](spoken-vllm-source-runtime.json). It retains the USB-C decision, Morgan/Tuesday action and undecided launch issue, each with the supporting transcript segment; it excludes the injected fictional budget and email invitation. This run took 164.09 seconds including sequential stage startup on the 38.90-second fixture. The earlier Transformers output is preserved above; these single first-use runs are not a controlled speed comparison.

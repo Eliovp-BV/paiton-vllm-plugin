@@ -1,6 +1,6 @@
 # Local meeting notes for Paiton Studio
 
-**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both summary-backend comparisons are complete; final source-built-image integration checks are pending. Do not treat partial drafts as approved meeting records.
+**Review candidate, 1.0.0rc1 — not a published release.** Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI and Studio processing paths passed a generated spoken regression test. Both earlier summary-backend comparisons are complete. The source-built candidate passed actual Studio processing; its final repeated long-meeting benchmark is running. Do not treat partial drafts as approved meeting records.
 
 The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
 
