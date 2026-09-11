@@ -12,6 +12,9 @@ class ParakeetASR:
         self.dtype=getattr(torch,dtype)
         started=time.perf_counter()
         self.processor=AutoProcessor.from_pretrained(directory,local_files_only=True)
+        # Legacy checkpoints omit this setting. Resolve the unchanged tokenizer
+        # once instead of enumerating its full vocabulary for every output token.
+        self.processor.decoder_type=self.processor._decoder_type
         self.model=ParakeetForTDT.from_pretrained(directory,dtype=self.dtype,attn_implementation='sdpa',local_files_only=True).to('cuda').eval()
         if artifact:
             from .lstm import PaitonLSTM
@@ -34,7 +37,7 @@ class ParakeetASR:
             self.torch.cuda.synchronize()
             if output.sequences.shape[-1]>=768:
                 raise ValueError('A speech chunk reached its decoding limit; no truncated transcript was accepted.')
-            _,timestamps=self.processor.decode(output.sequences,durations=output.durations,skip_special_tokens=True)
+            _,timestamps=self.processor.decode(output.sequences.cpu(),durations=output.durations.cpu(),skip_special_tokens=True)
             accepted=stitch_words(token_words(timestamps[0]),chunk)
             words.extend(accepted)
             timings.append(dict(start=chunk.start,end=chunk.end,seconds=time.perf_counter()-stage))
