@@ -63,6 +63,18 @@ class GGUFTensorSource:
     def close(self):
         self.source.close()
 
+    def read_bytes(self, name, start, count):
+        """Read a bounded byte range of any tensor without interpreting values."""
+        tensor = self.tensors[name]
+        if (type(start) is not int or type(count) is not int or start < 0
+                or count <= 0 or start + count > tensor['size_bytes']
+                or count > self.max_read_bytes):
+            raise InventoryError('GGUF byte range exceeds tensor or staging budget')
+        result = os.pread(self.source.fileno(), count, tensor['offset'] + start)
+        if len(result) != count:
+            raise InventoryError('GGUF checkpoint truncated after verification')
+        return result
+
     def __enter__(self):
         return self
 

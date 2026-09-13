@@ -57,11 +57,16 @@ class PaitonPlatform(RocmPlatform):
             architecture in architectures
             for architecture in (
                 "PaitonQwen38ForCausalLM",
+                "PaitonQwen38GGUFForCausalLM",
                 "PaitonQwen38ForConditionalGeneration",
                 "PaitonOrnith15ForCausalLM",
             )
         ):
-            configure_qwen38_cache_contract(cache_config, resolve_auto=True)
+            conv_dtype = 'bfloat16'
+            if 'PaitonQwen38GGUFForCausalLM' in architectures:
+                contract = getattr(vllm_config.model_config.hf_config, 'paiton_qwen38_contract', {})
+                conv_dtype = contract.get('gdn_conv_state_dtype', 'bfloat16')
+            configure_qwen38_cache_contract(cache_config, resolve_auto=True, conv_dtype=conv_dtype)
 
         # Paiton-specific optimizations
         if cache_config and cache_config.block_size is None:
