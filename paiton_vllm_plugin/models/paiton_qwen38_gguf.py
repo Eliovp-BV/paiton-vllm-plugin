@@ -87,6 +87,19 @@ class PaitonQwen38GGUFForCausalLM(PaitonQwen38ForCausalLM):
         configure_qwen38_cache_contract(vllm_config.cache_config, resolve_auto=True,
             conv_dtype=contract['gdn_conv_state_dtype'])
 
+    def _use_native_decode_graph(self, num_tokens):
+        enabled = (
+            num_tokens == 1
+            and self._native_decode_graph_enabled
+            and self.contract.get('activation_dtype') == 'float32'
+            and self.contract.get('attention_query_arithmetic') == 'bf16_pair'
+        )
+        if enabled and not self._native_graph_logged:
+            logger.info('Using native HIP decode graph with live KV/GDN metadata and context bound %d',
+                        self.contract['max_context_length'])
+            self._native_graph_logged = True
+        return enabled
+
     def _allocate_compiled_outputs(self, num_tokens, device):
         return {'hidden_states':torch.empty((num_tokens,self.config.hidden_size),
                                             dtype=self.activation_dtype,device=device)}
@@ -155,6 +168,11 @@ class PaitonQwen38GGUFForCausalLM(PaitonQwen38ForCausalLM):
         self.contract = contract
         self.memory_estimate = None
         self._native_forward_calls = 0
+        graph_setting = os.getenv('PAITON_GGUF_NATIVE_DECODE_GRAPHS', '1')
+        if graph_setting not in ('0', '1'):
+            raise ValueError('PAITON_GGUF_NATIVE_DECODE_GRAPHS must be 0 or 1')
+        self._native_decode_graph_enabled = graph_setting == '1'
+        self._native_graph_logged = False
 
     def _make_embedding(self):
         return _PackedEmbedding(self.model_path, self.contract['embedding'], self.activation_dtype)

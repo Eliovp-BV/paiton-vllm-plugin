@@ -532,6 +532,9 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
             json.dumps(self._metadata_trace_records, indent=2), encoding="utf-8"
         )
 
+    def _use_native_decode_graph(self, num_tokens: int) -> bool:
+        return False
+
     def _allocate_compiled_outputs(
         self,
         num_tokens: int,
@@ -607,6 +610,13 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         per_layer_attention_metadata = (
             self.contract.get("dflash_full_attention_metadata") == "per_layer"
         )
+        native_decode_graph = self._use_native_decode_graph(inputs_embeds.shape[0])
+        # Native tiled attention reads the live context lengths on the device.
+        # A stable bound keeps the native graph signature reusable during decode.
+        graph_context_bound = (
+            int(self.contract["max_context_length"])
+            if native_decode_graph else int(full_meta.max_seq_len)
+        )
         inputs = {
             "inputs_embeds": inputs_embeds.contiguous(),
             "position_ids": positions.to(dtype=torch.int64).contiguous(),
@@ -616,7 +626,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
                 (int(full_meta.max_query_len), 0), dtype=torch.int32, device=device
             ),
             "max_seq_len": torch.empty(
-                (int(full_meta.max_seq_len), 0), dtype=torch.int32, device=device
+                (graph_context_bound, 0), dtype=torch.int32, device=device
             ),
         }
         if num_accepted_tokens is not None:
@@ -734,6 +744,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         result = self.compiled_model.run_with_tensors(
             exact_inputs,
             outputs,
+            graph_mode=native_decode_graph,
             sync=False,
             stream_ptr=torch.cuda.current_stream(device).cuda_stream,
             noncontiguous_input_names=strided_state_names,
