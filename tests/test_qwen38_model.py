@@ -94,10 +94,12 @@ class FakeCompiledModel:
         inputs,
         outputs,
         sync=False,
+        graph_mode=False,
         stream_ptr=None,
         noncontiguous_input_names=frozenset(),
     ):
         self.inputs = inputs
+        self.graph_mode = graph_mode
         self.stream_ptr = stream_ptr
         self.noncontiguous_input_names = noncontiguous_input_names
         self.stream_ptr = stream_ptr
@@ -273,6 +275,21 @@ class Qwen38ModelContractTests(unittest.TestCase):
                     "conv_state_2", "recurrent_state_2",
                 }),
             )
+
+            self.assertFalse(instance.compiled_model.graph_mode)
+            instance.contract['max_context_length'] = 8192
+            instance._use_native_decode_graph = lambda count: count == 1
+            full_meta.max_query_len = 1
+            for metadata in gdn_metas:
+                metadata.non_spec_query_start_loc = torch.tensor([0, 1], dtype=torch.int32)
+            with patch.object(torch.cuda, 'current_stream',
+                              return_value=SimpleNamespace(cuda_stream=123)), \
+                 patch.object(torch.cuda, 'is_current_stream_capturing', return_value=False):
+                instance.forward(torch.tensor([1]), torch.tensor([1]),
+                                 inputs_embeds=torch.zeros((1, 8), dtype=torch.bfloat16))
+            self.assertTrue(instance.compiled_model.graph_mode)
+            self.assertEqual(instance.compiled_model.inputs['max_seq_len'].shape, (8192, 0))
+            self.assertEqual(instance.compiled_model.inputs['context_lengths'].item(), 2)
 
             context.attn_metadata = None
             profile_embeds = torch.randn((2, 8), dtype=torch.bfloat16)
