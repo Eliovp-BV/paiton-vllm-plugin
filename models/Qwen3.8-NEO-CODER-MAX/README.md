@@ -25,6 +25,19 @@ values in native execution. Quantizing the author-source checkpoint for a
 separate hardware profile remains an alternative; such a result would be a
 separately named derivative, not an equivalent conversion of the NEO GGUF.
 
+The lock also pins the BF16 vision projector and the source tokenizer/config
+hashes. The projector has passed only a single image smoke test in an external
+native GGUF reference runtime. That result does not establish Paiton vision
+support. Likewise, external reference MTP measurements do not qualify the
+plugin's speculative execution or state handling.
+
+The existing loader requires a precision change before it can consume these
+weights faithfully: GGUF normalization tensors already contain multiplicative
+FP32 values, and GDN decay coefficients are already transformed. Applying the
+Qronos loader's BF16 conversion and `1 + weight`/exponential transforms would
+alter their values. The existing release's fitted INT3 decode shadows and W4
+output-head option are also outside this candidate's weight contract.
+
 ## Remaining qualification work
 
 - Complete native graph and vLLM loader integration for the mixed weight
