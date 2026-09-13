@@ -54,6 +54,8 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    from .gguf_detokenizer import install_gguf_detokenizer_compat
+    install_gguf_detokenizer_compat()
     from vllm import ModelRegistry
     from paiton_vllm_plugin import gguf_model_loader  # noqa: F401
 
