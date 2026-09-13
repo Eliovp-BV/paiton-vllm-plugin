@@ -82,6 +82,8 @@ def _copy_tensor_bytes(source, name, destination):
 
 
 class PaitonQwen38GGUFForCausalLM(PaitonQwen38ForCausalLM):
+    _gguf_multimodal = False
+
     def _configure_cache_contract(self, vllm_config):
         contract = vllm_config.model_config.hf_config.paiton_qwen38_contract
         configure_qwen38_cache_contract(vllm_config.cache_config, resolve_auto=True,
@@ -142,7 +144,7 @@ class PaitonQwen38GGUFForCausalLM(PaitonQwen38ForCausalLM):
         required = dict(version=5, weight_format='gguf-mixed',
             norm_binding='fp32_multiplicative', gdn_decay_binding='negative_exp_already_stored',
             gdn_value_head_layout='tiled', gdn_backend='native', full_attention_backend='native',
-            mtp_speculative=False, multimodal=False, tp_size=1, max_batch_size=1)
+            mtp_speculative=False, multimodal=self._gguf_multimodal, tp_size=1, max_batch_size=1)
         if any(contract.get(key) != value for key,value in required.items()):
             raise ValueError('Unsupported native GGUF precision/state contract')
         activation = contract.get('activation_dtype')

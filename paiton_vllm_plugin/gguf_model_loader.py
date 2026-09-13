@@ -13,5 +13,7 @@ class PaitonGGUFModelLoader(BaseModelLoader):
     def load_weights(self, model, model_config):
         from .models.paiton_qwen38_gguf import PaitonQwen38GGUFForCausalLM
         if not isinstance(model, PaitonQwen38GGUFForCausalLM):
-            raise ValueError('paiton_gguf loader requires the Paiton GGUF architecture')
+            from .models.paiton_qwen38_gguf_multimodal import PaitonQwen38GGUFForConditionalGeneration
+            if not isinstance(model, PaitonQwen38GGUFForConditionalGeneration):
+                raise ValueError('paiton_gguf loader requires the Paiton GGUF architecture')
         model.load_weights(())
