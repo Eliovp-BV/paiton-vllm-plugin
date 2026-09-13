@@ -695,6 +695,22 @@ def qwen38_backbone_manifest_fixture():
 
 
 class TestQwen38UnquantizedLoader(unittest.TestCase):
+    def test_explicit_fp32_convolution_contract(self):
+        cache = type("Cache", (), {
+            "cache_dtype": "auto",
+            "mamba_cache_dtype": "auto",
+            "mamba_ssm_cache_dtype": "auto",
+            "mamba_cache_mode": "none",
+            "enable_prefix_caching": False,
+        })()
+        configure_qwen38_cache_contract(cache, resolve_auto=True, conv_dtype="float32")
+        self.assertEqual(cache.cache_dtype, "auto")
+        self.assertEqual(cache.mamba_cache_dtype, "float32")
+        self.assertEqual(cache.mamba_ssm_cache_dtype, "float32")
+        cache.mamba_cache_dtype = "bfloat16"
+        with self.assertRaisesRegex(ValueError, "FP32 convolution"):
+            configure_qwen38_cache_contract(cache, resolve_auto=False, conv_dtype="float32")
+
     def test_cache_contract_resolves_only_fp32_recurrence_auto(self):
         cache = type("Cache", (), {
             "cache_dtype": "auto",

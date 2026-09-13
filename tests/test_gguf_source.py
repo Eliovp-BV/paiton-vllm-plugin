@@ -42,6 +42,13 @@ class SourceTest(unittest.TestCase):
                 for start, count in ((0, 2), (-1, 1), (1, 2), (0, 0)):
                     with self.assertRaises(source.InventoryError):
                         reader.read_rows("weight", start, count)
+                self.assertEqual(reader.read_bytes("weight", 130, 28), data[-288+130:-288+158])
+                for start, count in ((-1, 1), (0, 0), (0, 145), (287, 2), (True, 1)):
+                    with self.assertRaises(source.InventoryError):
+                        reader.read_bytes("weight", start, count)
+                path.write_bytes(data[:-1])
+                with self.assertRaises(source.InventoryError):
+                    reader.read_bytes("weight", 287, 1)
             self.assertTrue(reader.source.closed)
             with self.assertRaises(source.InventoryError):
                 source.GGUFTensorSource(path, **dict(args, sha256="0" * 64))

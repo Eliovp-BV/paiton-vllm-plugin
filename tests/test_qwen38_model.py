@@ -244,7 +244,7 @@ class Qwen38ModelContractTests(unittest.TestCase):
                 torch.cuda,
                 "current_stream",
                 return_value=SimpleNamespace(cuda_stream=123),
-            ):
+            ), patch.object(torch.cuda, "is_current_stream_capturing", return_value=False):
                 output = instance.forward(
                     torch.tensor([1, 2]),
                     positions,
