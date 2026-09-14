@@ -22,8 +22,18 @@ class PlatformRegistrationTests(unittest.TestCase):
             def register_model(cls, architecture, model_path):
                 cls.registered[architecture] = model_path
 
-        with patch.dict(sys.modules, {"vllm": SimpleNamespace(ModelRegistry=Registry)}):
+        with patch.dict(sys.modules, {
+            "vllm": SimpleNamespace(ModelRegistry=Registry),
+            "vllm.model_executor.model_loader": SimpleNamespace(
+                register_model_loader=lambda name: lambda cls: cls),
+            "vllm.model_executor.model_loader.base_loader": SimpleNamespace(
+                BaseModelLoader=type("BaseModelLoader", (), {})),
+        }):
             register_paiton_models()
+        self.assertEqual(
+            Registry.registered["PaitonQwen38GGUFForCausalLM"],
+            "paiton_vllm_plugin.models.paiton_qwen38_gguf:PaitonQwen38GGUFForCausalLM",
+        )
         self.assertEqual(
             Registry.registered["PaitonQwen38ForCausalLM"],
             "paiton_vllm_plugin.models.paiton_qwen38:PaitonQwen38ForCausalLM",

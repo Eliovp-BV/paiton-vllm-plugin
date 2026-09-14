@@ -9,13 +9,18 @@ import torch
 from .qronos_loader import qwen38_specs_from_manifest
 
 
-def configure_qwen38_cache_contract(cache_config, *, resolve_auto: bool) -> None:
-    """Enforce BF16 KV/conv and FP32 recurrence for contract v3."""
+def configure_qwen38_cache_contract(cache_config, *, resolve_auto: bool, conv_dtype: str = "bfloat16") -> None:
+    """Enforce BF16 KV, the declared convolution dtype, and FP32 recurrence."""
 
     if cache_config.cache_dtype not in ("auto", "bfloat16"):
         raise ValueError("Paiton Qwen3.8 requires BF16 full-attention KV cache")
-    if cache_config.mamba_cache_dtype not in ("auto", "bfloat16"):
-        raise ValueError("Paiton Qwen3.8 requires BF16 convolution state")
+    if conv_dtype not in ('bfloat16', 'float32'):
+        raise ValueError('Unsupported Qwen3.8 convolution state dtype')
+    if cache_config.mamba_cache_dtype not in ("auto", conv_dtype):
+        label = 'BF16' if conv_dtype == 'bfloat16' else 'FP32'
+        raise ValueError(f'Paiton Qwen3.8 requires {label} convolution state')
+    if conv_dtype == 'float32' and cache_config.mamba_cache_dtype == 'auto' and resolve_auto:
+        cache_config.mamba_cache_dtype = conv_dtype
     if cache_config.mamba_ssm_cache_dtype == "auto" and resolve_auto:
         cache_config.mamba_ssm_cache_dtype = "float32"
     if cache_config.mamba_ssm_cache_dtype != "float32":

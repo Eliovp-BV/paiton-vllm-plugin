@@ -196,9 +196,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         # from vLLM's internal Qwen3.5 compatibility identifier, so vLLM does
         # not run its private Qwen3_5 config updater for this model. Resolve the
         # contract's auto state dtype here, before cache layers/specs are built.
-        configure_qwen38_cache_contract(
-            vllm_config.cache_config, resolve_auto=True
-        )
+        self._configure_cache_contract(vllm_config)
 
         self.vllm_config = vllm_config
         self.config = vllm_config.model_config.hf_text_config
@@ -225,27 +223,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         )
         with manifest_path_for(self.model_so_path).open(encoding="utf-8") as source:
             self.manifest = json.load(source)
-        validate_qwen38_config_artifact_contract(
-            getattr(
-                vllm_config.model_config.hf_config,
-                "paiton_qwen38_contract",
-                None,
-            ),
-            self.manifest.get("paiton_qwen38_contract"),
-        )
-        self.qronos_specs = qwen38_specs_from_manifest(self.manifest)
-        self.contract = self.manifest["paiton_qwen38_contract"]
-        validate_qwen38_skinny_runtime_target(
-            self.contract,
-            self.manifest.get("target"),
-            torch.cuda.get_device_properties(torch.cuda.current_device()),
-        )
-        self.memory_estimate = preflight_qwen38_memory(
-            self.manifest,
-            hybrid_cache_reservation_bytes=(
-                vllm_config.cache_config.kv_cache_memory_bytes
-            ),
-        )
+        self._prepare_weight_contract()
         self.num_layers = int(self.contract["num_hidden_layers"])
         if self.num_layers != self.config.num_hidden_layers:
             raise ValueError("Qwen3.8 artifact/config layer-count mismatch")
@@ -264,12 +242,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         self.compiled_input_names = set(
             self.compiled_model.get_input_name_to_index_map()
         )
-        self.embed_tokens = VocabParallelEmbedding(
-            self.config.vocab_size,
-            self.config.hidden_size,
-            params_dtype=torch.bfloat16,
-            prefix="model.embed_tokens",
-        )
+        self.embed_tokens = self._make_embedding()
         self.lm_head = ParallelLMHead(
             self.config.vocab_size,
             self.config.hidden_size,
@@ -325,6 +298,41 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
             tuple[str, torch.device, int], torch.Tensor
         ] = {}
         self._metadata_trace_records: list[dict[str, object]] = []
+
+    def _configure_cache_contract(self, vllm_config):
+        configure_qwen38_cache_contract(vllm_config.cache_config, resolve_auto=True)
+
+    def _prepare_weight_contract(self):
+        vllm_config = self.vllm_config
+        validate_qwen38_config_artifact_contract(
+            getattr(
+                vllm_config.model_config.hf_config,
+                "paiton_qwen38_contract",
+                None,
+            ),
+            self.manifest.get("paiton_qwen38_contract"),
+        )
+        self.qronos_specs = qwen38_specs_from_manifest(self.manifest)
+        self.contract = self.manifest["paiton_qwen38_contract"]
+        validate_qwen38_skinny_runtime_target(
+            self.contract,
+            self.manifest.get("target"),
+            torch.cuda.get_device_properties(torch.cuda.current_device()),
+        )
+        self.memory_estimate = preflight_qwen38_memory(
+            self.manifest,
+            hybrid_cache_reservation_bytes=(
+                vllm_config.cache_config.kv_cache_memory_bytes
+            ),
+        )
+
+    def _make_embedding(self):
+        return VocabParallelEmbedding(
+            self.config.vocab_size,
+            self.config.hidden_size,
+            params_dtype=torch.bfloat16,
+            prefix="model.embed_tokens",
+        )
 
     def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_tokens(input_ids)
@@ -524,6 +532,9 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
             json.dumps(self._metadata_trace_records, indent=2), encoding="utf-8"
         )
 
+    def _use_native_decode_graph(self, num_tokens: int) -> bool:
+        return False
+
     def _allocate_compiled_outputs(
         self,
         num_tokens: int,
@@ -599,6 +610,13 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         per_layer_attention_metadata = (
             self.contract.get("dflash_full_attention_metadata") == "per_layer"
         )
+        native_decode_graph = self._use_native_decode_graph(inputs_embeds.shape[0])
+        # Native tiled attention reads the live context lengths on the device.
+        # A stable bound keeps the native graph signature reusable during decode.
+        graph_context_bound = (
+            int(self.contract["max_context_length"])
+            if native_decode_graph else int(full_meta.max_seq_len)
+        )
         inputs = {
             "inputs_embeds": inputs_embeds.contiguous(),
             "position_ids": positions.to(dtype=torch.int64).contiguous(),
@@ -608,7 +626,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
                 (int(full_meta.max_query_len), 0), dtype=torch.int32, device=device
             ),
             "max_seq_len": torch.empty(
-                (int(full_meta.max_seq_len), 0), dtype=torch.int32, device=device
+                (graph_context_bound, 0), dtype=torch.int32, device=device
             ),
         }
         if num_accepted_tokens is not None:
@@ -726,6 +744,7 @@ class PaitonQwen38ForCausalLM(nn.Module, HasInnerState, IsHybrid, SupportsMRoPE)
         result = self.compiled_model.run_with_tensors(
             exact_inputs,
             outputs,
+            graph_mode=native_decode_graph,
             sync=False,
             stream_ptr=torch.cuda.current_stream(device).cuda_stream,
             noncontiguous_input_names=strided_state_names,

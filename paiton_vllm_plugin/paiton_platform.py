@@ -57,11 +57,17 @@ class PaitonPlatform(RocmPlatform):
             architecture in architectures
             for architecture in (
                 "PaitonQwen38ForCausalLM",
+                "PaitonQwen38GGUFForCausalLM",
+                "PaitonQwen38GGUFForConditionalGeneration",
                 "PaitonQwen38ForConditionalGeneration",
                 "PaitonOrnith15ForCausalLM",
             )
         ):
-            configure_qwen38_cache_contract(cache_config, resolve_auto=True)
+            conv_dtype = 'bfloat16'
+            if any(a in architectures for a in ('PaitonQwen38GGUFForCausalLM', 'PaitonQwen38GGUFForConditionalGeneration')):
+                contract = getattr(vllm_config.model_config.hf_config, 'paiton_qwen38_contract', {})
+                conv_dtype = contract.get('gdn_conv_state_dtype', 'bfloat16')
+            configure_qwen38_cache_contract(cache_config, resolve_auto=True, conv_dtype=conv_dtype)
 
         # Paiton-specific optimizations
         if cache_config and cache_config.block_size is None:
@@ -130,8 +136,15 @@ class PaitonPlatform(RocmPlatform):
             if compilation_config.cudagraph_capture_sizes:
                 compilation_config.cudagraph_capture_sizes = []
 
-        # Use standard GPU worker - Paiton models run through the model forward
-        if parallel_config.worker_cls == "auto":
+        # ROCm's superclass already resolves "auto" to its standard worker.
+        if "PaitonQwen38GGUFForConditionalGeneration" in architectures:
+            if parallel_config.worker_cls not in (
+                "auto", "vllm.v1.worker.gpu_worker.Worker",
+                "paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker",
+            ):
+                raise ValueError("Native GGUF image profile requires its precision-preserving worker")
+            parallel_config.worker_cls = "paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker"
+        elif parallel_config.worker_cls == "auto":
             parallel_config.worker_cls = "vllm.v1.worker.gpu_worker.Worker"
 
         # Enable custom ops for Paiton

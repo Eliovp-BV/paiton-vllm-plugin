@@ -54,7 +54,10 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    from .gguf_detokenizer import install_gguf_detokenizer_compat
+    install_gguf_detokenizer_compat()
     from vllm import ModelRegistry
+    from paiton_vllm_plugin import gguf_model_loader  # noqa: F401
 
     # Register Paiton model architectures
     # Users can specify these in their model config's architectures field
@@ -67,6 +70,8 @@ def register_paiton_models() -> None:
         "PaitonQwen3MoeForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3_moe:PaitonQwen3MoeForCausalLM",
         "PaitonQwen3CoderForCausalLM": "paiton_vllm_plugin.models.paiton_qwen3_coder:PaitonQwen3CoderForCausalLM",
         "PaitonQwen38ForCausalLM": "paiton_vllm_plugin.models.paiton_qwen38:PaitonQwen38ForCausalLM",
+        "PaitonQwen38GGUFForCausalLM": "paiton_vllm_plugin.models.paiton_qwen38_gguf:PaitonQwen38GGUFForCausalLM",
+        "PaitonQwen38GGUFForConditionalGeneration": "paiton_vllm_plugin.models.paiton_qwen38_gguf_multimodal:PaitonQwen38GGUFForConditionalGeneration",
         "PaitonQwen38ForConditionalGeneration": "paiton_vllm_plugin.models.paiton_qwen38_multimodal:PaitonQwen38ForConditionalGeneration",
         "PaitonOrnith15ForCausalLM": "paiton_vllm_plugin.models.paiton_ornith15:PaitonOrnith15ForCausalLM",
     }
