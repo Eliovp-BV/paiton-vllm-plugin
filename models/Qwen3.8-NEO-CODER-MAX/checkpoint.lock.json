@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "not-qualified",
+  "status": "qualified-published",
   "model_id": "qwen38-neo-coder-max",
   "gguf": {
     "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
@@ -29,7 +29,9 @@
       "tokenizer.json": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
       "tokenizer_config.json": "1c419f0cef0fd06dcf116d7183c3af53978de71ef1c07a750a65b1c4c6517b0f",
       "chat_template.jinja": "514d5304fcac63bda60e6faf860d5657010cf43cbc4c633c8bf678ee184e7a37",
-      "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74"
+      "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74",
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "processor_config.json": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
     }
   },
   "weight_contract": {
@@ -50,11 +52,11 @@
     }
   },
   "qualification": {
-    "text": false,
-    "vision": false,
+    "text": true,
+    "vision": true,
     "mtp": false,
-    "vllm_native_execution": false
+    "vllm_native_execution": true
   },
-  "runtime_image": null,
-  "runtime_digest": null
+  "runtime_image": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.0.0",
+  "runtime_digest": "sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe"
 }

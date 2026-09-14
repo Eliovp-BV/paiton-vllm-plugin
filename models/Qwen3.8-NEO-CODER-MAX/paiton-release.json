@@ -1,0 +1,142 @@
+{
+  "schema_version": 2,
+  "release_id": "paiton-qwen38-neo-coder-max-q4km-gfx1201-v1.0.0",
+  "status": "published-qualified",
+  "base_model": {
+    "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
+    "revision": "89230607b3708bc1efe174e8fd34d4b164476c88",
+    "selected": {
+      "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf",
+      "size_bytes": 18498573856,
+      "sha256": "bc7a6cf2bcc78d1190aaf04d1ab1c5cb845b6ff23aa0e7d24fe0d2ea6d3a7c7c"
+    },
+    "header_inspected_alternative": {
+      "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q6_K.gguf",
+      "size_bytes": 24033703456,
+      "sha256": "ac011aabe685edbdf542e49351eb6c76c0e5531408f2507f2235ab10931e23a5"
+    },
+    "reference_smoke_projector": {
+      "file": "mmproj-BF16.gguf",
+      "size_bytes": 931145920,
+      "sha256": "b0d8d89e9c9c90e0fb8ca74742d9d9bd7cc0f966a29b6f8c14227000ea6bd89e"
+    }
+  },
+  "author_source": {
+    "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NM-DAU",
+    "revision": "895782677541896947ea136714b45dbed994daca",
+    "metadata_sha256": {
+      "config.json": "56ef632a7c37c40046addbcd09ceeab88c26722a7c385e7d5604a2eb4c55c96d",
+      "tokenizer.json": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+      "tokenizer_config.json": "1c419f0cef0fd06dcf116d7183c3af53978de71ef1c07a750a65b1c4c6517b0f",
+      "chat_template.jinja": "514d5304fcac63bda60e6faf860d5657010cf43cbc4c633c8bf678ee184e7a37",
+      "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74",
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "processor_config.json": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+    }
+  },
+  "files": {
+    "artifact": {
+      "file": "qwen38_neo_gfx1201_tp1_mt512_ctx8192.so",
+      "size_bytes": 6735616,
+      "sha256": "4e128856c62318ae2fc322d23a6e974068a81ab47bb54f76b7f1d14fdf6c285a"
+    },
+    "artifact_manifest": {
+      "file": "qwen38_neo_gfx1201_tp1_mt512_ctx8192.manifest.json",
+      "size_bytes": 453060,
+      "sha256": "fa733dd38ccc76228e1ccae41b7279f68e4eeddf4c03ab04a90ad81d2e4b1663"
+    },
+    "config": {
+      "file": "config.json",
+      "size_bytes": 6999,
+      "sha256": "4baf945feb280c550f06b4ae9fb6ead4134f81a093cc4cab322e12429588cf4e"
+    },
+    "native_helpers": {
+      "file": "libpaiton_gguf_runtime.so",
+      "size_bytes": 297480,
+      "sha256": "2f668f0a2d222ed14b3c716f2d070507adb3980cd7d6e6d1994fcdac2dca0757"
+    },
+    "vision_artifact": {
+      "file": "libpaiton_qwen38_vision.so",
+      "size_bytes": 44568,
+      "sha256": "0ce89bc6a34ee0c672a128c70184d523ac41adaa285bd2f691bf1a2dfa5a2adf"
+    },
+    "vision_manifest": {
+      "file": "vision-runtime.json",
+      "size_bytes": 66500,
+      "sha256": "3dabcf44f22089e828d8c5260ef2547d409e5fc8e7ebfd7587f5a2e88a2632f3"
+    },
+    "release_manifest": {
+      "file": "paiton-release.manifest.json",
+      "size_bytes": 6103,
+      "sha256": "0093a390ecbe51e786b24be7298113a87e75db504fbc27e2192dbf82697cc198"
+    }
+  },
+  "contract": {
+    "gpu": "Radeon AI PRO R9700",
+    "gpu_arch": "gfx1201",
+    "rocm": "7.14.60850",
+    "tensor_parallelism": 1,
+    "max_active_sequences": 1,
+    "max_context_tokens": 8192,
+    "max_batched_tokens": 512,
+    "kv_cache_bytes": 2147483648,
+    "weight_format": "original mixed GGUF Q4_K_M",
+    "output_weight_dtype": "bfloat16",
+    "activation_dtype": "float32",
+    "prefill_matrix_operand_dtype": "float16",
+    "accumulation_dtype": "float32",
+    "kv_dtype": "bfloat16",
+    "recurrent_state_dtype": "float32",
+    "text": true,
+    "vision": true,
+    "mtp": false,
+    "prefix_caching": false,
+    "vllm_cuda_graphs": false,
+    "native_graph_replay_qualified": true,
+    "max_images": 1,
+    "max_vision_patches": 4096,
+    "max_resized_image_pixels": 1048576,
+    "max_image_embeddings": 1024,
+    "video": false,
+    "vision_matrix_operand_dtype": "float32",
+    "native_decode_graphs": true
+  },
+  "revisions": {
+    "artifact_compiler": "0b7ca75aec37b4049dc7c13027774e9efd84794d",
+    "compiler_tests": "965c10c060c3d1a9e837d23629880c08863533d6",
+    "plugin": "a693d6f844553a94b715880a999e802211a2b28e",
+    "vllm": "39bd959b582c85e78e7e0326d49042ce7c3c07ed"
+  },
+  "runtime": {
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.0.0",
+    "candidate_digest": "sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
+    "published_digest": "sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
+    "base_digest": "sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+    "local_image_created": "2026-09-13T21:55:09.403128034Z",
+    "published_at": "2026-09-14T00:18:57.327069+00:00"
+  },
+  "archive": {
+    "file": "paiton-qwen38-neo-q4km-v1.0.0-gfx1201-runtime.tar.gz",
+    "sha256": "cf881645ebd97e9a9290d8be2779008e12af452bbe70a1273c6e484fb3eff74b",
+    "size_bytes": 5100850,
+    "signature": "Ed25519 local integrity signature; not a third-party identity attestation",
+    "source_date_epoch": 1789344000,
+    "timestamp_semantics": "Deterministic bundle timestamp, not measured wall-clock build time"
+  },
+  "qualification": {
+    "clean_immutable_pull": true,
+    "anonymous_manifest_access": true,
+    "compiler_checkout_required": false,
+    "plugin_checkout_required": false,
+    "first_download_into_empty_cache_passed": true,
+    "offline_cache_reuse_passed": true,
+    "offline_startup_seconds_single_observation": 201.07834250701126,
+    "text_task_passes": 10,
+    "text_task_count": 11,
+    "same_failed_task_as_llama_cpp": "code_trace",
+    "image_fixture_passes": 5,
+    "jpeg": true,
+    "benchmark_report": "BENCHMARKS.md",
+    "verified_at": "2026-09-14T00:23:13.613078+00:00"
+  }
+}

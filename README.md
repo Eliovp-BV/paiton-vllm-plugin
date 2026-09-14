@@ -36,6 +36,7 @@ loading. Host RAM and disk requirements are separate and listed in each guide.
 | Model & setup guide | Best use / tested interface | Inputs in this Paiton release | Tested GPU capacity | Measured GPU use |
 | --- | --- | --- | --- | --- |
 | [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Concise chat, lightweight coding and tools; direct answers by default, experimental W4 thinking; 8K context, OpenAI-compatible API | Text | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
+| [**Qwen3.8 NEO CODER MAX 27B Q4_K_M**](models/Qwen3.8-NEO-CODER-MAX/README.md) | DavidAU coding/chat fine-tune, optional reasoning and visual chat; 8K context, one active request, vLLM API; MTP disabled | Text + one still image | 32 GB | [21.09 GiB text / 22.57 GiB images](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API | **Text only**; upstream vision components are not qualified here¹ | 32 GB | Not reported in the model guide |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API; DFlash benchmarks use thinking off | **Text only**; upstream vision path is disabled by the launcher¹ | 32 GB | Not reported in the model guide |
 | [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context, terminal/OpenAI-compatible API | Text | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
@@ -46,7 +47,8 @@ and [Ornith configuration](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-
 include vision components and image tokens. That upstream multimodal architecture
 is distinct from the shipped Paiton interface: Qwen3.8 qualifies text input only,
 and Ornith runs with `--language-model-only`. **Image uploads / visual chat are not
-supported by these community releases.**
+supported by those two releases.** The separate NEO CODER MAX release above
+qualifies a native image path.
 
 MiniCPM5 is the smallest download here: **2.11 GB**, with a **27.98 s median**
 prepared-cache launch to a completed useful answer (three trials). Its small
@@ -79,9 +81,10 @@ modality, reasoning and coding are separate capabilities, listed per model above
 
 Use the input/output columns to distinguish these workflows:
 
-- **Text + image → text** (visual chat/captioning): no qualified Paiton package yet.
-  Qwen3.8 and Ornith have upstream vision components, but the released runtimes
-  above serve text only.
+- **Text + image → text** (visual chat/captioning): supported by
+  [**Qwen3.8 NEO CODER MAX**](models/Qwen3.8-NEO-CODER-MAX/IMAGE_API.md),
+  with one still image, up to 1,024 image embeddings and an 8K total context.
+  The separate Qronos Qwen3.8 and Ornith releases continue to serve text only.
 - **Text + image → image** (image editing): not qualified in the FLUX.2 klein
   package; its supported workflow is text → image.
 - **Text + image → video** (image animation): supported by **Wan2.2** with an
@@ -131,6 +134,25 @@ docker run --rm --name paiton-minicpm5 \
 
 [Setup, quality and loading benchmarks →](models/MiniCPM5-2B/README.md) ·
 [Hugging Face artifacts](https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4)
+
+</details>
+
+<details>
+<summary><strong>Code and chat with images — Qwen3.8 NEO CODER MAX</strong> · Native mixed-GGUF vLLM API</summary>
+
+```bash
+./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
+```
+
+OpenAI-compatible API: `http://127.0.0.1:8000/v1`, model `qwen38-neo`.
+The immutable prebuilt image downloads 19.43 GB of pinned GGUF/projector weights
+on first use and reuses its own named cache. Supports text and one still image,
+8K total context and one active request; MTP is disabled. Thinking defaults on
+with the preserved source template; set `chat_template_kwargs.enable_thinking`
+explicitly. This launcher does not require the proprietary compiler.
+
+[Setup and image API](models/Qwen3.8-NEO-CODER-MAX/README.md) ·
+[Initial/optimized Paiton and working llama.cpp comparison](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md)
 
 </details>
 
@@ -265,6 +287,7 @@ quantization and speculative decoding are documented separately in each guide.
 
 | Model | Example measured result | Evidence |
 | --- | --- | --- |
+| Qwen3.8 NEO CODER MAX | 128 input / 128 output: initial native vLLM 17.492 s → optimized package 7.352 s median; llama.cpp 5.258 s. Initial/optimized prefill precision differs and is qualified separately. | [Matched text/image results and arithmetic](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | MiniCPM5-2B | Paired warm chat: 0.704 s → 0.471 s median; 33.1% lower latency, with unresolved timing variability | [Loading, generation and quality](models/MiniCPM5-2B/BENCHMARKS.md) |
 | GPT-OSS-20B | 512 input / 256 output, concurrency one: 4.819 s → 2.214 s median; 2.18× speedup, 32 requests/mode | [Matched stock settings and caveats](models/GPT-OSS-20B/BENCHMARKS.md) |
 | FLUX.2 klein | Sampled driver VRAM: 23.0 GiB stock → 14.6 GiB Paiton at the qualified image settings | [Full-pipeline measurements](models/FLUX.2-klein/BENCHMARKS.md) |

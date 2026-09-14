@@ -1,0 +1,97 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "subject": [
+    {
+      "name": "qwen38_neo_gfx1201_tp1_mt512_ctx8192.so",
+      "digest": {
+        "sha256": "4e128856c62318ae2fc322d23a6e974068a81ab47bb54f76b7f1d14fdf6c285a"
+      }
+    },
+    {
+      "name": "libpaiton_gguf_runtime.so",
+      "digest": {
+        "sha256": "2f668f0a2d222ed14b3c716f2d070507adb3980cd7d6e6d1994fcdac2dca0757"
+      }
+    },
+    {
+      "name": "libpaiton_qwen38_vision.so",
+      "digest": {
+        "sha256": "0ce89bc6a34ee0c672a128c70184d523ac41adaa285bd2f691bf1a2dfa5a2adf"
+      }
+    }
+  ],
+  "predicateType": "https://slsa.dev/provenance/v1",
+  "predicate": {
+    "buildDefinition": {
+      "buildType": "urn:paiton:private-native-hip-build:v1",
+      "externalParameters": {
+        "gpu_arch": "gfx1201",
+        "hip_version": "7.14.60850",
+        "profile": {
+          "gpu": "Radeon AI PRO R9700",
+          "gpu_arch": "gfx1201",
+          "rocm": "7.14.60850",
+          "tensor_parallelism": 1,
+          "max_active_sequences": 1,
+          "max_context_tokens": 8192,
+          "max_batched_tokens": 512,
+          "kv_cache_bytes": 2147483648,
+          "weight_format": "original mixed GGUF Q4_K_M",
+          "output_weight_dtype": "bfloat16",
+          "activation_dtype": "float32",
+          "prefill_matrix_operand_dtype": "float16",
+          "accumulation_dtype": "float32",
+          "kv_dtype": "bfloat16",
+          "recurrent_state_dtype": "float32",
+          "text": true,
+          "vision": true,
+          "mtp": false,
+          "prefix_caching": false,
+          "vllm_cuda_graphs": false,
+          "native_graph_replay_qualified": true,
+          "max_images": 1,
+          "max_vision_patches": 4096,
+          "max_resized_image_pixels": 1048576,
+          "max_image_embeddings": 1024,
+          "video": false,
+          "vision_matrix_operand_dtype": "float32",
+          "native_decode_graphs": true
+        }
+      },
+      "resolvedDependencies": [
+        {
+          "uri": "urn:paiton:private-compiler",
+          "digest": {
+            "gitCommit": "0b7ca75aec37b4049dc7c13027774e9efd84794d"
+          }
+        },
+        {
+          "uri": "git+https://github.com/Eliovp-BV/paiton-vllm-plugin",
+          "digest": {
+            "gitCommit": "a693d6f844553a94b715880a999e802211a2b28e"
+          }
+        },
+        {
+          "uri": "oci://ghcr.io/eliovp/paiton-vllm-plugin",
+          "digest": {
+            "sha256": "c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9"
+          }
+        },
+        {
+          "uri": "https://huggingface.co/DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
+          "digest": {
+            "gitCommit": "89230607b3708bc1efe174e8fd34d4b164476c88"
+          }
+        }
+      ]
+    },
+    "runDetails": {
+      "builder": {
+        "id": "urn:paiton:local-private-builder"
+      },
+      "metadata": {
+        "invocationId": "neo-gguf-multimodal-rdna4-20260913"
+      }
+    }
+  }
+}
