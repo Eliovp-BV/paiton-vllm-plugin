@@ -150,6 +150,13 @@ class PaitonQwen38GGUFForCausalLM(PaitonQwen38ForCausalLM):
         activation = contract.get('activation_dtype')
         if activation not in ('bfloat16', 'float32') or contract.get('gdn_conv_state_dtype') != activation:
             raise ValueError('GGUF activation/convolution precision contract mismatch')
+        activation_quantization = contract.get('activation_quantization')
+        if activation_quantization not in ('none', 'q4_decode_q8_1'):
+            raise ValueError('Unsupported GGUF activation quantization contract')
+        if activation_quantization == 'q4_decode_q8_1' and (
+            activation != 'float32' or contract.get('linear_kernel_mode') != 4
+        ):
+            raise ValueError('Q4/Q8 decode requires the FP32 vector projection profile')
         self.activation_dtype = {'bfloat16':torch.bfloat16, 'float32':torch.float32}[activation]
         if _w4_lm_head_enabled():
             raise ValueError('GGUF output head must preserve its BF16 weights')
