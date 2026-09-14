@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "release_id": "paiton-qwen38-neo-coder-max-q4km-gfx1201-v1.0.0",
+  "release_id": "paiton-qwen38-neo-coder-max-q4km-gfx1201-v1.1.0",
   "status": "published-qualified",
   "base_model": {
     "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
@@ -36,24 +36,24 @@
   },
   "files": {
     "artifact": {
-      "file": "qwen38_neo_gfx1201_tp1_mt512_ctx8192.so",
-      "size_bytes": 6735616,
-      "sha256": "4e128856c62318ae2fc322d23a6e974068a81ab47bb54f76b7f1d14fdf6c285a"
+      "file": "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.so",
+      "size_bytes": 6968288,
+      "sha256": "61008a42a634a95c095fc879dd2dd8d706a4f5eb31f1fe5a5278f00bb4c40b48"
     },
     "artifact_manifest": {
-      "file": "qwen38_neo_gfx1201_tp1_mt512_ctx8192.manifest.json",
-      "size_bytes": 453060,
-      "sha256": "fa733dd38ccc76228e1ccae41b7279f68e4eeddf4c03ab04a90ad81d2e4b1663"
+      "file": "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.manifest.json",
+      "size_bytes": 453078,
+      "sha256": "e8c865d2aba4269cbf549310cabdbf637c8acaa2b77909b0dba59d2e02d7dda9"
     },
     "config": {
       "file": "config.json",
-      "size_bytes": 6999,
-      "sha256": "4baf945feb280c550f06b4ae9fb6ead4134f81a093cc4cab322e12429588cf4e"
+      "size_bytes": 7010,
+      "sha256": "9334b2f017a1a58c1ea5c22a8572e5d21700d43aaade65a305b486b0c52100d8"
     },
     "native_helpers": {
       "file": "libpaiton_gguf_runtime.so",
-      "size_bytes": 297480,
-      "sha256": "2f668f0a2d222ed14b3c716f2d070507adb3980cd7d6e6d1994fcdac2dca0757"
+      "size_bytes": 306880,
+      "sha256": "5f555f3698280f6a3f6584ea6d234217878d27c7a96f9aae2518f3fc062ad6df"
     },
     "vision_artifact": {
       "file": "libpaiton_qwen38_vision.so",
@@ -67,8 +67,18 @@
     },
     "release_manifest": {
       "file": "paiton-release.manifest.json",
-      "size_bytes": 6103,
-      "sha256": "0093a390ecbe51e786b24be7298113a87e75db504fbc27e2192dbf82697cc198"
+      "size_bytes": 5748,
+      "sha256": "a52b2850054fec1e9e33ff4c2ff48b3ac768153ccf933e7ee69da779f5e8d585"
+    },
+    "native_provenance": {
+      "file": "provenance.json",
+      "size_bytes": 1227,
+      "sha256": "1b26bdf6290c634aff168f2939eea8bd14eba3fa593c8c88e741ef6aa2b0fafd"
+    },
+    "artifact_sbom": {
+      "file": "paiton-release.spdx.json",
+      "size_bytes": 11330,
+      "sha256": "0fbc5d5018b5f19479bb4a0b2d21bf8290341f7e9978e6aedc10f4728300056f"
     }
   },
   "contract": {
@@ -78,7 +88,7 @@
     "tensor_parallelism": 1,
     "max_active_sequences": 1,
     "max_context_tokens": 8192,
-    "max_batched_tokens": 512,
+    "max_batched_tokens": 2048,
     "kv_cache_bytes": 2147483648,
     "weight_format": "original mixed GGUF Q4_K_M",
     "output_weight_dtype": "bfloat16",
@@ -99,29 +109,44 @@
     "max_image_embeddings": 1024,
     "video": false,
     "vision_matrix_operand_dtype": "float32",
-    "native_decode_graphs": true
+    "native_decode_graphs": true,
+    "prefill_gemm_tile_rows": 1024,
+    "activation_quantization": "q4_decode_q8_1",
+    "large_q4_decode_operand_dtype": "q8_1",
+    "quantized_weight_values_preserved": true,
+    "queued_http_requests": true
   },
   "revisions": {
-    "artifact_compiler": "0b7ca75aec37b4049dc7c13027774e9efd84794d",
-    "compiler_tests": "965c10c060c3d1a9e837d23629880c08863533d6",
-    "plugin": "a693d6f844553a94b715880a999e802211a2b28e",
-    "vllm": "39bd959b582c85e78e7e0326d49042ce7c3c07ed"
+    "artifact_compiler": "f32acd6d58e816acd675d306bdb81270414b2d31",
+    "compiler_tests": "f32acd6d58e816acd675d306bdb81270414b2d31",
+    "plugin": "dfaf87296c413cdfc377ca6fe70f7ca8e99d2ace",
+    "vllm": "39bd959b582c85e78e7e0326d49042ce7c3c07ed",
+    "compiler_qualification_docs": "671509a49aaf6520dbbe3bf003bfb734ec683202",
+    "vision_artifact_compiler": "0b7ca75aec37b4049dc7c13027774e9efd84794d",
+    "qualified_payload_plugin": "4514c511bc11d47c17cd4101e112efcf346db800",
+    "runtime_source_tag": "qwen38-neo-coder-max-q4km-rdna4-v1.1.0-runtime"
   },
   "runtime": {
-    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.0.0",
-    "candidate_digest": "sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
-    "published_digest": "sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.1.0",
+    "candidate_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "published_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
     "base_digest": "sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
-    "local_image_created": "2026-09-13T21:55:09.403128034Z",
-    "published_at": "2026-09-14T00:18:57.327069+00:00"
+    "local_image_created": "2026-09-14T11:20:03.089290166Z",
+    "published_at": "2026-09-14T12:09:41.915455+00:00",
+    "environment": {
+      "GPU_MAX_HW_QUEUES": "1",
+      "PAITON_GGUF_PREFILL_TOKENS": "2048"
+    }
   },
   "archive": {
-    "file": "paiton-qwen38-neo-q4km-v1.0.0-gfx1201-runtime.tar.gz",
-    "sha256": "cf881645ebd97e9a9290d8be2779008e12af452bbe70a1273c6e484fb3eff74b",
-    "size_bytes": 5100850,
+    "file": "paiton-qwen38-neo-v1.1.0-runtime.tar.gz",
+    "sha256": "021da1d42142dc8127febbba1e21518ec925aba2835ed458f40647d5a0e072c3",
+    "size_bytes": 5162907,
     "signature": "Ed25519 local integrity signature; not a third-party identity attestation",
     "source_date_epoch": 1789344000,
-    "timestamp_semantics": "Deterministic bundle timestamp, not measured wall-clock build time"
+    "timestamp_semantics": "Deterministic bundle timestamp, not measured wall-clock build time",
+    "bundle_promotion": "Byte-identical qualified v1.1.0-rc4 archive; internal bundle ID and deterministic timestamp retained",
+    "signature_file": "paiton-qwen38-neo-v1.1.0-runtime.tar.gz.sig"
   },
   "qualification": {
     "clean_immutable_pull": true,
@@ -130,13 +155,32 @@
     "plugin_checkout_required": false,
     "first_download_into_empty_cache_passed": true,
     "offline_cache_reuse_passed": true,
-    "offline_startup_seconds_single_observation": 201.07834250701126,
+    "offline_startup_seconds_single_observation": 208.33798636397114,
     "text_task_passes": 10,
     "text_task_count": 11,
     "same_failed_task_as_llama_cpp": "code_trace",
     "image_fixture_passes": 5,
     "jpeg": true,
     "benchmark_report": "BENCHMARKS.md",
-    "verified_at": "2026-09-14T00:23:13.613078+00:00"
+    "verified_at": "2026-09-14T12:17:59.290356+00:00",
+    "first_download_startup_seconds_single_observation": 439.5632467310061,
+    "startup_timing_note": "Publication startup is a functional observation; unrelated CPU compilation overlapped. Use the isolated candidate restart in BENCHMARKS.md for the measured startup profile.",
+    "full_vocabulary_logits_compared": 31784960,
+    "full_vocabulary_logits_max_abs_difference": 0,
+    "baseline_token_logprob_max_difference": 0,
+    "baseline_api_requests": 36,
+    "baseline_image_requests": 24,
+    "heldout_prefill_perplexity": 6.8624444718514965,
+    "decode_perplexity_increase_percent": 0.13014280462946282,
+    "decode_quality_evidence": "Inherited unchanged Q8 decode profile, 770 held-out predictions; not remeasured as a new accuracy gain.",
+    "evidence_index": "qualification-evidence.json",
+    "publication_evidence": "publication-checks.json",
+    "peak_gpu_vram_bytes": 25486274560,
+    "reference_peak_gpu_vram_bytes": 20437159936
+  },
+  "rollback": {
+    "image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
+    "metadata": "paiton-release-v1.0.0.json",
+    "preserved": true
   }
 }

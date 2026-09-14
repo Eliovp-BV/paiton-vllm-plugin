@@ -22,13 +22,13 @@ ENV PATH=/opt/rocm/core-7.14/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/u
 WORKDIR /opt/paiton
 
 FROM runtime AS release
-# Qualified native mixed-GGUF serving profile.
-ENV GPU_MAX_HW_QUEUES=1 PAITON_GGUF_PREFILL_TOKENS=2048
+# Scope queue sharing and larger prefill to this candidate profile.
+ENV GPU_MAX_HW_QUEUES=1 PAITON_GGUF_PREFILL_TOKENS=1024
 ARG PLUGIN_REVISION
 ARG COMPILER_REVISION
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
       org.opencontainers.image.title="Paiton Qwen3.8 NEO CODER MAX Q4_K_M RDNA4" \
-      org.opencontainers.image.version="q4km-native-v1.1.0" \
+      org.opencontainers.image.version="q4km-native-v1.1.0-rc2" \
       org.opencontainers.image.licenses="Apache-2.0 AND MIT" \
       org.opencontainers.image.revision="${PLUGIN_REVISION}" \
       dev.paiton.compiler.revision="${COMPILER_REVISION}" \

@@ -13,6 +13,19 @@ compiler optimizations, custom kernels and runtime integration. These free
 community packages include reproducible runtimes, compiled artifacts and setup
 guides with measured performance and tested limits.
 
+## Native GGUF through vLLM
+
+**The author's GGUF weights, served by vLLM, executed by native Paiton kernels.**
+[Qwen3.8 NEO CODER MAX v1.1.0](models/Qwen3.8-NEO-CODER-MAX/README.md) brings
+qualified mixed Q4_K_M text and image support to RDNA4. Complete-request latency
+medians are **6.4%, 5.1% and 0.8% lower than working llama.cpp** in the three
+tested 128-output text workloads. The latest prefill sweep preserves all
+31.8 million compared logits exactly. Support is specific to the pinned model
+and profile; some prefill-only cases still favor llama.cpp.
+
+[Results and reproduction](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) ·
+[The native GGUF story](models/Qwen3.8-NEO-CODER-MAX/NATIVE_GGUF.md)
+
 ## Community releases
 
 **Qualified hardware: one Radeon AI PRO R9700 · 32 GB VRAM · RDNA 4 (`gfx1201`).**
@@ -36,7 +49,7 @@ loading. Host RAM and disk requirements are separate and listed in each guide.
 | Model & setup guide | Best use / tested interface | Inputs in this Paiton release | Tested GPU capacity | Measured GPU use |
 | --- | --- | --- | --- | --- |
 | [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Concise chat, lightweight coding and tools; direct answers by default, experimental W4 thinking; 8K context, OpenAI-compatible API | Text | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
-| [**Qwen3.8 NEO CODER MAX 27B Q4_K_M**](models/Qwen3.8-NEO-CODER-MAX/README.md) | DavidAU coding/chat fine-tune, optional reasoning and visual chat; 8K context, one active request, vLLM API; MTP disabled | Text + one still image | 32 GB | [21.09 GiB text / 22.57 GiB images](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
+| [**Qwen3.8 NEO CODER MAX 27B Q4_K_M**](models/Qwen3.8-NEO-CODER-MAX/README.md) | DavidAU coding/chat fine-tune, optional reasoning and visual chat; 8K context, one active request, vLLM API; MTP disabled | Text + one still image | 32 GB | [23.74 GiB measured peak](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API | **Text only**; upstream vision components are not qualified here¹ | 32 GB | Not reported in the model guide |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API; DFlash benchmarks use thinking off | **Text only**; upstream vision path is disabled by the launcher¹ | 32 GB | Not reported in the model guide |
 | [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context, terminal/OpenAI-compatible API | Text | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
@@ -152,7 +165,8 @@ with the preserved source template; set `chat_template_kwargs.enable_thinking`
 explicitly. This launcher does not require the proprietary compiler.
 
 [Setup and image API](models/Qwen3.8-NEO-CODER-MAX/README.md) ·
-[Initial/optimized Paiton and working llama.cpp comparison](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md)
+[Paiton/vLLM and llama.cpp results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) ·
+[Native GGUF through vLLM](models/Qwen3.8-NEO-CODER-MAX/NATIVE_GGUF.md)
 
 </details>
 
@@ -287,7 +301,7 @@ quantization and speculative decoding are documented separately in each guide.
 
 | Model | Example measured result | Evidence |
 | --- | --- | --- |
-| Qwen3.8 NEO CODER MAX | 128 input / 128 output: initial native vLLM 17.492 s → optimized package 7.352 s median; llama.cpp 5.258 s. Initial/optimized prefill precision differs and is qualified separately. | [Matched text/image results and arithmetic](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
+| Qwen3.8 NEO CODER MAX | 128 input / 128 output: native Paiton + vLLM **4.925 s** versus working llama.cpp **5.264 s** median. Same weights and fixed token counts; engine activation arithmetic differs. | [Matched text/image results and arithmetic](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | MiniCPM5-2B | Paired warm chat: 0.704 s → 0.471 s median; 33.1% lower latency, with unresolved timing variability | [Loading, generation and quality](models/MiniCPM5-2B/BENCHMARKS.md) |
 | GPT-OSS-20B | 512 input / 256 output, concurrency one: 4.819 s → 2.214 s median; 2.18× speedup, 32 requests/mode | [Matched stock settings and caveats](models/GPT-OSS-20B/BENCHMARKS.md) |
 | FLUX.2 klein | Sampled driver VRAM: 23.0 GiB stock → 14.6 GiB Paiton at the qualified image settings | [Full-pipeline measurements](models/FLUX.2-klein/BENCHMARKS.md) |

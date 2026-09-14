@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "release_id": "paiton-qwen38-neo-coder-max-q4km-gfx1201-native-v1.1.0-rc4",
+  "status": "local-candidate",
+  "publication": "not-published-user-hold",
+  "registry_digest": null,
+  "local_image_tag": "paiton-neo:native-v1.1.0-rc4-20260914",
+  "local_image_id": "sha256:8e491d58690adb8713b0ff7445cc9ea5043c386502b1aaf357c54d515f6c88af",
+  "source": {
+    "schema_version": 1,
+    "artifact_compiler_revision": "f32acd6d58e816acd675d306bdb81270414b2d31",
+    "artifact_plugin_revision": "4514c511bc11d47c17cd4101e112efcf346db800",
+    "model_revision": "89230607b3708bc1efe174e8fd34d4b164476c88",
+    "runtime_base": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+    "compiler_build_image": "sha256:a541cd6b62dc51fed312597e072f159fcff6e69fc0ce6191370c0498137624ef",
+    "hip": "7.14.60850",
+    "vllm_revision": "39bd959b582c85e78e7e0326d49042ce7c3c07ed",
+    "native_compiler_framework_imports_blocked": [
+      "torch",
+      "triton",
+      "triton_kernels"
+    ],
+    "vision_artifact_reused_from_compiler_revision": "0b7ca75aec37b4049dc7c13027774e9efd84794d",
+    "weights_in_image": false,
+    "quantized_weight_values_preserved": true,
+    "activation_quantization": "q4_decode_q8_1",
+    "prefill_operand_dtype": "float16",
+    "state_dtype": "float32",
+    "max_context_tokens": 8192,
+    "max_active_sequences": 1,
+    "max_prefill_tokens": 2048,
+    "mtp": false,
+    "vision": true,
+    "video": false,
+    "prefix_caching": false,
+    "attestation": "Local build record, not independent attestation. Qualification reports bind this artifact by SHA256."
+  },
+  "features": {
+    "context_tokens": 8192,
+    "active_sequences": 1,
+    "queued_http_requests": true,
+    "prefill_chunk_tokens": 2048,
+    "kv_cache_bytes": 2147483648,
+    "kv_dtype": "bfloat16",
+    "mtp": false,
+    "prefix_caching": false,
+    "image": true,
+    "max_images": 1,
+    "max_vision_patches": 4096,
+    "max_resized_pixels": 1048576,
+    "video": false,
+    "prefill_gemm_tile_rows": 1024
+  },
+  "runtime_environment": {
+    "GPU_MAX_HW_QUEUES": "1",
+    "PAITON_GGUF_PREFILL_TOKENS": "2048"
+  },
+  "artifacts": {
+    "model_sha256": "61008a42a634a95c095fc879dd2dd8d706a4f5eb31f1fe5a5278f00bb4c40b48",
+    "gguf_runtime_sha256": "5f555f3698280f6a3f6584ea6d234217878d27c7a96f9aae2518f3fc062ad6df",
+    "vision_sha256": "0ce89bc6a34ee0c672a128c70184d523ac41adaa285bd2f691bf1a2dfa5a2adf",
+    "runtime_archive_sha256": "021da1d42142dc8127febbba1e21518ec925aba2835ed458f40647d5a0e072c3"
+  },
+  "qualification": {
+    "functional_profile": "passed-local-checks",
+    "performance_target": "Matched 128-output text and image request medians lower than fresh llama.cpp; short/long single-output requests still slower",
+    "text_tasks_passed": 10,
+    "text_tasks_total": 11,
+    "image_fixtures_passed": 5,
+    "image_fixtures_total": 5,
+    "decode_heldout_tokens": 770,
+    "decode_perplexity_relative_increase_percent": 0.13014280462946282,
+    "same_arithmetic_as_previous_release": false,
+    "same_arithmetic_as_previous_local_candidate": true,
+    "baseline_api_requests": 36,
+    "baseline_token_logprobs_max_difference": 0,
+    "baseline_image_requests": 24,
+    "baseline_image_text_identical": true,
+    "prefill_perplexity": 6.8624444718514965,
+    "decode_quality_evidence": "Unchanged M1 arithmetic qualification inherited from rc1. rc4 full-vocabulary native comparison and API agreement checked separately.",
+    "full_vocabulary_logits_values": 31784960,
+    "full_vocabulary_logits_max_abs": 0,
+    "full_vocabulary_reference_profile": "rc2 arithmetic, 4096-token prefill in 1024-token chunks followed by 128 greedy decode steps",
+    "rejected_experiment": "rc3: larger GEMM failed preset logit bounds; rc4 reuses qualified GEMM shapes",
+    "api_comparison": [
+      {
+        "input_tokens": 128,
+        "token_events": 774,
+        "tokens_identical": true,
+        "maximum_token_logprob_difference": 0
+      },
+      {
+        "input_tokens": 1024,
+        "token_events": 774,
+        "tokens_identical": true,
+        "maximum_token_logprob_difference": 0
+      },
+      {
+        "input_tokens": 4096,
+        "token_events": 774,
+        "tokens_identical": true,
+        "maximum_token_logprob_difference": 0
+      }
+    ],
+    "reference_text_tasks_passed": 10,
+    "reference_text_tasks_total": 11,
+    "reference_image_fixtures_passed": 5,
+    "reference_image_fixtures_total": 5,
+    "clean_offline_restart_seconds": 170.21617675299058,
+    "peak_gpu_vram_bytes": 25486274560,
+    "reference_peak_gpu_vram_bytes": 20437159936
+  },
+  "rollback_image": "sha256:7c2fdcf5055f5d8beb8b96c7ac0c30c9dc4e5f506443eba0236faf37bb558e27",
+  "upstream_checkpoint_lock": "../checkpoint.lock.json",
+  "upstream": {
+    "gguf": {
+      "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
+      "revision": "89230607b3708bc1efe174e8fd34d4b164476c88",
+      "selected": {
+        "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf",
+        "size_bytes": 18498573856,
+        "sha256": "bc7a6cf2bcc78d1190aaf04d1ab1c5cb845b6ff23aa0e7d24fe0d2ea6d3a7c7c"
+      },
+      "header_inspected_alternative": {
+        "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q6_K.gguf",
+        "size_bytes": 24033703456,
+        "sha256": "ac011aabe685edbdf542e49351eb6c76c0e5531408f2507f2235ab10931e23a5"
+      },
+      "reference_smoke_projector": {
+        "file": "mmproj-BF16.gguf",
+        "size_bytes": 931145920,
+        "sha256": "b0d8d89e9c9c90e0fb8ca74742d9d9bd7cc0f966a29b6f8c14227000ea6bd89e"
+      }
+    },
+    "author_source": {
+      "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NM-DAU",
+      "revision": "895782677541896947ea136714b45dbed994daca",
+      "metadata_sha256": {
+        "config.json": "56ef632a7c37c40046addbcd09ceeab88c26722a7c385e7d5604a2eb4c55c96d",
+        "tokenizer.json": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+        "tokenizer_config.json": "1c419f0cef0fd06dcf116d7183c3af53978de71ef1c07a750a65b1c4c6517b0f",
+        "chat_template.jinja": "514d5304fcac63bda60e6faf860d5657010cf43cbc4c633c8bf678ee184e7a37",
+        "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74",
+        "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+        "processor_config.json": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+      }
+    }
+  },
+  "reference_engine": {
+    "name": "llama.cpp",
+    "revision": "434ddbbc0e30522e897670681e503b797c12b7c1",
+    "prefill_chunk_tokens": 2048,
+    "active_sequences": 1,
+    "context_tokens": 8192,
+    "kv_dtype": "bfloat16",
+    "mtp": false
+  },
+  "promoted_to": {
+    "release_metadata": "../paiton-release.json",
+    "registry_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "payload_unchanged": true
+  }
+}

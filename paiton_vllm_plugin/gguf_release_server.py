@@ -47,10 +47,13 @@ def verify_payload(directory: Path) -> dict:
     return config['paiton_qwen38_contract']
 
 
-def serving_command(directory: Path, host: str, port: int, *, multimodal: bool = False) -> list[str]:
+def serving_command(directory: Path, host: str, port: int, *, multimodal: bool = False,
+                    prefill_chunk_tokens: int = 512) -> list[str]:
+    if prefill_chunk_tokens not in (512, 1024, 2048):
+        raise ReleaseModelError('Unsupported GGUF prefill chunk size')
     command = ['vllm', 'serve', str(directory), '--served-model-name', 'qwen38-neo',
         '--dtype', 'bfloat16', '--tensor-parallel-size', '1',
-        '--max-model-len', '8192', '--max-num-batched-tokens', '512',
+        '--max-model-len', '8192', '--max-num-batched-tokens', str(prefill_chunk_tokens),
         '--max-num-seqs', '1', '--block-size', '16', '--kv-cache-memory-bytes', '2G',
         '--load-format', 'paiton_gguf', '--enforce-eager', '--no-enable-prefix-caching',
         '--reasoning-parser', 'qwen3', '--enable-auto-tool-choice',
@@ -68,6 +71,8 @@ def main() -> None:
     parser.add_argument('--cache-dir', type=Path, default=Path('/models/cache'))
     parser.add_argument('--checkpoint', type=Path, default=os.getenv('PAITON_GGUF_CHECKPOINT'))
     parser.add_argument('--projector', type=Path, default=os.getenv('PAITON_GGUF_PROJECTOR'))
+    parser.add_argument('--prefill-chunk-tokens', type=int, choices=(512, 1024, 2048),
+                        default=int(os.getenv('PAITON_GGUF_PREFILL_TOKENS', '512')))
     parser.add_argument('--host', default='0.0.0.0')
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()
@@ -75,6 +80,8 @@ def main() -> None:
         parser.error('port must be in [1,65535]')
     directory = args.model_dir.resolve(strict=True)
     contract = verify_payload(directory)
+    if args.prefill_chunk_tokens > int(contract['max_num_batched_tokens']):
+        raise ReleaseModelError('Requested prefill chunk exceeds the native artifact capacity')
     _validate_runtime_environment()
     if args.checkpoint is None:
         from huggingface_hub import hf_hub_download
@@ -100,7 +107,8 @@ def main() -> None:
         PAITON_QWEN38_W4_LM_HEAD='0', PAITON_PREFILL_ATTENTION_AOT='0',
         PAITON_DECODE_ATTENTION_AOT='0',
         PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE='0')
-    command = serving_command(directory, args.host, args.port, multimodal=contract.get('multimodal', False))
+    command = serving_command(directory, args.host, args.port, multimodal=contract.get('multimodal', False),
+                              prefill_chunk_tokens=args.prefill_chunk_tokens)
     print('Starting native Paiton GGUF execution through vLLM; checkpoint:', checkpoint, flush=True)
     os.execvp(command[0], command)
 
