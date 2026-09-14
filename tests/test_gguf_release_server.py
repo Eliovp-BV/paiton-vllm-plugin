@@ -60,13 +60,15 @@ class GGUFReleaseServerTest(unittest.TestCase):
 
 
     def test_explicit_larger_prefill_preserves_context_and_concurrency(self):
-        command = serving_command(Path('/model'), '127.0.0.1', 8123,
-                                  multimodal=True, prefill_chunk_tokens=1024)
-        for flag, value in [('--max-num-batched-tokens','1024'),
-                            ('--max-model-len','8192'),('--max-num-seqs','1'),
-                            ('--worker-cls','paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker')]:
-            self.assertEqual(command[command.index(flag)+1], value)
-        for unsupported in (0,128,2048):
+        for chunk in (1024, 2048):
+            with self.subTest(prefill_chunk_tokens=chunk):
+                command = serving_command(Path('/model'), '127.0.0.1', 8123,
+                                          multimodal=True, prefill_chunk_tokens=chunk)
+                for flag, value in [('--max-num-batched-tokens',str(chunk)),
+                                    ('--max-model-len','8192'),('--max-num-seqs','1'),
+                                    ('--worker-cls','paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker')]:
+                    self.assertEqual(command[command.index(flag)+1], value)
+        for unsupported in (0,128,4096):
             with self.assertRaises(ReleaseModelError):
                 serving_command(Path('/model'), '127.0.0.1', 8123,
                                 prefill_chunk_tokens=unsupported)
