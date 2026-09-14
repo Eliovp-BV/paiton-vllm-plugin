@@ -1,5 +1,8 @@
 # Native v1.1.0-rc4 local candidate
 
+> This historical candidate was promoted without payload changes to
+> [the published v1.1.0 release](../README.md). The local qualification record below is retained.
+
 This locally qualified candidate improves native prefill while preserving the
 qualified rc1/rc2 arithmetic. It uses 2,048-token prefill chunks with bounded
 GEMM tiles. The exact author mixed Q4_K_M weights, BF16 output head, tokenizer,

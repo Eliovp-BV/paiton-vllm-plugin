@@ -154,5 +154,10 @@
     "context_tokens": 8192,
     "kv_dtype": "bfloat16",
     "mtp": false
+  },
+  "promoted_to": {
+    "release_metadata": "../paiton-release.json",
+    "registry_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "payload_unchanged": true
   }
 }
