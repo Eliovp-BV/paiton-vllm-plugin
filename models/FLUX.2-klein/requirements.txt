@@ -1,0 +1,5 @@
+# Torch, Triton and the ROCm libraries are pinned by the base image digest.
+diffusers==0.40.0
+huggingface-hub==1.30.0
+hf-xet==1.6.0
+click==8.5.0

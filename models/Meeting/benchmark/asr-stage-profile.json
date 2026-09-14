@@ -1,0 +1,139 @@
+{
+  "stock": {
+    "source_sha256": "0f4c754bcbc845de7c86453430b1e5f1d0446bdb4a15c7f19b0f07455287da11",
+    "model_load_seconds": 7.055335290031508,
+    "rows": [
+      {
+        "start_seconds": 66,
+        "end_seconds": 96,
+        "feature_extraction_and_h2d_seconds": 0.06266460905317217,
+        "warm_generation_wall_seconds": 0.1974247460020706,
+        "warm_encoder_event_seconds": 0.03294679260253906,
+        "decode_and_other_generation_wall_remainder_seconds": 0.16447795339953153
+      },
+      {
+        "start_seconds": 300,
+        "end_seconds": 330,
+        "feature_extraction_and_h2d_seconds": 0.025131949922069907,
+        "warm_generation_wall_seconds": 0.3157447390258312,
+        "warm_encoder_event_seconds": 0.033489521026611326,
+        "decode_and_other_generation_wall_remainder_seconds": 0.2822552179992199
+      },
+      {
+        "start_seconds": 900,
+        "end_seconds": 930,
+        "feature_extraction_and_h2d_seconds": 0.01939814304932952,
+        "warm_generation_wall_seconds": 0.2836523529840633,
+        "warm_encoder_event_seconds": 0.03366765975952148,
+        "decode_and_other_generation_wall_remainder_seconds": 0.24998469322454184
+      },
+      {
+        "start_seconds": 1800,
+        "end_seconds": 1830,
+        "feature_extraction_and_h2d_seconds": 0.01796446496155113,
+        "warm_generation_wall_seconds": 0.32234336994588375,
+        "warm_encoder_event_seconds": 0.033245426177978515,
+        "decode_and_other_generation_wall_remainder_seconds": 0.2890979437679052
+      },
+      {
+        "start_seconds": 2300,
+        "end_seconds": 2330,
+        "feature_extraction_and_h2d_seconds": 0.0185460849897936,
+        "warm_generation_wall_seconds": 0.20267201494425535,
+        "warm_encoder_event_seconds": 0.03341801452636719,
+        "decode_and_other_generation_wall_remainder_seconds": 0.16925400041788816
+      },
+      {
+        "start_seconds": null,
+        "end_seconds": 30,
+        "feature_extraction_and_h2d_seconds": 0.01867927797138691,
+        "warm_generation_wall_seconds": 0.12394663703162223,
+        "warm_encoder_event_seconds": 0.033192523956298826,
+        "decode_and_other_generation_wall_remainder_seconds": 0.09075411307532341
+      },
+      {
+        "start_seconds": null,
+        "end_seconds": 30,
+        "feature_extraction_and_h2d_seconds": 0.018105828086845577,
+        "warm_generation_wall_seconds": 0.12325921899173409,
+        "warm_encoder_event_seconds": 0.03352317428588867,
+        "decode_and_other_generation_wall_remainder_seconds": 0.08973604470584542
+      }
+    ],
+    "median": {
+      "feature_extraction_and_h2d_seconds": 0.01867927797138691,
+      "warm_generation_wall_seconds": 0.20267201494425535,
+      "warm_encoder_event_seconds": 0.03341801452636719,
+      "decode_and_other_generation_wall_remainder_seconds": 0.16925400041788816
+    }
+  },
+  "paiton": {
+    "source_sha256": "37479ffb5b4260cbfee2dc1d6e381bedd038e7727ee44dfa34d592444bbc113a",
+    "model_load_seconds": 6.995027799974196,
+    "rows": [
+      {
+        "start_seconds": 66,
+        "end_seconds": 96,
+        "feature_extraction_and_h2d_seconds": 0.08577536593656987,
+        "warm_generation_wall_seconds": 0.16934694699011743,
+        "warm_encoder_event_seconds": 0.03355380630493164,
+        "decode_and_other_generation_wall_remainder_seconds": 0.13579314068518578
+      },
+      {
+        "start_seconds": 300,
+        "end_seconds": 330,
+        "feature_extraction_and_h2d_seconds": 0.021779292030259967,
+        "warm_generation_wall_seconds": 0.2541587809100747,
+        "warm_encoder_event_seconds": 0.03231960296630859,
+        "decode_and_other_generation_wall_remainder_seconds": 0.22183917794376612
+      },
+      {
+        "start_seconds": 900,
+        "end_seconds": 930,
+        "feature_extraction_and_h2d_seconds": 0.017987278988584876,
+        "warm_generation_wall_seconds": 0.22783242410514504,
+        "warm_encoder_event_seconds": 0.0322405891418457,
+        "decode_and_other_generation_wall_remainder_seconds": 0.19559183496329935
+      },
+      {
+        "start_seconds": 1800,
+        "end_seconds": 1830,
+        "feature_extraction_and_h2d_seconds": 0.018275558948516846,
+        "warm_generation_wall_seconds": 0.2678057699231431,
+        "warm_encoder_event_seconds": 0.03365428924560547,
+        "decode_and_other_generation_wall_remainder_seconds": 0.2341514806775376
+      },
+      {
+        "start_seconds": 2300,
+        "end_seconds": 2330,
+        "feature_extraction_and_h2d_seconds": 0.01944803004153073,
+        "warm_generation_wall_seconds": 0.1847248780541122,
+        "warm_encoder_event_seconds": 0.032743045806884766,
+        "decode_and_other_generation_wall_remainder_seconds": 0.15198183224722744
+      },
+      {
+        "start_seconds": null,
+        "end_seconds": 30,
+        "feature_extraction_and_h2d_seconds": 0.018801072030328214,
+        "warm_generation_wall_seconds": 0.12123510497622192,
+        "warm_encoder_event_seconds": 0.032771018981933596,
+        "decode_and_other_generation_wall_remainder_seconds": 0.08846408599428832
+      },
+      {
+        "start_seconds": null,
+        "end_seconds": 30,
+        "feature_extraction_and_h2d_seconds": 0.018072596983984113,
+        "warm_generation_wall_seconds": 0.12674943206366152,
+        "warm_encoder_event_seconds": 0.03478943252563477,
+        "decode_and_other_generation_wall_remainder_seconds": 0.09195999953802675
+      }
+    ],
+    "median": {
+      "feature_extraction_and_h2d_seconds": 0.018801072030328214,
+      "warm_generation_wall_seconds": 0.1847248780541122,
+      "warm_encoder_event_seconds": 0.032771018981933596,
+      "decode_and_other_generation_wall_remainder_seconds": 0.15198183224722744
+    }
+  },
+  "method": "Five matched 30-second AMI excerpts; two generations per excerpt. Warm means second generation. Encoder forward hooks use HIP events via torch.cuda; total generation uses synchronized wall time. Feature extraction includes H2D transfer. The remainder is decoder plus Python/control overhead, not isolated decoder GPU time. Dtypes are FP16 in both variants. Earlier qualification image; not final source-runtime full-pipeline evidence."
+}

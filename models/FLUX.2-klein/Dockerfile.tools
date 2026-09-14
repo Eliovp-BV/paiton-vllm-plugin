@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1.7
+FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9
+HEALTHCHECK NONE
+LABEL org.opencontainers.image.title="FLUX.2 klein conversion and stock tools" \
+      org.opencontainers.image.licenses="GPL-3.0-only AND Apache-2.0"
+LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
+      org.opencontainers.image.revision="paiton-flux2-klein-gfx1201-v1.0.1" \
+      org.opencontainers.image.version="flux2-tools-rdna4-v1.0.1" \
+      org.opencontainers.image.description="Pinned FLUX.2 klein conversion and stock Diffusers runtime" \
+      org.opencontainers.image.base.name="ghcr.io/eliovp/paiton-vllm-plugin" \
+      org.opencontainers.image.base.digest="sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9" \
+      dev.paiton.model="Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic" \
+      dev.paiton.model.revision="45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd" \
+      dev.paiton.artifact.sha256="" \
+      dev.paiton.artifact-manifest.sha256="" \
+      dev.paiton.config.sha256="" \
+      dev.paiton.lm-head-artifact.sha256="" \
+      dev.paiton.lm-head-artifact-manifest.sha256="" \
+      dev.paiton.release-metadata.sha256=""
+
+ENV PYTHONPATH=/opt/flux2-tools:/opt/flux2-tool-deps:/opt/paiton/venv-site-packages:/opt/paiton/site-packages \
+    HF_HOME=/models/cache HF_HUB_CACHE=/models/cache/hub \
+    TORCHINDUCTOR_CACHE_DIR=/models/cache/inductor TRITON_CACHE_DIR=/models/cache/triton \
+    XDG_CACHE_HOME=/models/cache/xdg VLLM_USE_PAITON_PLATFORM=0 VLLM_DISABLE_PAITON_PLATFORM=1
+COPY requirements.txt /opt/flux2-tools/requirements.txt
+RUN python3 -m pip install --no-cache-dir --no-deps --target /opt/flux2-tool-deps \
+      -r /opt/flux2-tools/requirements.txt sdnq==0.2.6
+COPY tools /opt/flux2-tools
+COPY service /opt/flux2-service
+# Retain installed SDNQ Python source and its GPL license in this separate image.
+# This tool does not import the Paiton runtime or load Paiton artifacts.
+WORKDIR /outputs
+ENTRYPOINT ["python3", "-m", "sdnq_tool"]
+CMD ["--help"]

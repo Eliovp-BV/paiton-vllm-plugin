@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "artifact_image": {
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0",
+    "local_manifest_digest": "sha256:56c405453d21fd405ab0bb3f7eb0e0a2d6069ab672d617c319528e210ff2dd19",
+    "bytes": 5149902916
+  },
+  "artifact": {
+    "filename": "minimax_h3_projections_gfx1201.so",
+    "sha256": "8138dda01ce0fa5923b733e0242121e9f605a405aa85d5212e0160f5b28df657",
+    "size_bytes": 842528
+  },
+  "max_packed_tokens": 49152,
+  "qualified_images": {
+    "paiton-minimax-h3:fused-v4-review": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
+    "paiton-minimax-h3:local-v1.0.0": "sha256:b130c15e177c6112240da09e7e77d7cea761b2d4e19e5f683f7ef6ac22f58362"
+  },
+  "final_local_image": "sha256:b28ba6d86dca60b64670407445f9a3cc60a23517d6142a7aeb1309db43408e39",
+  "inference_files_identical_to_qualification": true,
+  "compared_stock_files": 571,
+  "after_benchmark_change": "ComfyUI first-visit canvas centers the prompt; graph values and inference code unchanged. Container provenance metadata omitted.",
+  "gpu_tests": {
+    "count": 9,
+    "result": "passed"
+  }
+}

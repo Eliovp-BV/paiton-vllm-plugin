@@ -1,0 +1,53 @@
+{
+  "browser_errors": [],
+  "image_upload": {
+    "name": "wan-official-example.jpg",
+    "subfolder": "",
+    "type": "input"
+  },
+  "cases": [
+    {
+      "case": "base-upload",
+      "status": "success",
+      "cached_nodes": [
+        []
+      ],
+      "engine": "stock",
+      "settings": {
+        "duration": "2 seconds (49 frames)",
+        "resolution": "480 class (832 x 480)",
+        "orientation": "Portrait"
+      }
+    },
+    {
+      "case": "fast-first",
+      "status": "success",
+      "cached_nodes": [
+        []
+      ],
+      "engine": "paiton",
+      "settings": {
+        "duration": "2 seconds (49 frames)",
+        "resolution": "720 class (1280 x 704)",
+        "orientation": "Landscape"
+      }
+    },
+    {
+      "case": "fast-repeat",
+      "status": "success",
+      "cached_nodes": [
+        [
+          "1",
+          "2"
+        ]
+      ],
+      "engine": "paiton",
+      "settings": {
+        "duration": "2 seconds (49 frames)",
+        "resolution": "720 class (1280 x 704)",
+        "orientation": "Landscape"
+      }
+    }
+  ],
+  "uploaded_image_sha256": "077e3d965090c9028c69c00931675f42e1acc815c6eb450ab291b3b72d211a8e"
+}

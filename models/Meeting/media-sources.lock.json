@@ -1,0 +1,38 @@
+[
+  {
+    "filename": "av-18.1.0.tar.gz",
+    "url": "https://files.pythonhosted.org/packages/8d/f4/f22114d30d3435e38c6af2b4870f37b864403dca6ae7af747a289ce0a18e/av-18.1.0.tar.gz",
+    "sha256": "47bfc286e1bc9de7ab4681fc2b575cd2460a66919d31ffe1bd5aa54fae531a28",
+    "bytes": 4451061
+  },
+  {
+    "filename": "ffmpeg-8.1.2.tar.xz",
+    "url": "https://ffmpeg.org/releases/ffmpeg-8.1.2.tar.xz",
+    "sha256": "464beb5e7bf0c311e68b45ae2f04e9cc2af88851abb4082231742a74d97b524c",
+    "bytes": 11710924
+  },
+  {
+    "filename": "nasm-2.16.03.tar.xz",
+    "url": "https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.xz",
+    "sha256": "1412a1c760bbd05db026b6c0d1657affd6631cd0a63cddb6f73cc6d4aa616148",
+    "bytes": 1032388
+  },
+  {
+    "filename": "lame_3.100.orig.tar.gz",
+    "url": "https://deb.debian.org/debian/pool/main/l/lame/lame_3.100.orig.tar.gz",
+    "sha256": "ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e",
+    "bytes": 1524133
+  },
+  {
+    "filename": "opus-1.6.1.tar.gz",
+    "url": "https://ftp.osuosl.org/pub/xiph/releases/opus/opus-1.6.1.tar.gz",
+    "sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1",
+    "bytes": 10472813
+  },
+  {
+    "filename": "cython-3.3.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/bf/77/67b0b24e45073a699610e50f00c18474ff9b09ea29ecc95083bdf5e60acd/cython-3.3.0-py3-none-any.whl",
+    "sha256": "9b24b5c8cd536946b62086fcafee6d5509d3f549f72d553d2336af87ffbe0da1",
+    "bytes": 1349151
+  }
+]

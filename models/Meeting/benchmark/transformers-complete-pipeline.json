@@ -1,0 +1,718 @@
+{
+  "audio_seconds": 2345.493375,
+  "runs": [
+    {
+      "backend": "stock",
+      "repeat": 0,
+      "cached": false,
+      "launcher_wall_seconds": 457.8002531528473,
+      "asr_with_startup_seconds": 107.30615968303755,
+      "diarization_with_startup_seconds": 67.39644809800666,
+      "attribution_with_startup_seconds": 0.6217079400084913,
+      "playback_with_startup_seconds": 2.2587408260442317,
+      "summary_with_startup_seconds": 278.6112554259598,
+      "complete_pipeline_seconds": 456.23963853600435,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.19451755583662833,
+      "audio_hours_per_wall_hour": 5.140924147946221,
+      "asr_model_load_seconds": 6.890984266996384,
+      "asr_processing_seconds": 90.49185876909178,
+      "diarization_model_load_seconds": 2.460769817000255,
+      "diarization_decode_seconds": 1.5557166959624738,
+      "diarization_processing_seconds": 56.14665866503492,
+      "summary_model_load_seconds": 18.187030839035287,
+      "summary_processing_seconds": 248.0578003419796,
+      "summary_calls": 19,
+      "summary_input_tokens": 68645,
+      "summary_output_tokens": 6776,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044422656,
+      "sampled_process_rss_sum_peak_bytes": 1676283904,
+      "sampled_single_process_hwm_peak_bytes": 6957342720,
+      "sampled_system_mem_available_min_bytes": 12366307328,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 127,
+      "driver_sample_count": 261,
+      "memory_sample_span_seconds": 130.87076044082642
+    },
+    {
+      "backend": "paiton",
+      "repeat": 0,
+      "cached": false,
+      "launcher_wall_seconds": 518.4545073509216,
+      "asr_with_startup_seconds": 101.0034701229306,
+      "diarization_with_startup_seconds": 69.44417168805376,
+      "attribution_with_startup_seconds": 0.6391627280972898,
+      "playback_with_startup_seconds": 2.4371262929635122,
+      "summary_with_startup_seconds": 302.3428658839548,
+      "complete_pipeline_seconds": 475.9185149850091,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.20290763557795558,
+      "audio_hours_per_wall_hour": 4.9283507599486445,
+      "asr_model_load_seconds": 6.961202778038569,
+      "asr_processing_seconds": 85.7472826379817,
+      "diarization_model_load_seconds": 2.4574558039894328,
+      "diarization_decode_seconds": 1.6728537960443646,
+      "diarization_processing_seconds": 57.93071072001476,
+      "summary_model_load_seconds": 17.87361186405178,
+      "summary_processing_seconds": 273.4822218469344,
+      "summary_calls": 22,
+      "summary_input_tokens": 74822,
+      "summary_output_tokens": 7582,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044451328,
+      "sampled_process_rss_sum_peak_bytes": 6824488960,
+      "sampled_single_process_hwm_peak_bytes": 7027912704,
+      "sampled_system_mem_available_min_bytes": 7213461504,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 458,
+      "driver_sample_count": 946,
+      "memory_sample_span_seconds": 474.3925611972809
+    },
+    {
+      "backend": "paiton",
+      "repeat": 1,
+      "cached": true,
+      "launcher_wall_seconds": 471.80667424201965,
+      "asr_with_startup_seconds": 94.9308696690714,
+      "diarization_with_startup_seconds": 68.4274159349734,
+      "attribution_with_startup_seconds": 0.6336243920959532,
+      "playback_with_startup_seconds": 2.405009954003617,
+      "summary_with_startup_seconds": 301.9175970860524,
+      "complete_pipeline_seconds": 468.3250439860858,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.19967016278018088,
+      "audio_hours_per_wall_hour": 5.008259552033877,
+      "asr_model_load_seconds": 5.809553483966738,
+      "asr_processing_seconds": 80.79809094395023,
+      "diarization_model_load_seconds": 2.4477093109162524,
+      "diarization_decode_seconds": 1.6121602089842781,
+      "diarization_processing_seconds": 57.08297681098338,
+      "summary_model_load_seconds": 20.63441692397464,
+      "summary_processing_seconds": 275.1781898830086,
+      "summary_calls": 22,
+      "summary_input_tokens": 74822,
+      "summary_output_tokens": 7582,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044439040,
+      "sampled_process_rss_sum_peak_bytes": 7631716352,
+      "sampled_single_process_hwm_peak_bytes": 7712583680,
+      "sampled_system_mem_available_min_bytes": 6540435456,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 452,
+      "driver_sample_count": 933,
+      "memory_sample_span_seconds": 467.71659111976624
+    },
+    {
+      "backend": "stock",
+      "repeat": 1,
+      "cached": true,
+      "launcher_wall_seconds": 590.8592982292175,
+      "asr_with_startup_seconds": 100.93534991098568,
+      "diarization_with_startup_seconds": 71.29174026893452,
+      "attribution_with_startup_seconds": 0.6377326970687136,
+      "playback_with_startup_seconds": 2.3515062209917232,
+      "summary_with_startup_seconds": 275.1393588290084,
+      "complete_pipeline_seconds": 450.389117334038,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.19202318886704936,
+      "audio_hours_per_wall_hour": 5.207704371019313,
+      "asr_model_load_seconds": 6.84809059696272,
+      "asr_processing_seconds": 87.51863129902631,
+      "diarization_model_load_seconds": 2.4903910029679537,
+      "diarization_decode_seconds": 1.603101965971291,
+      "diarization_processing_seconds": 57.88580044102855,
+      "summary_model_load_seconds": 22.24007983400952,
+      "summary_processing_seconds": 242.90935567300767,
+      "summary_calls": 19,
+      "summary_input_tokens": 68645,
+      "summary_output_tokens": 6776,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044434944,
+      "sampled_process_rss_sum_peak_bytes": 7254126592,
+      "sampled_single_process_hwm_peak_bytes": 7248207872,
+      "sampled_system_mem_available_min_bytes": 7143059456,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 431,
+      "driver_sample_count": 896,
+      "memory_sample_span_seconds": 448.97140526771545
+    },
+    {
+      "backend": "stock",
+      "repeat": 2,
+      "cached": true,
+      "launcher_wall_seconds": 543.58353972435,
+      "asr_with_startup_seconds": 105.84978602093179,
+      "diarization_with_startup_seconds": 70.06042952800635,
+      "attribution_with_startup_seconds": 0.6258884670678526,
+      "playback_with_startup_seconds": 2.290474939974956,
+      "summary_with_startup_seconds": 278.9404180540005,
+      "complete_pipeline_seconds": 457.7986136720283,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.19518222415445036,
+      "audio_hours_per_wall_hour": 5.123417382561879,
+      "asr_model_load_seconds": 6.812859033001587,
+      "asr_processing_seconds": 90.14812970394269,
+      "diarization_model_load_seconds": 2.432052809977904,
+      "diarization_decode_seconds": 1.568895919015631,
+      "diarization_processing_seconds": 57.023296648985706,
+      "summary_model_load_seconds": 22.94141700398177,
+      "summary_processing_seconds": 244.4406685520662,
+      "summary_calls": 19,
+      "summary_input_tokens": 68645,
+      "summary_output_tokens": 6776,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044414464,
+      "sampled_process_rss_sum_peak_bytes": 7155896320,
+      "sampled_single_process_hwm_peak_bytes": 7388270592,
+      "sampled_system_mem_available_min_bytes": 6958030848,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 441,
+      "driver_sample_count": 912,
+      "memory_sample_span_seconds": 456.90891122817993
+    },
+    {
+      "backend": "paiton",
+      "repeat": 2,
+      "cached": true,
+      "launcher_wall_seconds": 589.9267613887787,
+      "asr_with_startup_seconds": 101.47144605196081,
+      "diarization_with_startup_seconds": 68.28618200600613,
+      "attribution_with_startup_seconds": 0.6299888000357896,
+      "playback_with_startup_seconds": 2.339443169068545,
+      "summary_with_startup_seconds": 320.43150608299766,
+      "complete_pipeline_seconds": 493.21651294105686,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.21028262889084343,
+      "audio_hours_per_wall_hour": 4.755504557245642,
+      "asr_model_load_seconds": 6.13022350508254,
+      "asr_processing_seconds": 85.23051106301136,
+      "diarization_model_load_seconds": 0.8066412850748748,
+      "diarization_decode_seconds": 1.6203983159502968,
+      "diarization_processing_seconds": 58.405001049046405,
+      "summary_model_load_seconds": 34.760680175968446,
+      "summary_processing_seconds": 273.94853702990804,
+      "summary_calls": 22,
+      "summary_input_tokens": 74822,
+      "summary_output_tokens": 7582,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044418560,
+      "sampled_process_rss_sum_peak_bytes": 7192104960,
+      "sampled_single_process_hwm_peak_bytes": 7227490304,
+      "sampled_system_mem_available_min_bytes": 6969208832,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 475,
+      "driver_sample_count": 982,
+      "memory_sample_span_seconds": 492.30499958992004
+    },
+    {
+      "backend": "paiton",
+      "repeat": 3,
+      "cached": true,
+      "launcher_wall_seconds": 587.2508554458618,
+      "asr_with_startup_seconds": 101.5734417499043,
+      "diarization_with_startup_seconds": 78.82772538100835,
+      "attribution_with_startup_seconds": 0.6391408250201494,
+      "playback_with_startup_seconds": 2.412738366983831,
+      "summary_with_startup_seconds": 309.98576132406015,
+      "complete_pipeline_seconds": 493.486166285933,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.21039759546791856,
+      "audio_hours_per_wall_hour": 4.7529060290638165,
+      "asr_model_load_seconds": 6.776578975957818,
+      "asr_processing_seconds": 85.60576693096664,
+      "diarization_model_load_seconds": 3.3986011180095375,
+      "diarization_decode_seconds": 1.5923469760455191,
+      "diarization_processing_seconds": 58.823635078035295,
+      "summary_model_load_seconds": 27.82877700892277,
+      "summary_processing_seconds": 269.27717668400146,
+      "summary_calls": 22,
+      "summary_input_tokens": 74822,
+      "summary_output_tokens": 7582,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044410368,
+      "sampled_process_rss_sum_peak_bytes": 6924640256,
+      "sampled_single_process_hwm_peak_bytes": 7076728832,
+      "sampled_system_mem_available_min_bytes": 7034314752,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 476,
+      "driver_sample_count": 984,
+      "memory_sample_span_seconds": 493.4997835159302
+    },
+    {
+      "backend": "stock",
+      "repeat": 3,
+      "cached": true,
+      "launcher_wall_seconds": 687.296445608139,
+      "asr_with_startup_seconds": 108.08867061394267,
+      "diarization_with_startup_seconds": 70.54381822107825,
+      "attribution_with_startup_seconds": 0.6378306769765913,
+      "playback_with_startup_seconds": 2.282177230110392,
+      "summary_with_startup_seconds": 278.1402062239358,
+      "complete_pipeline_seconds": 459.7365898069693,
+      "audio_seconds": 2345.493375,
+      "rtf": 0.19600847937034538,
+      "audio_hours_per_wall_hour": 5.1018201009078,
+      "asr_model_load_seconds": 6.851079861051403,
+      "asr_processing_seconds": 91.63380208995659,
+      "diarization_model_load_seconds": 2.3866014390951023,
+      "diarization_decode_seconds": 1.6703759190859273,
+      "diarization_processing_seconds": 58.2352470200276,
+      "summary_model_load_seconds": 23.204412441002205,
+      "summary_processing_seconds": 243.06014883099124,
+      "summary_calls": 19,
+      "summary_input_tokens": 68645,
+      "summary_output_tokens": 6776,
+      "summary_peak_allocated_bytes": 8213219328,
+      "summary_peak_reserved_bytes": 8535408640,
+      "sampled_driver_peak_bytes": 9044434944,
+      "sampled_process_rss_sum_peak_bytes": 7365394432,
+      "sampled_single_process_hwm_peak_bytes": 7450652672,
+      "sampled_system_mem_available_min_bytes": 6867484672,
+      "sampled_system_swap_used_peak_bytes": null,
+      "memory_sample_count": 444,
+      "driver_sample_count": 916,
+      "memory_sample_span_seconds": 459.25607085227966
+    }
+  ],
+  "aggregate": {
+    "stock": {
+      "launcher_wall_seconds": {
+        "n": 3,
+        "median": 590.8592982292175,
+        "minimum": 543.58353972435,
+        "maximum": 687.296445608139,
+        "sample_stddev": 73.24447653163251
+      },
+      "asr_with_startup_seconds": {
+        "n": 3,
+        "median": 105.84978602093179,
+        "minimum": 100.93534991098568,
+        "maximum": 108.08867061394267,
+        "sample_stddev": 3.659104707869509
+      },
+      "diarization_with_startup_seconds": {
+        "n": 3,
+        "median": 70.54381822107825,
+        "minimum": 70.06042952800635,
+        "maximum": 71.29174026893452,
+        "sample_stddev": 0.6203732960866299
+      },
+      "attribution_with_startup_seconds": {
+        "n": 3,
+        "median": 0.6377326970687136,
+        "minimum": 0.6258884670678526,
+        "maximum": 0.6378306769765913,
+        "sample_stddev": 0.006866728501501774
+      },
+      "playback_with_startup_seconds": {
+        "n": 3,
+        "median": 2.290474939974956,
+        "minimum": 2.282177230110392,
+        "maximum": 2.3515062209917232,
+        "sample_stddev": 0.037859781272848954
+      },
+      "summary_with_startup_seconds": {
+        "n": 3,
+        "median": 278.1402062239358,
+        "minimum": 275.1393588290084,
+        "maximum": 278.9404180540005,
+        "sample_stddev": 2.0038910188478836
+      },
+      "complete_pipeline_seconds": {
+        "n": 3,
+        "median": 457.7986136720283,
+        "minimum": 450.389117334038,
+        "maximum": 459.7365898069693,
+        "sample_stddev": 4.9334171577534995
+      },
+      "audio_seconds": {
+        "n": 3,
+        "median": 2345.493375,
+        "minimum": 2345.493375,
+        "maximum": 2345.493375,
+        "sample_stddev": 0.0
+      },
+      "rtf": {
+        "n": 3,
+        "median": 0.19518222415445036,
+        "minimum": 0.19202318886704936,
+        "maximum": 0.19600847937034538,
+        "sample_stddev": 0.002103360090605024
+      },
+      "audio_hours_per_wall_hour": {
+        "n": 3,
+        "median": 5.123417382561879,
+        "minimum": 5.1018201009078,
+        "maximum": 5.207704371019313,
+        "sample_stddev": 0.05594970606880922
+      },
+      "asr_model_load_seconds": {
+        "n": 3,
+        "median": 6.84809059696272,
+        "minimum": 6.812859033001587,
+        "maximum": 6.851079861051403,
+        "sample_stddev": 0.02125649114879553
+      },
+      "asr_processing_seconds": {
+        "n": 3,
+        "median": 90.14812970394269,
+        "minimum": 87.51863129902631,
+        "maximum": 91.63380208995659,
+        "sample_stddev": 2.0839111840698226
+      },
+      "diarization_model_load_seconds": {
+        "n": 3,
+        "median": 2.432052809977904,
+        "minimum": 2.3866014390951023,
+        "maximum": 2.4903910029679537,
+        "sample_stddev": 0.05202794993300394
+      },
+      "diarization_decode_seconds": {
+        "n": 3,
+        "median": 1.603101965971291,
+        "minimum": 1.568895919015631,
+        "maximum": 1.6703759190859273,
+        "sample_stddev": 0.05163014111651967
+      },
+      "diarization_processing_seconds": {
+        "n": 3,
+        "median": 57.88580044102855,
+        "minimum": 57.023296648985706,
+        "maximum": 58.2352470200276,
+        "sample_stddev": 0.623812125126763
+      },
+      "summary_model_load_seconds": {
+        "n": 3,
+        "median": 22.94141700398177,
+        "minimum": 22.24007983400952,
+        "maximum": 23.204412441002205,
+        "sample_stddev": 0.49849403252656216
+      },
+      "summary_processing_seconds": {
+        "n": 3,
+        "median": 243.06014883099124,
+        "minimum": 242.90935567300767,
+        "maximum": 244.4406685520662,
+        "sample_stddev": 0.8439483011755003
+      },
+      "summary_calls": {
+        "n": 3,
+        "median": 19,
+        "minimum": 19,
+        "maximum": 19,
+        "sample_stddev": 0.0
+      },
+      "summary_input_tokens": {
+        "n": 3,
+        "median": 68645,
+        "minimum": 68645,
+        "maximum": 68645,
+        "sample_stddev": 0.0
+      },
+      "summary_output_tokens": {
+        "n": 3,
+        "median": 6776,
+        "minimum": 6776,
+        "maximum": 6776,
+        "sample_stddev": 0.0
+      },
+      "summary_peak_allocated_bytes": {
+        "n": 3,
+        "median": 8213219328,
+        "minimum": 8213219328,
+        "maximum": 8213219328,
+        "sample_stddev": 0.0
+      },
+      "summary_peak_reserved_bytes": {
+        "n": 3,
+        "median": 8535408640,
+        "minimum": 8535408640,
+        "maximum": 8535408640,
+        "sample_stddev": 0.0
+      },
+      "sampled_driver_peak_bytes": {
+        "n": 3,
+        "median": 9044434944,
+        "minimum": 9044414464,
+        "maximum": 9044434944,
+        "sample_stddev": 11824.133513003535
+      },
+      "sampled_process_rss_sum_peak_bytes": {
+        "n": 3,
+        "median": 7254126592,
+        "minimum": 7155896320,
+        "maximum": 7365394432,
+        "sample_stddev": 104816647.44290712
+      },
+      "sampled_single_process_hwm_peak_bytes": {
+        "n": 3,
+        "median": 7388270592,
+        "minimum": 7248207872,
+        "maximum": 7450652672,
+        "sample_stddev": 103676569.58538961
+      },
+      "sampled_system_mem_available_min_bytes": {
+        "n": 3,
+        "median": 6958030848,
+        "minimum": 6867484672,
+        "maximum": 7143059456,
+        "sample_stddev": 140460941.9870208
+      },
+      "memory_sample_count": {
+        "n": 3,
+        "median": 441,
+        "minimum": 431,
+        "maximum": 444,
+        "sample_stddev": 6.8068592855540455
+      },
+      "driver_sample_count": {
+        "n": 3,
+        "median": 912,
+        "minimum": 896,
+        "maximum": 916,
+        "sample_stddev": 10.583005244258363
+      },
+      "memory_sample_span_seconds": {
+        "n": 3,
+        "median": 456.90891122817993,
+        "minimum": 448.97140526771545,
+        "maximum": 459.25607085227966,
+        "sample_stddev": 5.389612004583951
+      }
+    },
+    "paiton": {
+      "launcher_wall_seconds": {
+        "n": 3,
+        "median": 587.2508554458618,
+        "minimum": 471.80667424201965,
+        "maximum": 589.9267613887787,
+        "sample_stddev": 67.43747033857714
+      },
+      "asr_with_startup_seconds": {
+        "n": 3,
+        "median": 101.47144605196081,
+        "minimum": 94.9308696690714,
+        "maximum": 101.5734417499043,
+        "sample_stddev": 3.805988841984663
+      },
+      "diarization_with_startup_seconds": {
+        "n": 3,
+        "median": 68.4274159349734,
+        "minimum": 68.28618200600613,
+        "maximum": 78.82772538100835,
+        "sample_stddev": 6.0458046104031045
+      },
+      "attribution_with_startup_seconds": {
+        "n": 3,
+        "median": 0.6336243920959532,
+        "minimum": 0.6299888000357896,
+        "maximum": 0.6391408250201494,
+        "sample_stddev": 0.004608111022053481
+      },
+      "playback_with_startup_seconds": {
+        "n": 3,
+        "median": 2.405009954003617,
+        "minimum": 2.339443169068545,
+        "maximum": 2.412738366983831,
+        "sample_stddev": 0.04027182160302587
+      },
+      "summary_with_startup_seconds": {
+        "n": 3,
+        "median": 309.98576132406015,
+        "minimum": 301.9175970860524,
+        "maximum": 320.43150608299766,
+        "sample_stddev": 9.282363959749222
+      },
+      "complete_pipeline_seconds": {
+        "n": 3,
+        "median": 493.21651294105686,
+        "minimum": 468.3250439860858,
+        "maximum": 493.486166285933,
+        "sample_stddev": 14.449567554374298
+      },
+      "audio_seconds": {
+        "n": 3,
+        "median": 2345.493375,
+        "minimum": 2345.493375,
+        "maximum": 2345.493375,
+        "sample_stddev": 0.0
+      },
+      "rtf": {
+        "n": 3,
+        "median": 0.21028262889084343,
+        "minimum": 0.19967016278018088,
+        "maximum": 0.21039759546791856,
+        "sample_stddev": 0.00616056634752775
+      },
+      "audio_hours_per_wall_hour": {
+        "n": 3,
+        "median": 4.755504557245642,
+        "minimum": 4.7529060290638165,
+        "maximum": 5.008259552033877,
+        "sample_stddev": 0.14668404902620563
+      },
+      "asr_model_load_seconds": {
+        "n": 3,
+        "median": 6.13022350508254,
+        "minimum": 5.809553483966738,
+        "maximum": 6.776578975957818,
+        "sample_stddev": 0.49256860086242515
+      },
+      "asr_processing_seconds": {
+        "n": 3,
+        "median": 85.23051106301136,
+        "minimum": 80.79809094395023,
+        "maximum": 85.60576693096664,
+        "sample_stddev": 2.67397685961151
+      },
+      "diarization_model_load_seconds": {
+        "n": 3,
+        "median": 2.4477093109162524,
+        "minimum": 0.8066412850748748,
+        "maximum": 3.3986011180095375,
+        "sample_stddev": 1.3112052515264174
+      },
+      "diarization_decode_seconds": {
+        "n": 3,
+        "median": 1.6121602089842781,
+        "minimum": 1.5923469760455191,
+        "maximum": 1.6203983159502968,
+        "sample_stddev": 0.014418207680582593
+      },
+      "diarization_processing_seconds": {
+        "n": 3,
+        "median": 58.405001049046405,
+        "minimum": 57.08297681098338,
+        "maximum": 58.823635078035295,
+        "sample_stddev": 0.9085605592464888
+      },
+      "summary_model_load_seconds": {
+        "n": 3,
+        "median": 27.82877700892277,
+        "minimum": 20.63441692397464,
+        "maximum": 34.760680175968446,
+        "sample_stddev": 7.0635379710857755
+      },
+      "summary_processing_seconds": {
+        "n": 3,
+        "median": 273.94853702990804,
+        "minimum": 269.27717668400146,
+        "maximum": 275.1781898830086,
+        "sample_stddev": 3.1132943536631
+      },
+      "summary_calls": {
+        "n": 3,
+        "median": 22,
+        "minimum": 22,
+        "maximum": 22,
+        "sample_stddev": 0.0
+      },
+      "summary_input_tokens": {
+        "n": 3,
+        "median": 74822,
+        "minimum": 74822,
+        "maximum": 74822,
+        "sample_stddev": 0.0
+      },
+      "summary_output_tokens": {
+        "n": 3,
+        "median": 7582,
+        "minimum": 7582,
+        "maximum": 7582,
+        "sample_stddev": 0.0
+      },
+      "summary_peak_allocated_bytes": {
+        "n": 3,
+        "median": 8213219328,
+        "minimum": 8213219328,
+        "maximum": 8213219328,
+        "sample_stddev": 0.0
+      },
+      "summary_peak_reserved_bytes": {
+        "n": 3,
+        "median": 8535408640,
+        "minimum": 8535408640,
+        "maximum": 8535408640,
+        "sample_stddev": 0.0
+      },
+      "sampled_driver_peak_bytes": {
+        "n": 3,
+        "median": 9044418560,
+        "minimum": 9044410368,
+        "maximum": 9044439040,
+        "sample_stddev": 14768.3380243005
+      },
+      "sampled_process_rss_sum_peak_bytes": {
+        "n": 3,
+        "median": 7192104960,
+        "minimum": 6924640256,
+        "maximum": 7631716352,
+        "sample_stddev": 357013573.36395174
+      },
+      "sampled_single_process_hwm_peak_bytes": {
+        "n": 3,
+        "median": 7227490304,
+        "minimum": 7076728832,
+        "maximum": 7712583680,
+        "sample_stddev": 332253917.1085339
+      },
+      "sampled_system_mem_available_min_bytes": {
+        "n": 3,
+        "median": 6969208832,
+        "minimum": 6540435456,
+        "maximum": 7034314752,
+        "sample_stddev": 268328824.33155885
+      },
+      "memory_sample_count": {
+        "n": 3,
+        "median": 475,
+        "minimum": 452,
+        "maximum": 476,
+        "sample_stddev": 13.576941236277534
+      },
+      "driver_sample_count": {
+        "n": 3,
+        "median": 982,
+        "minimum": 933,
+        "maximum": 984,
+        "sample_stddev": 28.88482877451991
+      },
+      "memory_sample_span_seconds": {
+        "n": 3,
+        "median": 492.30499958992004,
+        "minimum": 467.71659111976624,
+        "maximum": 493.4997835159302,
+        "sample_stddev": 14.553294872425452
+      }
+    }
+  },
+  "complete_pipeline_time_reduction_percent": -7.736567611015599,
+  "limitations": [
+    "First run is first in this output series, not cleared operating-system/model caches.",
+    "Pipeline times exclude shared GPU lease waiting and Docker startup; stage times include fresh process/model startup and switching.",
+    "Driver samples are restricted to periods with an observed owned pipeline container; gaps and sampling can miss peaks. First stock memory monitoring began late.",
+    "Summed process RSS double-counts shared pages and is an upper bound, not unique physical allocation. System available RAM includes unrelated host activity.",
+    "Summary allocator counters are from the native Transformers summary process; they are not all-stage allocator counters.",
+    "Generated summary token counts differ between ASR variants; no smaller output or changed backend is attributed to compiler acceleration.",
+    "Background GPU probes used the same lease between some runs. Launcher wall time includes these waits; no concurrent GPU inference was used.",
+    "Offline end-of-meeting latency from an already available recording is the complete pipeline time plus queue/import/launch overhead. Streaming partial/final latency is not applicable."
+  ],
+  "provenance": {
+    "image_id": "sha256:5ad001b624a538e08cba50c4d9f1fdb7ae5eddb94b293a93590792fde91a9fa9",
+    "summary_backend": "transformers",
+    "summary_checkpoint": "ibm-granite/granite-4.2-3b",
+    "compiler_revision": "39d5651c6db8a5344eca9a003fc712713c340e61",
+    "artifact_sha256": "07d65cf2e6926926300e5c308fedfb806dab9852779d0972461d567f5f9dd012",
+    "model_pins": "models.lock.json",
+    "measurement_date": "2026-09-10",
+    "note": "Frozen image used original substring attribution-presence check; subsequent whole-field validation changes are not represented as benchmarked image code."
+  }
+}

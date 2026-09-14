@@ -1,0 +1,153 @@
+{
+  "method": "Exact summary-object comparison to the earlier manually reviewed AMI summaries, whose human-abstract groups are recorded in ami-summary-reference-check.json. Reuses that assessment only after equality; not a new independent factuality rating. Mechanical references separately checked on every final result. No 60\u201375% recall claim.",
+  "results": [
+    {
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "paiton-0",
+      "result_sha256": "c8f2cb52188867693841b5188566650f47555385416af51c904598f2a23eb8a2",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "exact_previous_summary_matches": [
+        "paiton-0",
+        "paiton-1",
+        "paiton-3"
+      ]
+    },
+    {
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "paiton-1",
+      "result_sha256": "210d594636bae362b61d5b678d889e988b93a9879de18963019c81f835c9169d",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "exact_previous_summary_matches": [
+        "paiton-0",
+        "paiton-1",
+        "paiton-3"
+      ]
+    },
+    {
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "paiton-2",
+      "result_sha256": "8b44e7f3fb79a8b2afaa4428f55f0e719f60e9942c7e95aede298ab83a0fbe06",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "exact_previous_summary_matches": [
+        "paiton-0",
+        "paiton-1",
+        "paiton-3"
+      ]
+    },
+    {
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "paiton-3",
+      "result_sha256": "ffe73b0aad2933dd50e87720d9460b28102993f52a1be2840608035fcf1bbac5",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "exact_previous_summary_matches": [
+        "paiton-0",
+        "paiton-1",
+        "paiton-3"
+      ]
+    },
+    {
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "stock-0",
+      "result_sha256": "13d70f34ac6628bb318d64afe2ddc9b3e1231b8632f25f39a28a9bf3b657704d",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "exact_previous_summary_matches": [
+        "stock-0",
+        "stock-1",
+        "stock-2",
+        "stock-3"
+      ]
+    },
+    {
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "stock-1",
+      "result_sha256": "2e8477623f3c0db360fbc6bebc64616d560ceca8715efe10027463b1e9366d5a",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "exact_previous_summary_matches": [
+        "stock-0",
+        "stock-1",
+        "stock-2",
+        "stock-3"
+      ]
+    },
+    {
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "stock-2",
+      "result_sha256": "dc0b9c48a71058d07d7657615d2c498beb3bf8b9ca05d8fc9b64e986328cd0b4",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "exact_previous_summary_matches": [
+        "stock-0",
+        "stock-1",
+        "stock-2",
+        "stock-3"
+      ]
+    },
+    {
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1,
+      "run": "stock-3",
+      "result_sha256": "8d15a990b30925359bde1130129accdd6817f05fd12269129f4a45607cd51fbd",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "exact_previous_summary_matches": [
+        "stock-0",
+        "stock-1",
+        "stock-2",
+        "stock-3"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "publication_status": "Published",
+  "local_image": "paiton-gpt-oss:local",
+  "final_image_index_digest": "sha256:0cf9c11304ade58e91d97db876a4462781fa2c18d2d4846f26d56fe5d207669d",
+  "final_amd64_manifest_digest": "sha256:e543cc4ad594accaa99c5bc43f93aa57cf086fc3fab9d4fc6427f1e308798ce0",
+  "benchmark_image_index_digest": "sha256:af3fa44965113f9f18d9afe826d3387149dd21ac70ff75d582aa592386936798",
+  "source_revision_at_build": "6adb3e88195dffb4450fc888968db1b22e02b4d5",
+  "base_image": "rocm/vllm-dev@sha256:4fa5bc9c24d25ef7e0fe38b23fc5f2b27fc986177bd2f9e496997bcf5af03871",
+  "compressed_layer_bytes": 11791574160,
+  "largest_compressed_layer_bytes": 8978243268,
+  "preserved_runtime_hardlink_groups": 2984,
+  "changes_since_full_benchmark": [
+    "Pinned offline Harmony vocabulary and license",
+    "Benchmark client dependency file and compact fixture formatting",
+    "Public source revision label and packaging checks"
+  ],
+  "serving_module_and_compiled_artifact_unchanged": true,
+  "component_sha256": {
+    "/opt/paiton/release-plugin/paiton_vllm_plugin/models/paiton_gptoss.py": "6c7a9154afac694b548e58bae5e58291d5c438de249068f852913036f4b6d20a",
+    "/opt/paiton/gpt-oss-overlay/gptoss_mxfp4_decode_gfx1201.so": "db2d6d6b4855b7cc3e97be0f499630c40758ebebdf97cb8abf34bb6c2a8f2e5b"
+  },
+  "runtime": {
+    "gpu": "AMD Radeon AI PRO R9700",
+    "arch": "gfx1201",
+    "vram_bytes": 34208743424,
+    "versions": {
+      "vllm": "0.26.1.dev1+g396cd1a43.rocm714",
+      "torch": "2.11.0+rocm7.14.0",
+      "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+      "transformers": "5.14.0"
+    },
+    "hip_multiProcessorCount": 32,
+    "hip_count_unit": "WGP on this RDNA4 target",
+    "target_compute_units": 64,
+    "target_wgps": 32
+  },
+  "ghcr_tag": "ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0",
+  "huggingface_repo": "EliovpAI/GPT-OSS-20B-MXFP4-Paiton-RDNA4"
+}

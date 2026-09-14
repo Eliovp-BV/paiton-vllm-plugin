@@ -1,0 +1,340 @@
+![Paiton: Inference optimization for AMD GPUs](assets/paiton-banner.svg)
+
+<p align="center">
+  <a href="#community-releases">Choose a model</a> ·
+  <a href="#quick-start">Run locally</a> ·
+  <a href="https://github.com/Eliovp-BV/paiton-vllm-plugin/releases">Releases</a> ·
+  <a href="https://huggingface.co/EliovpAI">Hugging Face</a> ·
+  <a href="https://eliovp.com/products/paiton">Discover Paiton</a>
+</p>
+
+**Run language, image and video models locally on AMD GPUs.** Paiton combines
+compiler optimizations, custom kernels and runtime integration. These free
+community packages include reproducible runtimes, compiled artifacts and setup
+guides with measured performance and tested limits.
+
+## Native GGUF through vLLM
+
+**The author's GGUF weights, served by vLLM, executed by native Paiton kernels.**
+[Qwen3.8 NEO CODER MAX v1.1.0](models/Qwen3.8-NEO-CODER-MAX/README.md) brings
+qualified mixed Q4_K_M text and image support to RDNA4. Complete-request latency
+medians are **6.4%, 5.1% and 0.8% lower than working llama.cpp** in the three
+tested 128-output text workloads. The latest prefill sweep preserves all
+31.8 million compared logits exactly. Support is specific to the pinned model
+and profile; some prefill-only cases still favor llama.cpp.
+
+[Results and reproduction](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) ·
+[The native GGUF story](models/Qwen3.8-NEO-CODER-MAX/NATIVE_GGUF.md)
+
+## Community releases
+
+**Qualified hardware: one Radeon AI PRO R9700 · 32 GB VRAM · RDNA 4 (`gfx1201`).**
+Linux and Docker are required; ComfyUI launchers also need Docker Compose.
+
+Choose by the task you want to do:
+[Text, reasoning and coding](#text-reasoning-and-coding) ·
+[Meeting audio](#meeting-audio) ·
+[Image generation](#image-generation) · [Video](#video) ·
+[Image understanding and editing](#image-understanding-and-editing).
+
+**GPU memory:** “Tested GPU capacity” is the hardware qualification, not a claim
+that every model consumes 32 GB. “Measured GPU use” is sampled driver VRAM at the
+linked settings, including runtime overhead. **Minimum capacity on smaller GPUs
+has not been verified.** Do not treat checkpoint size or a sampled peak as a
+minimum-VRAM guarantee; leave headroom for context, concurrency, resolution and
+loading. Host RAM and disk requirements are separate and listed in each guide.
+
+### Text, reasoning and coding
+
+| Model & setup guide | Best use / tested interface | Inputs in this Paiton release | Tested GPU capacity | Measured GPU use |
+| --- | --- | --- | --- | --- |
+| [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Concise chat, lightweight coding and tools; direct answers by default, experimental W4 thinking; 8K context, OpenAI-compatible API | Text | 32 GB | [~4.75 GiB](models/MiniCPM5-2B/BENCHMARKS.md) |
+| [**Qwen3.8 NEO CODER MAX 27B Q4_K_M**](models/Qwen3.8-NEO-CODER-MAX/README.md) | DavidAU coding/chat fine-tune, optional reasoning and visual chat; 8K context, one active request, vLLM API; MTP disabled | Text + one still image | 32 GB | [23.74 GiB measured peak](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
+| [**Qwen3.8 27B**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API | **Text only**; upstream vision components are not qualified here¹ | 32 GB | Not reported in the model guide |
+| [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning; terminal thinking default off; 8K context, one active request, terminal/API; DFlash benchmarks use thinking off | **Text only**; upstream vision path is disabled by the launcher¹ | 32 GB | Not reported in the model guide |
+| [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tool calls and JSON schemas; adjustable reasoning effort, 8K total context, terminal/OpenAI-compatible API | Text | 32 GB | [~17.0 GiB Paiton / 17.1 GiB stock](models/GPT-OSS-20B/BENCHMARKS.md) |
+| [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Dedicated code writing, review and testing; terminal chat or local coding API, 4K context | Text | 32 GB | [~20.1 GiB](models/Qwen3-Coder-30B/BENCHMARKS.md) |
+
+¹ The pinned [Qwen3.8 configuration](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16/blob/649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2/config.json)
+and [Ornith configuration](https://huggingface.co/Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4/blob/9e488f46c0f7969f84c9923ee0256311cd50316e/config.json)
+include vision components and image tokens. That upstream multimodal architecture
+is distinct from the shipped Paiton interface: Qwen3.8 qualifies text input only,
+and Ornith runs with `--language-model-only`. **Image uploads / visual chat are not
+supported by those two releases.** The separate NEO CODER MAX release above
+qualifies a native image path.
+
+MiniCPM5 is the smallest download here: **2.11 GB**, with a **27.98 s median**
+prepared-cache launch to a completed useful answer (three trials). Its small
+quality suite scored 14/20, so arithmetic and unfamiliar code still need review.
+[Loading, quality and generation evidence →](models/MiniCPM5-2B/BENCHMARKS.md)
+
+Reasoning consumes the output budget. Each model guide shows its thinking controls,
+tool support and tested limits; MiniCPM5 W4 thinking remains experimental. Input
+modality, reasoning and coding are separate capabilities, listed per model above.
+
+### Meeting audio
+
+[**Local meeting notes — review candidate**](models/Meeting/README.md): Parakeet 0.6B speech recognition, anonymous speaker labels and compact Granite partial notes with timestamp references. Standalone recording import tested on R9700; Paiton saves 6.53 seconds (2.24%) by the matched full-pipeline median. Versioned GHCR image available. [Setup](models/Meeting/REPRODUCE.md) · [Benchmarks](models/Meeting/BENCHMARKS.md). Studio integration is separate; live Teams capture is not qualified.
+
+### Image generation
+
+| Model & setup guide | Supported input → output | Tested GPU capacity | Measured GPU use |
+| --- | --- | --- | --- |
+| [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Text → image; 1024 × 1024, four steps; ComfyUI, web interface or terminal | 32 GB | [14.6 GiB Paiton / 23.0 GiB stock](models/FLUX.2-klein/BENCHMARKS.md) |
+
+### Video
+
+| Model & setup guide | Supported input → output | Tested GPU capacity | Measured GPU use |
+| --- | --- | --- | --- |
+| [**FastWan FullAttn 5B**](models/FastWan/README.md) | Text → silent video; three denoiser evaluations, 480/720-class presets | 32 GB | [23.2–30.4 GiB Paiton, by preset](models/Wan2.2/BENCHMARKS.md) |
+| [**Wan2.2 TI2V-5B**](models/Wan2.2/README.md) | Text + optional image → silent video; stock is the base workflow default | 32 GB | [23.0–24.4 GiB across measured base cases/engines](models/Wan2.2/BENCHMARKS.md) |
+| [**MiniMax H3**](models/MiniMax-H3/README.md) | Text + optional first/last images → video with native stereo audio | 32 GB | [Up to 31.1 GiB across tested presets/engines](models/MiniMax-H3/BENCHMARKS.md) |
+
+### Image understanding and editing
+
+Use the input/output columns to distinguish these workflows:
+
+- **Text + image → text** (visual chat/captioning): supported by
+  [**Qwen3.8 NEO CODER MAX**](models/Qwen3.8-NEO-CODER-MAX/IMAGE_API.md),
+  with one still image, up to 1,024 image embeddings and an 8K total context.
+  The separate Qronos Qwen3.8 and Ornith releases continue to serve text only.
+- **Text + image → image** (image editing): not qualified in the FLUX.2 klein
+  package; its supported workflow is text → image.
+- **Text + image → video** (image animation): supported by **Wan2.2** with an
+  optional input image, and **MiniMax H3** with optional first/last images.
+  **FastWan** qualifies text input only.
+
+## Quick start
+
+Clone the repository once, then choose **one** launcher below:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
+cd paiton-vllm-plugin
+```
+
+The first launch downloads and prepares weights and may build or compile the
+runtime. Caches persist for subsequent runs. Follow the model guide for readiness
+and send a generation request before assuming the model is usable. Run one model
+at a time; Wan and FastWan share a service and cache.
+
+<details>
+<summary><strong>Text-only chat — MiniCPM5-2B</strong> · Small download, concise answers</summary>
+
+```bash
+./models/MiniCPM5-2B/serve-docker.sh
+```
+
+In another terminal, from the repository root:
+
+```bash
+python3 models/MiniCPM5-2B/chat.py
+```
+
+OpenAI-compatible API: `http://127.0.0.1:8036/v1`, model `minicpm5-2b`.
+Defaults to thinking off, 8K context and two scheduled requests. Use
+`./models/MiniCPM5-2B/serve-docker.sh --download-only` to prepare weights ahead
+of time, or `--offline` once cached. Append `--stock` for the matched stock path.
+
+The published container can also run without cloning:
+
+```bash
+docker run --rm --name paiton-minicpm5 \
+  --device /dev/kfd --device /dev/dri --ipc=host \
+  -p 8036:8036 -v paiton-minicpm5-cache:/models/cache \
+  ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0
+```
+
+[Setup, quality and loading benchmarks →](models/MiniCPM5-2B/README.md) ·
+[Hugging Face artifacts](https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4)
+
+</details>
+
+<details>
+<summary><strong>Code and chat with images — Qwen3.8 NEO CODER MAX</strong> · Native mixed-GGUF vLLM API</summary>
+
+```bash
+./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
+```
+
+OpenAI-compatible API: `http://127.0.0.1:8000/v1`, model `qwen38-neo`.
+The immutable prebuilt image downloads 19.43 GB of pinned GGUF/projector weights
+on first use and reuses its own named cache. Supports text and one still image,
+8K total context and one active request; MTP is disabled. Thinking defaults on
+with the preserved source template; set `chat_template_kwargs.enable_thinking`
+explicitly. This launcher does not require the proprietary compiler.
+
+[Setup and image API](models/Qwen3.8-NEO-CODER-MAX/README.md) ·
+[Paiton/vLLM and llama.cpp results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) ·
+[Native GGUF through vLLM](models/Qwen3.8-NEO-CODER-MAX/NATIVE_GGUF.md)
+
+</details>
+
+<details>
+<summary><strong>Start Qwen3.8</strong> · Chat, optional reasoning and API</summary>
+
+```bash
+./models/Qwen3.8/serve-docker.sh
+```
+
+Once the server reports that it is ready, open a terminal chat:
+
+```bash
+docker exec -it paiton-qwen38 paiton-chat
+```
+
+The terminal client disables thinking by default. To enable reasoning:
+
+```bash
+docker exec -it paiton-qwen38 paiton-chat --thinking --max-tokens 4096
+```
+
+API clients can set `chat_template_kwargs.enable_thinking` to `true`.
+
+[Full guide, API examples and existing-environment installation →](models/Qwen3.8/README.md)
+
+</details>
+
+<details>
+<summary><strong>Chat with Ornith 1.5</strong> · Chat and API</summary>
+
+```bash
+./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+The helper starts the server, waits for it to become ready and opens the
+terminal chat. Use `/reset` for a new conversation and `/quit` to leave the chat.
+For optional thinking, use `docker exec -it paiton-ornith paiton-chat --model ornith --thinking --max-tokens 4096`. The published benchmark used thinking off.
+
+[Full guide, API examples and model options →](models/Ornith-1.5/README.md)
+
+</details>
+
+<details>
+<summary><strong>Chat, reason and code with GPT-OSS-20B</strong> · 2.18× tested speedup</summary>
+
+```bash
+./models/GPT-OSS-20B/serve-docker.sh
+```
+
+In another terminal, run `python3 models/GPT-OSS-20B/chat.py` or use the
+OpenAI-compatible API on port 8020. Supports streaming, tools and JSON schemas.
+
+[Setup, benchmarks and tested limits →](models/GPT-OSS-20B/README.md)
+
+</details>
+
+<details>
+<summary><strong>Code with Qwen3-Coder 30B</strong> · Terminal chat and coding API</summary>
+
+```bash
+./models/Qwen3-Coder-30B/serve-docker.sh --chat
+```
+
+The prebuilt container downloads and caches the pinned INT4 model on first use.
+Coding clients can connect to `http://127.0.0.1:8010/v1`, model `qwen3-coder`.
+
+[Download the bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/qwen3-coder-30b-awq-rdna4-v1.0.0/paiton-qwen3-coder-r9700-v1.0.0.tar.gz) ·
+[Full guide, requirements and coding client settings →](models/Qwen3-Coder-30B/README.md)
+
+</details>
+
+<details>
+<summary><strong>Generate images with FLUX.2 klein</strong> · ComfyUI</summary>
+
+```bash
+./models/FLUX.2-klein/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8188/?paiton=1), enter a prompt and click **Run**.
+The included workflow lets you select **Paiton** or **Stock (Diffusers)**.
+
+[Full guide, requirements and other interfaces →](models/FLUX.2-klein/README.md)
+
+</details>
+
+<details>
+<summary><strong>Create fast text-to-video with FastWan 5B</strong> · Three-evaluation generation</summary>
+
+```bash
+./models/FastWan/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast), enter a prompt and click Run. Choose stock/Paiton, duration and resolution in the connected workflow.
+
+[Setup, measurements and example clips →](models/FastWan/README.md)
+
+</details>
+
+<details>
+<summary><strong>Animate images with Wan2.2 TI2V-5B</strong> · Text and optional image input</summary>
+
+```bash
+./models/Wan2.2/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=base), upload an optional image, edit the prompt and click Run. The base workflow defaults to stock because its image benchmarks did not show an end-to-end Paiton gain.
+
+[Setup, measurements and example clips →](models/Wan2.2/README.md)
+
+</details>
+
+<details>
+<summary><strong>Create videos with MiniMax H3</strong> · ComfyUI with stereo audio</summary>
+
+```bash
+./models/MiniMax-H3/launch.sh
+```
+
+Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1), edit the prompt, optionally upload first/last images, set the length and resolution sliders, and click **Run**.
+From another system, use `http://<server-ip>:8190/?paiton=1&studio=1` with the host's network address.
+The first launch prepares the local runtime and downloads the model; later launches reuse both.
+
+[Generated clips, performance and setup guide →](models/MiniMax-H3/README.md)
+
+</details>
+
+## Performance you can inspect
+
+Results apply to specific workloads and runtime settings. Compiler changes,
+quantization and speculative decoding are documented separately in each guide.
+
+| Model | Example measured result | Evidence |
+| --- | --- | --- |
+| Qwen3.8 NEO CODER MAX | 128 input / 128 output: native Paiton + vLLM **4.925 s** versus working llama.cpp **5.264 s** median. Same weights and fixed token counts; engine activation arithmetic differs. | [Matched text/image results and arithmetic](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
+| MiniCPM5-2B | Paired warm chat: 0.704 s → 0.471 s median; 33.1% lower latency, with unresolved timing variability | [Loading, generation and quality](models/MiniCPM5-2B/BENCHMARKS.md) |
+| GPT-OSS-20B | 512 input / 256 output, concurrency one: 4.819 s → 2.214 s median; 2.18× speedup, 32 requests/mode | [Matched stock settings and caveats](models/GPT-OSS-20B/BENCHMARKS.md) |
+| FLUX.2 klein | Sampled driver VRAM: 23.0 GiB stock → 14.6 GiB Paiton at the qualified image settings | [Full-pipeline measurements](models/FLUX.2-klein/BENCHMARKS.md) |
+
+More evidence: [Qwen3.8](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) ·
+[Ornith 1.5](models/Ornith-1.5/BENCHMARKS.md) ·
+[Qwen3-Coder](models/Qwen3-Coder-30B/BENCHMARKS.md) ·
+[FastWan / Wan2.2](models/Wan2.2/BENCHMARKS.md) ·
+[MiniMax H3](models/MiniMax-H3/BENCHMARKS.md).
+Use the model guides for complete settings, sample counts and reproduction commands.
+
+## Beyond the community releases
+
+Paiton's broader work covers **AMD Instinct (CDNA)** accelerators and multi-GPU
+inference for larger language, image and video workloads.
+
+**[Explore Paiton and discuss your workload →](https://eliovp.com/products/paiton)**
+
+## About this repository
+
+This repository distributes public runtimes and compiled artifacts. Paiton's
+compiler is developed privately. Text serving uses vLLM; image generation uses
+Diffusers with ComfyUI integration. MiniMax H3 uses the native ComfyUI video
+pipeline with Paiton artifacts, assembled locally from pinned components.
+
+The vLLM plugin is [Apache-2.0 licensed](LICENSE). Model weights and bundled
+components retain their own licenses, including GPL-3.0-only for the separate
+image conversion/stock tools and ComfyUI. See the
+[third-party notices](THIRD_PARTY_NOTICES.md) and
+[image package notices](models/FLUX.2-klein/THIRD_PARTY_NOTICES.md) and
+[video package notices](models/MiniMax-H3/THIRD_PARTY_NOTICES.md).
+
+[Release downloads](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases) ·
+[Containers](https://github.com/users/Eliovp/packages/container/package/paiton-vllm-plugin) ·
+[Hugging Face](https://huggingface.co/EliovpAI) ·
+[Report an issue](https://github.com/Eliovp-BV/paiton-vllm-plugin/issues)

@@ -1,0 +1,164 @@
+[
+  {
+    "engine": "stock",
+    "phase": "decode",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 284,
+    "device_ms": 0.0,
+    "cpu_ms": 3.026017000000407
+  },
+  {
+    "engine": "stock",
+    "phase": "decode",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 53,
+    "device_ms": 0.0,
+    "cpu_ms": 5118.978143
+  },
+  {
+    "engine": "stock",
+    "phase": "decode",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy DtoH (Device -> Host)",
+    "calls": 4,
+    "device_ms": 9.819029000001029,
+    "cpu_ms": 0.0
+  },
+  {
+    "engine": "stock",
+    "phase": "denoise",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 183,
+    "device_ms": 0.0,
+    "cpu_ms": 2.366836000000014
+  },
+  {
+    "engine": "stock",
+    "phase": "denoise",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 13,
+    "device_ms": 0.0,
+    "cpu_ms": 6.287820000000036
+  },
+  {
+    "engine": "stock",
+    "phase": "denoise",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy HtoD (Host -> Device)",
+    "calls": 4,
+    "device_ms": 0.9759860000001644,
+    "cpu_ms": 0.0
+  },
+  {
+    "engine": "stock",
+    "phase": "conditioning",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 195,
+    "device_ms": 0.0,
+    "cpu_ms": 2.5543920000001745
+  },
+  {
+    "engine": "stock",
+    "phase": "conditioning",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 52,
+    "device_ms": 0.0,
+    "cpu_ms": 379.60758999999996
+  },
+  {
+    "engine": "stock",
+    "phase": "conditioning",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy DtoH (Device -> Host)",
+    "calls": 1,
+    "device_ms": 0.7456119999999646,
+    "cpu_ms": 0.0
+  },
+  {
+    "engine": "paiton",
+    "phase": "decode",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 284,
+    "device_ms": 0.0,
+    "cpu_ms": 2.9910380000001178
+  },
+  {
+    "engine": "paiton",
+    "phase": "decode",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 53,
+    "device_ms": 0.0,
+    "cpu_ms": 4958.164195
+  },
+  {
+    "engine": "paiton",
+    "phase": "decode",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy DtoH (Device -> Host)",
+    "calls": 4,
+    "device_ms": 9.874175999999977,
+    "cpu_ms": 0.0
+  },
+  {
+    "engine": "paiton",
+    "phase": "denoise",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 183,
+    "device_ms": 0.0,
+    "cpu_ms": 2.310188999999842
+  },
+  {
+    "engine": "paiton",
+    "phase": "denoise",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 13,
+    "device_ms": 0.0,
+    "cpu_ms": 7.37043400000046
+  },
+  {
+    "engine": "paiton",
+    "phase": "denoise",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy HtoD (Host -> Device)",
+    "calls": 4,
+    "device_ms": 0.8856010000000825,
+    "cpu_ms": 0.0
+  },
+  {
+    "engine": "paiton",
+    "phase": "conditioning",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyAsync",
+    "calls": 195,
+    "device_ms": 0.0,
+    "cpu_ms": 2.5577860000000108
+  },
+  {
+    "engine": "paiton",
+    "phase": "conditioning",
+    "device": "DeviceType.CPU",
+    "name": "hipMemcpyWithStream",
+    "calls": 52,
+    "device_ms": 0.0,
+    "cpu_ms": 382.07972399999994
+  },
+  {
+    "engine": "paiton",
+    "phase": "conditioning",
+    "device": "DeviceType.CUDA",
+    "name": "Memcpy DtoH (Device -> Host)",
+    "calls": 1,
+    "device_ms": 0.726125,
+    "cpu_ms": 0.0
+  }
+]

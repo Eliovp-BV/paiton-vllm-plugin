@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "abi": "PaitonMeetingLstm640F16V1",
+  "gpu_arch": "gfx1201",
+  "dtype": "float16",
+  "hidden_size": 640,
+  "input_size": 640,
+  "batch": 1,
+  "sequence": 1,
+  "gate_order": "ifgo",
+  "aliasing": "inputs and outputs disjoint",
+  "sha256": "07d65cf2e6926926300e5c308fedfb806dab9852779d0972461d567f5f9dd012",
+  "filename": "meeting_lstm_float16_gfx1201.so",
+  "compiler_build_revision": "39d5651c6db8a5344eca9a003fc712713c340e61",
+  "distribution_status": "local-review-only"
+}

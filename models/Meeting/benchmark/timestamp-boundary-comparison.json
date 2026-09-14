@@ -1,0 +1,351 @@
+{
+  "stock": {
+    "lexically_matched_words": 5522,
+    "reference_words": 6831,
+    "hypothesis_words": 5985,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.43949999999984857,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 959,
+    "all_insertions": 113,
+    "largest_timestamp_errors": [
+      {
+        "reference": {
+          "start": 37.56,
+          "end": 38.83,
+          "speaker": "B",
+          "text": "okay"
+        },
+        "hypothesis": {
+          "text": "okay",
+          "start": 17.6,
+          "end": 17.68
+        },
+        "start_error": 19.96,
+        "end_error": 21.15
+      },
+      {
+        "reference": {
+          "start": 39.28,
+          "end": 39.54,
+          "speaker": "B",
+          "text": "that's"
+        },
+        "hypothesis": {
+          "text": "that's",
+          "start": 24.32,
+          "end": 24.64
+        },
+        "start_error": 14.96,
+        "end_error": 14.899999999999999
+      },
+      {
+        "reference": {
+          "start": 48.39,
+          "end": 49.01,
+          "speaker": "D",
+          "text": "oh"
+        },
+        "hypothesis": {
+          "text": "oh",
+          "start": 37.04,
+          "end": 37.120000000000005
+        },
+        "start_error": 11.350000000000001,
+        "end_error": 11.889999999999993
+      },
+      {
+        "reference": {
+          "start": 200.97,
+          "end": 201.45,
+          "speaker": "C",
+          "text": "okay"
+        },
+        "hypothesis": {
+          "text": "okay",
+          "start": 212.24,
+          "end": 212.56
+        },
+        "start_error": 11.27000000000001,
+        "end_error": 11.110000000000014
+      },
+      {
+        "reference": {
+          "start": 1900.46,
+          "end": 1900.83,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1908.96,
+          "end": 1909.12
+        },
+        "start_error": 8.5,
+        "end_error": 8.289999999999964
+      },
+      {
+        "reference": {
+          "start": 1904.96,
+          "end": 1905.32,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1910.24,
+          "end": 1910.4
+        },
+        "start_error": 5.279999999999973,
+        "end_error": 5.080000000000155
+      },
+      {
+        "reference": {
+          "start": 984.92,
+          "end": 984.98,
+          "speaker": "D",
+          "text": "the"
+        },
+        "hypothesis": {
+          "text": "the",
+          "start": 989.2,
+          "end": 989.52
+        },
+        "start_error": 4.280000000000086,
+        "end_error": 4.539999999999964
+      },
+      {
+        "reference": {
+          "start": 1341.24,
+          "end": 1341.6,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1343.28,
+          "end": 1343.76
+        },
+        "start_error": 2.0399999999999636,
+        "end_error": 2.160000000000082
+      },
+      {
+        "reference": {
+          "start": 506.38,
+          "end": 507.98,
+          "speaker": "C",
+          "text": "going"
+        },
+        "hypothesis": {
+          "text": "going",
+          "start": 507.52,
+          "end": 507.76
+        },
+        "start_error": 1.1399999999999864,
+        "end_error": 0.22000000000002728
+      },
+      {
+        "reference": {
+          "start": 1909.58,
+          "end": 1910.09,
+          "speaker": "C",
+          "text": "if"
+        },
+        "hypothesis": {
+          "text": "if",
+          "start": 1910.48,
+          "end": 1910.64
+        },
+        "start_error": 0.900000000000091,
+        "end_error": 0.5500000000001819
+      }
+    ]
+  },
+  "paiton": {
+    "lexically_matched_words": 5521,
+    "reference_words": 6831,
+    "hypothesis_words": 5983,
+    "start_seconds": {
+      "median": 0.07999999999992724,
+      "p90": 0.21000000000003638,
+      "p95": 0.2699999999999818,
+      "maximum": 19.96
+    },
+    "end_seconds": {
+      "median": 0.08999999999991815,
+      "p90": 0.30999999999994543,
+      "p95": 0.4399999999998272,
+      "maximum": 21.15
+    },
+    "reference_words_near_boundaries": 283,
+    "deleted_words_near_boundaries": 41,
+    "inserted_words_near_boundaries": 4,
+    "all_deletions": 961,
+    "all_insertions": 113,
+    "largest_timestamp_errors": [
+      {
+        "reference": {
+          "start": 37.56,
+          "end": 38.83,
+          "speaker": "B",
+          "text": "okay"
+        },
+        "hypothesis": {
+          "text": "okay",
+          "start": 17.6,
+          "end": 17.68
+        },
+        "start_error": 19.96,
+        "end_error": 21.15
+      },
+      {
+        "reference": {
+          "start": 39.28,
+          "end": 39.54,
+          "speaker": "B",
+          "text": "that's"
+        },
+        "hypothesis": {
+          "text": "that's",
+          "start": 24.32,
+          "end": 24.64
+        },
+        "start_error": 14.96,
+        "end_error": 14.899999999999999
+      },
+      {
+        "reference": {
+          "start": 48.39,
+          "end": 49.01,
+          "speaker": "D",
+          "text": "oh"
+        },
+        "hypothesis": {
+          "text": "oh",
+          "start": 37.04,
+          "end": 37.120000000000005
+        },
+        "start_error": 11.350000000000001,
+        "end_error": 11.889999999999993
+      },
+      {
+        "reference": {
+          "start": 200.97,
+          "end": 201.45,
+          "speaker": "C",
+          "text": "okay"
+        },
+        "hypothesis": {
+          "text": "okay",
+          "start": 212.24,
+          "end": 212.56
+        },
+        "start_error": 11.27000000000001,
+        "end_error": 11.110000000000014
+      },
+      {
+        "reference": {
+          "start": 1900.46,
+          "end": 1900.83,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1908.96,
+          "end": 1909.12
+        },
+        "start_error": 8.5,
+        "end_error": 8.289999999999964
+      },
+      {
+        "reference": {
+          "start": 1904.96,
+          "end": 1905.32,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1910.24,
+          "end": 1910.4
+        },
+        "start_error": 5.279999999999973,
+        "end_error": 5.080000000000155
+      },
+      {
+        "reference": {
+          "start": 984.92,
+          "end": 984.98,
+          "speaker": "D",
+          "text": "the"
+        },
+        "hypothesis": {
+          "text": "the",
+          "start": 989.2,
+          "end": 989.52
+        },
+        "start_error": 4.280000000000086,
+        "end_error": 4.539999999999964
+      },
+      {
+        "reference": {
+          "start": 1341.24,
+          "end": 1341.6,
+          "speaker": "C",
+          "text": "yeah"
+        },
+        "hypothesis": {
+          "text": "yeah",
+          "start": 1343.28,
+          "end": 1343.76
+        },
+        "start_error": 2.0399999999999636,
+        "end_error": 2.160000000000082
+      },
+      {
+        "reference": {
+          "start": 506.38,
+          "end": 507.98,
+          "speaker": "C",
+          "text": "going"
+        },
+        "hypothesis": {
+          "text": "going",
+          "start": 507.52,
+          "end": 507.76
+        },
+        "start_error": 1.1399999999999864,
+        "end_error": 0.22000000000002728
+      },
+      {
+        "reference": {
+          "start": 1909.58,
+          "end": 1910.09,
+          "speaker": "C",
+          "text": "if"
+        },
+        "hypothesis": {
+          "text": "if",
+          "start": 1910.48,
+          "end": 1910.64
+        },
+        "start_error": 0.900000000000091,
+        "end_error": 0.5500000000001819
+      }
+    ]
+  },
+  "protocol": "Original manual AMI word times, lexical edit alignment, full recording. Timestamp errors measured only on exact word matches; overlap and annotation segmentation affect alignment. Boundary region is +/-0.5 seconds around 28+26*n seconds. Deletions/insertions here are diagnostics, not proof of chunk-caused errors. No timestamp tuning against this reference."
+}

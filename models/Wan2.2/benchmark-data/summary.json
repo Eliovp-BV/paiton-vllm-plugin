@@ -1,0 +1,436 @@
+[
+  {
+    "setting": "base-480-2-image-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 29.758482964505674,
+    "end_to_end_range": [
+      29.700826451997273,
+      29.816139477014076
+    ],
+    "pipeline_seconds": 28.506040607520845,
+    "clips_per_hour": 120.97390865972191,
+    "video_seconds_per_wall_second": 0.06860788801303673,
+    "width": 480,
+    "height": 832,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.121371054498013,
+      "denoise": 22.00291329700849,
+      "decode": 5.372609124984592,
+      "encoding": 1.2494724480202422
+    },
+    "peak_allocated_gib": 3.9236245155334473,
+    "peak_reserved_gib": 5.44921875,
+    "peak_driver_gib": 23.371990203857422,
+    "peak_host_rss_gib": 4.696159362792969,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.603038787841797,
+    "peak_hotspot_c": 89.0,
+    "all_finite": true
+  },
+  {
+    "setting": "base-480-2-image-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 29.518052311992506,
+    "end_to_end_range": [
+      29.444540058029816,
+      29.591564565955196
+    ],
+    "pipeline_seconds": 28.693683167017298,
+    "clips_per_hour": 121.95926621274408,
+    "video_seconds_per_wall_second": 0.06916671347713495,
+    "width": 480,
+    "height": 832,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.0899455889884848,
+      "denoise": 21.994633046007948,
+      "decode": 5.602403424010845,
+      "encoding": 0.8222724265069701
+    },
+    "peak_allocated_gib": 4.005841255187988,
+    "peak_reserved_gib": 5.568359375,
+    "peak_driver_gib": 23.423805236816406,
+    "peak_host_rss_gib": 5.077327728271484,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.6017913818359375,
+    "peak_hotspot_c": 90.0,
+    "all_finite": true
+  },
+  {
+    "setting": "base-480-2-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 29.783095178485382,
+    "end_to_end_range": [
+      29.72974321199581,
+      29.836447144974954
+    ],
+    "pipeline_seconds": 28.415991538466187,
+    "clips_per_hour": 120.8739379982426,
+    "video_seconds_per_wall_second": 0.06855119168881812,
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.0754934324941132,
+      "denoise": 21.954361550015165,
+      "decode": 5.3793043379846495,
+      "encoding": 1.3643213775067125
+    },
+    "peak_allocated_gib": 3.9233193397521973,
+    "peak_reserved_gib": 5.361328125,
+    "peak_driver_gib": 23.032054901123047,
+    "peak_host_rss_gib": 4.674228668212891,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.6033554077148438,
+    "peak_hotspot_c": 89.0,
+    "all_finite": true
+  },
+  {
+    "setting": "base-480-2-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 30.127052016498055,
+    "end_to_end_range": [
+      30.041959043010138,
+      30.212144989985973
+    ],
+    "pipeline_seconds": 28.62814904752304,
+    "clips_per_hour": 119.49393515265226,
+    "video_seconds_per_wall_second": 0.06776855118611065,
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.075457817001734,
+      "denoise": 21.936522147530923,
+      "decode": 5.608469805010827,
+      "encoding": 1.4965052439947613
+    },
+    "peak_allocated_gib": 4.006253242492676,
+    "peak_reserved_gib": 5.9296875,
+    "peak_driver_gib": 23.532535552978516,
+    "peak_host_rss_gib": 4.755382537841797,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.603240966796875,
+    "peak_hotspot_c": 87.0,
+    "all_finite": true
+  },
+  {
+    "setting": "base-480-5-image-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 79.75719286696403,
+    "end_to_end_range": [
+      79.6888831909746,
+      79.82550254295347
+    ],
+    "pipeline_seconds": 76.53353443348897,
+    "clips_per_hour": 45.13699480377706,
+    "video_seconds_per_wall_second": 0.06321268948214148,
+    "width": 480,
+    "height": 832,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.091485258017201,
+      "denoise": 62.11955785701866,
+      "decode": 13.315505208971445,
+      "encoding": 3.2206742015259806
+    },
+    "peak_allocated_gib": 4.090163230895996,
+    "peak_reserved_gib": 6.220703125,
+    "peak_driver_gib": 24.141803741455078,
+    "peak_host_rss_gib": 5.673618316650391,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.603179931640625,
+    "peak_hotspot_c": 90.0,
+    "all_finite": true
+  },
+  {
+    "setting": "base-480-5-image-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 79.64831032551592,
+    "end_to_end_range": [
+      79.61094477801817,
+      79.68567587301368
+    ],
+    "pipeline_seconds": 76.90001623900025,
+    "clips_per_hour": 45.19869894649496,
+    "video_seconds_per_wall_second": 0.06329910384867929,
+    "width": 480,
+    "height": 832,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 20,
+    "phases": {
+      "conditioning": 1.0933602610020898,
+      "denoise": 61.91460090049077,
+      "decode": 13.885152503004065,
+      "encoding": 2.745702206506394
+    },
+    "peak_allocated_gib": 4.1712141036987305,
+    "peak_reserved_gib": 6.56640625,
+    "peak_driver_gib": 24.421741485595703,
+    "peak_host_rss_gib": 5.761756896972656,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.60308837890625,
+    "peak_hotspot_c": 92.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-480-2-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 8.842881616496015,
+    "end_to_end_range": [
+      8.716856836981606,
+      8.968906396010425
+    ],
+    "pipeline_seconds": 7.640824668487767,
+    "clips_per_hour": 407.1071123788828,
+    "video_seconds_per_wall_second": 0.23088250586302378,
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.541396786516998,
+      "denoise": 1.7324649275105912,
+      "decode": 5.3577666339988355,
+      "encoding": 1.1997011864732485
+    },
+    "peak_allocated_gib": 3.810269355773926,
+    "peak_reserved_gib": 5.66796875,
+    "peak_driver_gib": 23.191505432128906,
+    "peak_host_rss_gib": 4.3966827392578125,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.5903091430664062,
+    "peak_hotspot_c": 89.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-480-2-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 9.280414622509852,
+    "end_to_end_range": [
+      9.2267994810245,
+      9.334029763995204
+    ],
+    "pipeline_seconds": 7.852723326504929,
+    "clips_per_hour": 387.9137028283327,
+    "video_seconds_per_wall_second": 0.2199973546132905,
+    "width": 832,
+    "height": 480,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5241462600242812,
+      "denoise": 1.7302222739672288,
+      "decode": 5.589559001993621,
+      "encoding": 1.424974925495917
+    },
+    "peak_allocated_gib": 3.810452461242676,
+    "peak_reserved_gib": 5.59765625,
+    "peak_driver_gib": 23.052974700927734,
+    "peak_host_rss_gib": 4.360889434814453,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.610095977783203,
+    "peak_hotspot_c": 88.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-480-5-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 21.184987949498463,
+    "end_to_end_range": [
+      21.100580235011876,
+      21.26939566398505
+    ],
+    "pipeline_seconds": 18.69518304950907,
+    "clips_per_hour": 169.93165200668557,
+    "video_seconds_per_wall_second": 0.237982984870474,
+    "width": 832,
+    "height": 480,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5431345859833527,
+      "denoise": 4.8089553490281105,
+      "decode": 13.333231872500619,
+      "encoding": 2.487518734007608
+    },
+    "peak_allocated_gib": 3.9755640029907227,
+    "peak_reserved_gib": 6.09765625,
+    "peak_driver_gib": 23.621734619140625,
+    "peak_host_rss_gib": 5.413440704345703,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.601451873779297,
+    "peak_hotspot_c": 90.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-480-5-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 22.030584245512728,
+    "end_to_end_range": [
+      21.9036317000282,
+      22.157536790997256
+    ],
+    "pipeline_seconds": 19.23934906750219,
+    "clips_per_hour": 163.40919332328926,
+    "video_seconds_per_wall_second": 0.22884852305692133,
+    "width": 832,
+    "height": 480,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5540555960033089,
+      "denoise": 4.797216010512784,
+      "decode": 13.879269508994184,
+      "encoding": 2.7883295099891257
+    },
+    "peak_allocated_gib": 3.9777727127075195,
+    "peak_reserved_gib": 5.455078125,
+    "peak_driver_gib": 22.911128997802734,
+    "peak_host_rss_gib": 5.494529724121094,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.6008834838867188,
+    "peak_hotspot_c": 89.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-720-2-person-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 19.797039341996424,
+    "end_to_end_range": [
+      19.78440982400207,
+      19.80966885999078
+    ],
+    "pipeline_seconds": 17.064983523014234,
+    "clips_per_hour": 181.8453728261854,
+    "video_seconds_per_wall_second": 0.10312989894077644,
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5326612134813331,
+      "denoise": 4.4898233314743266,
+      "decode": 12.03391484200256,
+      "encoding": 2.7293253160314634
+    },
+    "peak_allocated_gib": 8.49009370803833,
+    "peak_reserved_gib": 12.615234375,
+    "peak_driver_gib": 30.376869201660156,
+    "peak_host_rss_gib": 5.275753021240234,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.6008567810058594,
+    "peak_hotspot_c": 90.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-720-2-person-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 20.375534816994332,
+    "end_to_end_range": [
+      20.256192446977366,
+      20.494877187011298
+    ],
+    "pipeline_seconds": 17.595188106497517,
+    "clips_per_hour": 176.6824788813592,
+    "video_seconds_per_wall_second": 0.1002018688100301,
+    "width": 1280,
+    "height": 704,
+    "frames": 49,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5309620160260238,
+      "denoise": 4.477931631467072,
+      "decode": 12.577522378996946,
+      "encoding": 2.7779669310257304
+    },
+    "peak_allocated_gib": 8.48984956741333,
+    "peak_reserved_gib": 12.7734375,
+    "peak_driver_gib": 30.229469299316406,
+    "peak_host_rss_gib": 5.329990386962891,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.6004486083984375,
+    "peak_hotspot_c": 89.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-720-5-paiton",
+    "measured_runs": 2,
+    "end_to_end_seconds": 50.10926324597676,
+    "end_to_end_range": [
+      50.03501658397727,
+      50.18350990797626
+    ],
+    "pipeline_seconds": 44.85204539698316,
+    "clips_per_hour": 71.84300400363682,
+    "video_seconds_per_wall_second": 0.10061346625509324,
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 0.5297091659740545,
+      "denoise": 14.522230951493839,
+      "decode": 29.79049391648732,
+      "encoding": 5.254436881514266
+    },
+    "peak_allocated_gib": 8.863991260528564,
+    "peak_reserved_gib": 13.76953125,
+    "peak_driver_gib": 30.35660171508789,
+    "peak_host_rss_gib": 7.4503326416015625,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.5993385314941406,
+    "peak_hotspot_c": 88.0,
+    "all_finite": true
+  },
+  {
+    "setting": "fast-720-5-stock",
+    "measured_runs": 2,
+    "end_to_end_seconds": 51.98594715850777,
+    "end_to_end_range": [
+      51.388111421023495,
+      52.583782895992044
+    ],
+    "pipeline_seconds": 46.757885830505984,
+    "clips_per_hour": 69.24948369264906,
+    "video_seconds_per_wall_second": 0.09698133711586271,
+    "width": 1280,
+    "height": 704,
+    "frames": 121,
+    "fps": 24,
+    "evaluations": 3,
+    "phases": {
+      "conditioning": 1.0621803409885615,
+      "denoise": 14.510186501516728,
+      "decode": 31.175593521504197,
+      "encoding": 5.2247402259963565
+    },
+    "peak_allocated_gib": 8.863747119903564,
+    "peak_reserved_gib": 13.453125,
+    "peak_driver_gib": 30.284976959228516,
+    "peak_host_rss_gib": 7.547664642333984,
+    "peak_process_swap_gib": 0.0,
+    "minimum_system_swap_free_gib": 3.5952301025390625,
+    "peak_hotspot_c": 90.0,
+    "all_finite": true
+  }
+]

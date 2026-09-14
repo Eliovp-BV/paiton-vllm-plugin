@@ -1,0 +1,8 @@
+**/__pycache__
+**/*.pyc
+assets
+benchmark-data
+README.md
+BENCHMARKS.md
+CANDIDATES.md
+QUALITY.md

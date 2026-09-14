@@ -1,0 +1,73 @@
+{
+  "results": {
+    "float16-qualification": {
+      "peak_allocated": 1432969216,
+      "warm_generation_seconds": [
+        0.1974247460020706,
+        0.3157447390258312,
+        0.2836523529840633,
+        0.32234336994588375,
+        0.20267201494425535
+      ],
+      "wers": [
+        0.07017543859649122,
+        0.2,
+        0.15217391304347827,
+        0.26229508196721313,
+        0.4925373134328358
+      ]
+    },
+    "bfloat16-qualification": {
+      "peak_allocated": 1457582592,
+      "warm_generation_seconds": [
+        0.18925228505395353,
+        0.2809623300563544,
+        0.25622441503219306,
+        0.29231350508052856,
+        0.1935568820917979
+      ],
+      "wers": [
+        0.07017543859649122,
+        0.2,
+        0.15217391304347827,
+        0.26229508196721313,
+        0.4925373134328358
+      ]
+    },
+    "float16-int8-encoder-qualification": {
+      "peak_allocated": 937552896,
+      "warm_generation_seconds": [
+        1.0960359260207042,
+        1.0764031721046194,
+        1.0762150889495388,
+        1.0785141859669238,
+        1.0784003539010882
+      ],
+      "wers": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "bfloat16-int8-encoder-qualification": {
+      "peak_allocated": 962157056,
+      "warm_generation_seconds": [
+        0.19534035201650113,
+        0.29368408501613885,
+        0.2632895779097453,
+        0.314343958045356,
+        0.2018336709588766
+      ],
+      "wers": [
+        0.07017543859649122,
+        0.22608695652173913,
+        0.15217391304347827,
+        0.2540983606557377,
+        0.4925373134328358
+      ]
+    }
+  },
+  "notes": "Short probes, two generation passes per clip. INT8 encoder uses torchao 0.17 per-row symmetric weight-only quantization over 217 Linear modules; remaining components unchanged within each dtype. No calibration corpus. FP16 activations failed with empty output. BF16 INT8 worked but was slower than stock BF16 on these probes. Timing hooks differ for nonfinite-output diagnostics; do not treat these as final matched pipeline benchmarks. Original checkpoints preserved."
+}

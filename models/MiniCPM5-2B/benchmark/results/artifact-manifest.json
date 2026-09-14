@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "model": "openbmb/MiniCPM5-2B-GPTQ",
+  "revision": "6c1ee6fa521aa53f47cfb32696e6d8ef5b0db805",
+  "gpu_arch": "gfx1201",
+  "abi": "PaitonAwqDecodeV1",
+  "artifact": "minicpm5_awq_decode_gfx1201.so",
+  "sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+  "config_sha256": "581f0497d90e2ed2a989b821aa610de586bd5a7989e7dff32e1c463597f2de9b",
+  "shapes": [
+    [
+      2560,
+      2048
+    ],
+    [
+      2048,
+      2048
+    ],
+    [
+      12288,
+      2048
+    ],
+    [
+      2048,
+      6144
+    ]
+  ],
+  "max_tokens": 2,
+  "group_size": 128,
+  "layout": "row_unsigned_int4_lsb_first_g128",
+  "activation_dtype": "float16",
+  "output_dtype": "float16",
+  "accumulation": "float32",
+  "dequantized_weight_rounding": "float16",
+  "preparation": "lossless nibble transpose; original AWQ tensors retained for prefill",
+  "workspace_bytes": 0
+}

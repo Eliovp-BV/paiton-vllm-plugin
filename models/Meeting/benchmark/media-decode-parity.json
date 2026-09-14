@@ -1,0 +1,5 @@
+{
+  "status": "pass",
+  "cases": 23,
+  "comparison": "Identical metadata, sample counts and SHA-256 of every float32 decoded sample, including full 39-minute AMI recording."
+}

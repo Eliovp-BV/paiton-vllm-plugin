@@ -1,0 +1,39 @@
+{
+  "date": "2026-09-07",
+  "comfyui": "0.34.0",
+  "frontend": "1.49.6",
+  "settings": {
+    "resolution": [
+      1024,
+      1024
+    ],
+    "steps": 4,
+    "guidance": 1,
+    "batch": 1,
+    "prompt_index": 0,
+    "seed": 42
+  },
+  "timing_boundary": "ComfyUI execution_start to execution_success, including local engine transport, PNG handling and SaveImage; excludes browser display.",
+  "warmup_execution_seconds": [
+    71.364,
+    1.522
+  ],
+  "measured_execution_seconds": [
+    1.408,
+    1.404
+  ],
+  "mean_execution_seconds": 1.406,
+  "two_warmups_two_measured": true,
+  "offline_engines": true,
+  "browser_errors": [],
+  "switch_sequence": [
+    "Paiton",
+    "Paiton",
+    "Stock (Diffusers)",
+    "Paiton"
+  ],
+  "only_selected_worker_running_after_each_image": true,
+  "browser_reload_preserved_workflow": true,
+  "model_workers_unloaded_after_test": true,
+  "excluded_from_headline_stock_comparison": true
+}

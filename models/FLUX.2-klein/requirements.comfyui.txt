@@ -1,0 +1,26 @@
+# Added to the pinned runtime base; all newly installed packages are pinned.
+Mako==1.4.1
+PyOpenGL==3.1.10
+SQLAlchemy==2.0.52
+alembic==1.19.2
+av==18.1.0
+comfy-aimdo==0.4.15
+comfy-angle==0.1.1
+comfy-kitchen==0.2.31
+comfyui-embedded-docs==0.5.10
+comfyui-workflow-templates-core==0.3.322
+comfyui-workflow-templates-json==0.1.57
+comfyui-workflow-templates-media-api==0.3.84
+comfyui-workflow-templates-media-assets-01==0.1.35
+comfyui-workflow-templates-media-image==0.3.160
+comfyui-workflow-templates-media-other==0.3.229
+comfyui-workflow-templates-media-video==0.3.101
+comfyui_frontend_package==1.49.6
+comfyui_workflow_templates==0.11.48
+greenlet==3.5.5
+kornia==0.8.3
+kornia_rs==0.1.14
+simpleeval==1.0.7
+spandrel==0.4.2
+torchsde==0.2.6
+trampoline==0.1.2

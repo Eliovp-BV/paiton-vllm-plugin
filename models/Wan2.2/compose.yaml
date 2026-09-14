@@ -1,0 +1,27 @@
+name: paiton-wan22
+services:
+  comfyui:
+    image: ${PAITON_WAN_IMAGE:-paiton-wan22:local-v1}
+    devices: [/dev/kfd, /dev/dri]
+    group_add: ["${PAITON_RENDER_GID:?Use launch.sh}"]
+    user: "${PAITON_UID:?Use launch.sh}:${PAITON_GID:?Use launch.sh}"
+    shm_size: 2gb
+    init: true
+    environment:
+      HF_HUB_OFFLINE: "1"
+    ports: ["0.0.0.0:${PAITON_WAN_PORT:-8192}:8188"]
+    volumes:
+      - ${PAITON_WAN_DATA:?Use launch.sh}:/data
+      - ${PAITON_WAN_OUTPUTS:?Use launch.sh}:/outputs
+    working_dir: /opt/comfyui
+    entrypoint: [python3, main.py]
+    command: [--base-directory, /data, --user-directory, /data/user, --output-directory, /outputs,
+              --extra-model-paths-config, /opt/wan/extra_model_paths.yaml,
+              --listen, 0.0.0.0, --port, "8188", --disable-api-nodes, --use-ck-attention,
+              --bf16-vae, --bf16-unet, --supports-fp8-compute, --fast-disk, --reserve-vram, "2", --cache-ram, "2", --preview-method, none]
+    healthcheck:
+      test: [CMD, python3, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8188/system_stats',timeout=3).close()"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3

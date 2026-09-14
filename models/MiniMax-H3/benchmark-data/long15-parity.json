@@ -1,0 +1,76 @@
+{
+  "records": [
+    {
+      "run": 0,
+      "video_latents_equal": true,
+      "audio_latents_equal": true,
+      "video_shape": [
+        1,
+        24,
+        107,
+        30,
+        54
+      ],
+      "audio_shape": [
+        1,
+        32,
+        2,
+        603
+      ],
+      "video_latent_max_abs_diff": 0.0,
+      "audio_latent_max_abs_diff": 0.0,
+      "mp4_equal": true,
+      "stock_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+      "paiton_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02"
+    },
+    {
+      "run": 1,
+      "video_latents_equal": true,
+      "audio_latents_equal": true,
+      "video_shape": [
+        1,
+        24,
+        107,
+        30,
+        54
+      ],
+      "audio_shape": [
+        1,
+        32,
+        2,
+        603
+      ],
+      "video_latent_max_abs_diff": 0.0,
+      "audio_latent_max_abs_diff": 0.0,
+      "mp4_equal": true,
+      "stock_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+      "paiton_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02"
+    },
+    {
+      "run": 2,
+      "video_latents_equal": true,
+      "audio_latents_equal": true,
+      "video_shape": [
+        1,
+        24,
+        107,
+        30,
+        54
+      ],
+      "audio_shape": [
+        1,
+        32,
+        2,
+        603
+      ],
+      "video_latent_max_abs_diff": 0.0,
+      "audio_latent_max_abs_diff": 0.0,
+      "mp4_equal": true,
+      "stock_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02",
+      "paiton_mp4_sha256": "3a3374755d44718b7889cdbd4c822a58b41e952c08b256e5ede9fa2f7d77aa02"
+    }
+  ],
+  "all_video_latents_equal": true,
+  "all_audio_latents_equal": true,
+  "all_mp4_equal": true
+}

@@ -1,0 +1,227 @@
+{
+  "date": "2026-09-07",
+  "model": "FLUX.2 klein 4B",
+  "revision": "45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd",
+  "gpu": "AMD Radeon AI PRO R9700, gfx1201, 32 GB, 64 CUs",
+  "system_ram_GiB": 16,
+  "settings": {
+    "resolution": [
+      1024,
+      1024
+    ],
+    "steps": 4,
+    "guidance": 1.0,
+    "batch": 1,
+    "offload": false
+  },
+  "timing_boundary": "Prompt through text encoder, four transformer steps, VAE and PIL image. Excludes PNG file writing.",
+  "runs": {
+    "Stock": {
+      "mean_seconds": 1.2579957633376277,
+      "images_per_hour": 2861.6948521740073,
+      "measured_seconds": [
+        1.2514628520002589,
+        1.2590918309870176,
+        1.2557904170244,
+        1.2575432540033944,
+        1.2617927069950383,
+        1.2622935190156568
+      ],
+      "by_prompt": {
+        "0": [
+          1.2514628520002589,
+          1.2590918309870176
+        ],
+        "1": [
+          1.2557904170244,
+          1.2575432540033944
+        ],
+        "2": [
+          1.2617927069950383,
+          1.2622935190156568
+        ]
+      },
+      "component_seconds": {
+        "text_encoder": 0.03764877891540527,
+        "transformer": 0.982831911722819,
+        "vae_decode": 0.20896583811442057
+      },
+      "load_seconds": 39.8277555849927,
+      "first_warmup_seconds": 23.85121606598841,
+      "peak_allocated_GiB": 19.327512741088867,
+      "peak_reserved_GiB": 22.1015625,
+      "driver_peak_GiB": 23.041370391845703,
+      "host_process_peak_RSS_GiB": 3.847076416015625,
+      "loaded_samples": 25,
+      "versions": {
+        "torch": "2.12.0+rocm7.14.0",
+        "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+        "diffusers": "0.40.0",
+        "transformers": "5.15.1",
+        "sdnq": "0.2.6",
+        "accelerate": "1.14.0",
+        "huggingface-hub": "1.30.0",
+        "safetensors": "0.8.0"
+      },
+      "stock_prepared_weights": true,
+      "stock_weight_freezing": false,
+      "convolution_autotune": false,
+      "prompt_encoder_outputs": [
+        9,
+        18,
+        27
+      ],
+      "sampled_junction_C": [
+        58.0,
+        82.0
+      ],
+      "sampled_core_MHz": [
+        1464.0,
+        2913.0
+      ],
+      "auto_profile_all_samples": true,
+      "compute_profile_all_samples": true
+    },
+    "Paiton": {
+      "mean_seconds": 1.053758157499639,
+      "images_per_hour": 3416.343659480741,
+      "measured_seconds": [
+        1.0494242699933238,
+        1.052942239010008,
+        1.0522512659954373,
+        1.0530016169941518,
+        1.0559172520006541,
+        1.059012301004259
+      ],
+      "by_prompt": {
+        "0": [
+          1.0494242699933238,
+          1.052942239010008
+        ],
+        "1": [
+          1.0522512659954373,
+          1.0530016169941518
+        ],
+        "2": [
+          1.0559172520006541,
+          1.059012301004259
+        ]
+      },
+      "component_seconds": {
+        "text_encoder": 0.03700396283467611,
+        "transformer": 0.8819234034220378,
+        "vae_decode": 0.12163919576009115
+      },
+      "load_seconds": 44.693911106005544,
+      "first_warmup_seconds": 19.364569901983486,
+      "peak_allocated_GiB": 12.871533870697021,
+      "peak_reserved_GiB": 14.072265625,
+      "driver_peak_GiB": 14.584033966064453,
+      "host_process_peak_RSS_GiB": 4.96673583984375,
+      "loaded_samples": 22,
+      "versions": {
+        "torch": "2.12.0+rocm7.14.0",
+        "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+        "diffusers": "0.40.0",
+        "transformers": "5.15.1",
+        "accelerate": "1.14.0",
+        "huggingface-hub": "1.30.0",
+        "safetensors": "0.8.0"
+      },
+      "stock_prepared_weights": false,
+      "stock_weight_freezing": false,
+      "convolution_autotune": false,
+      "prompt_encoder_outputs": [
+        9,
+        18,
+        27
+      ],
+      "sampled_junction_C": [
+        63.0,
+        77.0
+      ],
+      "sampled_core_MHz": [
+        2295.0,
+        2591.0
+      ],
+      "auto_profile_all_samples": true,
+      "compute_profile_all_samples": true
+    }
+  },
+  "quality": [
+    {
+      "prompt_index": 0,
+      "seed": 42,
+      "name": "fox",
+      "rgb_ssim": 0.9752350804110793,
+      "rgb_psnr_dB": 32.446759843644315,
+      "latent_relative_rmse": 0.14558210968971252,
+      "latents_finite": true,
+      "repeat_png_identical": {
+        "Stock": true,
+        "Paiton": true
+      }
+    },
+    {
+      "prompt_index": 1,
+      "seed": 31415,
+      "name": "product",
+      "rgb_ssim": 0.9738844119640441,
+      "rgb_psnr_dB": 30.102423789909007,
+      "latent_relative_rmse": 0.2424987405538559,
+      "latents_finite": true,
+      "repeat_png_identical": {
+        "Stock": true,
+        "Paiton": true
+      }
+    },
+    {
+      "prompt_index": 2,
+      "seed": 2026,
+      "name": "bookshop",
+      "rgb_ssim": 0.859433444724171,
+      "rgb_psnr_dB": 21.378006446591318,
+      "latent_relative_rmse": 0.28935396671295166,
+      "latents_finite": true,
+      "repeat_png_identical": {
+        "Stock": true,
+        "Paiton": true
+      }
+    }
+  ],
+  "latency_reduction_percent": 16.235158479081,
+  "throughput_increase_percent": 19.381829159226083,
+  "startup": {
+    "backend": "Paiton",
+    "compilation_caches_initially_empty": true,
+    "weights_already_downloaded_and_converted": true,
+    "load_seconds": 48.170428289013216,
+    "first_generation_seconds": 104.07444905699231,
+    "measured_warm_seconds": [
+      1.0497761229926255,
+      1.0522070819861256
+    ],
+    "excluded_from_headline_comparison": true,
+    "similarity_to_populated_cache_run": {
+      "rgb_ssim": 0.9478839435603801,
+      "rgb_psnr_dB": 27.70293405554635,
+      "latent_relative_rmse": 0.23441657423973083,
+      "latents_finite": true
+    }
+  },
+  "cost_model": {
+    "workstation_capital_eur": 2000,
+    "productive_lifetime_hours": 4000,
+    "assumed_equal_wall_power_kW": 0.35,
+    "electricity_eur_per_kWh": 0.3,
+    "modeled_eur_per_hour": 0.605,
+    "excludes": [
+      "idle time",
+      "taxes",
+      "labor",
+      "financing",
+      "cooling outside workstation"
+    ],
+    "measured_energy_savings": false
+  }
+}

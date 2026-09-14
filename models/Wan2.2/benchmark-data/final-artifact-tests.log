@@ -1,0 +1,9 @@
+test_graph_replay_and_constant_input (compile_lib.tests.ops.test_wan22_rdna_fusions.WanFusionsTest.test_graph_replay_and_constant_input) ... ok
+test_invalid_arguments (compile_lib.tests.ops.test_wan22_rdna_fusions.WanFusionsTest.test_invalid_arguments) ... ok
+test_norm_and_temporal_modulation (compile_lib.tests.ops.test_wan22_rdna_fusions.WanFusionsTest.test_norm_and_temporal_modulation) ... ok
+test_vae_norm_silu (compile_lib.tests.ops.test_wan22_rdna_fusions.WanFusionsTest.test_vae_norm_silu) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.178s
+
+OK

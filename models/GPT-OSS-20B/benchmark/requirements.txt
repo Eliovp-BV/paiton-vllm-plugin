@@ -1,0 +1,10 @@
+# Versions used by the Python 3.12 qualification client.
+aiohttp==3.13.3
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+attrs==23.2.0
+frozenlist==1.8.0
+multidict==6.7.1
+propcache==0.4.1
+yarl==1.23.0
+idna==3.6

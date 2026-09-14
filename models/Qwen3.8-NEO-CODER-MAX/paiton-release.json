@@ -1,0 +1,185 @@
+{
+  "schema_version": 2,
+  "release_id": "paiton-qwen38-neo-coder-max-q4km-gfx1201-v1.1.0",
+  "status": "published-qualified",
+  "base_model": {
+    "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
+    "revision": "89230607b3708bc1efe174e8fd34d4b164476c88",
+    "selected": {
+      "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf",
+      "size_bytes": 18498573856,
+      "sha256": "bc7a6cf2bcc78d1190aaf04d1ab1c5cb845b6ff23aa0e7d24fe0d2ea6d3a7c7c"
+    },
+    "header_inspected_alternative": {
+      "file": "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q6_K.gguf",
+      "size_bytes": 24033703456,
+      "sha256": "ac011aabe685edbdf542e49351eb6c76c0e5531408f2507f2235ab10931e23a5"
+    },
+    "reference_smoke_projector": {
+      "file": "mmproj-BF16.gguf",
+      "size_bytes": 931145920,
+      "sha256": "b0d8d89e9c9c90e0fb8ca74742d9d9bd7cc0f966a29b6f8c14227000ea6bd89e"
+    }
+  },
+  "author_source": {
+    "repo_id": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NM-DAU",
+    "revision": "895782677541896947ea136714b45dbed994daca",
+    "metadata_sha256": {
+      "config.json": "56ef632a7c37c40046addbcd09ceeab88c26722a7c385e7d5604a2eb4c55c96d",
+      "tokenizer.json": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+      "tokenizer_config.json": "1c419f0cef0fd06dcf116d7183c3af53978de71ef1c07a750a65b1c4c6517b0f",
+      "chat_template.jinja": "514d5304fcac63bda60e6faf860d5657010cf43cbc4c633c8bf678ee184e7a37",
+      "generation_config.json": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74",
+      "preprocessor_config.json": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516",
+      "processor_config.json": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+    }
+  },
+  "files": {
+    "artifact": {
+      "file": "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.so",
+      "size_bytes": 6968288,
+      "sha256": "61008a42a634a95c095fc879dd2dd8d706a4f5eb31f1fe5a5278f00bb4c40b48"
+    },
+    "artifact_manifest": {
+      "file": "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.manifest.json",
+      "size_bytes": 453078,
+      "sha256": "e8c865d2aba4269cbf549310cabdbf637c8acaa2b77909b0dba59d2e02d7dda9"
+    },
+    "config": {
+      "file": "config.json",
+      "size_bytes": 7010,
+      "sha256": "9334b2f017a1a58c1ea5c22a8572e5d21700d43aaade65a305b486b0c52100d8"
+    },
+    "native_helpers": {
+      "file": "libpaiton_gguf_runtime.so",
+      "size_bytes": 306880,
+      "sha256": "5f555f3698280f6a3f6584ea6d234217878d27c7a96f9aae2518f3fc062ad6df"
+    },
+    "vision_artifact": {
+      "file": "libpaiton_qwen38_vision.so",
+      "size_bytes": 44568,
+      "sha256": "0ce89bc6a34ee0c672a128c70184d523ac41adaa285bd2f691bf1a2dfa5a2adf"
+    },
+    "vision_manifest": {
+      "file": "vision-runtime.json",
+      "size_bytes": 66500,
+      "sha256": "3dabcf44f22089e828d8c5260ef2547d409e5fc8e7ebfd7587f5a2e88a2632f3"
+    },
+    "release_manifest": {
+      "file": "paiton-release.manifest.json",
+      "size_bytes": 5748,
+      "sha256": "a52b2850054fec1e9e33ff4c2ff48b3ac768153ccf933e7ee69da779f5e8d585"
+    },
+    "native_provenance": {
+      "file": "provenance.json",
+      "size_bytes": 1227,
+      "sha256": "1b26bdf6290c634aff168f2939eea8bd14eba3fa593c8c88e741ef6aa2b0fafd"
+    },
+    "artifact_sbom": {
+      "file": "paiton-release.spdx.json",
+      "size_bytes": 11330,
+      "sha256": "0fbc5d5018b5f19479bb4a0b2d21bf8290341f7e9978e6aedc10f4728300056f"
+    }
+  },
+  "contract": {
+    "gpu": "Radeon AI PRO R9700",
+    "gpu_arch": "gfx1201",
+    "rocm": "7.14.60850",
+    "tensor_parallelism": 1,
+    "max_active_sequences": 1,
+    "max_context_tokens": 8192,
+    "max_batched_tokens": 2048,
+    "kv_cache_bytes": 2147483648,
+    "weight_format": "original mixed GGUF Q4_K_M",
+    "output_weight_dtype": "bfloat16",
+    "activation_dtype": "float32",
+    "prefill_matrix_operand_dtype": "float16",
+    "accumulation_dtype": "float32",
+    "kv_dtype": "bfloat16",
+    "recurrent_state_dtype": "float32",
+    "text": true,
+    "vision": true,
+    "mtp": false,
+    "prefix_caching": false,
+    "vllm_cuda_graphs": false,
+    "native_graph_replay_qualified": true,
+    "max_images": 1,
+    "max_vision_patches": 4096,
+    "max_resized_image_pixels": 1048576,
+    "max_image_embeddings": 1024,
+    "video": false,
+    "vision_matrix_operand_dtype": "float32",
+    "native_decode_graphs": true,
+    "prefill_gemm_tile_rows": 1024,
+    "activation_quantization": "q4_decode_q8_1",
+    "large_q4_decode_operand_dtype": "q8_1",
+    "quantized_weight_values_preserved": true,
+    "queued_http_requests": true
+  },
+  "revisions": {
+    "artifact_compiler": "f32acd6d58e816acd675d306bdb81270414b2d31",
+    "compiler_tests": "f32acd6d58e816acd675d306bdb81270414b2d31",
+    "plugin": "dfaf87296c413cdfc377ca6fe70f7ca8e99d2ace",
+    "vllm": "39bd959b582c85e78e7e0326d49042ce7c3c07ed",
+    "compiler_qualification_docs": "671509a49aaf6520dbbe3bf003bfb734ec683202",
+    "vision_artifact_compiler": "0b7ca75aec37b4049dc7c13027774e9efd84794d",
+    "qualified_payload_plugin": "4514c511bc11d47c17cd4101e112efcf346db800",
+    "runtime_source_tag": "qwen38-neo-coder-max-q4km-rdna4-v1.1.0-runtime"
+  },
+  "runtime": {
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.1.0",
+    "candidate_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "published_digest": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "base_digest": "sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+    "local_image_created": "2026-09-14T11:20:03.089290166Z",
+    "published_at": "2026-09-14T12:09:41.915455+00:00",
+    "environment": {
+      "GPU_MAX_HW_QUEUES": "1",
+      "PAITON_GGUF_PREFILL_TOKENS": "2048"
+    }
+  },
+  "archive": {
+    "file": "paiton-qwen38-neo-v1.1.0-runtime.tar.gz",
+    "sha256": "021da1d42142dc8127febbba1e21518ec925aba2835ed458f40647d5a0e072c3",
+    "size_bytes": 5162907,
+    "signature": "Ed25519 local integrity signature; not a third-party identity attestation",
+    "source_date_epoch": 1789344000,
+    "timestamp_semantics": "Deterministic bundle timestamp, not measured wall-clock build time",
+    "bundle_promotion": "Byte-identical qualified v1.1.0-rc4 archive; internal bundle ID and deterministic timestamp retained",
+    "signature_file": "paiton-qwen38-neo-v1.1.0-runtime.tar.gz.sig"
+  },
+  "qualification": {
+    "clean_immutable_pull": true,
+    "anonymous_manifest_access": true,
+    "compiler_checkout_required": false,
+    "plugin_checkout_required": false,
+    "first_download_into_empty_cache_passed": true,
+    "offline_cache_reuse_passed": true,
+    "offline_startup_seconds_single_observation": 208.33798636397114,
+    "text_task_passes": 10,
+    "text_task_count": 11,
+    "same_failed_task_as_llama_cpp": "code_trace",
+    "image_fixture_passes": 5,
+    "jpeg": true,
+    "benchmark_report": "BENCHMARKS.md",
+    "verified_at": "2026-09-14T12:17:59.290356+00:00",
+    "first_download_startup_seconds_single_observation": 439.5632467310061,
+    "startup_timing_note": "Publication startup is a functional observation; unrelated CPU compilation overlapped. Use the isolated candidate restart in BENCHMARKS.md for the measured startup profile.",
+    "full_vocabulary_logits_compared": 31784960,
+    "full_vocabulary_logits_max_abs_difference": 0,
+    "baseline_token_logprob_max_difference": 0,
+    "baseline_api_requests": 36,
+    "baseline_image_requests": 24,
+    "heldout_prefill_perplexity": 6.8624444718514965,
+    "decode_perplexity_increase_percent": 0.13014280462946282,
+    "decode_quality_evidence": "Inherited unchanged Q8 decode profile, 770 held-out predictions; not remeasured as a new accuracy gain.",
+    "evidence_index": "qualification-evidence.json",
+    "publication_evidence": "publication-checks.json",
+    "peak_gpu_vram_bytes": 25486274560,
+    "reference_peak_gpu_vram_bytes": 20437159936
+  },
+  "rollback": {
+    "image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe",
+    "preserved": true
+  }
+}

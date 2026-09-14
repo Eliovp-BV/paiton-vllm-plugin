@@ -1,0 +1,109 @@
+{
+  "method": "Manual comparison to the preserved AMI human abstract groups in ami-summary-reference-check.json. All stock summaries are identical and contain one TV-only/no-teletext scope statement, outside the four grouped final decisions. All Paiton summaries have no decision/action claims. Topics are not scored as decisions. No independent human factuality rating or 60\u201375% coverage claim.",
+  "results": [
+    {
+      "run": "paiton-0",
+      "result_sha256": "eaa175de7ab1a6251ebe73e5fcd7b88598e40a94449a78173aea8e8a2abab1dc",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "paiton-1",
+      "result_sha256": "1c5ba7270477c71cceda798f2b744d12e5317d466db65f4acb53d6a560204760",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "paiton-2",
+      "result_sha256": "99f22fbde6a461a33e0f15f2fee7808ab21bb8d3e0a9ac8ed54cd7ca7c36611e",
+      "summary_sha256": "3ec287afbe5bc5570b2098270cc0d6d29063f2bd5205195865337e8ea6a607ba",
+      "topics": 5,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "paiton-3",
+      "result_sha256": "b87f33bd09a56fc7b546175bc9ca44b1bd56ea06cc223e7302d64fe11b5e6fa2",
+      "summary_sha256": "637563d9402b6c0650999afd6fb8134c786fd3c6e37a71e38b2a064fee6304be",
+      "topics": 8,
+      "decisions": 0,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "stock-0",
+      "result_sha256": "e7129d5d762d0da6f85b3288199501a0e3efff91aac16fd1f639dfaf0b1bf013",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "stock-1",
+      "result_sha256": "c4eeca96a79e87d0e9aa157dcc19c319b5f1b8e70168f5e090dde0388469c7b1",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "stock-2",
+      "result_sha256": "b549fe5ed5568005d237c804057660877a394f524e1688e997c4ae66c01dc467",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    },
+    {
+      "run": "stock-3",
+      "result_sha256": "a31f0d94335890d46acee34484a49b5e8c98003c53697447d0c000db724e3142",
+      "summary_sha256": "03f5f05f61de9ea9b931bfc9755de985f14dc92e51a7958122dfcb4d350a83f5",
+      "topics": 5,
+      "decisions": 1,
+      "actions": 0,
+      "open_questions": 0,
+      "final_decision_groups_recovered": 0,
+      "final_decision_groups_reference": 4,
+      "reference_actions_recovered": 0,
+      "reference_actions": 1
+    }
+  ]
+}

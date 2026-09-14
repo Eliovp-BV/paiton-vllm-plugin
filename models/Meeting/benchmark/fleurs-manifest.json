@@ -1,0 +1,140 @@
+{
+  "dataset": "google/fleurs",
+  "revision": "70bb2e84b976b7e960aa89f1c648e09c59f894dd",
+  "license": "CC-BY-4.0",
+  "selection": "First three regular audio members with a reference in each pinned test archive; no model-based selection.",
+  "samples": [
+    {
+      "language": "en_us",
+      "path": "en_us-0.wav",
+      "source_member": "test/1003119935936341070.wav",
+      "id": "1904",
+      "reference": "however due to the slow communication channels styles in the west could lag behind by 25 to 30 year",
+      "raw_reference": "However, due to the slow communication channels, styles in the west could lag behind by 25 to 30 year.",
+      "sample_count": 168960,
+      "gender": "MALE",
+      "sha256": "33aca50159ec2e3cbcc894eb26faa916d6badb1b49fb75994973561540a7f012"
+    },
+    {
+      "language": "en_us",
+      "path": "en_us-1.wav",
+      "source_member": "test/10052240106321793346.wav",
+      "id": "1675",
+      "reference": "all nouns alongside the word sie for you always begin with a capital letter even in the middle of a sentence",
+      "raw_reference": "All nouns, alongside the word Sie for you, always begin with a capital letter, even in the middle of a sentence.",
+      "sample_count": 140160,
+      "gender": "MALE",
+      "sha256": "7603cae3294309ef70d234180cefccc3b13865ee525262228a636069b9b62841"
+    },
+    {
+      "language": "en_us",
+      "path": "en_us-2.wav",
+      "source_member": "test/10167324587744183095.wav",
+      "id": "1950",
+      "reference": "to the north and within easy reach is the romantic and fascinating town of sintra and which was made famous to foreigners after a glowing account of its splendours recorded by lord byron",
+      "raw_reference": "To the north and within easy reach is the romantic and fascinating town of Sintra and which was made famous to foreigners after a glowing account of its splendours recorded by Lord Byron.",
+      "sample_count": 183360,
+      "gender": "FEMALE",
+      "sha256": "260bdd1a15e1d35bcc5d91667516ca3bc659285e10f94872182715bcd7880398"
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-0.wav",
+      "source_member": "test/10004059102127011984.wav",
+      "id": "2003",
+      "reference": "für die besten aussichten auf hongkong sollten sie die insel verlassen und zum gegenüberliegenden ufer von kowloon fahren",
+      "raw_reference": "Für die besten Aussichten auf Hongkong sollten Sie die Insel verlassen und zum gegenüberliegenden Ufer von Kowloon fahren.",
+      "sample_count": 287040,
+      "gender": "MALE",
+      "sha256": "1603ed8fcea31a7f32f51d137eaa3516d15aca947898b81a136f4a9732f08ad2"
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-1.wav",
+      "source_member": "test/10009182821551087671.wav",
+      "id": "1738",
+      "reference": "er griff auch alles an was ins wasser kam selbst ein großer dinosaurier wie der t rex war ihm nicht gewachsen",
+      "raw_reference": "Er griff auch alles an, was ins Wasser kam; selbst ein großer Dinosaurier wie der T. Rex war ihm nicht gewachsen.",
+      "sample_count": 178560,
+      "gender": "MALE",
+      "sha256": "90d0470adf728783e98cc8dddd51e2c2cbf0d6bf360da65f7d2ac5c3e65876aa"
+    },
+    {
+      "language": "de_de",
+      "path": "de_de-2.wav",
+      "source_member": "test/10014044777125235464.wav",
+      "id": "1849",
+      "reference": "wenn sie den film das vermächtnis der tempelritter gesehen haben denken sie vielleicht dass auf die rückseite der unabhängigkeitserklärung eine schatzkarte gezeichnet wurde",
+      "raw_reference": "Wenn Sie den Film „Das Vermächtnis der Tempelritter“ gesehen haben, denken Sie vielleicht, dass auf die Rückseite der Unabhängigkeitserklärung eine Schatzkarte gezeichnet wurde.",
+      "sample_count": 198720,
+      "gender": "MALE",
+      "sha256": "13041e21e6a44d30da9595905fbb4367056191a513245b84e64a13449c8d08ea"
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-0.wav",
+      "source_member": "test/10043298898524273336.wav",
+      "id": "1987",
+      "reference": "l'accident a eu lieu en terrain montagneux et il semblerait que cela ait été causé par un incendie malveillant",
+      "raw_reference": "L’accident a eu lieu en terrain montagneux, et il semblerait que cela ait été causé par un incendie malveillant.",
+      "sample_count": 163200,
+      "gender": "FEMALE",
+      "sha256": "c834367fd212902124bdd0e0f6c1f16b5561af6386600f145e5aec50008b298d"
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-1.wav",
+      "source_member": "test/10097171356371990207.wav",
+      "id": "1690",
+      "reference": "nous sommes d'accord avec la déclaration de l'usoc comité olympique des états-unis selon laquelle les intérêts de nos athlètes et de nos clubs ainsi que de leur sport pourraient être mieux servis. cela peut être fait en allant de l'avant et en procédant plutôt à des changements significatifs au sein de notre organisation qu'à la révocation d'accréditation",
+      "raw_reference": "Nous sommes d'accord avec la déclaration de l'USOC (Comité olympique des États-Unis) selon laquelle les intérêts de nos athlètes et de nos clubs, ainsi que de leur sport, pourraient être mieux servis. Cela peut être fait en allant de l'avant et en procédant plutôt à des changements significatifs au sein de notre organisation, qu'à la révocation d'accréditation.",
+      "sample_count": 374400,
+      "gender": "MALE",
+      "sha256": "9b9450e1cb9ea3badb2223f726adabb754cd6ff2278b9fc4dc2ad86c73791db7"
+    },
+    {
+      "language": "fr_fr",
+      "path": "fr_fr-2.wav",
+      "source_member": "test/10138021779681596478.wav",
+      "id": "1857",
+      "reference": "il a ajouté qu’« on ne devrait cependant pas leur demander d’assumer des obligations qui dépassent leur stade de développement leur responsabilité et leurs capacités. »",
+      "raw_reference": "Il a ajouté qu’« on ne devrait cependant pas leur demander d’assumer des obligations qui dépassent leur stade de développement, leur responsabilité et leurs capacités. »",
+      "sample_count": 132480,
+      "gender": "MALE",
+      "sha256": "05ccf3ccc2ab4b72d056c3f02e3ffcf6ea0f37b1c42bea5c35789c85291fbdc5"
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-0.wav",
+      "source_member": "test/1001146817223348054.wav",
+      "id": "2001",
+      "reference": "se recomienda enfáticamente a los viajeros que se informen sobre cualquier riesgo de clima extremo en el área que visitan dado que ello puede afectar sus planes de viaje",
+      "raw_reference": "Se recomienda enfáticamente a los viajeros que se informen sobre cualquier riesgo de clima extremo en el área que visitan, dado que ello puede afectar sus planes de viaje.",
+      "sample_count": 205440,
+      "gender": "MALE",
+      "sha256": "861ceedc4d50fbe52fc89b6d0c0fa740b9cd6fa668388e754064847386af0faf"
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-1.wav",
+      "source_member": "test/10050510856477907332.wav",
+      "id": "1852",
+      "reference": "el uso adecuado de los blogs «puede empoderar a los alumnos para que sean más analíticos y críticos a través de la respuesta activa a los contenidos de internet pueden definir sus posturas en el contexto de los escritos de otros además de establecer sus perspectivas sobre temas específicos» oravec 2002",
+      "raw_reference": "El uso adecuado de los blogs «puede empoderar a los alumnos para que sean más analíticos y críticos, a través de la respuesta activa a los contenidos de internet, pueden definir sus posturas en el contexto de los escritos de otros, además de establecer sus perspectivas sobre temas específicos» (Oravec, 2002).",
+      "sample_count": 341760,
+      "gender": "MALE",
+      "sha256": "5b0fcf5b42064d33a36d26dab527cb230b4751587b4066ef11157ea603586d8d"
+    },
+    {
+      "language": "es_419",
+      "path": "es_419-2.wav",
+      "source_member": "test/1008205615316519958.wav",
+      "id": "1764",
+      "reference": "fue tanta la cantidad de gente que se concentró que no todos pudieron acceder al funeral en la plaza de san pedro",
+      "raw_reference": "Fue tanta la cantidad de gente que se concentró, que no todos pudieron acceder al funeral en la Plaza de San Pedro.",
+      "sample_count": 155520,
+      "gender": "MALE",
+      "sha256": "0576e73da35ef17b6ce6396d31b32830b7ab19cea98f9f5db68de3756dc3d4fc"
+    }
+  ]
+}

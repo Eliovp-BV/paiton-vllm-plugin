@@ -1,0 +1,2733 @@
+{
+  "observed_date": "2026-09-10",
+  "model": "openbmb/MiniCPM5-2B-GPTQ",
+  "revision": "6c1ee6fa521aa53f47cfb32696e6d8ef5b0db805",
+  "compiler_revision": "e0abb5a07b0ea7dc38bd576a1ba3fdae634b67c5",
+  "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+  "startup": {
+    "release-paiton-cold-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit cold weight page-cache preparation recorded separately",
+      "health_seconds": 44.81749413703801,
+      "first_completed_response_seconds": 45.57489822199568,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5081513850018382,
+      "filesystem_preparation": {
+        "mode": "cold",
+        "preparation_seconds": 0.12512171099660918,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 0
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "5093203968\n4827746304\nanon 2410979328\nfile 2341302272\nkernel 74727424\nkernel_stack 884736\npagetables 12247040\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 217296896\nfile_dirty 40169472\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 58720256\nshmem_thp 0\ninactive_anon 0\nactive_anon 2467901440\ninactive_file 1922768896\nactive_file 207724544\nunevictable 0\nslab_reclaimable 58983792\nslab_unreclaimable 2543888\nslab 61527680\nworkingset_refault_anon 0\nworkingset_refault_file 21375\nworkingset_activate_anon 0\nworkingset_activate_file 21090\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 247000\npgsteal 238347\npswpin 0\npswpout 0\npgscan_kswapd 245208\npgscan_direct 1792\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 236555\npgsteal_direct 1792\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1593837\npgmajfault 623\npgrefill 7403\npgactivate 8653\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 45.350145201024134,
+      "sampled_driver_peak_bytes": 5033197568,
+      "peak_sampled_temperature_c": 40.0
+    },
+    "release-paiton-cold-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit cold weight page-cache preparation recorded separately",
+      "health_seconds": 29.633309549011756,
+      "first_completed_response_seconds": 29.81355814600829,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.7971067790058441,
+      "filesystem_preparation": {
+        "mode": "cold",
+        "preparation_seconds": 0.13935151899931952,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 0
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "4958703616\n4541440000\nanon 2374811648\nfile 2111684608\nkernel 54358016\nkernel_stack 884736\npagetables 11788288\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 222916608\nfile_dirty 1208320\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 1059090432\nactive_anon 1372663808\ninactive_file 1379667968\nactive_file 521207808\nunevictable 0\nslab_reclaimable 39109536\nslab_unreclaimable 2509936\nslab 41619472\nworkingset_refault_anon 0\nworkingset_refault_file 94\nworkingset_activate_anon 0\nworkingset_activate_file 16\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 265358\npgsteal 262313\npswpin 0\npswpout 0\npgscan_kswapd 260814\npgscan_direct 4544\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 257769\npgsteal_direct 4544\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1413735\npgmajfault 160\npgrefill 847\npgactivate 1\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 29.715560793993063,
+      "sampled_driver_peak_bytes": 5033213952,
+      "peak_sampled_temperature_c": 40.0
+    },
+    "release-paiton-cold-3": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit cold weight page-cache preparation recorded separately",
+      "health_seconds": 29.60948105197167,
+      "first_completed_response_seconds": 29.95532909600297,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5221986260148697,
+      "filesystem_preparation": {
+        "mode": "cold",
+        "preparation_seconds": 0.13618864899035543,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 0
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "5191712768\n5188161536\nanon 2386079744\nfile 2731585536\nkernel 69513216\nkernel_stack 884736\npagetables 11857920\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 223985664\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2443005952\ninactive_file 370106368\nactive_file 2150653952\nunevictable 0\nslab_reclaimable 54194240\nslab_unreclaimable 2509240\nslab 56703480\nworkingset_refault_anon 0\nworkingset_refault_file 83261\nworkingset_activate_anon 0\nworkingset_activate_file 5\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 123658\npgsteal 123655\npswpin 0\npswpout 0\npgscan_kswapd 123146\npgscan_direct 512\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 123143\npgsteal_direct 512\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1414859\npgmajfault 142\npgrefill 4771\npgactivate 3\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 29.729638825985603,
+      "sampled_driver_peak_bytes": 5033226240,
+      "peak_sampled_temperature_c": 41.0
+    },
+    "release-paiton-cold-4": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit cold weight page-cache preparation recorded separately",
+      "health_seconds": 28.846763036039192,
+      "first_completed_response_seconds": 29.15649723401293,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5623565269634128,
+      "filesystem_preparation": {
+        "mode": "cold",
+        "preparation_seconds": 0.09616983495652676,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 0
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "4960841728\n4809682944\nanon 2375331840\nfile 2360676352\nkernel 72728576\nkernel_stack 884736\npagetables 11796480\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 211148800\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 1052831744\nactive_anon 1379348480\ninactive_file 1725448192\nactive_file 424419328\nunevictable 0\nslab_reclaimable 57472904\nslab_unreclaimable 2509992\nslab 59982896\nworkingset_refault_anon 0\nworkingset_refault_file 2445\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 2684\npgsteal 2606\npswpin 0\npswpout 0\npgscan_kswapd 2684\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 2606\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1413834\npgmajfault 16\npgrefill 292\npgactivate 75\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "kfd_before_launch": [],
+      "owned_container_pids": "PID\n1694126\n1694348\n",
+      "first_visible_answer_seconds": 28.932708087028004,
+      "sampled_driver_peak_bytes": 5033213952,
+      "peak_sampled_temperature_c": 45.0
+    },
+    "release-paiton-empty-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 53.53185055596987,
+      "first_completed_response_seconds": 54.146076957986224,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 1.069327233999502,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.42630311200628057,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3957309440\n3953713152\nanon 2411032576\nfile 1466564608\nkernel 75075584\nkernel_stack 884736\npagetables 12177408\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 287088640\nfile_dirty 40185856\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 50331648\nshmem_thp 0\ninactive_anon 874885120\nactive_anon 1593024512\ninactive_file 1220345856\nactive_file 35409920\nunevictable 0\nslab_reclaimable 59440064\nslab_unreclaimable 2508744\nslab 61948808\nworkingset_refault_anon 0\nworkingset_refault_file 190470\nworkingset_activate_anon 0\nworkingset_activate_file 964\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 512\npgsteal 510\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 512\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 510\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1593996\npgmajfault 2245\npgrefill 95\npgactivate 2\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 54.02925865899306,
+      "sampled_driver_peak_bytes": 5033230336,
+      "peak_sampled_temperature_c": 45.0
+    },
+    "release-paiton-empty-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 42.8047256199643,
+      "first_completed_response_seconds": 43.53467759501655,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5444712599855848,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.31860516796587035,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "2928054272\n2875863040\nanon 2405322752\nfile 394641408\nkernel 74973184\nkernel_stack 884736\npagetables 12242944\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 211197952\nfile_dirty 38825984\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 29360128\nshmem_thp 0\ninactive_anon 0\nactive_anon 2462134272\ninactive_file 144175104\nactive_file 39657472\nunevictable 0\nslab_reclaimable 59272616\nslab_unreclaimable 2508016\nslab 61780632\nworkingset_refault_anon 0\nworkingset_refault_file 37\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1593847\npgmajfault 511\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 43.30878258799203,
+      "sampled_driver_peak_bytes": 5033201664,
+      "peak_sampled_temperature_c": 41.0
+    },
+    "release-paiton-empty-3": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 45.80366593104554,
+      "first_completed_response_seconds": 46.52825829904759,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.7832110089948401,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.31763484503608197,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3316576256\n3316576256\nanon 2417975296\nfile 822935552\nkernel 74838016\nkernel_stack 884736\npagetables 12181504\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 268558336\nfile_dirty 40120320\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 0\nactive_anon 2474786816\ninactive_file 445292544\nactive_file 166834176\nunevictable 0\nslab_reclaimable 59165376\nslab_unreclaimable 2537824\nslab 61703200\nworkingset_refault_anon 0\nworkingset_refault_file 144934\nworkingset_activate_anon 0\nworkingset_activate_file 705\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 87776\npgsteal 86462\npswpin 0\npswpout 0\npgscan_kswapd 83596\npgscan_direct 4180\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 82336\npgsteal_direct 4126\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1591901\npgmajfault 2217\npgrefill 934\npgactivate 1314\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 46.30302820401266,
+      "sampled_driver_peak_bytes": 5033218048,
+      "peak_sampled_temperature_c": 40.0
+    },
+    "release-paiton-full": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 26.61241354298545,
+      "first_completed_response_seconds": 26.927538795978762,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.4592927339836024,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": {
+              "2x2560x2048": 84,
+              "2x2048x2048": 84,
+              "2x12288x2048": 84,
+              "2x2048x6144": 84,
+              "1x2560x2048": 84,
+              "1x2048x2048": 84,
+              "1x12288x2048": 84,
+              "1x2048x6144": 84
+            },
+            "allocated_bytes": 4367586304,
+            "reserved_bytes": 4538236928,
+            "peak_allocated_bytes": 4437320192,
+            "peak_reserved_bytes": 4538236928
+          }
+        ]
+      },
+      "container_memory": "3457540096\n3457531904\nanon 2462769152\nfile 920993792\nkernel 73240576\nkernel_stack 917504\npagetables 12042240\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210845696\nzswap 0\nzswapped 0\nfile_mapped 211390464\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 0\nactive_anon 2519691264\ninactive_file 640827392\nactive_file 69308416\nunevictable 0\nslab_reclaimable 57652480\nslab_unreclaimable 2592872\nslab 60245352\nworkingset_refault_anon 0\nworkingset_refault_file 121123\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1426034\npgmajfault 471\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 26.70235329697607,
+      "sampled_driver_peak_bytes": 5096042496,
+      "peak_sampled_temperature_c": 85.0
+    },
+    "release-paiton-prepare": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 55.97025743999984,
+      "first_completed_response_seconds": 56.69707232998917,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.41333649901207536,
+      "container_memory": "5929664512\n5925908480\nanon 2497507328\nfile 3356147712\nkernel 71733248\nkernel_stack 901120\npagetables 12390400\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210837504\nzswap 0\nzswapped 0\nfile_mapped 332845056\nfile_dirty 8192\nfile_writeback 0\nswapcached 135168\nanon_thp 0\nfile_thp 27262976\nshmem_thp 0\ninactive_anon 1161146368\nactive_anon 1393332224\ninactive_file 1237745664\nactive_file 1907564544\nunevictable 0\nslab_reclaimable 55861984\nslab_unreclaimable 2518680\nslab 58380664\nworkingset_refault_anon 0\nworkingset_refault_file 519111\nworkingset_activate_anon 0\nworkingset_activate_file 53325\nworkingset_restore_anon 0\nworkingset_restore_file 4\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 578574\npgsteal 578480\npswpin 0\npswpout 60\npgscan_kswapd 575874\npgscan_direct 2700\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 575842\npgsteal_direct 2638\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1613273\npgmajfault 1954\npgrefill 1402\npgactivate 32\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 56.47291229094844,
+      "sampled_driver_peak_bytes": 5096013824,
+      "peak_sampled_temperature_c": 66.0
+    },
+    "release-paiton-steady-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 26.814275177021045,
+      "first_completed_response_seconds": 27.134393937012646,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5156335999490693,
+      "container_memory": "3043508224\n2895245312\nanon 2385567744\nfile 435961856\nkernel 72785920\nkernel_stack 884736\npagetables 11878400\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 210972672\nfile_dirty 1089536\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 0\nactive_anon 2442457088\ninactive_file 145117184\nactive_file 80035840\nunevictable 0\nslab_reclaimable 57437736\nslab_unreclaimable 2517000\nslab 59954736\nworkingset_refault_anon 0\nworkingset_refault_file 16656\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1408234\npgmajfault 391\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 26.908883611962665,
+      "sampled_driver_peak_bytes": 5033222144,
+      "peak_sampled_temperature_c": 54.0
+    },
+    "release-paiton-steady-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 28.81307083700085,
+      "first_completed_response_seconds": 29.126811037946027,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.8933281539939344,
+      "container_memory": "3100073984\n2924515328\nanon 2393083904\nfile 458051584\nkernel 72531968\nkernel_stack 884736\npagetables 11837440\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 210841600\nfile_dirty 1105920\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 0\nactive_anon 2450055168\ninactive_file 242479104\nactive_file 4763648\nunevictable 0\nslab_reclaimable 57236296\nslab_unreclaimable 2511208\nslab 59747504\nworkingset_refault_anon 0\nworkingset_refault_file 19450\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1411026\npgmajfault 50\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 28.899949950922746,
+      "sampled_driver_peak_bytes": 5033238528,
+      "peak_sampled_temperature_c": 55.0
+    },
+    "release-paiton-warm-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 28.593839893990662,
+      "first_completed_response_seconds": 28.7720500829746,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.3407014320255257,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.35047384799690917,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3762470912\n3758538752\nanon 2392170496\nfile 1292918784\nkernel 72740864\nkernel_stack 884736\npagetables 11780096\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 230453248\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 364240896\nactive_anon 2084761600\ninactive_file 1014833152\nactive_file 67272704\nunevictable 0\nslab_reclaimable 57502344\nslab_unreclaimable 2508192\nslab 60010536\nworkingset_refault_anon 0\nworkingset_refault_file 1449\nworkingset_activate_anon 0\nworkingset_activate_file 1\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 173\npgsteal 173\npswpin 0\npswpout 0\npgscan_kswapd 173\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 173\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1420520\npgmajfault 223\npgrefill 2\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 28.674341252015438,
+      "sampled_driver_peak_bytes": 5033234432,
+      "peak_sampled_temperature_c": 47.0
+    },
+    "release-paiton-warm-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 27.651418029970955,
+      "first_completed_response_seconds": 27.980196846008766,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.3904447369859554,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.32143645599717274,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3033165824\n2877095936\nanon 2374844416\nfile 428924928\nkernel 72544256\nkernel_stack 884736\npagetables 11845632\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 210919424\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2431766528\ninactive_file 180330496\nactive_file 37785600\nunevictable 0\nslab_reclaimable 57244792\nslab_unreclaimable 2506432\nslab 59751224\nworkingset_refault_anon 0\nworkingset_refault_file 20616\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1413475\npgmajfault 83\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 27.755487899004947,
+      "sampled_driver_peak_bytes": 5033222144,
+      "peak_sampled_temperature_c": 43.0
+    },
+    "release-paiton-warm-3": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 26.821415929007344,
+      "first_completed_response_seconds": 27.12943131895736,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5232583489851095,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.32874222699319944,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "2879803392\n2686242816\nanon 2373255168\nfile 239583232\nkernel 72507392\nkernel_stack 884736\npagetables 11796480\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210808832\nzswap 0\nzswapped 0\nfile_mapped 211116032\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2430214144\ninactive_file 28766208\nactive_file 8192\nunevictable 0\nslab_reclaimable 57255096\nslab_unreclaimable 2507536\nslab 59762632\nworkingset_refault_anon 0\nworkingset_refault_file 16\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1412775\npgmajfault 2\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "artifact_sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597",
+      "integration_source_sha256": "5b5dcdd2fa6686d506f715308157f4e0cbd85a53c5eadbf0d3e8c6e0e37bccd4",
+      "first_visible_answer_seconds": 26.90502138098236,
+      "sampled_driver_peak_bytes": 5033226240,
+      "peak_sampled_temperature_c": 49.0
+    },
+    "release-source-fp16-capture": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 70.56255258101737,
+      "first_completed_response_seconds": 71.43873199698282,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.6243302639923058,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": null,
+            "allocated_bytes": 6221771776,
+            "reserved_bytes": 6404702208,
+            "peak_allocated_bytes": 6234160128,
+            "peak_reserved_bytes": 6404702208
+          }
+        ]
+      },
+      "container_memory": "7817953280\n7817953280\nanon 2042658816\nfile 5664468992\nkernel 70070272\nkernel_stack 901120\npagetables 12292096\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 228302848\nzswap 0\nzswapped 0\nfile_mapped 476364800\nfile_dirty 12288\nfile_writeback 0\nswapcached 552673280\nanon_thp 0\nfile_thp 52428800\nshmem_thp 0\ninactive_anon 0\nactive_anon 2157006848\ninactive_file 3662151680\nactive_file 1773940736\nunevictable 0\nslab_reclaimable 54267248\nslab_unreclaimable 2549216\nslab 56816464\nworkingset_refault_anon 180601\nworkingset_refault_file 22439\nworkingset_activate_anon 180601\nworkingset_activate_file 9570\nworkingset_restore_anon 39582\nworkingset_restore_file 8\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 881111\npgsteal 577769\npswpin 232995\npswpout 332608\npgscan_kswapd 762592\npgscan_direct 118519\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 522580\npgsteal_direct 55189\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1914234\npgmajfault 138993\npgrefill 54486\npgactivate 5538\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 5242\nswpout_zero 8481\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "kfd_before_launch": [],
+      "owned_container_pids": "PID\n1692128\n1692386\n",
+      "first_visible_answer_seconds": 71.12913670198759,
+      "sampled_driver_peak_bytes": 6980382720,
+      "peak_sampled_temperature_c": 70.0
+    },
+    "release-stock-fast-full": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 26.862945956003387,
+      "first_completed_response_seconds": 27.329578554956242,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5709979790262878,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": null,
+            "allocated_bytes": 3308213248,
+            "reserved_bytes": 3506438144,
+            "peak_allocated_bytes": 3377947136,
+            "peak_reserved_bytes": 3506438144
+          }
+        ]
+      },
+      "container_memory": "2954141696\n2758434816\nanon 2388893696\nfile 295104512\nkernel 72753152\nkernel_stack 901120\npagetables 11833344\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210743296\nzswap 0\nzswapped 0\nfile_mapped 210776064\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2445746176\ninactive_file 51908608\nactive_file 32452608\nunevictable 0\nslab_reclaimable 57436592\nslab_unreclaimable 2519952\nslab 59956544\nworkingset_refault_anon 0\nworkingset_refault_file 7231\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 10240\npgsteal 10240\npswpin 0\npswpout 0\npgscan_kswapd 10240\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 10240\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1408654\npgmajfault 12\npgrefill 366\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 26.976620689907577,
+      "sampled_driver_peak_bytes": 4065107968,
+      "peak_sampled_temperature_c": 88.0
+    },
+    "release-stock-full": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 32.69034615298733,
+      "first_completed_response_seconds": 33.21145500399871,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.37004363600863144,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": null,
+            "allocated_bytes": 3467330560,
+            "reserved_bytes": 3764387840,
+            "peak_allocated_bytes": 3540734464,
+            "peak_reserved_bytes": 3768582144
+          }
+        ]
+      },
+      "container_memory": "3526660096\n3522818048\nanon 2747490304\nfile 697880576\nkernel 76414976\nkernel_stack 917504\npagetables 12750848\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 226869248\nzswap 0\nzswapped 0\nfile_mapped 272261120\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 4194304\nshmem_thp 0\ninactive_anon 0\nactive_anon 2820390912\ninactive_file 368742400\nactive_file 102268928\nunevictable 0\nslab_reclaimable 59905888\nslab_unreclaimable 2774392\nslab 62680280\nworkingset_refault_anon 0\nworkingset_refault_file 16085\nworkingset_activate_anon 0\nworkingset_activate_file 3\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 38306\npgsteal 38047\npswpin 0\npswpout 0\npgscan_kswapd 38050\npgscan_direct 256\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 37791\npgsteal_direct 256\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1532628\npgmajfault 253\npgrefill 446\npgactivate 3\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 32.7516202480183,
+      "sampled_driver_peak_bytes": 4394323968,
+      "peak_sampled_temperature_c": 87.0
+    },
+    "release-stock-rocm-o2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 91.38576382404426,
+      "first_completed_response_seconds": 91.9038261550013,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 1.7597745720413513,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": null,
+            "allocated_bytes": 3467330560,
+            "reserved_bytes": 3739222016,
+            "peak_allocated_bytes": 3528838144,
+            "peak_reserved_bytes": 3743416320
+          }
+        ]
+      },
+      "container_memory": "5628239872\n4391280640\nanon 3107459072\nfile 1204154368\nkernel 78446592\nkernel_stack 901120\npagetables 14028800\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 227459072\nzswap 0\nzswapped 0\nfile_mapped 367259648\nfile_dirty 8192\nfile_writeback 0\nswapcached 499712\nanon_thp 0\nfile_thp 2097152\nshmem_thp 0\ninactive_anon 2231996416\nactive_anon 949239808\ninactive_file 907272192\nactive_file 69386240\nunevictable 0\nslab_reclaimable 60669800\nslab_unreclaimable 2782224\nslab 63452024\nworkingset_refault_anon 82\nworkingset_refault_file 74634\nworkingset_activate_anon 82\nworkingset_activate_file 12\nworkingset_restore_anon 0\nworkingset_restore_file 241\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 435880\npgsteal 352090\npswpin 89\npswpout 41893\npgscan_kswapd 426261\npgscan_direct 9619\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 343888\npgsteal_direct 8202\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1849708\npgmajfault 2020\npgrefill 71052\npgactivate 42092\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 229\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 91.44706780201523,
+      "sampled_driver_peak_bytes": 4369543168,
+      "peak_sampled_temperature_c": 69.0
+    },
+    "release-stock-steady-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 28.941281243984122,
+      "first_completed_response_seconds": 29.37452743097674,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.4456034829490818,
+      "container_memory": "3005304832\n2850873344\nanon 2373353472\nfile 404381696\nkernel 72552448\nkernel_stack 884736\npagetables 11780096\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 210956288\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2430185472\ninactive_file 160956416\nactive_file 32698368\nunevictable 0\nslab_reclaimable 57337160\nslab_unreclaimable 2489232\nslab 59826392\nworkingset_refault_anon 0\nworkingset_refault_file 51558\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 16671\npgsteal 16671\npswpin 0\npswpout 0\npgscan_kswapd 16671\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 16671\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1404627\npgmajfault 11\npgrefill 4143\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 29.02011035598116,
+      "sampled_driver_peak_bytes": 3987525632,
+      "peak_sampled_temperature_c": 60.0
+    },
+    "release-stock-steady-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 26.85688348300755,
+      "first_completed_response_seconds": 27.282229345000815,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.45669787999941036,
+      "container_memory": "2883551232\n2702618624\nanon 2383650816\nfile 245547008\nkernel 72323072\nkernel_stack 884736\npagetables 11870208\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 213458944\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2440450048\ninactive_file 29761536\nactive_file 5058560\nunevictable 0\nslab_reclaimable 57003560\nslab_unreclaimable 2498768\nslab 59502328\nworkingset_refault_anon 0\nworkingset_refault_file 6\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 19456\npgsteal 19456\npswpin 0\npswpout 0\npgscan_kswapd 19456\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 19456\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1406816\npgmajfault 29\npgrefill 272\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 26.927276239031926,
+      "sampled_driver_peak_bytes": 3987521536,
+      "peak_sampled_temperature_c": 63.0
+    },
+    "release-stock-triton-capture": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim",
+      "health_seconds": 45.77695282700006,
+      "first_completed_response_seconds": 46.42760352103505,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.43551361199934036,
+      "framework_memory": {
+        "results": [
+          {
+            "projection_host_invocations_including_capture_not_replays": null,
+            "allocated_bytes": 3308213248,
+            "reserved_bytes": 3481272320,
+            "peak_allocated_bytes": 3366116352,
+            "peak_reserved_bytes": 3481272320
+          }
+        ]
+      },
+      "container_memory": "4091748352\n4088152064\nanon 2491637760\nfile 1519722496\nkernel 75427840\nkernel_stack 901120\npagetables 12410880\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210747392\nzswap 0\nzswapped 0\nfile_mapped 278577152\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 290557952\nactive_anon 2257797120\ninactive_file 1157779456\nactive_file 151195648\nunevictable 0\nslab_reclaimable 59541216\nslab_unreclaimable 2506968\nslab 62048184\nworkingset_refault_anon 0\nworkingset_refault_file 11800\nworkingset_activate_anon 0\nworkingset_activate_file 232\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 12555\npgsteal 12545\npswpin 0\npswpout 0\npgscan_kswapd 11821\npgscan_direct 734\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 11811\npgsteal_direct 734\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1603820\npgmajfault 2182\npgrefill 182\npgactivate 10\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 46.270289091044106,
+      "sampled_driver_peak_bytes": 4039888896,
+      "peak_sampled_temperature_c": 67.0
+    },
+    "release-stock-warm-1": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; empty private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 46.89706524601206,
+      "first_completed_response_seconds": 47.77454069099622,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5113180329790339,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.34013624698854983,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3837874176\n3833724928\nanon 2422902784\nfile 1335623680\nkernel 74797056\nkernel_stack 884736\npagetables 12267520\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 273084416\nfile_dirty 40497152\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 29360128\nshmem_thp 0\ninactive_anon 600383488\nactive_anon 1879273472\ninactive_file 1011679232\nactive_file 113217536\nunevictable 0\nslab_reclaimable 59078976\nslab_unreclaimable 2500024\nslab 61579000\nworkingset_refault_anon 0\nworkingset_refault_file 2074\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 22744\npgsteal 22712\npswpin 0\npswpout 0\npgscan_kswapd 22744\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 22712\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1590640\npgmajfault 2025\npgrefill 174\npgactivate 32\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 47.4206000569975,
+      "sampled_driver_peak_bytes": 3987435520,
+      "peak_sampled_temperature_c": 48.0
+    },
+    "release-stock-warm-2": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 25.58330043195747,
+      "first_completed_response_seconds": 25.812694644962903,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.332647843984887,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.3192916359985247,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "2872365056\n2687815680\nanon 2402725888\nfile 211865600\nkernel 72548352\nkernel_stack 884736\npagetables 11898880\nsec_pagetables 0\npercpu 512\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 210726912\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 2459529216\ninactive_file 1138688\nactive_file 0\nunevictable 0\nslab_reclaimable 57183528\nslab_unreclaimable 2517560\nslab 59701088\nworkingset_refault_anon 0\nworkingset_refault_file 0\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1422354\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "first_visible_answer_seconds": 25.656759329955094,
+      "sampled_driver_peak_bytes": 3987492864,
+      "peak_sampled_temperature_c": 50.0
+    },
+    "release-stock-warm-3": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 26.712591396004427,
+      "first_completed_response_seconds": 27.148234056017827,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.523001577006653,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 0.32397759205196053,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "2938667008\n2761822208\nanon 2392571904\nfile 295784448\nkernel 72441856\nkernel_stack 884736\npagetables 11841536\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 210739200\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 6291456\nshmem_thp 0\ninactive_anon 0\nactive_anon 2449412096\ninactive_file 52932608\nactive_file 32124928\nunevictable 0\nslab_reclaimable 57165376\nslab_unreclaimable 2484520\nslab 59649896\nworkingset_refault_anon 0\nworkingset_refault_file 0\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 7232\npgsteal 7232\npswpin 0\npswpout 0\npgscan_kswapd 7232\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 7232\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1418963\npgmajfault 4\npgrefill 2\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "kfd_before_launch": [],
+      "owned_container_pids": "PID\n1690865\n1691038\n",
+      "first_visible_answer_seconds": 26.793777298997156,
+      "sampled_driver_peak_bytes": 3987505152,
+      "peak_sampled_temperature_c": 51.0
+    },
+    "release-stock-warm-4": {
+      "image": "sha256:e578860ed77f3c3908120b2c94ce275412c664e54d8818ca004fbcae0e3d97ac",
+      "cache_boundary": "Fresh process; reused populated private runtime caches; filesystem cache uncontrolled, no cold-storage claim; explicit warm weight page-cache preparation recorded separately",
+      "health_seconds": 30.820435055007692,
+      "first_completed_response_seconds": 31.25129891000688,
+      "first_response_has_visible_content": true,
+      "unload_seconds": 0.5454884479986504,
+      "filesystem_preparation": {
+        "mode": "warm",
+        "preparation_seconds": 2.003538875025697,
+        "files": {
+          "model.safetensors": {
+            "bytes": 2099615880,
+            "pages": 512602,
+            "resident_pages": 512602
+          }
+        },
+        "boundary": "Page residency immediately before container launch; no system-wide cache dropping"
+      },
+      "container_memory": "3415195648\n3258949632\nanon 2375127040\nfile 806567936\nkernel 76648448\nkernel_stack 884736\npagetables 11833344\nsec_pagetables 0\npercpu 0\nsock 0\nvmalloc 24576\nshmem 210726912\nzswap 0\nzswapped 0\nfile_mapped 351772672\nfile_dirty 1134592\nfile_writeback 0\nswapcached 0\nanon_thp 0\nfile_thp 33554432\nshmem_thp 0\ninactive_anon 0\nactive_anon 2431983616\ninactive_file 308211712\nactive_file 287629312\nunevictable 0\nslab_reclaimable 61367040\nslab_unreclaimable 2496800\nslab 63863840\nworkingset_refault_anon 0\nworkingset_refault_file 7367\nworkingset_activate_anon 0\nworkingset_activate_file 430\nworkingset_restore_anon 0\nworkingset_restore_file 9\nworkingset_nodereclaim 0\npgdemote_kswapd 0\npgdemote_direct 0\npgdemote_khugepaged 0\npgdemote_proactive 0\npgpromote_success 0\npgscan 0\npgsteal 0\npswpin 0\npswpout 0\npgscan_kswapd 0\npgscan_direct 0\npgscan_khugepaged 0\npgscan_proactive 0\npgsteal_kswapd 0\npgsteal_direct 0\npgsteal_khugepaged 0\npgsteal_proactive 0\npgfault 1413588\npgmajfault 2773\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nswpin_zero 0\nswpout_zero 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 0\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\nnuma_pages_migrated 0\nnuma_pte_updates 0\nnuma_hint_faults 0\n",
+      "kfd_before_launch": [],
+      "owned_container_pids": "PID\n1693478\n1693725\n",
+      "first_visible_answer_seconds": 30.896122410951648,
+      "sampled_driver_peak_bytes": 3987492864,
+      "peak_sampled_temperature_c": 52.0
+    }
+  },
+  "chat": {
+    "stock": {
+      "labels": [
+        "release-stock-steady-1",
+        "release-stock-steady-2"
+      ],
+      "warmups_per_prompt_per_process": 4,
+      "processes": 2,
+      "pooled_e2e_s": {
+        "n": 48,
+        "median": 0.7038670264882967,
+        "mean": 0.5343132658272225,
+        "stdev": 0.3420681640201659,
+        "min": 0.05886199901578948,
+        "max": 0.8549932430032641
+      },
+      "prompts": [
+        {
+          "index": 0,
+          "prompt": "Explain how binary search works in two sentences.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.8345093495154288,
+            "mean": 0.837377811800252,
+            "stdev": 0.006853832833443868,
+            "min": 0.8311768079875037,
+            "max": 0.8549932430032641
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.05070857948157936,
+            "mean": 0.051884899112337735,
+            "stdev": 0.003183115922928965,
+            "min": 0.048170291003771126,
+            "max": 0.06013521895511076
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 48.0,
+            "mean": 48,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "index": 1,
+          "prompt": "What is 17 plus 25? Return only the integer.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.06087951848166995,
+            "mean": 0.061950750245159725,
+            "stdev": 0.004450886570972525,
+            "min": 0.05886199901578948,
+            "max": 0.07350382197182626
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.046541536023141816,
+            "mean": 0.047555295368511,
+            "stdev": 0.004409436188994794,
+            "min": 0.04438390402356163,
+            "max": 0.05900247796671465
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 2.0,
+            "mean": 2,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "index": 2,
+          "prompt": "Write a Python function palindrome(s) that ignores spaces and letter case when checking whether a string is a palindrome. Give a concise answer.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.7038670264882967,
+            "mean": 0.7036112354362558,
+            "stdev": 0.004600662240891706,
+            "min": 0.6945647120010108,
+            "max": 0.7150550829828717
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.04550998451304622,
+            "mean": 0.04710829706527875,
+            "stdev": 0.004524121612231924,
+            "min": 0.04457483399892226,
+            "max": 0.05939453199971467
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 40.0,
+            "mean": 40,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "paiton": {
+      "labels": [
+        "release-paiton-steady-1",
+        "release-paiton-steady-2"
+      ],
+      "warmups_per_prompt_per_process": 4,
+      "processes": 2,
+      "pooled_e2e_s": {
+        "n": 48,
+        "median": 0.4708376210182905,
+        "mean": 0.36344292870611145,
+        "stdev": 0.2185506655739853,
+        "min": 0.06017825799062848,
+        "max": 0.5641961729852483
+      },
+      "prompts": [
+        {
+          "index": 0,
+          "prompt": "Explain how binary search works in two sentences.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.5566261745116208,
+            "mean": 0.557211040500988,
+            "stdev": 0.0024396668118546773,
+            "min": 0.55410277901683,
+            "max": 0.5641961729852483
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.05205013198428787,
+            "mean": 0.05296341343637323,
+            "stdev": 0.0026169826548743586,
+            "min": 0.0507795509765856,
+            "max": 0.059512234991416335
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 48.0,
+            "mean": 48,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "index": 1,
+          "prompt": "What is 17 plus 25? Return only the integer.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.0606994564877823,
+            "mean": 0.06165447718012729,
+            "stdev": 0.0025686290823824652,
+            "min": 0.06017825799062848,
+            "max": 0.06825259496690705
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.05116815149085596,
+            "mean": 0.05207813975357567,
+            "stdev": 0.0025749273267625205,
+            "min": 0.0505761579843238,
+            "max": 0.05874916899483651
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 2.0,
+            "mean": 2,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "index": 2,
+          "prompt": "Write a Python function palindrome(s) that ignores spaces and letter case when checking whether a string is a palindrome. Give a concise answer.",
+          "e2e_s": {
+            "n": 16,
+            "median": 0.4708376210182905,
+            "mean": 0.4714632684372191,
+            "stdev": 0.002399065544957058,
+            "min": 0.46838814101647586,
+            "max": 0.4780023080529645
+          },
+          "first_visible_s": {
+            "n": 16,
+            "median": 0.05137443050625734,
+            "mean": 0.05190106812369777,
+            "stdev": 0.0024548525135648855,
+            "min": 0.05013088299892843,
+            "max": 0.058735687052831054
+          },
+          "output_tokens": {
+            "n": 16,
+            "median": 40.0,
+            "mean": 40,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "paired_median_reduction": 0.3310702117026657,
+    "release-stock-triton-capture": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.33739452649024315,
+        "mean": 0.26279696207833086,
+        "stdev": 0.1517809415995722,
+        "min": 0.05374045000644401,
+        "max": 0.40069887100253254
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.395127205105382,
+            "median": 0.39410702997702174,
+            "stdev": 0.0029824105386508414,
+            "min": 0.39275860198540613,
+            "max": 0.40069887100253254
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.048078648738737684,
+            "median": 0.0465070309874136,
+            "stdev": 0.0035342916171828493,
+            "min": 0.04600100195966661,
+            "max": 0.05617166496813297
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05531714487733552,
+            "median": 0.0542771645123139,
+            "stdev": 0.0021232340360181072,
+            "min": 0.05374045000644401,
+            "max": 0.05907920701429248
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04778516624355689,
+            "median": 0.04673072198056616,
+            "stdev": 0.002114015289925306,
+            "min": 0.04607435502111912,
+            "max": 0.05159445997560397
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.3379465362522751,
+            "median": 0.33739452649024315,
+            "stdev": 0.004046461890303485,
+            "min": 0.334410912997555,
+            "max": 0.34738399501657113
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.0492437252542004,
+            "median": 0.048179093981161714,
+            "stdev": 0.003871694654743755,
+            "min": 0.04607841098913923,
+            "max": 0.05818926804931834
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "release-stock-rocm-o2": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.5575564365135506,
+        "mean": 0.45459797754544223,
+        "stdev": 0.3163252364618201,
+        "min": 0.050781544006895274,
+        "max": 1.1454036160139367
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.7533078310079873,
+            "median": 0.6746499385044444,
+            "stdev": 0.17129503901719742,
+            "min": 0.6640012550051324,
+            "max": 1.1454036160139367
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.042584145136061125,
+            "median": 0.04272601750562899,
+            "stdev": 0.00240642278711528,
+            "min": 0.03904791199602187,
+            "max": 0.04644674703013152
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05211778688681079,
+            "median": 0.0509798065177165,
+            "stdev": 0.0032386108216520756,
+            "min": 0.050781544006895274,
+            "max": 0.060121646034531295
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.03924333587929141,
+            "median": 0.038108861015643924,
+            "stdev": 0.0032427310225357324,
+            "min": 0.037896414985880256,
+            "max": 0.0472597079933621
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5583683147415286,
+            "median": 0.5575564365135506,
+            "stdev": 0.002961917733075608,
+            "min": 0.5562481289962307,
+            "max": 0.5655129089718685
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.03909551349352114,
+            "median": 0.03798230699612759,
+            "stdev": 0.0032997541910787602,
+            "min": 0.037786989007145166,
+            "max": 0.0472589639830403
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "release-paiton-prepare": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.23255525197600946,
+        "mean": 0.2468617324581525,
+        "stdev": 0.1836040507194561,
+        "min": 0.057631862990092486,
+        "max": 0.5762544110184535
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.4501412977479049,
+            "median": 0.5530248909781221,
+            "stdev": 0.14998598112928063,
+            "min": 0.26893013902008533,
+            "max": 0.5762544110184535
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.05614192499342607,
+            "median": 0.05548815996735357,
+            "stdev": 0.002445835037221857,
+            "min": 0.05353535799076781,
+            "max": 0.060374994995072484
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05790182264172472,
+            "median": 0.05776372502441518,
+            "stdev": 0.00039151135337902763,
+            "min": 0.057631862990092486,
+            "max": 0.05883803800679743
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.053843187874008436,
+            "median": 0.053734325483674183,
+            "stdev": 0.000359483938404096,
+            "min": 0.05358497897395864,
+            "max": 0.05471266899257898
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.23254207698482787,
+            "median": 0.23255525197600946,
+            "stdev": 0.0003386312105282241,
+            "min": 0.2321887879515998,
+            "max": 0.23327898205025122
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.053849868483666796,
+            "median": 0.05378499047947116,
+            "stdev": 0.0001858338144946708,
+            "min": 0.0536787019809708,
+            "max": 0.05427449400303885
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "release-paiton-full": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.46933272550813854,
+        "mean": 0.36266888012808823,
+        "stdev": 0.22074863758110708,
+        "min": 0.06000669201603159,
+        "max": 0.5622133869910613
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5565508034997038,
+            "median": 0.5564908529922832,
+            "stdev": 0.003629203439913887,
+            "min": 0.5508616479928605,
+            "max": 0.5622133869910613
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.05312673824664671,
+            "median": 0.05339880398241803,
+            "stdev": 0.0022157617037029697,
+            "min": 0.05052795301890001,
+            "max": 0.05676322098588571
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.06116927425318863,
+            "median": 0.06037607102189213,
+            "stdev": 0.0023435527501677743,
+            "min": 0.06000669201603159,
+            "max": 0.06693357398035005
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.05161105925071752,
+            "median": 0.05075623549055308,
+            "stdev": 0.002318758997079158,
+            "min": 0.05052728304872289,
+            "max": 0.057320191990584135
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.47028656263137236,
+            "median": 0.46933272550813854,
+            "stdev": 0.003122138400447598,
+            "min": 0.46792911301599815,
+            "max": 0.4775961550185457
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.051643997634528205,
+            "median": 0.05069757648743689,
+            "stdev": 0.002456962209493735,
+            "min": 0.05038144101854414,
+            "max": 0.05764187703607604
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ]
+    },
+    "minicpm-stock-source-fp16": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.3768113564874511,
+        "mean": 0.31474764866531285,
+        "stdev": 0.20934938440465323,
+        "min": 0.04933532903669402,
+        "max": 0.6780716290231794
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5168056510010501,
+            "median": 0.4355711944808718,
+            "stdev": 0.11324973452927814,
+            "min": 0.4347563110059127,
+            "max": 0.6780716290231794
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.07443884637905285,
+            "median": 0.042619629501132295,
+            "stdev": 0.0854141132715101,
+            "min": 0.041531511989887804,
+            "max": 0.28568576101679355
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05011116786772618,
+            "median": 0.04956494548241608,
+            "stdev": 0.0016764624113756563,
+            "min": 0.04933532903669402,
+            "max": 0.054243527993094176
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04228893774416065,
+            "median": 0.04174114399938844,
+            "stdev": 0.0016853792008006334,
+            "min": 0.04148485098266974,
+            "max": 0.046445618965663016
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.3773261271271622,
+            "median": 0.3768113564874511,
+            "stdev": 0.0016407766568068392,
+            "min": 0.3763634490314871,
+            "max": 0.38131669198628515
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.042809448001207784,
+            "median": 0.042176223010756075,
+            "stdev": 0.0014327449112136082,
+            "min": 0.04206647601677105,
+            "max": 0.04628192901145667
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 41,
+            "median": 41.0,
+            "stdev": 0.0,
+            "min": 41,
+            "max": 41
+          }
+        }
+      ]
+    },
+    "release-source-fp16-capture": {
+      "warmups_per_prompt": 1,
+      "pooled_e2e_s": {
+        "n": 24,
+        "median": 0.5467586209706496,
+        "mean": 0.4139525075321823,
+        "stdev": 0.2615868508942687,
+        "min": 0.0540430789696984,
+        "max": 0.6450129500008188
+      },
+      "prompts": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.6386547773654456,
+            "median": 0.637863058509538,
+            "stdev": 0.0038203994418963185,
+            "min": 0.6346428899560124,
+            "max": 0.6450129500008188
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04612328749499284,
+            "median": 0.04512096947291866,
+            "stdev": 0.002968525302622832,
+            "min": 0.04339116794290021,
+            "max": 0.05130208202172071
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05567494924616767,
+            "median": 0.054506243497598916,
+            "stdev": 0.00330233526850373,
+            "min": 0.0540430789696984,
+            "max": 0.06381246104137972
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.043719857865653466,
+            "median": 0.042559354507829994,
+            "stdev": 0.003217932562111131,
+            "min": 0.042101732979062945,
+            "max": 0.051635882002301514
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5475277959849336,
+            "median": 0.5467586209706496,
+            "stdev": 0.0035443034443517446,
+            "min": 0.5440699069877155,
+            "max": 0.555895222001709
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04382271536451299,
+            "median": 0.042682251019869,
+            "stdev": 0.003093821311501447,
+            "min": 0.04239144397433847,
+            "max": 0.051434348977636546
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 41,
+            "median": 41.0,
+            "stdev": 0.0,
+            "min": 41,
+            "max": 41
+          }
+        }
+      ]
+    }
+  },
+  "throughput": {
+    "release-paiton-full": {
+      "1": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 197.0021025159529,
+          "mean": 191.11908940419633,
+          "stdev": 16.851556566476287,
+          "min": 149.41539874059046,
+          "max": 197.36181902979445
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.214932116534328,
+              "mean": 1.3703699190009502,
+              "stdev": 0.4402884235296383,
+              "min": 1.2121509420103393,
+              "max": 2.4600215060054325
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.050447134010028094,
+              "mean": 0.05040450250089634,
+              "stdev": 0.0006523952083047166,
+              "min": 0.04920765501447022,
+              "max": 0.05124987696763128
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.004568098264737237,
+              "mean": 0.005176334966666878,
+              "stdev": 0.00172668968884634,
+              "min": 0.004557022152870309,
+              "max": 0.009449652815694171
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 210.71136764989043,
+              "mean": 197.41516470535544,
+              "stdev": 37.720460062020535,
+              "min": 104.06413089277873,
+              "max": 211.19481999116937
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 218.9160080105606,
+              "mean": 204.8737834391447,
+              "stdev": 40.0221713399149,
+              "min": 105.82605970089054,
+              "max": 219.44803343014675
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 2537.3172142916997,
+              "mean": 2539.830032284365,
+              "stdev": 33.05826602275618,
+              "min": 2497.5669713479124,
+              "max": 2601.2212929545162
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.445219861518126,
+              "mean": 1.4455078562532435,
+              "stdev": 0.0026410940838992613,
+              "min": 1.4416267809574492,
+              "max": 1.449325564026367
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.19932491952204145,
+              "mean": 0.19981895837554475,
+              "stdev": 0.0020521785621898255,
+              "min": 0.19789955398300663,
+              "max": 0.20323872700100765
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.004886673029521298,
+              "mean": 0.0048850545014811715,
+              "stdev": 5.690962632871065e-06,
+              "min": 0.004872155089990473,
+              "max": 0.004890087858874205
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 177.13568204553002,
+              "mean": 177.10090366654256,
+              "stdev": 0.32350253462439044,
+              "min": 176.6338815475021,
+              "max": 177.57716725405092
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 204.6438313706168,
+              "mean": 204.71194819698917,
+              "stdev": 0.23893808210814327,
+              "min": 204.50106720697462,
+              "max": 205.2538174153023
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 10274.683651246516,
+              "mean": 10250.216602845449,
+              "stdev": 104.47925326787312,
+              "min": 10076.819660407764,
+              "max": 10348.684263208896
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.2334928580094129,
+              "mean": 1.2336833517547348,
+              "stdev": 0.0010550992773356077,
+              "min": 1.232392637990415,
+              "max": 1.235354500997346
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.053659503028029576,
+              "mean": 0.05388081163982861,
+              "stdev": 0.0005236599780073129,
+              "min": 0.05318365799030289,
+              "max": 0.05472134903538972
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.0046271996037331505,
+              "mean": 0.004626676627901592,
+              "stdev": 3.6606156888950202e-06,
+              "min": 0.004622004788104153,
+              "max": 0.004631199952963666
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 207.54072685590077,
+              "mean": 207.5088096451177,
+              "stdev": 0.17742586108820596,
+              "min": 207.22796557046746,
+              "max": 207.726005583288
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 216.11985157071308,
+              "mean": 216.14434136785997,
+              "stdev": 0.17102496396160882,
+              "min": 215.93317609096974,
+              "max": 216.36264421883013
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 9541.652030287903,
+              "mean": 9503.23788001902,
+              "stdev": 92.03664638843689,
+              "min": 9356.494476568483,
+              "max": 9627.01738367365
+            }
+          }
+        }
+      },
+      "2": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 279.266346348477,
+          "mean": 279.2217883904234,
+          "stdev": 0.3479828759544561,
+          "min": 278.72399371976536,
+          "max": 279.7685230803775
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.2970369925023988,
+              "mean": 1.298308955745597,
+              "stdev": 0.0023065691085830875,
+              "min": 1.2965153999975882,
+              "max": 1.301881022984162
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.09880982950562611,
+              "mean": 0.09896557301544817,
+              "stdev": 0.0010112165921455955,
+              "min": 0.09753302502213046,
+              "max": 0.10059469804400578
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.0047025784117388815,
+              "mean": 0.004703307383255485,
+              "stdev": 6.427251456741932e-06,
+              "min": 0.0046959251959753385,
+              "max": 0.004712736697904035
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 197.37294149131384,
+              "mean": 197.18011255303736,
+              "stdev": 0.3498196340503896,
+              "min": 196.63855258693204,
+              "max": 197.45234032736997
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 212.65501793595024,
+              "mean": 212.62268873985795,
+              "stdev": 0.29025854683612246,
+              "min": 212.19770174157193,
+              "max": 212.95693975775606
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 1295.4185091663298,
+              "mean": 1293.4968863694935,
+              "stdev": 13.179174551097587,
+              "min": 1272.4328666308595,
+              "max": 1312.375987220293
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.4503820780082606,
+              "mean": 1.4499227446431178,
+              "stdev": 0.0022055675987941487,
+              "min": 1.4465027370024472,
+              "max": 1.4526635100482963
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.20277087000431493,
+              "mean": 0.20336554499954218,
+              "stdev": 0.002134021357988849,
+              "min": 0.200399796012789,
+              "max": 0.20715021796058863
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.004890417317544822,
+              "mean": 0.004888459606445394,
+              "stdev": 6.856206065508036e-06,
+              "min": 0.004875232478576329,
+              "max": 0.0048954370746608165
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 176.50521483761776,
+              "mean": 176.56148907331752,
+              "stdev": 0.26884472695433226,
+              "min": 176.2280102922726,
+              "max": 176.97857975056627
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 204.48716801010474,
+              "mean": 204.56941196339528,
+              "stdev": 0.28724568544901447,
+              "min": 204.27764239761095,
+              "max": 205.1240705466543
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 10100.071468862232,
+              "mean": 10071.50219386216,
+              "stdev": 105.25744535265873,
+              "min": 9886.54523351572,
+              "max": 10219.57128074772
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.3518407550291158,
+              "mean": 1.3529771411340334,
+              "stdev": 0.0024765423954615203,
+              "min": 1.3510382510139607,
+              "max": 1.3568192569655366
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.10481036701821722,
+              "mean": 0.10494506426039152,
+              "stdev": 0.0010580435487251658,
+              "min": 0.10358789301244542,
+              "max": 0.10663194500375539
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.004892824456899189,
+              "mean": 0.004894243438720165,
+              "stdev": 6.630934732616958e-06,
+              "min": 0.004886464282468546,
+              "max": 0.004903977149047469
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 189.37141894678177,
+              "mean": 189.21291543300003,
+              "stdev": 0.34582245196751776,
+              "min": 188.67656740996745,
+              "max": 189.48390233057486
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 204.3871294948928,
+              "mean": 204.32817013295798,
+              "stdev": 0.27676161580333136,
+              "min": 203.92220465810945,
+              "max": 204.65320193986784
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 4885.013757238088,
+              "mean": 4879.175351550806,
+              "stdev": 49.00978705207484,
+              "min": 4801.562983606538,
+              "max": 4942.662555540988
+            }
+          }
+        }
+      }
+    },
+    "release-stock-fast-full": {
+      "1": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 127.60284530840539,
+          "mean": 124.59645740393995,
+          "stdev": 8.507081433843636,
+          "min": 103.5433995957078,
+          "max": 127.69838371698398
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.9298073675017804,
+              "mean": 2.105928483120806,
+              "stdev": 0.4980612388378547,
+              "min": 1.9285238480078988,
+              "max": 3.3385643690126017
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.04366199698415585,
+              "mean": 0.04373405124351848,
+              "stdev": 0.00039307238048679627,
+              "min": 0.043179236992727965,
+              "max": 0.044199754018336535
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007395977084296664,
+              "mean": 0.008087036987754068,
+              "stdev": 0.0019524875691624992,
+              "min": 0.00738950625093946,
+              "max": 0.012919183219691701
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 132.65573624910846,
+              "mean": 125.65693374638181,
+              "stdev": 19.78993885211252,
+              "min": 76.67966577972956,
+              "max": 132.74401572188984
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 135.21106952019565,
+              "mean": 127.97335759061893,
+              "stdev": 20.432839796727727,
+              "min": 77.40510506108203,
+              "max": 135.32952843742672
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 2931.6411899523755,
+              "mean": 2926.988080140174,
+              "stdev": 26.303672495207188,
+              "min": 2895.9437183043697,
+              "max": 2964.387722311006
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 2.1401487325201742,
+              "mean": 2.1398392627525027,
+              "stdev": 0.0023985701520474155,
+              "min": 2.13651157298591,
+              "max": 2.142530512996018
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.17472247750265524,
+              "mean": 0.17465829589491477,
+              "stdev": 0.0016348745513732458,
+              "min": 0.17300425202120095,
+              "max": 0.17812029703054577
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007708171390193313,
+              "mean": 0.007706592026892502,
+              "stdev": 1.1624414607903762e-05,
+              "min": 0.007693444039243475,
+              "max": 0.007722991937086644
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 119.61785472821855,
+              "mean": 119.63528567460264,
+              "stdev": 0.13412619047362087,
+              "min": 119.48487942046677,
+              "max": 119.82148996376549
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 129.73484312711759,
+              "mean": 129.76199551868314,
+              "stdev": 0.1953973827729541,
+              "min": 129.48798047305746,
+              "max": 129.98347552553773
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 11721.446101357757,
+              "mean": 11726.643133521426,
+              "stdev": 108.71206354192532,
+              "min": 11497.847433124309,
+              "max": 11837.859336249297
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.9453398199984804,
+              "mean": 1.9450176168684266,
+              "stdev": 0.0047830550301664965,
+              "min": 1.935844236984849,
+              "max": 1.9528324319981039
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.04759617050876841,
+              "mean": 0.047604060753656086,
+              "stdev": 0.0007005372923987315,
+              "min": 0.046811889042146504,
+              "max": 0.04896239994559437
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007441180727362414,
+              "mean": 0.007440837474959884,
+              "stdev": 2.0520748372275672e-05,
+              "min": 0.007399536615840214,
+              "max": 0.0074722835294190135
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 131.59654701175037,
+              "mean": 131.61904226905398,
+              "stdev": 0.3239857906757909,
+              "min": 131.09163684774802,
+              "max": 132.24204463822448
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 134.38970902843585,
+              "mean": 134.39686493657055,
+              "stdev": 0.3713422328008563,
+              "min": 133.83023656856898,
+              "max": 135.14613711616047
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 10757.350443376963,
+              "mean": 10757.403411076679,
+              "stdev": 156.77184401587272,
+              "min": 10457.003753266177,
+              "max": 10937.392411979512
+            }
+          }
+        }
+      },
+      "2": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 185.18415646981288,
+          "mean": 185.3043669198537,
+          "stdev": 0.2789680235003967,
+          "min": 185.03115107890198,
+          "max": 185.8300178989224
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 1.9893493874697015,
+              "mean": 1.9879036192505737,
+              "stdev": 0.0039049812990525515,
+              "min": 1.9813687590067275,
+              "max": 1.9923418210237287
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.08710138101014309,
+              "mean": 0.08689739149849629,
+              "stdev": 0.000840028199202778,
+              "min": 0.08571610902436078,
+              "max": 0.08839400601573288
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007458928903888947,
+              "mean": 0.00745492638334148,
+              "stdev": 1.4796975405533795e-05,
+              "min": 0.0074321909412723396,
+              "max": 0.007471130890360869
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 128.68528906277032,
+              "mean": 128.77931462377467,
+              "stdev": 0.2533397191700993,
+              "min": 128.49200739482498,
+              "max": 129.2036118144582
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 134.06999638533938,
+              "mean": 134.14231408727454,
+              "stdev": 0.26664242300959673,
+              "min": 133.850686637199,
+              "max": 134.55211532992956
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 1469.5520810863745,
+              "mean": 1473.121795212474,
+              "stdev": 14.20625095275581,
+              "min": 1448.0619871127665,
+              "max": 1493.3015678957383
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 2.1537786294938996,
+              "mean": 2.1540204729972174,
+              "stdev": 0.002834912952601958,
+              "min": 2.149044161022175,
+              "max": 2.1580187659710646
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.18234637749264948,
+              "mean": 0.18231446286517894,
+              "stdev": 0.0018311908678613944,
+              "min": 0.1798799549578689,
+              "max": 0.18476641201414168
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007733016029255939,
+              "mean": 0.007732180431890347,
+              "stdev": 1.126750386491932e-05,
+              "min": 0.00771716567847476,
+              "max": 0.007751628337427974
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 118.86088794512742,
+              "mean": 118.84770425181121,
+              "stdev": 0.15646840042143298,
+              "min": 118.62732800880218,
+              "max": 119.12272657916705
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 129.31785244542476,
+              "mean": 129.3320954695367,
+              "stdev": 0.1884046830654179,
+              "min": 129.00743340987654,
+              "max": 129.58347005158072
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 11231.418130614657,
+              "mean": 11234.330116486912,
+              "stdev": 112.87939577964077,
+              "min": 11084.26568267857,
+              "max": 11385.370874034732
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 2.0414212654868606,
+              "mean": 2.0394681839898112,
+              "stdev": 0.003990937035611755,
+              "min": 2.0327218489837833,
+              "max": 2.043056506954599
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.09575880147167481,
+              "mean": 0.09557646836037748,
+              "stdev": 0.0007924668329189364,
+              "min": 0.09443295001983643,
+              "max": 0.09697786497417837
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.007627638335357986,
+              "mean": 0.00762310476717425,
+              "stdev": 1.5199583610770585e-05,
+              "min": 0.0075988379450898395,
+              "max": 0.00763752148623633
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 125.40282816205234,
+              "mean": 125.52334040609772,
+              "stdev": 0.24601650845457798,
+              "min": 125.30245694554783,
+              "max": 125.93951313505183
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 131.1047351649663,
+              "mean": 131.18307411436297,
+              "stdev": 0.2619720019758192,
+              "min": 130.9349997190722,
+              "max": 131.60152945786783
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 5346.767065485865,
+              "mean": 5357.288824428956,
+              "stdev": 44.342005312042666,
+              "min": 5279.555289615076,
+              "max": 5421.836338825062
+            }
+          }
+        }
+      }
+    },
+    "release-stock-full": {
+      "1": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 72.92052397889584,
+          "mean": 72.91209567713292,
+          "stdev": 0.03201369940988127,
+          "min": 72.84879358630623,
+          "max": 72.94777952393218
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.457191400026204,
+              "mean": 3.457286165881669,
+              "stdev": 0.001391594033692943,
+              "min": 3.4549986320198514,
+              "max": 3.4590835909475572
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.03477812701021321,
+              "mean": 0.03481656325311633,
+              "stdev": 0.0003960579985840282,
+              "min": 0.03434843401191756,
+              "max": 0.03561360400635749
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013420416531381289,
+              "mean": 0.013421449422072757,
+              "stdev": 5.322704178580995e-06,
+              "min": 0.013413877576571323,
+              "max": 0.013429406117510928
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 74.04854710367337,
+              "mean": 74.04652782871761,
+              "stdev": 0.02980655835641984,
+              "min": 74.00804093603102,
+              "max": 74.0955430857401
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 74.51443372544345,
+              "mean": 74.50846437174835,
+              "stdev": 0.02952171186899181,
+              "min": 74.46417785222553,
+              "max": 74.55037526288444
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 3680.4754947376887,
+              "mean": 3676.8236476168795,
+              "stdev": 41.44906173577076,
+              "min": 3594.132174243032,
+              "max": 3726.5163225662345
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.6094194055185653,
+              "mean": 3.609459728875663,
+              "stdev": 0.0009224638925165759,
+              "min": 3.607949474011548,
+              "max": 3.6109034160035662
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.15415699902223423,
+              "mean": 0.15420738199463813,
+              "stdev": 0.00024902558123742586,
+              "min": 0.15393701900029555,
+              "max": 0.15452983003342524
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013550075629324306,
+              "mean": 0.013550009203455,
+              "stdev": 3.0277999833692836e-06,
+              "min": 0.013544819360900231,
+              "max": 0.013554865153113781
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 70.9255343441373,
+              "mean": 70.92474604510144,
+              "stdev": 0.018126024480168184,
+              "min": 70.89638533819681,
+              "max": 70.95443044421653
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 73.80117006315075,
+              "mean": 73.80144450662439,
+              "stdev": 0.016488054091781383,
+              "min": 73.77497621877261,
+              "max": 73.82968992931345
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 13285.160813535693,
+              "mean": 13280.847163481023,
+              "stdev": 21.440152738130923,
+              "min": 13253.104591890198,
+              "max": 13304.142260907807
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.4627458144677803,
+              "mean": 3.4635530537343584,
+              "stdev": 0.0028493008257761574,
+              "min": 3.460300714999903,
+              "max": 3.4698705219780095
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.03760106148547493,
+              "mean": 0.03761723624484148,
+              "stdev": 0.00011445873191727694,
+              "min": 0.03745770797831938,
+              "max": 0.03778208699077368
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013432321443071809,
+              "mean": 0.013435042421527517,
+              "stdev": 1.0943098127800463e-05,
+              "min": 0.013422717219538183,
+              "max": 0.013459331145071808
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 73.92977001315836,
+              "mean": 73.91258267398022,
+              "stdev": 0.06073867580044407,
+              "min": 73.77796905634003,
+              "max": 73.98200939307877
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 74.44804262937761,
+              "mean": 74.43301688168316,
+              "stdev": 0.06052730819895097,
+              "min": 74.29874339510172,
+              "max": 74.50130962058641
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 13616.638554541598,
+              "mean": 13610.892170444395,
+              "stdev": 41.4002322289476,
+              "min": 13551.395403992097,
+              "max": 13668.748773853087
+            }
+          }
+        }
+      },
+      "2": {
+        "rounds": 8,
+        "requests": 24,
+        "aggregate_output_tokens_s": {
+          "n": 8,
+          "median": 107.71024069700417,
+          "mean": 107.72059293134612,
+          "stdev": 0.028791573370193686,
+          "min": 107.68998301226848,
+          "max": 107.76503511557563
+        },
+        "workloads": {
+          "prefill-128-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.49594623898156,
+              "mean": 3.49553417450079,
+              "stdev": 0.001668788820609329,
+              "min": 3.492696102010086,
+              "max": 3.4976578740170226
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.06348313350463286,
+              "mean": 0.06405987575271865,
+              "stdev": 0.0009158031117648248,
+              "min": 0.06342011300148442,
+              "max": 0.06586191203678027
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013458322770619655,
+              "mean": 0.01345676195587479,
+              "stdev": 5.337414663956245e-06,
+              "min": 0.01344811420399221,
+              "max": 0.013462913890058796
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 73.22767226163518,
+              "mean": 73.23631762321426,
+              "stdev": 0.034972528573795146,
+              "min": 73.191835571381,
+              "max": 73.29581289728273
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 74.30421665272397,
+              "mean": 74.31278778009144,
+              "stdev": 0.02943559118503487,
+              "min": 74.27887622314154,
+              "max": 74.36050874556653
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 2016.2839951790006,
+              "mean": 1998.4831886337297,
+              "stdev": 28.18566822954537,
+              "min": 1943.4601280406043,
+              "max": 2018.2871638371885
+            }
+          },
+          "prefill-2048-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.631980500998907,
+              "mean": 3.6317475487376214,
+              "stdev": 0.0006723157528968067,
+              "min": 3.630687634984497,
+              "max": 3.6324596229824238
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.17578060648520477,
+              "mean": 0.17588340237125522,
+              "stdev": 0.0003637225172501352,
+              "min": 0.17528211401076987,
+              "max": 0.17641926801297814
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013552235266622886,
+              "mean": 0.013552408417123005,
+              "stdev": 2.126508824067504e-06,
+              "min": 0.013549120525610359,
+              "max": 0.013555775192000118
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 70.48495992565644,
+              "mean": 70.48948315988714,
+              "stdev": 0.01305118399816295,
+              "min": 70.47566293106149,
+              "max": 70.510059178113
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 73.78927594123358,
+              "mean": 73.78833405878136,
+              "stdev": 0.011584338905892368,
+              "min": 73.76999087240434,
+              "max": 73.80624378977598
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 11650.887253920457,
+              "mean": 11644.12125750375,
+              "stdev": 24.082440790801993,
+              "min": 11608.709315409587,
+              "max": 11684.021564654136
+            }
+          },
+          "prefill-512-decode-256": {
+            "e2e_s": {
+              "n": 8,
+              "median": 3.539927623991389,
+              "mean": 3.5394245209827204,
+              "stdev": 0.0017798059481316918,
+              "min": 3.5363579490222037,
+              "max": 3.5417145100072958
+            },
+            "ttft_s": {
+              "n": 8,
+              "median": 0.08236778149148449,
+              "mean": 0.08261667987244437,
+              "stdev": 0.000534762748127459,
+              "min": 0.08221991802565753,
+              "max": 0.08369955199304968
+            },
+            "tpot_s": {
+              "n": 8,
+              "median": 0.013557925474414529,
+              "mean": 0.013556109180824612,
+              "stdev": 5.949722705352991e-06,
+              "min": 0.013545639337241358,
+              "max": 0.013561868748864999
+            },
+            "output_tokens_s": {
+              "n": 8,
+              "median": 72.31786303881739,
+              "mean": 72.32815819028224,
+              "stdev": 0.03638034342728374,
+              "min": 72.28137651317148,
+              "max": 72.39086192357409
+            },
+            "decode_tokens_s": {
+              "n": 8,
+              "median": 73.75838796902713,
+              "mean": 73.76827059510236,
+              "stdev": 0.03237312916302117,
+              "min": 73.73694230527882,
+              "max": 73.82525807841712
+            },
+            "effective_input_tokens_per_ttft_s": {
+              "n": 8,
+              "median": 6216.031372238274,
+              "mean": 6197.521390445994,
+              "stdev": 39.83811197237184,
+              "min": 6117.117568831383,
+              "max": 6227.2015381993615
+            }
+          }
+        }
+      }
+    }
+  },
+  "quality": {
+    "release-paiton-prepare": {
+      "passed": 14,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative",
+        "code-runs"
+      ]
+    },
+    "release-paiton-full": {
+      "passed": 14,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative",
+        "code-runs"
+      ]
+    },
+    "release-stock-triton-capture": {
+      "passed": 14,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative",
+        "code-runs"
+      ]
+    },
+    "release-stock-rocm-o2": {
+      "passed": 14,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative",
+        "code-runs"
+      ]
+    },
+    "minicpm-stock-source-fp16": {
+      "passed": 15,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative"
+      ]
+    },
+    "release-source-fp16-capture": {
+      "passed": 15,
+      "total": 20,
+      "failed": [
+        "arithmetic",
+        "logic",
+        "instruction-filter",
+        "reasoning-rate",
+        "reasoning-negative"
+      ]
+    },
+    "lfm-stock-linked-thinking-01": {
+      "passed": 18,
+      "total": 20,
+      "failed": [
+        "code-balanced",
+        "json-types"
+      ]
+    },
+    "exact_final_text_matches": {
+      "matched": 20,
+      "total": 20,
+      "note": "Transport IDs and timings are excluded. Tool semantics are checked by the protocol suite."
+    }
+  },
+  "final_image": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
+  "final_smoke": {
+    "package": {
+      "protocol_passed": 8,
+      "protocol_total": 8,
+      "near_context_input_tokens": 8040,
+      "first_completed_response_seconds": 30.786191797989886,
+      "chat_summary": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.2679704429829144,
+            "median": 0.2674355549970642,
+            "stdev": 0.0009188823101986668,
+            "min": 0.26707567897392437,
+            "max": 0.2695166309713386
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052188914611178916,
+            "median": 0.05214311397867277,
+            "stdev": 0.0002821938488770994,
+            "min": 0.051957880961708724,
+            "max": 0.052852457971312106
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.05552253025234677,
+            "median": 0.05523489249753766,
+            "stdev": 0.0007611204795142852,
+            "min": 0.05511853197822347,
+            "max": 0.05738140898756683
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.05140496288368013,
+            "median": 0.05112236403510906,
+            "stdev": 0.0007406246139312306,
+            "min": 0.050927490985486656,
+            "max": 0.0531931669684127
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.2319251203807653,
+            "median": 0.23190135951153934,
+            "stdev": 0.0006661013743077542,
+            "min": 0.2311469439882785,
+            "max": 0.2331033839727752
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052222637241357006,
+            "median": 0.05217254348099232,
+            "stdev": 0.0003503924347518428,
+            "min": 0.05174426099983975,
+            "max": 0.05292295396793634
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ],
+      "note": "Validation run; does not replace the paired performance trials."
+    },
+    "stock": {
+      "protocol_passed": 8,
+      "protocol_total": 8,
+      "near_context_input_tokens": 8040,
+      "first_completed_response_seconds": 29.002922783955,
+      "chat_summary": [
+        {
+          "prompt_index": 0,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.837955816743488,
+            "median": 0.8372474139905535,
+            "stdev": 0.004287946305249214,
+            "min": 0.8334886389784515,
+            "max": 0.8465237210039049
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.052031368875759654,
+            "median": 0.05155834250035696,
+            "stdev": 0.0032253769945130117,
+            "min": 0.048064007016364485,
+            "max": 0.058651224011555314
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 48,
+            "median": 48.0,
+            "stdev": 0.0,
+            "min": 48,
+            "max": 48
+          }
+        },
+        {
+          "prompt_index": 1,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.06158386812603567,
+            "median": 0.060189488489413634,
+            "stdev": 0.004136158955049406,
+            "min": 0.0596824079984799,
+            "max": 0.07180658599827439
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.047594115261745173,
+            "median": 0.04612293350510299,
+            "stdev": 0.004171528799836322,
+            "min": 0.04588303598575294,
+            "max": 0.05790320801315829
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 2,
+            "median": 2.0,
+            "stdev": 0.0,
+            "min": 2,
+            "max": 2
+          }
+        },
+        {
+          "prompt_index": 2,
+          "n": 8,
+          "no_final_answer": 0,
+          "e2e_s": {
+            "n": 8,
+            "mean": 0.5644432064946159,
+            "median": 0.6954027189931367,
+            "stdev": 0.1901898640929199,
+            "min": 0.33438505500089377,
+            "max": 0.7117888880311511
+          },
+          "first_answer_s": {
+            "n": 8,
+            "mean": 0.04756168375752168,
+            "median": 0.046026488998904824,
+            "stdev": 0.004698867416568372,
+            "min": 0.04509151302045211,
+            "max": 0.05915420898236334
+          },
+          "completion_tokens": {
+            "n": 8,
+            "mean": 40,
+            "median": 40.0,
+            "stdev": 0.0,
+            "min": 40,
+            "max": 40
+          }
+        }
+      ],
+      "note": "Validation run; does not replace the paired performance trials."
+    }
+  },
+  "studio_final_smoke": [
+    {
+      "label": "initial",
+      "seconds": 29.37702676601475,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 27,
+          "total_tokens": 30,
+          "completion_tokens": 3
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "Mercury",
+      "container": "719bca08b4f9ce71b91fabce9cf1548521f91defdff6402eccd639646f4033ad",
+      "job": "ae07942aa9f44c2e80b407e0a1638b20"
+    },
+    {
+      "label": "warm",
+      "seconds": 0.6145564269972965,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 32,
+          "total_tokens": 38,
+          "completion_tokens": 6
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "red, green, blue",
+      "container": "719bca08b4f9ce71b91fabce9cf1548521f91defdff6402eccd639646f4033ad",
+      "job": "73e93f2b7f0b4b8cbbd0b6888ed36471"
+    },
+    {
+      "label": "unload",
+      "seconds": 1.0114626979921013
+    },
+    {
+      "label": "reload",
+      "seconds": 28.381419859011658,
+      "result": {
+        "format": "Website plan",
+        "context": "",
+        "text_only": true,
+        "finish_reason": "stop",
+        "usage": {
+          "prompt_tokens": 24,
+          "total_tokens": 46,
+          "completion_tokens": 22
+        },
+        "reasoning_effort": null,
+        "reasoning_observed": false
+      },
+      "content": "The sky appears blue because our atmosphere scatters shorter blue wavelengths of light more effectively than longer red wavelengths.",
+      "container": "1b477132da038e2bf6dcf81870acc5e517ab8f611ad22882dc9686146e69a5d5",
+      "job": "549c31c8e63f4a1ba290b9f623dba8bb"
+    }
+  ]
+}

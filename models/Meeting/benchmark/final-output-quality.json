@@ -1,0 +1,296 @@
+{
+  "reference_sha256": "2b5205c0ca35b8fa01c20e19997308b9cff54817cf609f2ce180e1321ba82783",
+  "runs": [
+    {
+      "run": "paiton-0",
+      "compiler_enabled": true,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "paiton-1",
+      "compiler_enabled": true,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "paiton-2",
+      "compiler_enabled": true,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "paiton-3",
+      "compiler_enabled": true,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "paiton-4",
+      "compiler_enabled": true,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "stock-0",
+      "compiler_enabled": false,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [
+        {
+          "category": "decisions",
+          "references_exist": true,
+          "quote_found": true
+        }
+      ],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "stock-1",
+      "compiler_enabled": false,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [
+        {
+          "category": "decisions",
+          "references_exist": true,
+          "quote_found": true
+        }
+      ],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "stock-2",
+      "compiler_enabled": false,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [
+        {
+          "category": "decisions",
+          "references_exist": true,
+          "quote_found": true
+        }
+      ],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "stock-3",
+      "compiler_enabled": false,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [
+        {
+          "category": "decisions",
+          "references_exist": true,
+          "quote_found": true
+        }
+      ],
+      "speaker_turns_exact_match_baseline": true
+    },
+    {
+      "run": "stock-4",
+      "compiler_enabled": false,
+      "wer": 0.20436246523203044,
+      "cer": 0.15775006510228293,
+      "text_sha256": "a75131337b3831f3717b5ddd3de4d8eb211d60c3d2d70305a7ef7ae082301a6c",
+      "word_objects": 5977,
+      "lexically_matched_words": 5521,
+      "start_seconds": {
+        "median": 0.07999999999992724,
+        "p90": 0.21000000000003638,
+        "p95": 0.2699999999999818,
+        "maximum": 19.96
+      },
+      "end_seconds": {
+        "median": 0.08999999999991815,
+        "p90": 0.30999999999994543,
+        "p95": 0.4399999999998272,
+        "maximum": 21.15
+      },
+      "reference_words_near_boundaries": 283,
+      "deleted_words_near_boundaries": 41,
+      "inserted_words_near_boundaries": 4,
+      "summary_reference_checks": [
+        {
+          "category": "decisions",
+          "references_exist": true,
+          "quote_found": true
+        }
+      ],
+      "speaker_turns_exact_match_baseline": true
+    }
+  ],
+  "protocol": "WER/CER: lowercase, remove underscores, punctuation to spaces. Timestamp errors: exact lexical matches to original manual word times. Boundary region +/-0.5s around 28+26*n; diagnostic counts do not establish chunk-caused errors. References/quotes are mechanical checks, not semantic factuality or decision/action coverage. Exact speaker-turn equality only permits reusing a separately established score with that same baseline/protocol."
+}

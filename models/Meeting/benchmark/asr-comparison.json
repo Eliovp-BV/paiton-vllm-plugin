@@ -1,0 +1,29 @@
+{
+  "stock": {
+    "sample_count": 3,
+    "median_seconds": 87.44390656601172,
+    "minimum_seconds": 87.06835091207176,
+    "maximum_seconds": 88.72591411496978,
+    "stddev_seconds": 0.8691088516782831,
+    "rtf": 0.03728166853850599,
+    "audio_hours_per_wall_hour": 26.82283382695601,
+    "wer": 0.20421607378129117,
+    "cer": 0.15743178727467377,
+    "repeat_text_identical": true
+  },
+  "paiton": {
+    "sample_count": 3,
+    "median_seconds": 77.32047529495321,
+    "minimum_seconds": 77.12922961602453,
+    "maximum_seconds": 77.88621949090157,
+    "stddev_seconds": 0.3936316119640487,
+    "rtf": 0.03296554836568371,
+    "audio_hours_per_wall_hour": 30.334699393048,
+    "wer": 0.20436246523203044,
+    "cer": 0.15775006510228293,
+    "repeat_text_identical": true
+  },
+  "paiton_vs_stock_output_wer": 0.0003341687552213868,
+  "wall_time_reduction": 0.11577057417278458,
+  "notes": "ASR stage only, same FP16 Parakeet checkpoint/SDPA/VAD/chunking/timestamps and generation budget; compiler changes decoder LSTM only. Cold startup differs due cache state and is not used for acceleration claim. AMI reference WER is single-stream ordered and affected by overlap/unannotated room speech."
+}

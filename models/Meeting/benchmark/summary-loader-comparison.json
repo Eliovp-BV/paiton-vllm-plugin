@@ -1,0 +1,275 @@
+{
+  "scenario": "Same native vLLM BF16 Granite helper, persistent caches, separate fresh processes, alternating prefetch/lazy x3. Fixed 128-token generation x3 per engine. No cache clearing.",
+  "aggregate": {
+    "lazy": {
+      "loading_seconds": {
+        "n": 3,
+        "median": 41.09686892200261,
+        "minimum": 37.44868769205641,
+        "maximum": 42.821991838980466,
+        "sample_stddev": 2.7434064233043447
+      },
+      "weight_loading_seconds": {
+        "n": 3,
+        "median": 12.17,
+        "minimum": 8.92,
+        "maximum": 12.45,
+        "sample_stddev": 1.962218132624403
+      }
+    },
+    "prefetch": {
+      "loading_seconds": {
+        "n": 3,
+        "median": 34.40995437500533,
+        "minimum": 34.25130941497628,
+        "maximum": 35.88417724194005,
+        "sample_stddev": 0.9004405056294443
+      },
+      "weight_loading_seconds": {
+        "n": 3,
+        "median": 5.73,
+        "minimum": 3.52,
+        "maximum": 6.65,
+        "sample_stddev": 1.608695123384167
+      }
+    }
+  },
+  "generated_token_hashes_identical": true,
+  "runs": [
+    {
+      "load_strategy": "lazy",
+      "maxrss_kib": 1414644,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 37.44868769205641,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.6491977280238643,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.6220403539482504,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.617952103028074,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 1,
+      "weight_loading_seconds": 8.92
+    },
+    {
+      "load_strategy": "lazy",
+      "maxrss_kib": 1419060,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 41.09686892200261,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.6523458949523047,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.6288797649322078,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.6281936740269884,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 2,
+      "weight_loading_seconds": 12.17
+    },
+    {
+      "load_strategy": "lazy",
+      "maxrss_kib": 1409024,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 42.821991838980466,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.646133244037628,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.618237640010193,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.618119977065362,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 3,
+      "weight_loading_seconds": 12.45
+    },
+    {
+      "load_strategy": "prefetch",
+      "maxrss_kib": 1419768,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 34.25130941497628,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.647786121000536,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.6271618030732498,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.6289016670780256,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 1,
+      "weight_loading_seconds": 3.52
+    },
+    {
+      "load_strategy": "prefetch",
+      "maxrss_kib": 1417404,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 34.40995437500533,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.646352284005843,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.61766421305947,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.6168464730726555,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 2,
+      "weight_loading_seconds": 6.65
+    },
+    {
+      "load_strategy": "prefetch",
+      "maxrss_kib": 1408156,
+      "status": "executed",
+      "backend": "vllm-native-GraniteForCausalLM",
+      "attention": "TRITON_ATTN",
+      "enforce_eager": false,
+      "loading_seconds": 35.88417724194005,
+      "runs": [
+        {
+          "repeat": 0,
+          "seconds": 2.6482398870866746,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 1,
+          "seconds": 2.6222399990074337,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        },
+        {
+          "repeat": 2,
+          "seconds": 2.623320922954008,
+          "prompt_tokens": 4153,
+          "output_tokens": 128,
+          "finish_reason": "length",
+          "token_sha256": "a7de7ca076ec2ea07b23060025549ed51146567dd76d1644abaf081e07690368"
+        }
+      ],
+      "note": "Fixed-length throughput probe, not a completed or quality-qualified summary. Same checkpoint/BF16/seed/sampling as HF helper; no compiler hooks enabled.",
+      "repeat": 3,
+      "weight_loading_seconds": 5.73
+    }
+  ],
+  "limitations": [
+    "Short fixed-token probe; not a complete summary or end-to-end result.",
+    "Caches were not cleared; order and host filesystem caching can influence loading.",
+    "Prefetch is a native loader improvement applied equally to stock and Paiton, not compiler acceleration.",
+    "maxrss_kib in raw probe rows covers the parent process only, not total worker or driver memory."
+  ],
+  "source_image": "sha256:c0d6cbeb63832faa6faab01b4dbe1b37dd50878fd8c138090192da89a8a70d79"
+}

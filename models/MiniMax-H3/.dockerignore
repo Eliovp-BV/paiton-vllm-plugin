@@ -1,0 +1,6 @@
+outputs
+paiton-videos
+paiton-h3-data
+**/__pycache__
+**/*.pyc
+.git

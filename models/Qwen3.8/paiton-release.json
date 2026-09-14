@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "release_id": "paiton-qwen38-qronos-w4a16-gfx1201-v1.3.0",
+  "status": "released",
+  "base_model": {
+    "repo_id": "amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16",
+    "revision": "649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2",
+    "checkpoint": {
+      "file": "model.safetensors",
+      "size_bytes": 19893384832,
+      "sha256": "32190ba51af3e048f927b446f251a171e475cc91456a831e374709e74a8f0454"
+    }
+  },
+  "files": {
+    "artifact": {
+      "file": "Qwen3.8-27B-Quark-Qronos-INT4-W4A16_gfx1201_tp1_mt8192_ctx8192.so",
+      "size_bytes": 5834720,
+      "sha256": "be534b72dc47094e1d067594e8642174909f7ab223676daa29d0f9a95c5b55b3"
+    },
+    "artifact_manifest": {
+      "file": "Qwen3.8-27B-Quark-Qronos-INT4-W4A16_gfx1201_tp1_mt8192_ctx8192.manifest.json",
+      "size_bytes": 963895,
+      "sha256": "18bd30d71285356472f7482ed7ec45dbba6f733ad902f0059ad3e1364edb2f23"
+    },
+    "config": {
+      "file": "config.json",
+      "size_bytes": 16298,
+      "sha256": "4bb0ded506a18ccadc84b4c97426df66042309042a23d63109191fdff8434c2e"
+    },
+    "lm_head_artifact": {
+      "file": "benchmark_w4a16_n248320_k5120_gfx1201.so",
+      "size_bytes": 385736,
+      "sha256": "6c5d36808b4785bd0cfb6f7d7f76f54b8e3498b5d9e92eb79a5fba5ecf866ae9"
+    },
+    "lm_head_artifact_manifest": {
+      "file": "benchmark_w4a16_n248320_k5120_gfx1201.manifest.json",
+      "size_bytes": 2501,
+      "sha256": "f35ae96417046b7a3c5fc524ae5cbf1f95af93bcc52519dc84690238673d97fa"
+    }
+  },
+  "contract": {
+    "gpu_arch": "gfx1201",
+    "gpu_name": "AMD Radeon AI PRO R9700",
+    "compute_units": 32,
+    "rocm_version": "7.14.60850",
+    "tensor_parallel_size": 1,
+    "max_batch_size": 1,
+    "max_model_len": 8192,
+    "scope": "text-only",
+    "quantization": "Quark Qronos W4A16 INT4 group-128 checkpoint with fitted decode-only INT3 MLP shadows",
+    "optimization": "O2 full-and-piecewise CUDA graph, fitted INT3 MLP decode, BF16 kernel scales, merged projections, fused MLP, decode attention AOT, tiled GDN, W4 LM head"
+  },
+  "distribution": {
+    "source_repository": "https://github.com/Eliovp-BV/paiton-vllm-plugin",
+    "source_ref": "refs/tags/paiton-qwen38-qronos-w4a16-gfx1201-v1.3.0",
+    "release_asset_base_url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/paiton-qwen38-qronos-w4a16-gfx1201-v1.3.0",
+    "runtime_image": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-qronos-rdna4-v1.3.0"
+  }
+}

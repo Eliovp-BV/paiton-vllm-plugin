@@ -1,0 +1,155 @@
+[
+  {
+    "file": "base-480-2-image-paiton.mp4",
+    "width": 480,
+    "height": 832,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "base-480-2-image-stock.mp4",
+    "width": 480,
+    "height": 832,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "base-480-2-paiton.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "base-480-2-stock.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "base-480-5-image-paiton.mp4",
+    "width": 480,
+    "height": 832,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  },
+  {
+    "file": "base-480-5-image-stock.mp4",
+    "width": 480,
+    "height": 832,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  },
+  {
+    "file": "candidate-stock-a14b-sdnq-w4a8-seko4.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 3.0625,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "candidate-stock-a14b-sdnq4-seko4.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 3.0625,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "comparison-demo.mp4",
+    "width": 1280,
+    "height": 392,
+    "duration": 9.125,
+    "ended": true,
+    "frames": 219,
+    "dropped": 0
+  },
+  {
+    "file": "fast-480-2-paiton.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "fast-480-2-stock.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "fast-480-5-paiton.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  },
+  {
+    "file": "fast-480-5-stock.mp4",
+    "width": 832,
+    "height": 480,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  },
+  {
+    "file": "fast-720-2-person-paiton.mp4",
+    "width": 1280,
+    "height": 704,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "fast-720-2-person-stock.mp4",
+    "width": 1280,
+    "height": 704,
+    "duration": 2.041667,
+    "ended": true,
+    "frames": 49,
+    "dropped": 0
+  },
+  {
+    "file": "fast-720-5-paiton.mp4",
+    "width": 1280,
+    "height": 704,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  },
+  {
+    "file": "fast-720-5-stock.mp4",
+    "width": 1280,
+    "height": 704,
+    "duration": 5.041667,
+    "ended": true,
+    "frames": 121,
+    "dropped": 0
+  }
+]

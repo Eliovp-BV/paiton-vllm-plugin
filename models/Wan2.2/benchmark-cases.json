@@ -1,0 +1,16 @@
+{
+  "fox": {
+    "seed": 1201,
+    "prompt": "A small red fox walks across a sunlit woodland clearing, pauses and turns its head toward the camera. Detailed natural fur, coherent anatomy, smooth continuous motion. The camera slowly tracks right."
+  },
+  "person": {
+    "seed": 2702,
+    "prompt": "A woman in a yellow raincoat walks along a wet city sidewalk, stops beside a flower stall and smiles at the flowers. Raindrops glisten on the pavement. Natural human movement, consistent face and clothing, a steady medium-wide camera shot."
+  },
+  "image": {
+    "seed": 1201,
+    "input": "assets/wan-official-example.jpg",
+    "prompt": "The cat wearing sunglasses sits in the boat and slowly turns its head. Gentle water ripples. Preserve the cat, sunglasses and boat composition. Smooth continuous motion."
+  },
+  "base_negative_prompt": "Overexposed, static, blurry details, subtitles, painting, still image, gray cast, worst quality, low quality, JPEG artifacts, deformed, disfigured, extra limbs, fused fingers, cluttered background, three legs, backwards walking."
+}

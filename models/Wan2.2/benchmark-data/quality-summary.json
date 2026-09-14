@@ -1,0 +1,79 @@
+[
+  {
+    "decoded_frames": 49,
+    "mse_8bit": 9.433636178775709,
+    "psnr_db": 38.384012378025055,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "base-480-2-image",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 49,
+    "mse_8bit": 12.333124876022339,
+    "psnr_db": 37.220072320036834,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "base-480-2",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 121,
+    "mse_8bit": 9.751397678674746,
+    "psnr_db": 38.24013492796804,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "base-480-5-image",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 49,
+    "mse_8bit": 6.754450958602282,
+    "psnr_db": 39.83490308078363,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "fast-480-2",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 121,
+    "mse_8bit": 6.875487813279649,
+    "psnr_db": 39.75776844241992,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "fast-480-5",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 49,
+    "mse_8bit": 5.495067873779608,
+    "psnr_db": 40.73107299772477,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "fast-720-2-person",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  },
+  {
+    "decoded_frames": 121,
+    "mse_8bit": 6.16097135189151,
+    "psnr_db": 40.23431171510366,
+    "pixel_exact": false,
+    "interpretation": "Encoded pixel similarity only; inspect prompt adherence, motion and subject consistency separately.",
+    "all_measured_latents_equal": true,
+    "setting": "fast-720-5",
+    "latents_equal": true,
+    "latent_max_abs_difference": 0.0
+  }
+]

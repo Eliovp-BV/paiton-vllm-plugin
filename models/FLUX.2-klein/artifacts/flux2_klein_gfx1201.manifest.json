@@ -1,0 +1,44 @@
+{
+  "artifact": {
+    "filename": "flux2_klein_gfx1201.so",
+    "sha256": "8267d1d436bb430727512a98b25dabe8b983724aba9f86dfc72ff8c4ea89e9c9",
+    "size_bytes": 305136
+  },
+  "attention_abi_version": 2,
+  "binary_abi_version": 1,
+  "capability_version": 1,
+  "manifest_version": 1,
+  "model": {
+    "repository": "Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic",
+    "revision": "45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd",
+    "scope": "diffusion_attention"
+  },
+  "parallelism": {
+    "tp_size": 1
+  },
+  "target": {
+    "arch": "gfx1201",
+    "capabilities": [
+      "bf16",
+      "fp16",
+      "fp32",
+      "gfx12",
+      "int8",
+      "ocp_fp8",
+      "wave32",
+      "wmma"
+    ],
+    "family": "rdna4",
+    "fp8_format": "ocp",
+    "matrix_isas": [
+      "wmma"
+    ],
+    "max_lds_bytes": 65536,
+    "wave_size": 32
+  },
+  "toolchain": {
+    "hip": "7.14.60850",
+    "torch": "2.12.0+rocm7.14.0",
+    "triton": "3.7.1"
+  }
+}

@@ -1,0 +1,23 @@
+# syntax=docker/dockerfile:1.7
+# Local assembly only. The ComfyUI source/dependency stage caches independently
+# of changes to the separately prepared Paiton artifact image.
+ARG PAITON_WAN_BASE_IMAGE=paiton-wan22-artifacts:local-v1
+FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9 AS comfy_deps
+COPY requirements.lock.txt /tmp/wan-requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip python3 -m pip install --no-deps --target /opt/wan-deps -r /tmp/wan-requirements.txt
+RUN git init /opt/comfyui \
+    && git -C /opt/comfyui remote add origin https://github.com/Comfy-Org/ComfyUI.git \
+    && git -C /opt/comfyui fetch --depth 1 origin efa6c8f804bff78b46a0fd458ebd2e47bba07a30 \
+    && git -C /opt/comfyui checkout --detach FETCH_HEAD \
+    && test "$(git -C /opt/comfyui rev-parse HEAD)" = efa6c8f804bff78b46a0fd458ebd2e47bba07a30 \
+    && rm -rf /opt/comfyui/.git
+RUN git clone --depth 1 --branch v1.51.10 https://github.com/Comfy-Org/ComfyUI_frontend.git /opt/comfyui-frontend-source \
+    && test "$(git -C /opt/comfyui-frontend-source rev-parse HEAD)" = e7d1c7fc6823e330fdab524610b0000394cb1dbc \
+    && rm -rf /opt/comfyui-frontend-source/.git
+FROM ${PAITON_WAN_BASE_IMAGE}
+LABEL dev.paiton.distribution="local-assembly-only"
+COPY --from=comfy_deps /opt/wan-deps /opt/wan-deps
+COPY --from=comfy_deps /opt/comfyui /opt/comfyui
+COPY --from=comfy_deps /opt/comfyui-frontend-source /opt/comfyui-frontend-source
+COPY comfyui/paiton_wan_nodes /opt/comfyui/custom_nodes/paiton_wan_nodes
+COPY comfyui/workflows/base.json comfyui/workflows/fast.json /opt/comfyui/custom_nodes/paiton_wan_nodes/example_workflows/

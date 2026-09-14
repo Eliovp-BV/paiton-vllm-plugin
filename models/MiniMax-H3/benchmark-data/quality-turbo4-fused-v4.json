@@ -1,0 +1,59 @@
+{
+  "preset": "turbo4",
+  "quality_scope": "Three fixed stock clips. Every matched Paiton file is byte-identical. These checks do not establish full-precision quality parity.",
+  "clips": [
+    {
+      "case": "fox",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 0.056413937360048294,
+      "audio_rms": 0.010378457300153443,
+      "audio_fraction_at_or_above_one": 0.0
+    },
+    {
+      "case": "barista",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 0.37296199798583984,
+      "audio_rms": 0.021237892528660516,
+      "audio_fraction_at_or_above_one": 0.0
+    },
+    {
+      "case": "pour",
+      "video_frames": 124,
+      "duplicate_frame_pairs": [],
+      "audio_shape": [
+        2,
+        165888
+      ],
+      "audio_sample_rates": [
+        32000
+      ],
+      "audio_finite": true,
+      "audio_peak": 1.0005277395248413,
+      "audio_rms": 0.03604781942728985,
+      "audio_fraction_at_or_above_one": 6.028163580246913e-06
+    }
+  ],
+  "human_listening": {
+    "fox": "Natural ambience confirmed",
+    "barista": "Intelligible dialogue and lip synchronization confirmed: Yes perfect"
+  },
+  "visual_limits": "Two bottles instead of the requested one in pouring"
+}
