@@ -5,21 +5,21 @@ existing FP16 prefill buffers. Original packed weights, FP16 operands,
 accumulation, Q8 decode arithmetic, GDN and vision remain unchanged from
 [rc1](../native-v1.1.0-rc1/README.md). No new compiler dependencies are added.
 
-Across36 matched text requests, all2,322 output token events and log probabilities
-matched rc1 exactly. All24 matched image requests preserved streamed text and
-token usage. The fixed text suite retains10/11 (same code-trace failure);
-PNG5/5, JPEG, state/queue/cancellation, streaming and context checks pass.
-Prefill held-out perplexity remains6.86244447185. These are narrow qualification
+Across 36 matched text requests, all 2,322 output token events and log probabilities
+matched rc1 exactly. All 24 matched image requests preserved streamed text and
+token usage. The fixed text suite retains 10/11 (same code-trace failure);
+PNG 5/5, JPEG, state/queue/cancellation, streaming and context checks pass.
+Prefill held-out perplexity remains 6.86244447185. These are narrow qualification
 checks, not a broad capability benchmark.
 
-Matched128-output-token HTTP medians are4.932/5.628/9.168
-seconds for128/1024/4096 input tokens. Long text remains slightly behind the
+Matched 128-output-token HTTP medians are 4.932/5.628/9.168
+seconds for 128 / 1,024 / 4,096 input tokens. Long text remains slightly behind the
 previous matched llama.cpp measurement. Full raw reports stay outside tracked
 product source.
 
-The supported contract remains R9700/gfx1201, ROCm7.14,8K total context,1024-token
-prefill chunks,2GiB BF16 KV,one active sequence, queued HTTP requests, text and
-one PNG/JPEG image (up to4096 patches). MTP, prefix caching and video are off.
+The supported contract remains R9700/gfx1201, ROCm 7.14, 8K total context, 1,024-token
+prefill chunks, 2 GiB BF16 KV, one active sequence, queued HTTP requests, text and
+one PNG/JPEG image (up to 4,096 patches). MTP, prefix caching and video are off.
 Native MTP draft/verification and accepted-prefix KV/GDN rollback remain unfinished.
 
 ## Launch and rollback
@@ -32,7 +32,7 @@ PAITON_NEO_IMAGE=sha256:7c2fdcf5055f5d8beb8b96c7ac0c30c9dc4e5f506443eba0236faf37
   ./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
 ```
 
-Endpoint`http://127.0.0.1:8000/v1`, model`qwen38-neo`; existing pinned weight
+Endpoint `http://127.0.0.1:8000/v1`, model `qwen38-neo`; existing pinned weight
 cache is reused. No compiler checkout is required. [candidate.json](candidate.json)
 pins source revisions, hashes and limits. Artifact checksums, local integrity
 signature, all image layers and clean offline startup were verified.
