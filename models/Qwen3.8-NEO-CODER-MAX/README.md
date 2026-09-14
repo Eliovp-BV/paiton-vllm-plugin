@@ -4,6 +4,10 @@ Published and qualified for text and one still image on R9700/gfx1201.
 The immutable GHCR image passed an offline start with cached weights, text
 generation and PNG/JPEG image requests without compiler or plugin checkouts.
 
+A separately identified [native v1.1.0-rc1 local candidate](native-v1.1.0-rc1/README.md)
+adds faster decode and prefill. It is not published and does not change the
+default image described below.
+
 This profile runs the requested DavidAU fine-tune through vLLM's model loader,
 scheduler, sampling and streaming API, with the target model executing Paiton's
 native HIP artifacts. GGUF is the weight container; llama.cpp is a separate
