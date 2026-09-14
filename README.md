@@ -153,7 +153,7 @@ explicitly. This launcher does not require the proprietary compiler.
 
 [Setup and image API](models/Qwen3.8-NEO-CODER-MAX/README.md) ·
 [Initial/optimized Paiton and working llama.cpp comparison](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) ·
-[New native local candidate (unpublished)](models/Qwen3.8-NEO-CODER-MAX/native-v1.1.0-rc1/README.md)
+[New native local candidate (unpublished)](models/Qwen3.8-NEO-CODER-MAX/native-v1.1.0-rc4/README.md)
 
 </details>
 

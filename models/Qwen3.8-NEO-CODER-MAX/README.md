@@ -4,7 +4,7 @@ Published and qualified for text and one still image on R9700/gfx1201.
 The immutable GHCR image passed an offline start with cached weights, text
 generation and PNG/JPEG image requests without compiler or plugin checkouts.
 
-A separately identified [native v1.1.0-rc1 local candidate](native-v1.1.0-rc1/README.md)
+A separately identified [native v1.1.0-rc4 local candidate](native-v1.1.0-rc4/README.md)
 adds faster decode and prefill. It is not published and does not change the
 default image described below.
 
