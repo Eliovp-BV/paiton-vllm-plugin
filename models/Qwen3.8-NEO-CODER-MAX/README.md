@@ -1,17 +1,19 @@
 # Qwen3.8 NEO CODER MAX on RDNA4
 
-Published and qualified for text and one still image on R9700/gfx1201.
-The immutable GHCR image passed an offline start with cached weights, text
-generation and PNG/JPEG image requests without compiler or plugin checkouts.
+**GGUF weights, vLLM serving, native Paiton execution.** This release runs the
+DavidAU Qwen3.8 NEO CODER MAX mixed Q4_K_M fine-tune through vLLM's actual model
+loader, scheduler, sampling and streaming API, with native HIP language and
+image execution. llama.cpp is a separate benchmark reference, not a dependency
+of this serving path.
 
-A separately identified [native v1.1.0-rc4 local candidate](native-v1.1.0-rc4/README.md)
-adds faster decode and prefill. It is not published and does not change the
-default image described below.
+Against fresh working llama.cpp measurements, complete streaming request medians
+are **6.4%, 5.1% and 0.8% lower** at 128, 1,024 and 4,096 input tokens. This is
+near parity on the long workload; some prefill-only cases still favor llama.cpp.
+[Full results and arithmetic distinctions](BENCHMARKS.md) ·
+[Why native GGUF through vLLM matters](NATIVE_GGUF.md).
 
-This profile runs the requested DavidAU fine-tune through vLLM's model loader,
-scheduler, sampling and streaming API, with the target model executing Paiton's
-native HIP artifacts. GGUF is the weight container; llama.cpp is a separate
-reference engine and is not a serving dependency.
+Support is qualified for this pinned model and quantization, including one
+PNG/JPEG image. This does not imply support for every GGUF architecture or file.
 
 ## Model and precision
 
@@ -36,8 +38,8 @@ Paiton loads the original packed tensor bytes with bounded host buffers. It does
 not expand the whole model to BF16, re-quantize the source checkpoint, apply AWQ
 packing, change the already-multiplicative normalization values, or reapply the
 stored GDN decay transform. Temporary prefill matrix operands use FP16 and
-accumulate in FP32. Decode consumes packed Q4/Q6 weights with vectorized FP32
-arithmetic. Small coefficients, activations and recurrent state remain FP32;
+accumulate in FP32. Large Q4 decode projections use the qualified native Q8_1 activation
+profile; small Q4 and Q6 operations retain floating arithmetic. Small coefficients, activations and recurrent state remain FP32;
 attention KV storage remains BF16. Attention uses two BF16 query components
 with FP32 softmax/value accumulation. These arithmetic choices are separate
 from the unchanged weight quantization.
@@ -51,7 +53,7 @@ from the unchanged weight quantization.
 | Container runtime | Pinned ROCm 7.14.60850 stack; no host-library injection |
 | vLLM revision | 39bd959b582c85e78e7e0326d49042ce7c3c07ed |
 | Parallelism | TP1; one active sequence; additional HTTP requests queue |
-| Context | 8,192 total tokens; prefill chunks up to 512 tokens |
+| Context | 8,192 total tokens; prefill chunks up to 2,048 tokens |
 | KV allocation | 2 GiB |
 | Execution | Native HIP decode graphs; eager prefill and vLLM scheduling |
 | API | Completions, chat, streaming, Qwen3 reasoning and Qwen3 Coder tool parsing |
@@ -118,28 +120,19 @@ decoded weight values, explicit operator error bounds, full logits cosine at
 least 0.9999 and maximum absolute difference at most 0.1, no lost baseline task
 passes, and held-out perplexity increase at most 1%.
 
-The native full-model logits have cosine 0.99999958 and maximum absolute error
-0.01401 against a precision-matched native reference. Standalone Paiton and
-actual vLLM logits are bit-for-bit equal for the fixed 128-token probe. Native
-graph replay, changed inputs, nonzero GDN state, poisoned cache padding,
-prefill/decode transitions, request isolation, cancellation, queued requests
-and the context boundary are tested. An 8,191-token prompt plus one output token
-succeeds; oversized prompts are rejected.
+The final prefill sweep compares 31,784,960 full-vocabulary logits exactly
+against the preceding qualified arithmetic profile. All 36 text API requests
+preserve 2,322 token events and log probabilities; all 24 image requests preserve
+streamed text and usage. Native graph replay, live state, request isolation,
+cancellation, queueing and the 8,192-token boundary pass.
 
-The fixed 11-task suite scores 10/11 in both the reference and Paiton. Both fail
-the same code-tracing question. The independent held-out evaluation contains
-770 predicted tokens of original prose/code: perplexity is 6.92827 for the
-unmodified reference and 6.86223 for Paiton. These are narrow reproducible tests,
-not a broad capability benchmark. Graph mode preserves the same likelihood.
-
-Unmodified llama.cpp uses different activation arithmetic: its default MMQ path
-quantizes activations. Its raw logits differ from Paiton beyond the above
-numerical tolerance (maximum difference about 0.34 in the probe). Forcing FP32
-matrix arithmetic in an isolated reference build resolves that discrepancy
-without changing the tolerance. Quality checks also compare against the
-unmodified engine. Cross-engine performance is therefore reported separately
-from comparisons of Paiton arithmetic profiles; it is not a claim of identical
-arithmetic or universally identical generation.
+The fixed suite remains 10/11 in both engines, with the same code-trace failure;
+five PNG fixtures and JPEG pass. Prefill held-out perplexity remains
+6.86244447185. The inherited Q8 decode evaluation is +0.1301% perplexity versus
+the older FP32 decode profile over 770 held-out predictions, below the preset
+1% bound. These narrow tests are not a broad accuracy claim. Original packed
+weights are retained; v1.1.0 is not claimed bit-equivalent to the older FP32
+activation profile or to llama.cpp's different activation arithmetic.
 
 The matched timing tables and arithmetic distinctions are recorded in
 [BENCHMARKS.md](BENCHMARKS.md).
@@ -179,13 +172,23 @@ a separately identified derivative; this package uses the native GGUF route.
 model and artifact hashes. Startup checks the payload inventory, native ABI,
 architecture, runtime versions and complete checkpoint SHA256. Only allowlisted
 binaries and sanitized metadata leave the private compiler. The image retains
-applicable [notices](THIRD_PARTY_NOTICES.md) and a dependency SBOM.
+applicable [notices](THIRD_PARTY_NOTICES.md) and a dependency SBOM. [Publication checks](PUBLICATION_CHECKLIST.md) and
+[evidence hashes](qualification-evidence.json) record the qualification.
 
-Published tag: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.0.0`.
+Published tag: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-neo-coder-max-q4km-rdna4-v1.1.0`.
 
-Immutable digest: `sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe`.
+Immutable digest: `sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d`.
 
-The new tag does not replace existing Qronos or other model releases. To roll
-back, stop only `paiton-qwen38-neo` and launch the previously selected model's
-existing launcher or immutable image. The NEO cache uses its own named volume;
-rollback does not require deleting weights or changing other services.
+The new tag preserves v1.0.0, Qronos and other model releases. To roll back,
+stop only the NEO container and select the previous immutable image:
+
+```bash
+docker stop paiton-qwen38-neo
+PAITON_NEO_IMAGE=ghcr.io/eliovp/paiton-vllm-plugin@sha256:2a8fed46bc19fe8ca7164139c66f78e80f841120d42112b2968ba060c319fdbe \
+  ./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
+```
+
+The launcher uses `--rm`; if a separately created stopped container retains the
+same name, remove only that stopped NEO container before relaunching. The named
+cache volume is retained. [v1.0.0 metadata](paiton-release-v1.0.0.json) and
+[historical results](BENCHMARKS-v1.0.0.md) remain available.
