@@ -49,7 +49,7 @@ def verify_payload(directory: Path) -> dict:
 
 def serving_command(directory: Path, host: str, port: int, *, multimodal: bool = False,
                     prefill_chunk_tokens: int = 512) -> list[str]:
-    if prefill_chunk_tokens not in (512, 1024):
+    if prefill_chunk_tokens not in (512, 1024, 2048):
         raise ReleaseModelError('Unsupported GGUF prefill chunk size')
     command = ['vllm', 'serve', str(directory), '--served-model-name', 'qwen38-neo',
         '--dtype', 'bfloat16', '--tensor-parallel-size', '1',
@@ -71,7 +71,7 @@ def main() -> None:
     parser.add_argument('--cache-dir', type=Path, default=Path('/models/cache'))
     parser.add_argument('--checkpoint', type=Path, default=os.getenv('PAITON_GGUF_CHECKPOINT'))
     parser.add_argument('--projector', type=Path, default=os.getenv('PAITON_GGUF_PROJECTOR'))
-    parser.add_argument('--prefill-chunk-tokens', type=int, choices=(512, 1024),
+    parser.add_argument('--prefill-chunk-tokens', type=int, choices=(512, 1024, 2048),
                         default=int(os.getenv('PAITON_GGUF_PREFILL_TOKENS', '512')))
     parser.add_argument('--host', default='0.0.0.0')
     parser.add_argument('--port', type=int, default=8000)
