@@ -30,9 +30,8 @@ concurrent requests; Paiton's latency advantage appears under concurrent load.
 
 ## Run the release
 
-**Release preparation: the immutable GHCR digest is pending in
-[runtime.lock.json](runtime.lock.json).** The tag below is the planned v1.0.0
-release; the launcher will use the immutable digest once it is finalized.
+Release **v1.0.0** is available on GHCR. The launcher pins the qualified image
+by digest in [runtime.lock.json](runtime.lock.json).
 
 Use Linux x86-64, Docker, and one Radeon AI PRO R9700 with working AMD GPU device
 access. The dedicated image includes the pinned official vLLM 0.28 ROCm runtime,
@@ -43,10 +42,12 @@ docker run -d --name paiton-qwen38-mxfp4 \
   --device /dev/kfd --device /dev/dri --group-add video --shm-size 2g \
   -p 127.0.0.1:8000:8000 \
   -v paiton-qwen38-mxfp4-cache:/models/cache \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-mxfp4-dflash2-rdna4-v1.0.0
+  ghcr.io/eliovp/paiton-vllm-plugin@sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59
 ```
 
-The first start downloads approximately 21.9 GB of target and draft weights
+The first image pull downloads approximately 11.4 GB of runtime layers when
+those layers are not already cached. The first start then downloads approximately
+21.9 GB of target and draft weights
 from their original repositories and verifies the locked file hashes. Later
 starts reuse the cache. Follow `docker logs -f paiton-qwen38-mxfp4` until startup
 completes, then check `curl --fail http://127.0.0.1:8000/health`.
@@ -139,4 +140,24 @@ the adapted kernel techniques. [Third-party attribution and terms](THIRD_PARTY_N
 
 The ordinary CLI deployment check passes streaming, eight concurrent requests,
 and generation at the 8K context boundary followed by a fresh request.
-[Deployment check](deployment-check.json) · [Unchanged-vLLM audit](runtime-audit.json).
+[Deployment check](deployment-check.json) · [Unchanged-vLLM audit](runtime-audit.json) · [Published-image audit](release-audit.json).
+
+## Reproduce the image context
+
+The image can be rebuilt from the public adapter and the pinned native overlay.
+The context preparer verifies an explicit file allowlist; it does not require
+the private compiler. Download the companion release with the Hugging Face CLI,
+then prepare a new build directory:
+
+```bash
+hf download EliovpAI/Qwen3.8-27B-Quark-AWQ-MXFP4-DFlash2-Paiton-RDNA4 \
+  --revision v1.0.0 --local-dir qwen38-paiton-runtime
+python3 models/Qwen3.8-MXFP4-DFlash2/prepare_image_context.py \
+  --overlay qwen38-paiton-runtime/overlay --output qwen38-image-context
+docker build -t paiton-qwen38-mxfp4:local qwen38-image-context
+```
+
+Use this model's `runtime-pyproject.toml`, copied automatically by the preparer;
+the repository-wide package targets other runtime versions. The published
+container digest identifies the tested distribution; a local rebuild creates
+its own image identity.

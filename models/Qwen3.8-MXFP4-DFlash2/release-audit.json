@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "image_id": "sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59",
+  "benchmark_image": "sha256:7033a9f69757b03101b95de0bdaac1d45e78fab02578caa3650f33cc73aef00d",
+  "base_image": "docker.io/vllm/vllm-openai-rocm@sha256:e0a3b2bd3fe7ec563916c3a5d949898d133458c18d6b2f460c906885cfb32032",
+  "vllm_tree_sha256": "46589e78e8fa00fb6c12b3c2c006b0ac2babd9acfccad8e7ad68bdd10d1e4801",
+  "unchanged_vllm_file_count": 2893,
+  "native_artifact_count": 16,
+  "native_binaries_identical_to_benchmarked": true,
+  "plugin_modules_identical_to_benchmarked": true,
+  "functional_native_metadata_identical": true,
+  "native_independent_load": true,
+  "frameworks_imported": false,
+  "separate_engine_packages": [],
+  "registry_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59",
+  "immutable_pull_same_image": true,
+  "anonymous_manifest_access": true,
+  "checkpoint_download": {
+    "status": "PASS",
+    "mode": "anonymous original-repository download into new cache directory",
+    "initially_empty": true,
+    "weights_unchanged": true,
+    "all_locked_files_sha256_verified": true,
+    "gpu_access": false
+  },
+  "deployment": {
+    "image": "sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59",
+    "scope": "Distribution entrypoint and offline cached snapshots; functional test, not benchmark",
+    "startup_seconds": 228.200622772,
+    "status": "PASS",
+    "requests": 12,
+    "streaming": true,
+    "concurrent_requests": 8,
+    "context_boundary_tokens": 8192,
+    "followup_after_boundary": true,
+    "private_audit_route_absent": true,
+    "network": "none",
+    "model_snapshots": "downloaded and SHA256 verified by entrypoint"
+  }
+}
