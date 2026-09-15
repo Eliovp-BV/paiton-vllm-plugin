@@ -1,0 +1,22 @@
+{
+  "stock-vllm-o2-bounded-403.json": {
+    "sha256": "dfc53a040353c9f86216e2e41a6c787f283498b22965776337258566fa749664",
+    "original_sha256": "9bfeee99ef0979825393b36e1b445bdd481548721036347cb1640a98679c1bc7"
+  },
+  "radiance-dflash2-final-bounded-493.json": {
+    "sha256": "067b1efa68eba7dd548292cfa237d80c592dbbcebc7d054f4830dfd9d08c1371",
+    "original_sha256": "63046590e282eced26fc95bb88a812d48b733e3b58f0a1d54c04633bf097fbb9"
+  },
+  "paiton-native-dispatch-bounded-492.json": {
+    "sha256": "9dc1897f047595753f34a46b674b18edbfabc8e94bda68e5c8ad470abf7d5e09",
+    "original_sha256": "00cc61a9be890461ea0d449f89b271a17379fe0c2245dd3b2ea9ae8f14835ad6"
+  },
+  "radiance-dflash2-final-full-495.json": {
+    "sha256": "6adcd5fa38f8b1ec31c5a14443ba3fc55932b1422c440f9bf3a25bb685b7b1a5",
+    "original_sha256": "dd6ea0113d26f759974b00a278507eeadf2cb9b68bdb067c9de314f4487e7ace"
+  },
+  "paiton-native-final-full-494.json": {
+    "sha256": "63d2f34eb1a96f0aec313bc660988cdf34a9f59d87219dceadac9ddea9429a4b",
+    "original_sha256": "2fd0dab1614efbfa5ff6d3f635990ebd384ccad75d3742d6900742ac1f3b12f3"
+  }
+}

@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "paiton-vllm-plugin-mxfp4"
+version = "1.0.0"
+description = "Paiton native MXFP4 and DFlash2 integration for official vLLM"
+requires-python = ">=3.12"
+dependencies = ["vllm==0.28.0"]
+[project.entry-points."vllm.general_plugins"]
+register_paiton_mxfp4 = "paiton_vllm_plugin.mxfp4_native:register_paiton_mxfp4"
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["paiton_vllm_plugin*"]

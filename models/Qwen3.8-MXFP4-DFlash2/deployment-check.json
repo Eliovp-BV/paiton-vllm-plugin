@@ -1,0 +1,10 @@
+{
+  "image": "sha256:7033a9f69757b03101b95de0bdaac1d45e78fab02578caa3650f33cc73aef00d",
+  "status": "PASS",
+  "requests": 12,
+  "private_audit_route_absent": true,
+  "context_boundary_tokens": 8192,
+  "followup_after_boundary": true,
+  "server_module": "vllm.entrypoints.openai.api_server",
+  "scope": "Integration validation; not an additional performance measurement"
+}

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "status": "qualified release payload; publication and immutable registry digest pending",
+  "image_id": "sha256:7033a9f69757b03101b95de0bdaac1d45e78fab02578caa3650f33cc73aef00d",
+  "base_image": "docker.io/vllm/vllm-openai-rocm@sha256:e0a3b2bd3fe7ec563916c3a5d949898d133458c18d6b2f460c906885cfb32032",
+  "vllm_version": "0.28.0+rocm723",
+  "arch": "gfx1201",
+  "gpu_count": 1,
+  "registry_image": null,
+  "evidence_runs": [
+    492,
+    493,
+    494,
+    495,
+    496
+  ],
+  "planned_registry_image": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-mxfp4-dflash2-rdna4-v1.0.0"
+}

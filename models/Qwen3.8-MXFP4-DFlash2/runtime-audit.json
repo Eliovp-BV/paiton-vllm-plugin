@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "image": "sha256:7033a9f69757b03101b95de0bdaac1d45e78fab02578caa3650f33cc73aef00d",
+  "base_image": "docker.io/vllm/vllm-openai-rocm@sha256:e0a3b2bd3fe7ec563916c3a5d949898d133458c18d6b2f460c906885cfb32032",
+  "unchanged_vllm_file_count": 2893,
+  "vllm_tree_sha256": "46589e78e8fa00fb6c12b3c2c006b0ac2babd9acfccad8e7ad68bdd10d1e4801",
+  "native_artifact_count": 16,
+  "native_independent_load": true,
+  "external_plugin_matches_allowlist": true,
+  "native_files_match_allowlist": true,
+  "separate_radiance_or_dflash_packages": [],
+  "gpu_access": false
+}
