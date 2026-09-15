@@ -54,6 +54,12 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    if os.environ.get("PAITON_EXPERIMENTAL_MXFP4_W4A8") == "1":
+        # Use upstream model classes and its ROCm platform in this isolated
+        # integration lane; no unrelated model/loader compatibility patches.
+        from .mxfp4_native import register_paiton_mxfp4
+        register_paiton_mxfp4()
+        return
     from .gguf_detokenizer import install_gguf_detokenizer_compat
     install_gguf_detokenizer_compat()
     from vllm import ModelRegistry

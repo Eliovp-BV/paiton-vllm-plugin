@@ -1,0 +1,61 @@
+matrix,metric,engine,value
+shared54,"Weighted serial decode, tok/s",Stock vLLM O2,4.466201806822936
+shared54,"Weighted serial decode, tok/s",Radiance + DFlash2,99.34761043676039
+shared54,"Weighted serial decode, tok/s",Paiton on stock vLLM + DFlash2,113.45751128591155
+shared54,"C1 aggregate throughput, tok/s",Stock vLLM O2,4.4559690479326886
+shared54,"C1 aggregate throughput, tok/s",Radiance + DFlash2,77.984757640807
+shared54,"C1 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,90.01037039547913
+shared54,"C2 aggregate throughput, tok/s",Stock vLLM O2,8.792193807217725
+shared54,"C2 aggregate throughput, tok/s",Radiance + DFlash2,151.17040794140584
+shared54,"C2 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,160.50604342977715
+shared54,"C4 aggregate throughput, tok/s",Stock vLLM O2,17.363205593994643
+shared54,"C4 aggregate throughput, tok/s",Radiance + DFlash2,189.23174007551663
+shared54,"C4 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,231.54857250902094
+shared54,"C8 aggregate throughput, tok/s",Stock vLLM O2,33.66741899960135
+shared54,"C8 aggregate throughput, tok/s",Radiance + DFlash2,175.5696638114419
+shared54,"C8 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,328.461746628702
+shared54,"Prefill ~1,556 input tokens, input tok/s",Stock vLLM O2,1435.8839750832617
+shared54,"Prefill ~1,556 input tokens, input tok/s",Radiance + DFlash2,2818.53319640956
+shared54,"Prefill ~1,556 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3186.9205732083274
+shared54,"Prefill ~3,024 input tokens, input tok/s",Stock vLLM O2,1385.8215032067394
+shared54,"Prefill ~3,024 input tokens, input tok/s",Radiance + DFlash2,2982.4516297885093
+shared54,"Prefill ~3,024 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3520.150375098724
+shared54,"Prefill ~5,226 input tokens, input tok/s",Stock vLLM O2,1188.4954352456275
+shared54,"Prefill ~5,226 input tokens, input tok/s",Radiance + DFlash2,2921.1644278169606
+shared54,"Prefill ~5,226 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3377.5134543285158
+shared54,"C1 median TTFT, ms",Stock vLLM O2,288.2377640053164
+shared54,"C1 median TTFT, ms",Radiance + DFlash2,95.33567447215319
+shared54,"C1 median TTFT, ms",Paiton on stock vLLM + DFlash2,103.19898600573651
+shared54,"C2 median TTFT, ms",Stock vLLM O2,538.1316814746242
+shared54,"C2 median TTFT, ms",Radiance + DFlash2,149.10923052229919
+shared54,"C2 median TTFT, ms",Paiton on stock vLLM + DFlash2,158.78061449620873
+shared54,"C4 median TTFT, ms",Stock vLLM O2,639.7258360229898
+shared54,"C4 median TTFT, ms",Radiance + DFlash2,264.53909050906077
+shared54,"C4 median TTFT, ms",Paiton on stock vLLM + DFlash2,179.98843351961114
+shared54,"C8 median TTFT, ms",Stock vLLM O2,885.5908154801
+shared54,"C8 median TTFT, ms",Radiance + DFlash2,1942.36024399288
+shared54,"C8 median TTFT, ms",Paiton on stock vLLM + DFlash2,423.08405399671756
+full188,"Weighted serial decode, tok/s",Radiance + DFlash2,86.04564005651311
+full188,"Weighted serial decode, tok/s",Paiton on stock vLLM + DFlash2,104.90398358987488
+full188,"C1 aggregate throughput, tok/s",Radiance + DFlash2,76.93686846927682
+full188,"C1 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,89.58797115835665
+full188,"C2 aggregate throughput, tok/s",Radiance + DFlash2,142.6636843775724
+full188,"C2 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,165.68772085357455
+full188,"C4 aggregate throughput, tok/s",Radiance + DFlash2,187.09243086501996
+full188,"C4 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,254.82999646964512
+full188,"C8 aggregate throughput, tok/s",Radiance + DFlash2,200.34115480063463
+full188,"C8 aggregate throughput, tok/s",Paiton on stock vLLM + DFlash2,314.53522591616917
+full188,"Prefill ~1,556 input tokens, input tok/s",Radiance + DFlash2,2828.4259910397914
+full188,"Prefill ~1,556 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3181.542585256021
+full188,"Prefill ~3,024 input tokens, input tok/s",Radiance + DFlash2,3002.6634411318455
+full188,"Prefill ~3,024 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3521.190533171103
+full188,"Prefill ~5,226 input tokens, input tok/s",Radiance + DFlash2,2925.7789936308964
+full188,"Prefill ~5,226 input tokens, input tok/s",Paiton on stock vLLM + DFlash2,3367.2206043815777
+full188,"C1 median TTFT, ms",Radiance + DFlash2,94.77360898745246
+full188,"C1 median TTFT, ms",Paiton on stock vLLM + DFlash2,104.96666800463572
+full188,"C2 median TTFT, ms",Radiance + DFlash2,148.58904801076278
+full188,"C2 median TTFT, ms",Paiton on stock vLLM + DFlash2,159.8577954864595
+full188,"C4 median TTFT, ms",Radiance + DFlash2,1626.8138125305995
+full188,"C4 median TTFT, ms",Paiton on stock vLLM + DFlash2,180.06365300971083
+full188,"C8 median TTFT, ms",Radiance + DFlash2,6585.518481006147
+full188,"C8 median TTFT, ms",Paiton on stock vLLM + DFlash2,194.7744414792396
