@@ -1,0 +1,34 @@
+section,name,metric,paiton,ggz,unit,paiton_change_pct,higher_is_better,observed
+summary,weighted serial,decode,98.56778919905807,83.92608940340708,tok/s,17.445945473847612,True,Paiton higher performance
+category,chat,decode,76.43755654999333,56.520099483953544,tok/s,35.23960015621432,True,Paiton higher performance
+category,chat,TTFT,102.19098400557414,113.82164899259806,ms,-10.218324097360664,False,Paiton higher performance
+category,code,decode,90.28165714275195,75.10848153104848,tok/s,20.201680692254655,True,Paiton higher performance
+category,code,TTFT,101.75965749658644,102.61314350645989,ms,-0.831751158485583,False,Paiton higher performance
+category,file_edit,decode,119.91050297076006,105.97066883449963,tok/s,13.15442687073256,True,Paiton higher performance
+category,file_edit,TTFT,102.52628847956657,98.98053351207636,ms,3.582275061244844,False,Paiton regression
+category,json,decode,127.98838771664222,106.76562366264764,tok/s,19.87790013858126,True,Paiton higher performance
+category,json,TTFT,102.68171699135564,98.40570800588466,ms,4.3452855247129385,False,Paiton regression
+category,math,decode,113.33593669582908,105.60661004331665,tok/s,7.31897998557296,True,Paiton higher performance
+category,math,TTFT,107.04366650315933,95.61658900929615,ms,11.950936142212942,False,Paiton regression
+category,prose,decode,91.22624237197164,85.7658943738791,tok/s,6.366572677816706,True,Paiton higher performance
+category,prose,TTFT,108.67813549702987,98.01602002698928,ms,10.87793145151652,False,Paiton regression
+category,reasoning,decode,85.23336657329882,66.80799260404872,tok/s,27.579595271559597,True,Paiton higher performance
+category,reasoning,TTFT,102.51341451657936,98.31121101160534,ms,4.274388914279537,False,Paiton regression
+category,summarization,decode,95.63373931204634,85.55151834353812,tok/s,11.784970230478397,True,Paiton higher performance
+category,summarization,TTFT,105.22403300274163,106.41193800256588,ms,-1.1163268164475992,False,Paiton higher performance
+concurrency,C1,aggregate,73.98277366927292,67.30654965299549,tok/s,9.919129788552915,True,Paiton higher performance
+concurrency,C1,per-request decode,78.60311671212828,71.37347391991665,tok/s,10.12931330808351,True,Paiton higher performance
+concurrency,C1,queue-inclusive TTFT,103.53771800873801,96.5374100196641,ms,7.2513940322699755,False,Paiton regression
+concurrency,C2,aggregate,129.97683790590267,111.18711628764521,tok/s,16.899189623416213,True,Paiton higher performance
+concurrency,C2,per-request decode,80.09163568573433,66.26478199913508,tok/s,20.866066814767038,True,Paiton higher performance
+concurrency,C2,queue-inclusive TTFT,164.3343355099205,148.02337702712975,ms,11.01917738290843,False,Paiton regression
+concurrency,C4,aggregate,201.32232525829954,156.94344001388515,tok/s,28.276992807401236,True,Paiton higher performance
+concurrency,C4,per-request decode,62.9862222575604,65.02844312510075,tok/s,-3.1405040154683705,True,Paiton regression
+concurrency,C4,queue-inclusive TTFT,221.76957500050776,267.8923095227219,ms,-17.216893834834835,False,Paiton higher performance
+concurrency,C8,aggregate,281.90074579524463,154.77667161476995,tok/s,82.13387253660488,True,Paiton higher performance
+concurrency,C8,per-request decode,47.61817721411167,56.35161147198893,tok/s,-15.498109157390205,True,Paiton regression
+concurrency,C8,queue-inclusive TTFT,416.2096945219673,3030.9113370021805,ms,-86.26783669186335,False,Paiton higher performance
+prefill,2000,prefill,3375.7991361389645,2987.8511674729534,tok/s,12.984179830956144,True,Paiton higher performance
+prefill,2000,TTFT,458.6184250074439,518.573387991637,ms,-11.561519424741483,False,Paiton higher performance
+prefill,7000,prefill,3395.5834129093782,2978.676407670555,tok/s,13.996384574209642,True,Paiton higher performance
+prefill,7000,TTFT,1541.4075680018868,1757.14786502067,ms,-12.277868090301292,False,Paiton higher performance

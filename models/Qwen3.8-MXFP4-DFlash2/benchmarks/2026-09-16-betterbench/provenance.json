@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "date": "2026-09-16",
+  "scope": "Single-GPU BetterBench 0.6.0 quick screen, same MXFP4 checkpoint; stronger HIP-matched GGZ repeat is headline baseline",
+  "hardware": {
+    "gpu": "AMD Radeon AI PRO R9700",
+    "count": 1,
+    "architecture": "gfx1201",
+    "vram_gb": 32,
+    "host_ram_gb": 16
+  },
+  "benchmark": {
+    "repository": "https://github.com/GGZ14/BetterBench",
+    "revision": "d00ad5ec8098c06584a88ec3468bacd37d5ed098",
+    "version": "0.6.0",
+    "source_manifest": "betterbench-source-manifest.json",
+    "generation_cap": 128,
+    "measured_requests_per_run": 52,
+    "warmup_requests_per_run": 10
+  },
+  "target_checkpoint_lock": "../../checkpoint.lock.json",
+  "upstream": {
+    "repository": "https://github.com/GGZ14/vllm-mxfp4",
+    "revision": "92eed82fcbb1cca31f7a9108c6371a0bba647ee2",
+    "base_image": "stilldeadcode/vllm-radiance@sha256:45694209177a55a1ab3ba6702fe6e978b1b66a6e66ae3fc066f8d579f7bc4c25",
+    "libr4d_repository": "https://codeberg.org/StillDeadcode/libr4d",
+    "libr4d_revision": "b9e42ab7202f53a3bc13d415f5d41481f9ca311b",
+    "patch": "r4d_radiance_extras.patch from the pinned GGZ revision",
+    "locally_built_image": "sha256:4ea2d8b041e0684e6fc662df977f7c8cdc8813f59969683d38d58c97a0e8b1cc",
+    "warmed_local_image": "sha256:2f343e1bddab0a80cd9be5132f9e4f72e2f9a40a9c12e4b19be99455fb8af2bc",
+    "local_images_published": false,
+    "vllm_version": "0.27.1",
+    "effective_graph_mode": "FULL_AND_PIECEWISE"
+  },
+  "paiton": {
+    "image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59",
+    "vllm_version": "0.28.0+rocm723",
+    "effective_graph_mode": "FULL_DECODE_ONLY"
+  },
+  "cache_budget_bytes": 5368709120,
+  "reported_cache_capacity_tokens": {
+    "paiton": 74430,
+    "ggz": 25746
+  },
+  "matched_hip_settings": {
+    "DEBUG_HIP_DYNAMIC_QUEUES": "0",
+    "HIP_FORCE_DEV_KERNARG": "1",
+    "HSA_NO_SCRATCH_RECLAIM": "1",
+    "HSA_ENABLE_IPC_MODE_LEGACY": "1",
+    "OMP_NUM_THREADS": "6",
+    "MAX_JOBS": "2",
+    "TORCHINDUCTOR_COMPILE_THREADS": "1",
+    "HIP_VISIBLE_DEVICES": "0"
+  },
+  "redactions": [
+    "env.host replaced with redacted",
+    "env.endpoint replaced with redacted-local-endpoint",
+    "env.gpu replaced with generic hardware description, removing node/GUID/SKU inventory",
+    "env.notes.scope rewritten as public experiment description"
+  ],
+  "runs": [
+    {
+      "name": "paiton-release-quick",
+      "raw_results": "data/paiton-release-quick.json",
+      "original_private_results_sha256": "b0b6b93bd8f56263cfc2f87b8c3eb063fe2bb4d5363e47cd3ab76cd0f2303995",
+      "published_results_sha256": "5a28b3b73765c089909d74f1d1f9957de033aecc892a9073184b3566c9afe2a6",
+      "unchanged_non_environment_payload_sha256": "d9a8b221e234b379fd37f00e642c76d70a78121248745dce56494cb2ba4dcedc",
+      "validation": {
+        "status": "PASS",
+        "single_requests": 16,
+        "concurrent_requests": 32,
+        "prefill_requests": 4
+      },
+      "started_ns": 1789553755312033756
+    },
+    {
+      "name": "ggz-current-quick",
+      "raw_results": "data/ggz-current-quick.json",
+      "original_private_results_sha256": "82577450bd13d8e36b0cb86fa9de16acd449f8c340c5e26dfc50501bcbcb1e60",
+      "published_results_sha256": "3cec86a1a00668260dffc70b179aad760a8e126d0f8c384fc9a435b821a52e20",
+      "unchanged_non_environment_payload_sha256": "c56c399bcc13335b58d58d62fc7c3f84d18909d2f495989c10f8f8330dd9a324",
+      "validation": {
+        "status": "PASS",
+        "single_requests": 16,
+        "concurrent_requests": 32,
+        "prefill_requests": 4
+      },
+      "started_ns": 1789554508930716373
+    },
+    {
+      "name": "ggz-current-hipmatched-quick",
+      "raw_results": "data/ggz-current-hipmatched-quick.json",
+      "original_private_results_sha256": "5c8cc5945539fce9fe4953caf330441afc1ed74fd20edf8b1b0aa802a725f3a9",
+      "published_results_sha256": "cc2d18d81ab1ed369794e18f019661c7514aa6642f5dee8e3a09ade151c9bc04",
+      "unchanged_non_environment_payload_sha256": "f5e75ae780c83abf6e717d7b18085c075ac0256eb4c020bade6069fcf6f8720a",
+      "validation": {
+        "status": "PASS",
+        "single_requests": 16,
+        "concurrent_requests": 32,
+        "prefill_requests": 4
+      },
+      "started_ns": 1789554922992195597
+    },
+    {
+      "name": "paiton-release-repeat",
+      "raw_results": "data/paiton-release-repeat.json",
+      "original_private_results_sha256": "c6bc719471097a0bb6ced868e923c29bf3ed37e389c2ddce948fb920d84bc6e8",
+      "published_results_sha256": "61dc2ad6092aef59dd95eebc8467fa0b96c4bdcbf013fa47c5a30cb5355b2851",
+      "unchanged_non_environment_payload_sha256": "5c9cc9d94d7a9daa2d58f2bdb81db418500d0bb327b07117ce642a21f6ece772",
+      "validation": {
+        "status": "PASS",
+        "single_requests": 16,
+        "concurrent_requests": 32,
+        "prefill_requests": 4
+      },
+      "started_ns": 1789555249559623772
+    }
+  ]
+}

@@ -1,5 +1,10 @@
 # Qwen3.8 MXFP4: Paiton on regular vLLM
 
+> **New comparison, 16 September 2026:** [BetterBench 0.6.0 against current
+> GGZ14 on one R9700](benchmarks/2026-09-16-betterbench/README.md), including
+> charts, all four runs, sanitized raw data and reproduction commands.
+> The historical suites below use different settings and remain separate.
+
 Paiton combines native HIP kernels, adapted Radiance techniques, and DFlash2
 through a plugin on the official vLLM runtime. The checkpoint stays packed in
 MXFP4. There is no separate Radiance engine dependency and no replacement of

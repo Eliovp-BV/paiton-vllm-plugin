@@ -1,5 +1,26 @@
 # Qwen3.8 MXFP4 + DFlash2 on regular vLLM
 
+## BetterBench 0.6.0 against current GGZ14 — 16 September 2026
+
+On one Radeon AI PRO R9700, the released Paiton integration delivers **17.45%
+higher weighted generation throughput**, **82.13% higher aggregate throughput
+at concurrency eight**, and **13–14% faster prefill** than the tested current
+GGZ14 implementation. These figures use its stronger repeat with matching HIP
+settings, the same AMD MXFP4 target and DFlash2 drafter, and an equal 5 GiB cache
+allocation.
+
+![BetterBench: Paiton versus current GGZ14 on one R9700](benchmarks/2026-09-16-betterbench/assets/throughput-and-cache.png)
+
+[Results, latency tradeoffs, all four runs and downloadable visual reports](benchmarks/2026-09-16-betterbench/README.md)
+· [Raw measurements and provenance](benchmarks/2026-09-16-betterbench/provenance.json)
+· [Reproduce](benchmarks/2026-09-16-betterbench/REPRODUCE.md).
+
+This is a 128-token quick screen with sampled generation. GGZ retains advantages
+in some short-prompt latency and per-request metrics. It is distinct from the
+earlier benchmark suites below and from the different NVFP4/two-GPU setup.
+
+## Earlier release benchmark suites
+
 Paiton delivers **22% higher weighted decode throughput**, **57% more throughput
 at eight concurrent requests**, and **12.5–17.3% faster prefill** than Radiance +
 DFlash2 on the same Radeon AI PRO R9700. Paiton leads all eight task categories

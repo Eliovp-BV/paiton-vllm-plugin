@@ -1,0 +1,594 @@
+{
+  "status": "PASS",
+  "match_checks": "Benchmark revision, source hash, profile, corpus bytes/IDs, model ID and all sampling/config fields match",
+  "benchmark_revision": "d00ad5ec8098c06584a88ec3468bacd37d5ed098",
+  "profile": "quick",
+  "profile_sha256": "da2421e67607790c1157d3b19a83342574d7130cd14132c9092f81bdafb30a3a",
+  "config": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 42,
+    "greedy": false,
+    "warmup": 1,
+    "runs_per_category": 2,
+    "unique_nonce": true,
+    "run_single_stream": true,
+    "concurrency_levels": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "concurrency_requests": 8,
+    "run_concurrency": true,
+    "run_prefill": true,
+    "prefill_depths": [
+      2000,
+      7000
+    ],
+    "prefill_runs": 2,
+    "prefill_warmup": 1,
+    "prefill_max_tokens": 16,
+    "prefill_ctx_margin": 256,
+    "max_model_len": 8192,
+    "weights": {
+      "code": 0.3,
+      "reasoning": 0.2,
+      "prose": 0.15,
+      "json": 0.15,
+      "file_edit": 0.1,
+      "summarization": 0.1,
+      "math": 0,
+      "chat": 0
+    },
+    "conf": 0.95,
+    "target_mde_pct": 1.0,
+    "ab_max_pairs": 200,
+    "ab_min_pairs": 12,
+    "timeout_s": 180
+  },
+  "inputs": {
+    "paiton": {
+      "file": "data/paiton-release-repeat.json",
+      "results_sha256": "61dc2ad6092aef59dd95eebc8467fa0b96c4bdcbf013fa47c5a30cb5355b2851"
+    },
+    "ggz": {
+      "file": "data/ggz-current-hipmatched-quick.json",
+      "results_sha256": "cc2d18d81ab1ed369794e18f019661c7514aa6642f5dee8e3a09ade151c9bc04"
+    }
+  },
+  "metrics": [
+    {
+      "section": "summary",
+      "name": "weighted serial",
+      "metric": "decode",
+      "paiton": 98.56778919905807,
+      "ggz": 83.92608940340708,
+      "unit": "tok/s",
+      "paiton_change_pct": 17.445945473847612,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "chat",
+      "metric": "decode",
+      "paiton": 76.43755654999333,
+      "ggz": 56.520099483953544,
+      "unit": "tok/s",
+      "paiton_change_pct": 35.23960015621432,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "chat",
+      "metric": "TTFT",
+      "paiton": 102.19098400557414,
+      "ggz": 113.82164899259806,
+      "unit": "ms",
+      "paiton_change_pct": -10.218324097360664,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "code",
+      "metric": "decode",
+      "paiton": 90.28165714275195,
+      "ggz": 75.10848153104848,
+      "unit": "tok/s",
+      "paiton_change_pct": 20.201680692254655,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "code",
+      "metric": "TTFT",
+      "paiton": 101.75965749658644,
+      "ggz": 102.61314350645989,
+      "unit": "ms",
+      "paiton_change_pct": -0.831751158485583,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "file_edit",
+      "metric": "decode",
+      "paiton": 119.91050297076006,
+      "ggz": 105.97066883449963,
+      "unit": "tok/s",
+      "paiton_change_pct": 13.15442687073256,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "file_edit",
+      "metric": "TTFT",
+      "paiton": 102.52628847956657,
+      "ggz": 98.98053351207636,
+      "unit": "ms",
+      "paiton_change_pct": 3.582275061244844,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "json",
+      "metric": "decode",
+      "paiton": 127.98838771664222,
+      "ggz": 106.76562366264764,
+      "unit": "tok/s",
+      "paiton_change_pct": 19.87790013858126,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "json",
+      "metric": "TTFT",
+      "paiton": 102.68171699135564,
+      "ggz": 98.40570800588466,
+      "unit": "ms",
+      "paiton_change_pct": 4.3452855247129385,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "math",
+      "metric": "decode",
+      "paiton": 113.33593669582908,
+      "ggz": 105.60661004331665,
+      "unit": "tok/s",
+      "paiton_change_pct": 7.31897998557296,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "math",
+      "metric": "TTFT",
+      "paiton": 107.04366650315933,
+      "ggz": 95.61658900929615,
+      "unit": "ms",
+      "paiton_change_pct": 11.950936142212942,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "prose",
+      "metric": "decode",
+      "paiton": 91.22624237197164,
+      "ggz": 85.7658943738791,
+      "unit": "tok/s",
+      "paiton_change_pct": 6.366572677816706,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "prose",
+      "metric": "TTFT",
+      "paiton": 108.67813549702987,
+      "ggz": 98.01602002698928,
+      "unit": "ms",
+      "paiton_change_pct": 10.87793145151652,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "reasoning",
+      "metric": "decode",
+      "paiton": 85.23336657329882,
+      "ggz": 66.80799260404872,
+      "unit": "tok/s",
+      "paiton_change_pct": 27.579595271559597,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "reasoning",
+      "metric": "TTFT",
+      "paiton": 102.51341451657936,
+      "ggz": 98.31121101160534,
+      "unit": "ms",
+      "paiton_change_pct": 4.274388914279537,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "summarization",
+      "metric": "decode",
+      "paiton": 95.63373931204634,
+      "ggz": 85.55151834353812,
+      "unit": "tok/s",
+      "paiton_change_pct": 11.784970230478397,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "category",
+      "name": "summarization",
+      "metric": "TTFT",
+      "paiton": 105.22403300274163,
+      "ggz": 106.41193800256588,
+      "unit": "ms",
+      "paiton_change_pct": -1.1163268164475992,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C1",
+      "metric": "aggregate",
+      "paiton": 73.98277366927292,
+      "ggz": 67.30654965299549,
+      "unit": "tok/s",
+      "paiton_change_pct": 9.919129788552915,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C1",
+      "metric": "per-request decode",
+      "paiton": 78.60311671212828,
+      "ggz": 71.37347391991665,
+      "unit": "tok/s",
+      "paiton_change_pct": 10.12931330808351,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C1",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 103.53771800873801,
+      "ggz": 96.5374100196641,
+      "unit": "ms",
+      "paiton_change_pct": 7.2513940322699755,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C2",
+      "metric": "aggregate",
+      "paiton": 129.97683790590267,
+      "ggz": 111.18711628764521,
+      "unit": "tok/s",
+      "paiton_change_pct": 16.899189623416213,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C2",
+      "metric": "per-request decode",
+      "paiton": 80.09163568573433,
+      "ggz": 66.26478199913508,
+      "unit": "tok/s",
+      "paiton_change_pct": 20.866066814767038,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C2",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 164.3343355099205,
+      "ggz": 148.02337702712975,
+      "unit": "ms",
+      "paiton_change_pct": 11.01917738290843,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C4",
+      "metric": "aggregate",
+      "paiton": 201.32232525829954,
+      "ggz": 156.94344001388515,
+      "unit": "tok/s",
+      "paiton_change_pct": 28.276992807401236,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C4",
+      "metric": "per-request decode",
+      "paiton": 62.9862222575604,
+      "ggz": 65.02844312510075,
+      "unit": "tok/s",
+      "paiton_change_pct": -3.1405040154683705,
+      "higher_is_better": true,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C4",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 221.76957500050776,
+      "ggz": 267.8923095227219,
+      "unit": "ms",
+      "paiton_change_pct": -17.216893834834835,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C8",
+      "metric": "aggregate",
+      "paiton": 281.90074579524463,
+      "ggz": 154.77667161476995,
+      "unit": "tok/s",
+      "paiton_change_pct": 82.13387253660488,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "concurrency",
+      "name": "C8",
+      "metric": "per-request decode",
+      "paiton": 47.61817721411167,
+      "ggz": 56.35161147198893,
+      "unit": "tok/s",
+      "paiton_change_pct": -15.498109157390205,
+      "higher_is_better": true,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C8",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 416.2096945219673,
+      "ggz": 3030.9113370021805,
+      "unit": "ms",
+      "paiton_change_pct": -86.26783669186335,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "prefill",
+      "name": "2000",
+      "metric": "prefill",
+      "paiton": 3375.7991361389645,
+      "ggz": 2987.8511674729534,
+      "unit": "tok/s",
+      "paiton_change_pct": 12.984179830956144,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "prefill",
+      "name": "2000",
+      "metric": "TTFT",
+      "paiton": 458.6184250074439,
+      "ggz": 518.573387991637,
+      "unit": "ms",
+      "paiton_change_pct": -11.561519424741483,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "prefill",
+      "name": "7000",
+      "metric": "prefill",
+      "paiton": 3395.5834129093782,
+      "ggz": 2978.676407670555,
+      "unit": "tok/s",
+      "paiton_change_pct": 13.996384574209642,
+      "higher_is_better": true,
+      "observed": "Paiton higher performance"
+    },
+    {
+      "section": "prefill",
+      "name": "7000",
+      "metric": "TTFT",
+      "paiton": 1541.4075680018868,
+      "ggz": 1757.14786502067,
+      "unit": "ms",
+      "paiton_change_pct": -12.277868090301292,
+      "higher_is_better": false,
+      "observed": "Paiton higher performance"
+    }
+  ],
+  "observed_regressions": [
+    {
+      "section": "category",
+      "name": "file_edit",
+      "metric": "TTFT",
+      "paiton": 102.52628847956657,
+      "ggz": 98.98053351207636,
+      "unit": "ms",
+      "paiton_change_pct": 3.582275061244844,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "json",
+      "metric": "TTFT",
+      "paiton": 102.68171699135564,
+      "ggz": 98.40570800588466,
+      "unit": "ms",
+      "paiton_change_pct": 4.3452855247129385,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "math",
+      "metric": "TTFT",
+      "paiton": 107.04366650315933,
+      "ggz": 95.61658900929615,
+      "unit": "ms",
+      "paiton_change_pct": 11.950936142212942,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "prose",
+      "metric": "TTFT",
+      "paiton": 108.67813549702987,
+      "ggz": 98.01602002698928,
+      "unit": "ms",
+      "paiton_change_pct": 10.87793145151652,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "category",
+      "name": "reasoning",
+      "metric": "TTFT",
+      "paiton": 102.51341451657936,
+      "ggz": 98.31121101160534,
+      "unit": "ms",
+      "paiton_change_pct": 4.274388914279537,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C1",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 103.53771800873801,
+      "ggz": 96.5374100196641,
+      "unit": "ms",
+      "paiton_change_pct": 7.2513940322699755,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C2",
+      "metric": "queue-inclusive TTFT",
+      "paiton": 164.3343355099205,
+      "ggz": 148.02337702712975,
+      "unit": "ms",
+      "paiton_change_pct": 11.01917738290843,
+      "higher_is_better": false,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C4",
+      "metric": "per-request decode",
+      "paiton": 62.9862222575604,
+      "ggz": 65.02844312510075,
+      "unit": "tok/s",
+      "paiton_change_pct": -3.1405040154683705,
+      "higher_is_better": true,
+      "observed": "Paiton regression"
+    },
+    {
+      "section": "concurrency",
+      "name": "C8",
+      "metric": "per-request decode",
+      "paiton": 47.61817721411167,
+      "ggz": 56.35161147198893,
+      "unit": "tok/s",
+      "paiton_change_pct": -15.498109157390205,
+      "higher_is_better": true,
+      "observed": "Paiton regression"
+    }
+  ],
+  "serial_prompt_counts_identical": true,
+  "prefill_actual_tokens": [
+    {
+      "target_depth": 2000,
+      "paiton_tokens": [
+        1560,
+        1530
+      ],
+      "ggz_tokens": [
+        1560,
+        1530
+      ],
+      "identical": true
+    },
+    {
+      "target_depth": 7000,
+      "paiton_tokens": [
+        5211,
+        5257
+      ],
+      "ggz_tokens": [
+        5211,
+        5257
+      ],
+      "identical": true
+    }
+  ],
+  "speculation": {
+    "paiton": {
+      "status": "available",
+      "drafts": 1921.0,
+      "draft_tokens": 13447.0,
+      "accepted_tokens": 5350.0,
+      "token_acceptance_fraction": 0.3978582583475868,
+      "accepted_tokens_per_draft": 2.785007808433108,
+      "accepted_plus_one_per_draft": 3.785007808433108,
+      "scope": "Whole benchmark interval, including warmups, all measured phases and any other traffic"
+    },
+    "ggz": {
+      "status": "available",
+      "drafts": 1919.0,
+      "draft_tokens": 12534.0,
+      "accepted_tokens": 5340.0,
+      "token_acceptance_fraction": 0.4260411680229775,
+      "accepted_tokens_per_draft": 2.7826993225638352,
+      "accepted_plus_one_per_draft": 3.7826993225638352,
+      "scope": "Whole benchmark interval, including warmups, all measured phases and any other traffic"
+    }
+  },
+  "truncation": {
+    "paiton": {
+      "length_stops": 15,
+      "serial_requests": 16
+    },
+    "ggz": {
+      "length_stops": 14,
+      "serial_requests": 16
+    }
+  },
+  "notes": [
+    "Separate sequential runs; these are descriptive comparisons, not interleaved statistical pairs.",
+    "No significance or percentile claims from this short screen; small changes may be noise.",
+    "TTFT includes server queueing and HTTP cost, excluding client semaphore wait.",
+    "Sampled decoding can produce different output paths despite identical seed.",
+    "The weighted score omits chat and math; all eight categories are reported individually.",
+    "Served model ID matches; actual checkpoint hashes and GPU/cache settings require the separately retained engine launch evidence."
+  ]
+}

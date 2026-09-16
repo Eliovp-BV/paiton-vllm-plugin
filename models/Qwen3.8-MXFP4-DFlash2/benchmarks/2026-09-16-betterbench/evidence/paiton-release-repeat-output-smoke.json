@@ -1,0 +1,139 @@
+{
+  "timestamp_utc": "2026-09-16T10:42:15.502486+00:00",
+  "scope": "Two untimed non-thinking smoke checks; not quality equivalence or a capability evaluation",
+  "checks": [
+    {
+      "name": "arithmetic",
+      "payload": {
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What is 17 times 23? Reply with only the integer."
+          }
+        ],
+        "temperature": 0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "seed": 42,
+        "max_tokens": 128,
+        "stream": false,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "expected": 391,
+      "response": {
+        "object": "chat.completion",
+        "created": 1789555335,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "391",
+              "refusal": null,
+              "annotations": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": null
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.28.0-8973e087",
+        "usage": {
+          "prompt_tokens": 28,
+          "total_tokens": 32,
+          "completion_tokens": 4,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      },
+      "exact_check_pass": true
+    },
+    {
+      "name": "json",
+      "payload": {
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Return only a valid JSON object with exactly two keys: \"language\" set to \"Python\" and \"primes\" set to the first five prime numbers."
+          }
+        ],
+        "temperature": 0,
+        "top_p": 0.95,
+        "top_k": 20,
+        "seed": 42,
+        "max_tokens": 128,
+        "stream": false,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "expected": {
+        "language": "Python",
+        "primes": [
+          2,
+          3,
+          5,
+          7,
+          11
+        ]
+      },
+      "response": {
+        "object": "chat.completion",
+        "created": 1789555335,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\n  \"language\": \"Python\",\n  \"primes\": [2, 3, 5, 7, 11]\n}",
+              "refusal": null,
+              "annotations": null,
+              "audio": null,
+              "function_call": null,
+              "reasoning": null
+            },
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null,
+            "routed_experts": null
+          }
+        ],
+        "service_tier": null,
+        "system_fingerprint": "vllm-0.28.0-8973e087",
+        "usage": {
+          "prompt_tokens": 44,
+          "total_tokens": 78,
+          "completion_tokens": 34,
+          "prompt_tokens_details": null,
+          "completion_tokens_details": null
+        },
+        "prompt_logprobs": null,
+        "prompt_token_ids": null,
+        "prompt_text": null,
+        "kv_transfer_params": null,
+        "ec_transfer_params": null,
+        "metrics": null
+      },
+      "exact_check_pass": true
+    }
+  ]
+}
