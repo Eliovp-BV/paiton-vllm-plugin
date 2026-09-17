@@ -1,0 +1,423 @@
+{
+  "schema": 1,
+  "date": "2026-09-17",
+  "state": "Reviewed benchmark evidence",
+  "hardware": {
+    "gpu": "AMD Radeon AI PRO R9700",
+    "gpu_count": 1,
+    "vram_gb": 32,
+    "host_ram_gb": 16
+  },
+  "benchmark": {
+    "version": "0.6.0",
+    "revision": "d00ad5ec8098c06584a88ec3468bacd37d5ed098",
+    "measured_requests": 52,
+    "warmups": 10,
+    "output_cap": 128,
+    "thinking_default": false
+  },
+  "redactions": [
+    "Environment host/endpoint/detailed inventory replaced",
+    "Only allowlisted generic scheduler and metrics evidence exported",
+    "OpenCode workspace prefix replaced; harmless random marker retained",
+    "Original request payloads, timing records, configuration and numeric measurements preserved"
+  ],
+  "files": [
+    {
+      "export_path": "data/results.json",
+      "export_sha256": "5742bb0b4c8c4485cc942fb2e870f2be90f167e61185e606ed9b92606fc515c5",
+      "action": "Only environment identity/inventory metadata sanitized",
+      "source_sha256": "ac5eb9a0dac1e781d1532ade39415c54d2420749ff388ace91afb7563b5d7118"
+    },
+    {
+      "export_path": "data/requests.jsonl",
+      "export_sha256": "874541b452b7999618719d2448ea53d111d021fedef5708af6737b830e3c67a3",
+      "action": "unchanged",
+      "source_sha256": "874541b452b7999618719d2448ea53d111d021fedef5708af6737b830e3c67a3"
+    },
+    {
+      "export_path": "data/validation.json",
+      "export_sha256": "fcc3900a5a7882d8a434beb0e892138da0ce128358a4e27548a29e433e4a9b8b",
+      "action": "unchanged",
+      "source_sha256": "fcc3900a5a7882d8a434beb0e892138da0ce128358a4e27548a29e433e4a9b8b"
+    },
+    {
+      "export_path": "summary.json",
+      "export_sha256": "1e23003e7aad887e9284be39587cdf356997809ee80eaff5ab2787640e5a7157",
+      "action": "Replace local source path and scope wording",
+      "source_sha256": "b20c489b3f243b6b1568aeddb2e3f8787a8cf711f8ba32240a7a1f42822fa573"
+    },
+    {
+      "export_path": "profile-quick.json",
+      "export_sha256": "1d483b3e41d0983a84009d52f7f7025e4394dda1f4f2ac7293b1ae1967d97e58",
+      "action": "max_model_len metadata 8192 -> 65536; workload unchanged",
+      "source_sha256": "da2421e67607790c1157d3b19a83342574d7130cd14132c9092f81bdafb30a3a"
+    },
+    {
+      "export_path": "betterbench-source-manifest.json",
+      "export_sha256": "f74a989f05ee8b66ee297fafb82a63aa4b4a3220fba21ffbe5274f1099c50feb",
+      "action": "unchanged",
+      "source_sha256": "f74a989f05ee8b66ee297fafb82a63aa4b4a3220fba21ffbe5274f1099c50feb"
+    },
+    {
+      "export_path": "bounded-corpus-manifest.json",
+      "export_sha256": "44737c7978e5b01202eb2b8cc0f885f79c6054eea0867bd1be9cf27f9e8d772c",
+      "action": "unchanged",
+      "source_sha256": "44737c7978e5b01202eb2b8cc0f885f79c6054eea0867bd1be9cf27f9e8d772c"
+    },
+    {
+      "export_path": "BETTERBENCH-LICENSE",
+      "export_sha256": "10acecb6443cdaeb295334a997d283021b3931190e0db02bb413d51baa7d285b",
+      "action": "unchanged",
+      "source_sha256": "10acecb6443cdaeb295334a997d283021b3931190e0db02bb413d51baa7d285b"
+    },
+    {
+      "export_path": "assets/concurrency-64k-quick.png",
+      "export_sha256": "de3a3f0a26008d6648c6cfe3416b829d6dbad47fe282dd3d7dbf2b3831debcaf",
+      "action": "unchanged",
+      "source_sha256": "de3a3f0a26008d6648c6cfe3416b829d6dbad47fe282dd3d7dbf2b3831debcaf"
+    },
+    {
+      "export_path": "assets/concurrency-64k-quick.svg",
+      "export_sha256": "f64bedc643eaa8957fbfba9c4fdd202c99689d7541bfd99363d14f6b86d642b7",
+      "action": "Trailing whitespace normalized; visual data unchanged",
+      "source_sha256": "1c34f4ae2c844d9dfa7b2418b7a86826c670ea01d3330cc047342af9de97c90f"
+    },
+    {
+      "export_path": "reports/64k-quick.html",
+      "export_sha256": "63339742411c8306773ea42b21208cd3d4dee56f621f84b0aa6d6e1b8a00bf6b",
+      "action": "Regenerated with unchanged pinned BetterBench renderer from sanitized measurements",
+      "source_sha256": "ac5eb9a0dac1e781d1532ade39415c54d2420749ff388ace91afb7563b5d7118"
+    },
+    {
+      "export_path": "reports/64k-quick.md",
+      "export_sha256": "664aa2b4eb9adeff020cc6c4954309b0713ad964d8e7d8f013c48933d0c9e680",
+      "action": "Regenerated with unchanged pinned BetterBench renderer from sanitized measurements",
+      "source_sha256": "ac5eb9a0dac1e781d1532ade39415c54d2420749ff388ace91afb7563b5d7118"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-1-metrics-after.txt",
+      "export_sha256": "1389693440ac935356ea8aed3296a803812ee547a0897949a7276e9cb4627912",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "fb7246191a0a5c96b5e541c558acade6082946605af44263589de3d7b8ecf58a"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-1-metrics-before.txt",
+      "export_sha256": "5361decd65fdbace744d27ee003ba24bacecc25827437e73f9bc6b33d622ed9f",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "c7ce34154e4b82223aba748f66936584833dd50a430fe06c85456cfdbee9ae76"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-2-metrics-after.txt",
+      "export_sha256": "9c5ff89fa55fb65c087f4fd4dbddd918a45818de386448ccd425c4cf0a5800f7",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "5d9d73257a1151684fa5ea21eaa6efe603794dd37bd5067ede9868ed616a9daf"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-2-metrics-before.txt",
+      "export_sha256": "1389693440ac935356ea8aed3296a803812ee547a0897949a7276e9cb4627912",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "fb7246191a0a5c96b5e541c558acade6082946605af44263589de3d7b8ecf58a"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-4-metrics-after.txt",
+      "export_sha256": "90f623a10388fdfde3bcbd09e161186cad235e38662aec842d17e4f22269f719",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "e347ffc5442f1c0a1b5f8a291858dea611a2a10f26235d89535fac35d63073ef"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-4-metrics-before.txt",
+      "export_sha256": "9c5ff89fa55fb65c087f4fd4dbddd918a45818de386448ccd425c4cf0a5800f7",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "a97201cc2eb68930a9ca87f6196f5b2c4f80024bf3965163ad9efb2fc1b9a8c2"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-8-metrics-after.txt",
+      "export_sha256": "87b731ba73de839f592630319801c9fb29164c7a926700ae77c9b1e1a9b4c9c8",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "fe4e4112af45cdabd879a62e89bd428738de9f6c186fcfe094f776f5ea7b3dda"
+    },
+    {
+      "export_path": "evidence/metrics/concurrency-8-metrics-before.txt",
+      "export_sha256": "90f623a10388fdfde3bcbd09e161186cad235e38662aec842d17e4f22269f719",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "8cf823bf4371c69e2dd5ed570fb383bd1f8b0fb6ce0362df0fc948780a9d2438"
+    },
+    {
+      "export_path": "evidence/metrics/prefill-2000-metrics-after.txt",
+      "export_sha256": "0b8c28053f6a92bc90136b93f60bcc6b5070f1997789ce5daa8aca62a744a067",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "71572343690a927850103d2d8bea9d532acaef968de0a54c67a842ca99b62625"
+    },
+    {
+      "export_path": "evidence/metrics/prefill-2000-metrics-before.txt",
+      "export_sha256": "94cff0b6a332715c11889ffe15ac08e37ade0600d257f9a8078907b53e10b78e",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "ef04fbe206a37da10f0624b85fa3b4364b392c8ed8dce6f2a5fcc5edb3f25fd3"
+    },
+    {
+      "export_path": "evidence/metrics/prefill-7000-metrics-after.txt",
+      "export_sha256": "5361decd65fdbace744d27ee003ba24bacecc25827437e73f9bc6b33d622ed9f",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "041818ddf7b191a1594a65cfc2efa9ed81cc0807c8967b2aee46da64aeeb3011"
+    },
+    {
+      "export_path": "evidence/metrics/prefill-7000-metrics-before.txt",
+      "export_sha256": "0b8c28053f6a92bc90136b93f60bcc6b5070f1997789ce5daa8aca62a744a067",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "621e14bd895bc7fcb3a5fa516647af8a229676bcaf4a511d011f25af7757e208"
+    },
+    {
+      "export_path": "evidence/metrics/single-chat-metrics-after.txt",
+      "export_sha256": "15b9194c5e7afce6f16b4dd063e39a2f7c78538d76fe8876beaf80ddecbb9a40",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "e1c29e241ffd92d500bfbd6837dbd292fa4276b67f81d5be12f0f5f4026e1657"
+    },
+    {
+      "export_path": "evidence/metrics/single-chat-metrics-before.txt",
+      "export_sha256": "326f63183be2523f22d0f4aa0849fc4762878846542dc6528bb85b87742e3d88",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "2b9a24a0d171dd342c8627295ff53053f9918d3ad5e81b9b1b5e36550999f49d"
+    },
+    {
+      "export_path": "evidence/metrics/single-code-metrics-after.txt",
+      "export_sha256": "37729921b5735b2c73e9c2a91144eeee0cdd457328f7d6655cf173fe6cc1c4dc",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "20d4cddd81d54ad4f6b937c455f16f75bf23118353d00a116fdf213f00f4c601"
+    },
+    {
+      "export_path": "evidence/metrics/single-code-metrics-before.txt",
+      "export_sha256": "15b9194c5e7afce6f16b4dd063e39a2f7c78538d76fe8876beaf80ddecbb9a40",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "e1c29e241ffd92d500bfbd6837dbd292fa4276b67f81d5be12f0f5f4026e1657"
+    },
+    {
+      "export_path": "evidence/metrics/single-file_edit-metrics-after.txt",
+      "export_sha256": "b2edab23ffa63e902220f90b53345980c05f87a6772998c2e66986542776d5c2",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "619cba382b097a1840b0b5c754bac2cd3718cb28b856ff5be07cddc57a613f97"
+    },
+    {
+      "export_path": "evidence/metrics/single-file_edit-metrics-before.txt",
+      "export_sha256": "37729921b5735b2c73e9c2a91144eeee0cdd457328f7d6655cf173fe6cc1c4dc",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "ec2575c6cc1130f0977f2173c3cb9af6a9886e4dee71286657040a1b9da8a8d5"
+    },
+    {
+      "export_path": "evidence/metrics/single-json-metrics-after.txt",
+      "export_sha256": "8c09bad8dcf06bf9cdf58b7f4f21c75606ea732482f0d1092bc8fa299376c36c",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "f6c0778d8f31e78cce1c3914f3a85f8ec7e4e8f7b9f462c0e01cf9e9703b647d"
+    },
+    {
+      "export_path": "evidence/metrics/single-json-metrics-before.txt",
+      "export_sha256": "b2edab23ffa63e902220f90b53345980c05f87a6772998c2e66986542776d5c2",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "1bf167385a9a3956e67b03dedafa4ce2f8a74b5a4729b72660a53bc65f4203ca"
+    },
+    {
+      "export_path": "evidence/metrics/single-math-metrics-after.txt",
+      "export_sha256": "091705bd106bd16852531d978e63342dd10985a5e07ed32c72c0828cbb8cab22",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "4af74a30585711a31fc44f2fcb06de144cff7a99dccd5ef385064df60faeff53"
+    },
+    {
+      "export_path": "evidence/metrics/single-math-metrics-before.txt",
+      "export_sha256": "8c09bad8dcf06bf9cdf58b7f4f21c75606ea732482f0d1092bc8fa299376c36c",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "f6c0778d8f31e78cce1c3914f3a85f8ec7e4e8f7b9f462c0e01cf9e9703b647d"
+    },
+    {
+      "export_path": "evidence/metrics/single-prose-metrics-after.txt",
+      "export_sha256": "d4325d267ca19a70d27ba99b4877f6bcbcb5a2e4cf48a8312b95499d3300e206",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "e8ebddc4872c8b99b6ac31bfe6dcfc5719f9fd84bf4ed7e963d05717261ba006"
+    },
+    {
+      "export_path": "evidence/metrics/single-prose-metrics-before.txt",
+      "export_sha256": "091705bd106bd16852531d978e63342dd10985a5e07ed32c72c0828cbb8cab22",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "94206bd701f0e6bdfd1d4b431dc55b3ee312a87a8ceb677c1ae989f57223d7fe"
+    },
+    {
+      "export_path": "evidence/metrics/single-reasoning-metrics-after.txt",
+      "export_sha256": "f396928036c120df072b4aa0a95ae790b391180f2303ab6da682cbeaad5c4ee8",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "304a631cc45f398fdf816c2ec147a2c784c910c5542a06948456cbcd008edb05"
+    },
+    {
+      "export_path": "evidence/metrics/single-reasoning-metrics-before.txt",
+      "export_sha256": "d4325d267ca19a70d27ba99b4877f6bcbcb5a2e4cf48a8312b95499d3300e206",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "de8a746071aaaf1d7dd534c078973b5e9e727cf61be17fd2c5b3ad8315923ca1"
+    },
+    {
+      "export_path": "evidence/metrics/single-summarization-metrics-after.txt",
+      "export_sha256": "94cff0b6a332715c11889ffe15ac08e37ade0600d257f9a8078907b53e10b78e",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "ef04fbe206a37da10f0624b85fa3b4364b392c8ed8dce6f2a5fcc5edb3f25fd3"
+    },
+    {
+      "export_path": "evidence/metrics/single-summarization-metrics-before.txt",
+      "export_sha256": "f396928036c120df072b4aa0a95ae790b391180f2303ab6da682cbeaad5c4ee8",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "d6a0c0c5e696e6243ed4327e19a7f0a24f9d63838c18beaebe6fcecba0aae11b"
+    },
+    {
+      "export_path": "evidence/scheduler.log",
+      "export_sha256": "a0cdb1ba64c4dfc5641e4f687eca063df812fbe0e6fb62e16ba35b7bfe028248",
+      "action": "Only generic scheduler/speculation and public vLLM JIT warning retained; process IDs removed",
+      "source_sha256": "638a0dd7c807df3462d93cd4cccf3568d93d63b16ce23217d72d2a4cbc68b0e5"
+    },
+    {
+      "export_path": "evidence/context-64k-summary.json",
+      "export_sha256": "23b16be7b68e1291886a7384910832698fa929cf912328ce59511d1db41fbeab",
+      "action": "unchanged",
+      "source_sha256": "23b16be7b68e1291886a7384910832698fa929cf912328ce59511d1db41fbeab"
+    },
+    {
+      "export_path": "evidence/context-64k-metrics/prompt-62983-c2-metrics-after.txt",
+      "export_sha256": "70a3dc7c3f201c8f3c2b094832cd6cdcbbd9eb018eebcde78be286a438e173e7",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "d262b08bd1008de3d66cdfabe50dff5a4440e4f66aef43eb96c43819ff021601"
+    },
+    {
+      "export_path": "evidence/context-64k-metrics/prompt-62983-c2-metrics-before.txt",
+      "export_sha256": "847a8ac7a3f7a7c25f516b309a6fd8e7cbe02974c8c1484f2904cd10ca49bb1a",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "31d37008043165ba394b8534a1efe974f512fbd623a34900f6c005cdb2eb2f62"
+    },
+    {
+      "export_path": "evidence/tools-64k-summary.json",
+      "export_sha256": "fb43258a7c2c477e7eaa2455750b5db6433d18df75ff131d76cd4ae470dbedcf",
+      "action": "unchanged",
+      "source_sha256": "fb43258a7c2c477e7eaa2455750b5db6433d18df75ff131d76cd4ae470dbedcf"
+    },
+    {
+      "export_path": "evidence/tools-64k-read-ordinary-roundtrip.json",
+      "export_sha256": "bad9a64727ac1b612d49a4016df9978d9ed831881cc4d891b0b44eef8fe4dec8",
+      "action": "unchanged",
+      "source_sha256": "bad9a64727ac1b612d49a4016df9978d9ed831881cc4d891b0b44eef8fe4dec8"
+    },
+    {
+      "export_path": "evidence/tools-64k-read-stream-roundtrip.json",
+      "export_sha256": "07cd497bc65771474dac49b8478d57252514f4b64e23f145dcd51ede9eb07408",
+      "action": "unchanged",
+      "source_sha256": "07cd497bc65771474dac49b8478d57252514f4b64e23f145dcd51ede9eb07408"
+    },
+    {
+      "export_path": "evidence/image-64k.json",
+      "export_sha256": "97b2ac28801cc37af8c930c1945d8ab53638b339508f4bd267493bb6da0670af",
+      "action": "Allowlisted public registry metadata; account identifiers omitted",
+      "source_sha256": "ce36c4a094ecccb0b12ede1fbba9dde657ffa57b48c0fa0213d0df92c60f4f58"
+    },
+    {
+      "export_path": "evidence/context-200k-summary.json",
+      "export_sha256": "349ebf3c58f01a357a0cf00117498ae3f390b9f401b15fe00f04fd4b5b404b09",
+      "action": "unchanged",
+      "source_sha256": "349ebf3c58f01a357a0cf00117498ae3f390b9f401b15fe00f04fd4b5b404b09"
+    },
+    {
+      "export_path": "evidence/context-200k-metrics/prompt-195999-c1-metrics-after.txt",
+      "export_sha256": "9ca59fdb5b52cef6c7fd454866854cf441ce97b7726251472e96f39f21bef6dc",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "c0694c3bb806191e2e4fea5fc72eb5547bcad37cb45fe6efd8ea1cd3a974b728"
+    },
+    {
+      "export_path": "evidence/context-200k-metrics/prompt-195999-c1-metrics-before.txt",
+      "export_sha256": "fa8b965a835f0436819063803ab5bfe39af6eac153cf036c6a5dbc0b487066cd",
+      "action": "Allowlisted vLLM scheduling/token/speculation/request-time metric lines only; values unchanged",
+      "source_sha256": "c20210d99dd81c0efe9a42e89d1ea845605e9d8c2887617618be2e7719f9863f"
+    },
+    {
+      "export_path": "evidence/tools-200k-summary.json",
+      "export_sha256": "3365bc2c35fa05f24f34d5b38d9a9ebe5fd49a291e5f576be6c719652cdd4c9c",
+      "action": "unchanged",
+      "source_sha256": "3365bc2c35fa05f24f34d5b38d9a9ebe5fd49a291e5f576be6c719652cdd4c9c"
+    },
+    {
+      "export_path": "evidence/tools-200k-read-ordinary-roundtrip.json",
+      "export_sha256": "2febff89e0e8c6dd489595f0e94fd40082cf02642eeaaa4aa29c44518bd86da1",
+      "action": "unchanged",
+      "source_sha256": "2febff89e0e8c6dd489595f0e94fd40082cf02642eeaaa4aa29c44518bd86da1"
+    },
+    {
+      "export_path": "evidence/tools-200k-read-stream-roundtrip.json",
+      "export_sha256": "f4585b010fd0e1f3910637b2108ff82f17fd29979f4eb251bc057cf93e08f612",
+      "action": "unchanged",
+      "source_sha256": "f4585b010fd0e1f3910637b2108ff82f17fd29979f4eb251bc057cf93e08f612"
+    },
+    {
+      "export_path": "evidence/image-200k.json",
+      "export_sha256": "04b4a3f7f3c0ccba417ad8c7c3ee22e06ea7cc2ff5e66994f266399ec25a85c5",
+      "action": "Allowlisted public registry metadata; account identifiers omitted",
+      "source_sha256": "bd38ded8a868069a14932f03b42e16aad7a619503661bd122d3bd07cde6cb40d"
+    },
+    {
+      "export_path": "evidence/baseline-tools-summary.json",
+      "export_sha256": "9616b56bdb57486f89f4f72ede36351af2a7d6ae8ae0ae0453b87d7fe64fe4a4",
+      "action": "unchanged",
+      "source_sha256": "9616b56bdb57486f89f4f72ede36351af2a7d6ae8ae0ae0453b87d7fe64fe4a4"
+    },
+    {
+      "export_path": "evidence/baseline-read-ordinary.json",
+      "export_sha256": "3e17533825d1c0bb889c5b9e7a391c7c1bdcdb3f97921b9830e44298425c9470",
+      "action": "unchanged",
+      "source_sha256": "3e17533825d1c0bb889c5b9e7a391c7c1bdcdb3f97921b9830e44298425c9470"
+    },
+    {
+      "export_path": "evidence/fixed-read-ordinary.json",
+      "export_sha256": "c5ba49ea25c3f49c29e44f0b72fe16c87baa91f771ab0c2d0d0dc1fc19fa02c0",
+      "action": "unchanged",
+      "source_sha256": "c5ba49ea25c3f49c29e44f0b72fe16c87baa91f771ab0c2d0d0dc1fc19fa02c0"
+    },
+    {
+      "export_path": "evidence/baseline-read-stream.json",
+      "export_sha256": "4587a4b831f4fd6e9c3c1ec717ca60d646af0c93e1b0a964cd335575aa0de300",
+      "action": "unchanged",
+      "source_sha256": "4587a4b831f4fd6e9c3c1ec717ca60d646af0c93e1b0a964cd335575aa0de300"
+    },
+    {
+      "export_path": "evidence/fixed-read-stream.json",
+      "export_sha256": "8910055c2fcae6c24d30888100914cb28324b2d81b2a867fad0521bd826aa8d7",
+      "action": "unchanged",
+      "source_sha256": "8910055c2fcae6c24d30888100914cb28324b2d81b2a867fad0521bd826aa8d7"
+    },
+    {
+      "export_path": "evidence/baseline-write-ordinary.json",
+      "export_sha256": "cf03fc1aef20537a454274576243dba4c5c44a753305c9e33f18871c5f53ccee",
+      "action": "unchanged",
+      "source_sha256": "cf03fc1aef20537a454274576243dba4c5c44a753305c9e33f18871c5f53ccee"
+    },
+    {
+      "export_path": "evidence/fixed-write-ordinary.json",
+      "export_sha256": "13fe58410874f2c07a599d07d6dbb46caa0619cfa6054f29799b605a2041072f",
+      "action": "unchanged",
+      "source_sha256": "13fe58410874f2c07a599d07d6dbb46caa0619cfa6054f29799b605a2041072f"
+    },
+    {
+      "export_path": "evidence/baseline-write-stream.json",
+      "export_sha256": "de83bbf7d29b91ebb99635a13fed2c869fb6d6bfcc7b4c23a163c4ec8e6a66a3",
+      "action": "unchanged",
+      "source_sha256": "de83bbf7d29b91ebb99635a13fed2c869fb6d6bfcc7b4c23a163c4ec8e6a66a3"
+    },
+    {
+      "export_path": "evidence/fixed-write-stream.json",
+      "export_sha256": "19b73a53d3fc2b6f781cc07dc5492619b6effdcfc21c5fc9b50683381f9d2c97",
+      "action": "unchanged",
+      "source_sha256": "19b73a53d3fc2b6f781cc07dc5492619b6effdcfc21c5fc9b50683381f9d2c97"
+    },
+    {
+      "export_path": "evidence/opencode-acceptance.json",
+      "export_sha256": "d08d94d0c777780a4f3382f5ed51b3b2d4af829fcca202e67fc8c99fd5fec227",
+      "action": "Workspace prefix sanitized; client version and process summary added",
+      "source_sha256": "2f7ff2d027a8fc819120cb060c9000bc1a352099e6f7e9846641826073cf5dda"
+    },
+    {
+      "export_path": "evidence/context-derived.json",
+      "export_sha256": "58d74bcda3272bb65333cc34dd166e7a8c982ac7a5c9cfea7f55e82400213ac5",
+      "action": "Select packaged context results only",
+      "source_sha256": "08c62254c1b2c403b47379fadef1194d4bc4d5e401ad7273b9a8aee0d8df7fd7"
+    }
+  ]
+}

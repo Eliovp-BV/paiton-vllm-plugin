@@ -1,0 +1,30 @@
+[
+  {
+    "name": "read-ordinary",
+    "valid": false,
+    "finish": "stop",
+    "elapsed_seconds": 0.4396325630368665,
+    "status": 200
+  },
+  {
+    "name": "read-stream",
+    "valid": false,
+    "finish": "stop",
+    "elapsed_seconds": 0.47485688200686127,
+    "status": 200
+  },
+  {
+    "name": "write-ordinary",
+    "valid": false,
+    "finish": "stop",
+    "elapsed_seconds": 0.5233561560162343,
+    "status": 200
+  },
+  {
+    "name": "write-stream",
+    "valid": false,
+    "finish": "stop",
+    "elapsed_seconds": 0.5249609470483847,
+    "status": 200
+  }
+]

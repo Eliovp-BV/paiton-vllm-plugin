@@ -1,0 +1,28 @@
+[
+  {
+    "concurrency": 1,
+    "wall_seconds": 126.68168943905039,
+    "requests": [
+      {
+        "prompt_tokens": 195999,
+        "desired_tokens": 196000,
+        "request_index": 0,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 126.68122221302474,
+        "ttft_seconds": 126.09504752099747,
+        "usage": {
+          "prompt_tokens": 195999,
+          "total_tokens": 196056,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    ],
+    "scope": "three-marker synthetic retrieval and API latency smoke; not comprehensive long-context quality"
+  }
+]

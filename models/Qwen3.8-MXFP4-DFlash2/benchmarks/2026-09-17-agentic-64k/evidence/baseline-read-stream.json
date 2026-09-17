@@ -1,0 +1,90 @@
+{
+  "name": "read-stream",
+  "request": {
+    "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Call read_file now to read /workspace/config.json. You need the file contents to answer; do not guess them."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "read_file",
+          "description": "Read a UTF-8 text file and return its exact contents.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_tokens": 512,
+    "stream": true,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "events": [
+      {
+        "id": "chatcmpl-83350a35d4212fe8",
+        "object": "chat.completion.chunk",
+        "created": 1789627494,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant",
+              "content": ""
+            },
+            "logprobs": null,
+            "finish_reason": null
+          }
+        ],
+        "prompt_token_ids": null,
+        "prompt_text": null
+      },
+      {
+        "id": "chatcmpl-83350a35d4212fe8",
+        "object": "chat.completion.chunk",
+        "created": 1789627494,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null
+          }
+        ],
+        "system_fingerprint": "vllm-0.28.0-8973e087"
+      }
+    ],
+    "content": "",
+    "reasoning": "",
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "ttft_seconds": null,
+    "elapsed_seconds": 0.47485688200686127
+  },
+  "parsed_tool_valid": false
+}

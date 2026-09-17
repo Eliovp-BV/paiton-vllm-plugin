@@ -1,0 +1,45 @@
+{
+  "change": "Only max_tokens capped at128; original messages, order, IDs unchanged",
+  "files": [
+    {
+      "file": "chat.jsonl",
+      "original_sha256": "6adc21235fd04c32c235d0f61faeb95ed439fedb85b1813d17b006b41fe141f4",
+      "bounded_sha256": "49dc6ea3c0c5b2e013425a0eb9344ad918c91f790efaa287da1594c365eddb13"
+    },
+    {
+      "file": "code.jsonl",
+      "original_sha256": "0ba162ffabf02068b75795c3a9cd34d24c46e62b647f4d06768ef5673154e7d1",
+      "bounded_sha256": "afbfdb2afa4e99731e0bd97a0f2e4457e2465b5896de44e9a71dbf86c9567af1"
+    },
+    {
+      "file": "file_edit.jsonl",
+      "original_sha256": "1705dbceab532263c92c0868f31c1219a7cc2e1cd6e2f5b2d990590719f158d0",
+      "bounded_sha256": "5caa8dbef9c86fb56faa75c7d3ed3a457999ea122d523854b54d698c52e154d2"
+    },
+    {
+      "file": "json.jsonl",
+      "original_sha256": "8115eb2db822c99e8c604efd36b2ed3fa5614337c39e2972539d5ec59e091608",
+      "bounded_sha256": "de9edb0f6818c1a7deecc5ccdd6e258c46fcbb649ac80e5017b045f2b0c7ffa1"
+    },
+    {
+      "file": "math.jsonl",
+      "original_sha256": "c6b6d54c20b4878528ada3b280bf421b3a153843391b298351cd3b97cec8713b",
+      "bounded_sha256": "4777db755b8c1813ea302780eadca5d8d3912e06ac322451215a4aba5b32b1f1"
+    },
+    {
+      "file": "prose.jsonl",
+      "original_sha256": "df44c33ed8a9e4f122cadd344b0b30dd53c2d63459cbe41e48546d6635501c38",
+      "bounded_sha256": "096ee315a75cc23dad60aedada7ff171e989c91e14735bc4f2164a377f5ab6c7"
+    },
+    {
+      "file": "reasoning.jsonl",
+      "original_sha256": "bad636d9f5f43f6f0dddade46f15937952982dbe8b253b38800f28d65ed460e7",
+      "bounded_sha256": "029db455fd9cd94a594dff1482c44fc6b270350d1e9f8cb266dec0726b62a4c4"
+    },
+    {
+      "file": "summarization.jsonl",
+      "original_sha256": "a0755899e91385cf99ccb6eb2d89967f523e3946bc5cd548114c6761e809a15e",
+      "bounded_sha256": "cb1276168d7bb0b952628b6c4fb31e742b5a4ba8bf037255450fe54d9d62b65d"
+    }
+  ]
+}

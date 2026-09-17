@@ -1,0 +1,205 @@
+[
+  {
+    "directory": "packaged-context-64k-c2",
+    "stem": "prompt-62983-c2",
+    "concurrency": 2,
+    "wall_seconds": 50.192478020035196,
+    "requests": [
+      {
+        "prompt_tokens": 62983,
+        "desired_tokens": 63000,
+        "request_index": 0,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 25.020950912032276,
+        "ttft_seconds": 24.578552788007073,
+        "usage": {
+          "prompt_tokens": 62983,
+          "total_tokens": 63040,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "client_post_first_token_seconds": 0.4423981240252033,
+        "short_output_post_first_token_rate_tps": 126.58281524903053
+      },
+      {
+        "prompt_tokens": 62983,
+        "desired_tokens": 63000,
+        "request_index": 1,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 50.19039786903886,
+        "ttft_seconds": 49.743781151017174,
+        "usage": {
+          "prompt_tokens": 62983,
+          "total_tokens": 63040,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "client_post_first_token_seconds": 0.4466167180216871,
+        "short_output_post_first_token_rate_tps": 125.38715578775248
+      }
+    ],
+    "metric_deltas": {
+      "prompt_tokens_total": 125966.0,
+      "generation_tokens_total": 114.0,
+      "request_success_total": 2.0,
+      "num_preemptions_total": 0.0,
+      "prefix_cache_queries_total": 0.0,
+      "prefix_cache_hits_total": 0.0,
+      "spec_decode_num_drafts_total": 18.0,
+      "spec_decode_num_draft_tokens_total": 126.0,
+      "spec_decode_num_accepted_tokens_total": 96.0
+    },
+    "server_timers": {
+      "time_to_first_token_seconds": {
+        "count": 2.0,
+        "sum": 74.25385093688965,
+        "mean": 37.126925468444824
+      },
+      "e2e_request_latency_seconds": {
+        "count": 2.0,
+        "sum": 75.19854187965393,
+        "mean": 37.599270939826965
+      },
+      "request_queue_time_seconds": {
+        "count": 2.0,
+        "sum": 23.729328965069726,
+        "mean": 11.864664482534863
+      },
+      "request_inference_time_seconds": {
+        "count": 2.0,
+        "sum": 50.04833828698611,
+        "mean": 25.024169143493054
+      },
+      "request_prefill_time_seconds": {
+        "count": 2.0,
+        "sum": 49.10444025695324,
+        "mean": 24.55222012847662
+      },
+      "request_decode_time_seconds": {
+        "count": 2.0,
+        "sum": 0.9438980300328694,
+        "mean": 0.4719490150164347
+      },
+      "request_time_per_output_token_seconds": {
+        "count": 2.0,
+        "sum": 0.016855321964872667,
+        "mean": 0.008427660982436334
+      }
+    },
+    "accepted_per_position": {
+      "2": 16.0,
+      "0": 18.0,
+      "3": 14.0,
+      "6": 10.0,
+      "1": 16.0,
+      "4": 12.0,
+      "5": 10.0
+    },
+    "draft_acceptance_fraction": 0.7619047619047619,
+    "accepted_drafts_per_round": 5.333333333333333,
+    "vllm_mean_acceptance_length": 6.333333333333333,
+    "single_request_prefill_rate_tps": null,
+    "batch_prompt_tokens_per_end_to_end_wall_second": 2509.658916416091
+  },
+  {
+    "directory": "packaged-context-200k-c1",
+    "stem": "prompt-195999-c1",
+    "concurrency": 1,
+    "wall_seconds": 126.68168943905039,
+    "requests": [
+      {
+        "prompt_tokens": 195999,
+        "desired_tokens": 196000,
+        "request_index": 0,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 126.68122221302474,
+        "ttft_seconds": 126.09504752099747,
+        "usage": {
+          "prompt_tokens": 195999,
+          "total_tokens": 196056,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        },
+        "client_post_first_token_seconds": 0.5861746920272708,
+        "short_output_post_first_token_rate_tps": 95.53466016474607
+      }
+    ],
+    "metric_deltas": {
+      "prompt_tokens_total": 195999.0,
+      "generation_tokens_total": 57.0,
+      "request_success_total": 1.0,
+      "num_preemptions_total": 0.0,
+      "prefix_cache_queries_total": 0.0,
+      "prefix_cache_hits_total": 0.0,
+      "spec_decode_num_drafts_total": 10.0,
+      "spec_decode_num_draft_tokens_total": 70.0,
+      "spec_decode_num_accepted_tokens_total": 47.0
+    },
+    "server_timers": {
+      "time_to_first_token_seconds": {
+        "count": 1.0,
+        "sum": 126.00408983230591,
+        "mean": 126.00408983230591
+      },
+      "e2e_request_latency_seconds": {
+        "count": 1.0,
+        "sum": 126.67037510871887,
+        "mean": 126.67037510871887
+      },
+      "request_queue_time_seconds": {
+        "count": 1.0,
+        "sum": 2.02369992621243e-05,
+        "mean": 2.02369992621243e-05
+      },
+      "request_inference_time_seconds": {
+        "count": 1.0,
+        "sum": 126.22886373696383,
+        "mean": 126.22886373696383
+      },
+      "request_prefill_time_seconds": {
+        "count": 1.0,
+        "sum": 125.5624793539755,
+        "mean": 125.5624793539755
+      },
+      "request_decode_time_seconds": {
+        "count": 1.0,
+        "sum": 0.6663843829883263,
+        "mean": 0.6663843829883263
+      },
+      "request_time_per_output_token_seconds": {
+        "count": 1.0,
+        "sum": 0.01189972112479154,
+        "mean": 0.01189972112479154
+      }
+    },
+    "accepted_per_position": {
+      "2": 9.0,
+      "0": 10.0,
+      "3": 5.0,
+      "6": 4.0,
+      "1": 10.0,
+      "4": 5.0,
+      "5": 4.0
+    },
+    "draft_acceptance_fraction": 0.6714285714285714,
+    "accepted_drafts_per_round": 4.7,
+    "vllm_mean_acceptance_length": 5.7,
+    "single_request_prefill_rate_tps": 1560.967902262073,
+    "batch_prompt_tokens_per_end_to_end_wall_second": 1547.177029828765
+  }
+]

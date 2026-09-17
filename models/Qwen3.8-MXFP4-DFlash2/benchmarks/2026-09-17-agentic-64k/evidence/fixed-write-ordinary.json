@@ -1,0 +1,116 @@
+{
+  "name": "write-ordinary",
+  "request": {
+    "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Use write_file to create /workspace/hello.txt containing exactly these two lines: Hello, \"Ada\"!\nSecond line. Do not merely show the intended call; invoke the tool."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "write_file",
+          "description": "Write a UTF-8 text file.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_tokens": 512,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "raw": {
+      "id": "chatcmpl-961ca455d2ea5588",
+      "object": "chat.completion",
+      "created": 1789629772,
+      "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [
+              {
+                "id": "chatcmpl-tool-a0655aa0fc934b9a",
+                "type": "function",
+                "function": {
+                  "name": "write_file",
+                  "arguments": "{\"path\": \"/workspace/hello.txt\", \"content\": \"Hello, \\\"Ada\\\"!\\nSecond line.\"}"
+                }
+              }
+            ],
+            "reasoning": null
+          },
+          "logprobs": null,
+          "finish_reason": "tool_calls",
+          "stop_reason": null,
+          "token_ids": null,
+          "routed_experts": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": "vllm-0.28.0-58212ef3",
+      "usage": {
+        "prompt_tokens": 325,
+        "total_tokens": 374,
+        "completion_tokens": 49,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "prompt_text": null,
+      "kv_transfer_params": null,
+      "ec_transfer_params": null,
+      "metrics": null
+    },
+    "content": null,
+    "reasoning": null,
+    "tool_calls": [
+      {
+        "id": "chatcmpl-tool-a0655aa0fc934b9a",
+        "type": "function",
+        "function": {
+          "name": "write_file",
+          "arguments": "{\"path\": \"/workspace/hello.txt\", \"content\": \"Hello, \\\"Ada\\\"!\\nSecond line.\"}"
+        }
+      }
+    ],
+    "finish_reason": "tool_calls",
+    "elapsed_seconds": 0.5242170529672876
+  },
+  "parsed_tool_valid": true
+}

@@ -1,0 +1,11 @@
+{
+  "status": "published-and-immutable-pull-verified",
+  "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-mxfp4-dflash2-rdna4-200k-v1.1.0",
+  "registry_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:28af1731cfd8aceab51915411e8f879531128c2711b4193c76c5b6eba8ba2ef4",
+  "digest": "sha256:28af1731cfd8aceab51915411e8f879531128c2711b4193c76c5b6eba8ba2ef4",
+  "anonymous_manifest_access": true,
+  "immutable_pull_same_image": true,
+  "original_v100_tag_unchanged": true,
+  "old_digest": "sha256:9b2dae214076d35de785e073b31294b033a376b16e6bc1ec1fdada4e54d96c59",
+  "published_at": "2026-09-17T07:19:01.429741+00:00"
+}

@@ -1,0 +1,39 @@
+{
+  "client": "opencode-ai",
+  "version": "1.18.31",
+  "scope": "Real local file read/write smoke; not a complex coding or long-context tool quality evaluation",
+  "process": {
+    "returncode": 0,
+    "timed_out": false,
+    "elapsed_seconds": 5.777212577988394
+  },
+  "acceptance": {
+    "returncode": 0,
+    "timed_out": false,
+    "result_json_matches": true,
+    "read_input_tool_completed": true,
+    "write_tool_completed": true,
+    "completed_tools": [
+      {
+        "tool": "read",
+        "input": {
+          "filePath": "WORKSPACE/inputgreeting.txt"
+        }
+      },
+      {
+        "tool": "write",
+        "input": {
+          "filePath": "WORKSPACE/result.json",
+          "content": "{\n  \"marker\": \"paiton-smoke-92250175c30ac775abe0a989ccd8cd5c\",\n  \"source\": \"inputgreeting.txt\"\n}\n"
+        }
+      }
+    ],
+    "invalid_stdout_lines": 0,
+    "error": null,
+    "actual_result": {
+      "marker": "paiton-smoke-92250175c30ac775abe0a989ccd8cd5c",
+      "source": "inputgreeting.txt"
+    },
+    "passed": true
+  }
+}

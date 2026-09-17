@@ -1,0 +1,199 @@
+{
+  "repository": "https://github.com/GGZ14/BetterBench",
+  "revision": "d00ad5ec8098c06584a88ec3468bacd37d5ed098",
+  "version": "0.6.0",
+  "retrieved_utc": "2026-09-16T10:11:19.629600+00:00",
+  "archive_sha256": "8ccc2919741014c962c109ecd2878c950b76396e6bb6a6445c38dd00fa785693",
+  "files": [
+    {
+      "file": "CHANGELOG.md",
+      "bytes": 10503,
+      "sha256": "8a3bb921f426e097f07f99e34dfe01a88d5da8e23c18a98edcfd6891c1fa77ed"
+    },
+    {
+      "file": "LICENSE",
+      "bytes": 4023,
+      "sha256": "10acecb6443cdaeb295334a997d283021b3931190e0db02bb413d51baa7d285b"
+    },
+    {
+      "file": "README.md",
+      "bytes": 15529,
+      "sha256": "3a8dad558b124ff8397ec57e83661cde7718dcd87620ddca61e265f35ea1bb4d"
+    },
+    {
+      "file": "betterbench/__init__.py",
+      "bytes": 141,
+      "sha256": "0b18ece43b485141a4181c18f6a2429c0ff6c19121942ea4fd4fdca6726fb7e3"
+    },
+    {
+      "file": "betterbench/cli.py",
+      "bytes": 20791,
+      "sha256": "e8fd50f6e43c356212f7742790ddf17c979608e0502a14dd2fc134c7007cac2b"
+    },
+    {
+      "file": "betterbench/client.py",
+      "bytes": 20641,
+      "sha256": "ca20dfef0bd49189d05ed996564f476e1e5bcdcea538bc50d1f8227585070f6b"
+    },
+    {
+      "file": "betterbench/config.py",
+      "bytes": 2804,
+      "sha256": "5026a6de91bc1324a244d1b8bfb277bab0f04f04fea3166cf66ce138c66897fd"
+    },
+    {
+      "file": "betterbench/corpus.py",
+      "bytes": 3036,
+      "sha256": "e0cfb2b1a111ba03d44123f30ffb4c54d78b2d53c8733d99ba27d4690d3dd4d3"
+    },
+    {
+      "file": "betterbench/env.py",
+      "bytes": 2230,
+      "sha256": "454b0996c4647a8e837b67da1e9cc352687b626cec2ab13a03f006f95ee5d6aa"
+    },
+    {
+      "file": "betterbench/html_report.py",
+      "bytes": 35529,
+      "sha256": "ced8fc462ecb044aea25f3ca187c4cb26007e04a484c01fd8651ad720dc90077"
+    },
+    {
+      "file": "betterbench/metrics.py",
+      "bytes": 7811,
+      "sha256": "5dcece3cef1364f8800b8a87230912e027b3f301a17836df5eff6ff95bf0348d"
+    },
+    {
+      "file": "betterbench/prefill.py",
+      "bytes": 3763,
+      "sha256": "5fc78c6181863401ea828801fd0219c8265625f299385448a7a5a3abdae807d9"
+    },
+    {
+      "file": "betterbench/report.py",
+      "bytes": 21313,
+      "sha256": "ea4d94981af54a84337d465aee49a82ea4cc2fdbed0adf1c3acb89275323602a"
+    },
+    {
+      "file": "betterbench/runner.py",
+      "bytes": 12448,
+      "sha256": "48f4578328f35c754253d3b0da434c66fe8e8bdcb72ba2a19ec1485cd01bdb2e"
+    },
+    {
+      "file": "betterbench/runs.py",
+      "bytes": 5501,
+      "sha256": "e580e6923fdb1b1d0b32256be4efc40c263fac96c54a5f82707cfb045d61691b"
+    },
+    {
+      "file": "betterbench/update.py",
+      "bytes": 6304,
+      "sha256": "548ba7844465c12b4641cb07a19a2d8382994da0ceb94f5143ff1941f957d0fc"
+    },
+    {
+      "file": "corpus/v1/chat.jsonl",
+      "bytes": 1594,
+      "sha256": "6adc21235fd04c32c235d0f61faeb95ed439fedb85b1813d17b006b41fe141f4"
+    },
+    {
+      "file": "corpus/v1/code.jsonl",
+      "bytes": 1488,
+      "sha256": "0ba162ffabf02068b75795c3a9cd34d24c46e62b647f4d06768ef5673154e7d1"
+    },
+    {
+      "file": "corpus/v1/file_edit.jsonl",
+      "bytes": 1479,
+      "sha256": "1705dbceab532263c92c0868f31c1219a7cc2e1cd6e2f5b2d990590719f158d0"
+    },
+    {
+      "file": "corpus/v1/json.jsonl",
+      "bytes": 1549,
+      "sha256": "8115eb2db822c99e8c604efd36b2ed3fa5614337c39e2972539d5ec59e091608"
+    },
+    {
+      "file": "corpus/v1/math.jsonl",
+      "bytes": 1304,
+      "sha256": "c6b6d54c20b4878528ada3b280bf421b3a153843391b298351cd3b97cec8713b"
+    },
+    {
+      "file": "corpus/v1/prose.jsonl",
+      "bytes": 1431,
+      "sha256": "df44c33ed8a9e4f122cadd344b0b30dd53c2d63459cbe41e48546d6635501c38"
+    },
+    {
+      "file": "corpus/v1/reasoning.jsonl",
+      "bytes": 1528,
+      "sha256": "bad636d9f5f43f6f0dddade46f15937952982dbe8b253b38800f28d65ed460e7"
+    },
+    {
+      "file": "corpus/v1/summarization.jsonl",
+      "bytes": 2035,
+      "sha256": "a0755899e91385cf99ccb6eb2d89967f523e3946bc5cd548114c6761e809a15e"
+    },
+    {
+      "file": "pyproject.toml",
+      "bytes": 979,
+      "sha256": "c707953946dc5c4cf841dbef0c45566e6053c1d7e10f7a0feaf9e343ceb0ca63"
+    },
+    {
+      "file": "tests/conftest.py",
+      "bytes": 1594,
+      "sha256": "39296ced4c29de3f8f090a3f91b96a08b3323f9576f24aeacd06630151a57007"
+    },
+    {
+      "file": "tests/test_ab_sign.py",
+      "bytes": 1870,
+      "sha256": "0f4208b58e899f1f1b01ea4b2792b8be1d1150087bdbc31469c4b9eb366e705c"
+    },
+    {
+      "file": "tests/test_atomic_write.py",
+      "bytes": 2181,
+      "sha256": "7695d967272a5b221bd74945cce784bd6463a635677db5a65a54c20c0141f4bc"
+    },
+    {
+      "file": "tests/test_auth.py",
+      "bytes": 9022,
+      "sha256": "5ca7a8ae9c98450fe190778970e4569dba3cd1c763e5f070279891cfc20a227c"
+    },
+    {
+      "file": "tests/test_chunk_gaps.py",
+      "bytes": 3607,
+      "sha256": "21c1c43ef5091be89203fe898005958a6e4b08d7467c6f4e63eea66468a5db34"
+    },
+    {
+      "file": "tests/test_migration.py",
+      "bytes": 2567,
+      "sha256": "63edff86813208e04fc2f283cbdef2e39368a4ff8e5fc0e22edba3a6271722a6"
+    },
+    {
+      "file": "tests/test_phase_selection.py",
+      "bytes": 3597,
+      "sha256": "438072ab00e620c39375e36cdb17fc6b8e8deb94035f0a675cf9d964eb903db5"
+    },
+    {
+      "file": "tests/test_prefill_content.py",
+      "bytes": 5022,
+      "sha256": "1b3f8be06eb1d6b90e2230bbfa30f55dfcde20225cb14ef65ad7f585c0b2b5d1"
+    },
+    {
+      "file": "tests/test_reasoning_split.py",
+      "bytes": 3275,
+      "sha256": "39683477cea15562c60176c189afc7f7ad9fb6cdb7b2fe0f85ce625e03845786"
+    },
+    {
+      "file": "tests/test_report_render.py",
+      "bytes": 3637,
+      "sha256": "f79f38d199458d9f1133f4702ec43cd8128d1308f9d3827dc1c92cfe3d3c8af6"
+    },
+    {
+      "file": "tests/test_run_dir.py",
+      "bytes": 15484,
+      "sha256": "e85c42fce4947130bad030782e07a4f7f63c29d9e1b6a0fb3d37266f68fcfd8d"
+    },
+    {
+      "file": "tests/test_sample_gate.py",
+      "bytes": 1952,
+      "sha256": "2b021eb3f324165c758913ab322a1a30705882bc5ad3fe5724b511e96c175d12"
+    },
+    {
+      "file": "tests/test_update_check.py",
+      "bytes": 7722,
+      "sha256": "f33306f2ac8c4c07f398d1f40c9ad7201e30f215343c14456f10628dced0dbd5"
+    }
+  ]
+}

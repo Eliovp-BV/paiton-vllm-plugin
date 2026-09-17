@@ -1,0 +1,47 @@
+[
+  {
+    "concurrency": 2,
+    "wall_seconds": 50.192478020035196,
+    "requests": [
+      {
+        "prompt_tokens": 62983,
+        "desired_tokens": 63000,
+        "request_index": 0,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 25.020950912032276,
+        "ttft_seconds": 24.578552788007073,
+        "usage": {
+          "prompt_tokens": 62983,
+          "total_tokens": 63040,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      },
+      {
+        "prompt_tokens": 62983,
+        "desired_tokens": 63000,
+        "request_index": 1,
+        "status": 200,
+        "retrieval_pass": true,
+        "content": "{\n  \"KEY_1\": \"cobalt-731-lantern\",\n  \"KEY_2\": \"maple-482-circuit\",\n  \"KEY_3\": \"violet-965-harbor\"\n}",
+        "finish_reason": "stop",
+        "elapsed_seconds": 50.19039786903886,
+        "ttft_seconds": 49.743781151017174,
+        "usage": {
+          "prompt_tokens": 62983,
+          "total_tokens": 63040,
+          "completion_tokens": 57,
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    ],
+    "scope": "three-marker synthetic retrieval and API latency smoke; not comprehensive long-context quality"
+  }
+]

@@ -1,5 +1,23 @@
 # Qwen3.8 MXFP4 + DFlash2 on regular vLLM
 
+## 64K and 200K images, tool-call fix, and quick benchmark — 17 September 2026
+
+New v1.1.0 images add Qwen XML tool-call parsing and configurable context limits.
+The **64K profile** uses a 5 GiB cache and up to eight scheduled requests; the
+**200K profile** uses an 8 GiB cache and one active request, with little spare
+VRAM on the 32 GB R9700. The original v1.0.0 image remains available.
+
+The 64K image completed a 52-request BetterBench quick run: **304.1 tok/s aggregate
+at concurrency eight**, with **67.8 tok/s median per request**. These are short
+prompts with a 128-token output cap and thinking disabled. Separate long-context
+retrieval and OpenCode tool tests are documented alongside the benchmark.
+
+[New benchmark page, visuals, evidence, and GHCR package links](benchmarks/2026-09-17-agentic-64k/README.md)
+· [64K and 200K launch commands](LAUNCH-agentic-v1.1.0.md)
+· [Tool calling and context details](SUPPORT.md).
+
+The comparison sections below retain the measurements from the earlier 8K release.
+
 ## BetterBench 0.6.0 against current GGZ14 — 16 September 2026
 
 On one Radeon AI PRO R9700, the released Paiton integration delivers **17.45%
@@ -49,7 +67,12 @@ separately below.
 Radiance retains an approximately 10–11 ms TTFT advantage at one and two
 concurrent requests; Paiton's latency advantage appears under concurrent load.
 
-## Run the release
+## Run the v1.0.0 benchmark release
+
+[Context overrides, structured tool calls, and coding-agent setup](SUPPORT.md)
+cover the reproduced parser mismatch and the local configuration workarounds.
+The corrected 64K profile has functional API/client validation separate from the
+historical benchmarks.
 
 Release **v1.0.0** is available on GHCR. The launcher pins the qualified image
 by digest in [runtime.lock.json](runtime.lock.json).
@@ -115,7 +138,7 @@ python3 models/Qwen3.8-MXFP4-DFlash2/serve.py \
 Use one launch example at a time for the same GPU. `docker stop
 paiton-qwen38-mxfp4` stops the default serving container; the cache persists.
 
-## Model and supported profile
+## Model and v1.0.0 profile
 
 | Setting | Tested configuration |
 |---|---|

@@ -1,0 +1,837 @@
+{
+  "scope": "Descriptive quick test of the 64K packaged defaults; historical thinking default differs.",
+  "source_result": "data/results.json",
+  "phases": [
+    {
+      "phase": "single-chat",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 68.53420190278126,
+      "median_client_ttft_ms": 101.25187001540326,
+      "actual_prompt_tokens": [
+        115,
+        97
+      ],
+      "actual_completion_tokens": [
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.171504406258464e-05,
+          "mean_seconds": 1.3905014687528213e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.300661638029851,
+          "mean_seconds": 0.10022054600995034
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 5.974835800938308,
+          "mean_seconds": 1.9916119336461027
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3097555637359619,
+          "mean_seconds": 0.10325185457865398
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 959.0,
+      "accepted_tokens_including_warmups": 245.0,
+      "accepted_fraction_including_warmups": 0.25547445255474455,
+      "mean_acceptance_length_including_warmups": 2.7883211678832116
+    },
+    {
+      "phase": "single-code",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 109.5883860324031,
+      "median_client_ttft_ms": 105.57452350622043,
+      "actual_prompt_tokens": [
+        69,
+        72
+      ],
+      "actual_completion_tokens": [
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.0971965063363314e-05,
+          "mean_seconds": 1.3657321687787771e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3029555270331912,
+          "mean_seconds": 0.1009851756777304
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 3.2740280010038987,
+          "mean_seconds": 1.0913426670012996
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.31136608123779297,
+          "mean_seconds": 0.10378869374593098
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 525.0,
+      "accepted_tokens_including_warmups": 312.0,
+      "accepted_fraction_including_warmups": 0.5942857142857143,
+      "mean_acceptance_length_including_warmups": 5.16
+    },
+    {
+      "phase": "single-file_edit",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 119.5269856269245,
+      "median_client_ttft_ms": 104.10693852463737,
+      "actual_prompt_tokens": [
+        106,
+        74
+      ],
+      "actual_completion_tokens": [
+        128,
+        34
+      ],
+      "finish_reasons": [
+        "length",
+        "stop"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "none"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.155997885391116e-05,
+          "mean_seconds": 1.3853326284637054e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.29685659997630864,
+          "mean_seconds": 0.09895219999210288
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 2.795902822050266,
+          "mean_seconds": 0.9319676073500887
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3055243492126465,
+          "mean_seconds": 0.10184144973754883
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 448.0,
+      "accepted_tokens_including_warmups": 229.0,
+      "accepted_fraction_including_warmups": 0.5111607142857143,
+      "mean_acceptance_length_including_warmups": 4.578125
+    },
+    {
+      "phase": "single-json",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 151.96085767178306,
+      "median_client_ttft_ms": 106.93365300539881,
+      "actual_prompt_tokens": [
+        75,
+        76
+      ],
+      "actual_completion_tokens": [
+        57,
+        128
+      ],
+      "finish_reasons": [
+        "stop",
+        "length"
+      ],
+      "reasoning_sources": [
+        "none",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.154402995482087e-05,
+          "mean_seconds": 1.384800998494029e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3061822149902582,
+          "mean_seconds": 0.10206073833008607
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 1.7047388790524565,
+          "mean_seconds": 0.5682462930174855
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3150300979614258,
+          "mean_seconds": 0.1050100326538086
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 273.0,
+      "accepted_tokens_including_warmups": 199.0,
+      "accepted_fraction_including_warmups": 0.7289377289377289,
+      "mean_acceptance_length_including_warmups": 6.102564102564102
+    },
+    {
+      "phase": "single-math",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 119.21258234630912,
+      "median_client_ttft_ms": 102.44134950335138,
+      "actual_prompt_tokens": [
+        74,
+        45
+      ],
+      "actual_completion_tokens": [
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.065199755132198e-05,
+          "mean_seconds": 1.355066585044066e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.2970693819806911,
+          "mean_seconds": 0.09902312732689704
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 3.1437172310543247,
+          "mean_seconds": 1.047905743684775
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3056044578552246,
+          "mean_seconds": 0.1018681526184082
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 504.0,
+      "accepted_tokens_including_warmups": 321.0,
+      "accepted_fraction_including_warmups": 0.6369047619047619,
+      "mean_acceptance_length_including_warmups": 5.458333333333333
+    },
+    {
+      "phase": "single-prose",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 56.49762533465638,
+      "median_client_ttft_ms": 98.96991102141328,
+      "actual_prompt_tokens": [
+        54,
+        81
+      ],
+      "actual_completion_tokens": [
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.137598443776369e-05,
+          "mean_seconds": 1.3791994812587896e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.2756432869937271,
+          "mean_seconds": 0.0918810956645757
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 6.8065042970119976,
+          "mean_seconds": 2.268834765670666
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.2841615676879883,
+          "mean_seconds": 0.09472052256266277
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 1092.0,
+      "accepted_tokens_including_warmups": 229.0,
+      "accepted_fraction_including_warmups": 0.2097069597069597,
+      "mean_acceptance_length_including_warmups": 2.467948717948718
+    },
+    {
+      "phase": "single-reasoning",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 102.00882231789046,
+      "median_client_ttft_ms": 109.69556900090538,
+      "actual_prompt_tokens": [
+        95,
+        66
+      ],
+      "actual_completion_tokens": [
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.225305747240782e-05,
+          "mean_seconds": 1.4084352490802607e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.31739648897200823,
+          "mean_seconds": 0.10579882965733607
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 3.898545630974695,
+          "mean_seconds": 1.2995152103248984
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.326092004776001,
+          "mean_seconds": 0.10869733492533366
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 623.0,
+      "accepted_tokens_including_warmups": 299.0,
+      "accepted_fraction_including_warmups": 0.4799357945425361,
+      "mean_acceptance_length_including_warmups": 4.359550561797753
+    },
+    {
+      "phase": "single-summarization",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": 81.44760096803103,
+      "median_client_ttft_ms": 106.36133048683405,
+      "actual_prompt_tokens": [
+        114,
+        83
+      ],
+      "actual_completion_tokens": [
+        84,
+        38
+      ],
+      "finish_reasons": [
+        "stop",
+        "stop"
+      ],
+      "reasoning_sources": [
+        "none",
+        "none"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.075805190950632e-05,
+          "mean_seconds": 1.3586017303168774e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.3030456679407507,
+          "mean_seconds": 0.10101522264691691
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 2.496515175967943,
+          "mean_seconds": 0.8321717253226476
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.31202197074890137,
+          "mean_seconds": 0.10400732358296712
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 399.0,
+      "accepted_tokens_including_warmups": 148.0,
+      "accepted_fraction_including_warmups": 0.37092731829573933,
+      "mean_acceptance_length_including_warmups": 3.5964912280701755
+    },
+    {
+      "phase": "prefill-2000",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": null,
+      "median_client_ttft_ms": 432.60027703945525,
+      "actual_prompt_tokens": [
+        1520,
+        1490
+      ],
+      "actual_completion_tokens": [
+        2,
+        2
+      ],
+      "finish_reasons": [
+        "stop",
+        "stop"
+      ],
+      "reasoning_sources": [
+        "none",
+        "none"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.2658939491957426e-05,
+          "mean_seconds": 1.4219646497319141e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 1.269944228057284,
+          "mean_seconds": 0.4233147426857613
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.14091974002076313,
+          "mean_seconds": 0.04697324667358771
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 1.2886395454406738,
+          "mean_seconds": 0.4295465151468913
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 21.0,
+      "accepted_tokens_including_warmups": 3.0,
+      "accepted_fraction_including_warmups": 0.14285714285714285,
+      "mean_acceptance_length_including_warmups": 2.0,
+      "median_prompt_tokens_per_client_ttft_second": 3478.8774008905857,
+      "all_phase_prompt_tokens_per_server_prefill_second_including_warmup": 3543.4626974791972
+    },
+    {
+      "phase": "prefill-7000",
+      "measured_requests": 2,
+      "warmup_requests": 1,
+      "successes": 2,
+      "median_request_decode_tps": null,
+      "median_client_ttft_ms": 1540.7050490030088,
+      "actual_prompt_tokens": [
+        5171,
+        5217
+      ],
+      "actual_completion_tokens": [
+        2,
+        2
+      ],
+      "finish_reasons": [
+        "stop",
+        "stop"
+      ],
+      "reasoning_sources": [
+        "none",
+        "none"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.4916931074112654e-05,
+          "mean_seconds": 1.4972310358037552e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.567047796095721,
+          "mean_seconds": 1.5223492653652404
+        },
+        "request_decode_time_seconds": {
+          "count": 3.0,
+          "sum_seconds": 0.13981450494611636,
+          "mean_seconds": 0.04660483498203879
+        },
+        "time_to_first_token_seconds": {
+          "count": 3.0,
+          "sum_seconds": 4.603375434875488,
+          "mean_seconds": 1.5344584782918294
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 21.0,
+      "accepted_tokens_including_warmups": 3.0,
+      "accepted_fraction_including_warmups": 0.14285714285714285,
+      "mean_acceptance_length_including_warmups": 2.0,
+      "median_prompt_tokens_per_client_ttft_second": 3371.1729237080153,
+      "all_phase_prompt_tokens_per_server_prefill_second_including_warmup": 3409.204522297858
+    },
+    {
+      "phase": "concurrency-1",
+      "measured_requests": 8,
+      "warmup_requests": 0,
+      "successes": 8,
+      "median_request_decode_tps": 99.95337699058724,
+      "median_client_ttft_ms": 106.28713149344549,
+      "actual_prompt_tokens": [
+        116,
+        97,
+        103,
+        69,
+        72,
+        71,
+        79,
+        107
+      ],
+      "actual_completion_tokens": [
+        128,
+        128,
+        128,
+        128,
+        128,
+        104,
+        128,
+        77
+      ],
+      "finish_reasons": [
+        "length",
+        "length",
+        "length",
+        "length",
+        "length",
+        "stop",
+        "length",
+        "stop"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "none",
+        "unknown",
+        "none"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 0.00010858906898647547,
+          "mean_seconds": 1.3573633623309433e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 0.8069886310840957,
+          "mean_seconds": 0.10087357888551196
+        },
+        "request_decode_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 10.39389283087803,
+          "mean_seconds": 1.2992366038597538
+        },
+        "time_to_first_token_seconds": {
+          "count": 8.0,
+          "sum_seconds": 0.8303768634796143,
+          "mean_seconds": 0.10379710793495178
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 1659.0,
+      "accepted_tokens_including_warmups": 724.0,
+      "accepted_fraction_including_warmups": 0.43640747438215793,
+      "mean_acceptance_length_including_warmups": 4.0548523206751055,
+      "aggregate_tps": 84.41888316467212,
+      "batch_wall_seconds": 11.241560708032921
+    },
+    {
+      "phase": "concurrency-2",
+      "measured_requests": 8,
+      "warmup_requests": 0,
+      "successes": 8,
+      "median_request_decode_tps": 89.5502081423154,
+      "median_client_ttft_ms": 168.05235602078028,
+      "actual_prompt_tokens": [
+        97,
+        113,
+        70,
+        103,
+        71,
+        72,
+        82,
+        107
+      ],
+      "actual_completion_tokens": [
+        128,
+        128,
+        128,
+        128,
+        104,
+        128,
+        128,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length",
+        "length",
+        "length",
+        "stop",
+        "length",
+        "length",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "none",
+        "unknown",
+        "unknown",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 7.04439589753747e-05,
+          "mean_seconds": 8.805494871921837e-06
+        },
+        "request_prefill_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 0.9626772960182279,
+          "mean_seconds": 0.12033466200227849
+        },
+        "request_decode_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 11.492055712966248,
+          "mean_seconds": 1.436506964120781
+        },
+        "time_to_first_token_seconds": {
+          "count": 8.0,
+          "sum_seconds": 1.3230433464050293,
+          "mean_seconds": 0.16538041830062866
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 1645.0,
+      "accepted_tokens_including_warmups": 778.0,
+      "accepted_fraction_including_warmups": 0.4729483282674772,
+      "mean_acceptance_length_including_warmups": 4.310638297872341,
+      "aggregate_tps": 152.69341553191612,
+      "batch_wall_seconds": 6.549070871958975
+    },
+    {
+      "phase": "concurrency-4",
+      "measured_requests": 8,
+      "warmup_requests": 0,
+      "successes": 8,
+      "median_request_decode_tps": 86.1587564870295,
+      "median_client_ttft_ms": 182.87101548048668,
+      "actual_prompt_tokens": [
+        102,
+        69,
+        70,
+        99,
+        115,
+        70,
+        107,
+        81
+      ],
+      "actual_completion_tokens": [
+        128,
+        128,
+        89,
+        128,
+        128,
+        128,
+        107,
+        128
+      ],
+      "finish_reasons": [
+        "length",
+        "length",
+        "stop",
+        "length",
+        "length",
+        "length",
+        "stop",
+        "length"
+      ],
+      "reasoning_sources": [
+        "unknown",
+        "unknown",
+        "none",
+        "unknown",
+        "unknown",
+        "unknown",
+        "none",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 8.689408423379064e-05,
+          "mean_seconds": 1.086176052922383e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 1.1531831430038437,
+          "mean_seconds": 0.14414789287548047
+        },
+        "request_decode_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 13.74060467601521,
+          "mean_seconds": 1.7175755845019012
+        },
+        "time_to_first_token_seconds": {
+          "count": 8.0,
+          "sum_seconds": 1.6775786876678467,
+          "mean_seconds": 0.20969733595848083
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 1624.0,
+      "accepted_tokens_including_warmups": 745.0,
+      "accepted_fraction_including_warmups": 0.45874384236453203,
+      "mean_acceptance_length_including_warmups": 4.211206896551724,
+      "aggregate_tps": 230.75909355689882,
+      "batch_wall_seconds": 4.177516842959449
+    },
+    {
+      "phase": "concurrency-8",
+      "measured_requests": 8,
+      "warmup_requests": 0,
+      "successes": 8,
+      "median_request_decode_tps": 67.81479846793401,
+      "median_client_ttft_ms": 350.8362779975869,
+      "actual_prompt_tokens": [
+        70,
+        70,
+        107,
+        80,
+        104,
+        72,
+        98,
+        114
+      ],
+      "actual_completion_tokens": [
+        89,
+        128,
+        128,
+        128,
+        128,
+        128,
+        125,
+        128
+      ],
+      "finish_reasons": [
+        "stop",
+        "length",
+        "length",
+        "length",
+        "length",
+        "length",
+        "stop",
+        "length"
+      ],
+      "reasoning_sources": [
+        "none",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "unknown",
+        "none",
+        "unknown"
+      ],
+      "server_phase_timers_including_warmups": {
+        "request_queue_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 0.00013054098235443234,
+          "mean_seconds": 1.6317622794304043e-05
+        },
+        "request_prefill_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 1.7553952591842972,
+          "mean_seconds": 0.21942440739803715
+        },
+        "request_decode_time_seconds": {
+          "count": 8.0,
+          "sum_seconds": 15.173051172983833,
+          "mean_seconds": 1.896631396622979
+        },
+        "time_to_first_token_seconds": {
+          "count": 8.0,
+          "sum_seconds": 2.529496908187866,
+          "mean_seconds": 0.3161871135234833
+        }
+      },
+      "preemptions_including_warmups": 0.0,
+      "draft_tokens_including_warmups": 1582.0,
+      "accepted_tokens_including_warmups": 758.0,
+      "accepted_fraction_including_warmups": 0.47914032869785084,
+      "mean_acceptance_length_including_warmups": 4.353982300884956,
+      "aggregate_tps": 304.1014877117788,
+      "batch_wall_seconds": 3.2291851229965687
+    }
+  ],
+  "limits": [
+    "2 measured serial samples/category, 8 requests/concurrency, 2 prefill samples/depth",
+    "128-token generation cap; incomplete answers and HTTP success are not quality evidence",
+    "Client TTFT includes HTTP and server waiting but excludes client semaphore waiting",
+    "Decode TPS uses BetterBench (completion_tokens-1)/(last-first streamed update)",
+    "Stream updates can contain multiple speculative tokens",
+    "Server phase durations are request residence time, not isolated GPU kernel time",
+    "Phase metric deltas include one warmup per category/prefill depth"
+  ]
+}

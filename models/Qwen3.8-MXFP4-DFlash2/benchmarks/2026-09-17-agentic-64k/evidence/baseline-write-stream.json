@@ -1,0 +1,94 @@
+{
+  "name": "write-stream",
+  "request": {
+    "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Use write_file to create /workspace/hello.txt containing exactly these two lines: Hello, \"Ada\"!\nSecond line. Do not merely show the intended call; invoke the tool."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "write_file",
+          "description": "Write a UTF-8 text file.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_tokens": 512,
+    "stream": true,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "events": [
+      {
+        "id": "chatcmpl-82b63a4ae3dc82b7",
+        "object": "chat.completion.chunk",
+        "created": 1789627495,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant",
+              "content": ""
+            },
+            "logprobs": null,
+            "finish_reason": null
+          }
+        ],
+        "prompt_token_ids": null,
+        "prompt_text": null
+      },
+      {
+        "id": "chatcmpl-82b63a4ae3dc82b7",
+        "object": "chat.completion.chunk",
+        "created": 1789627495,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "logprobs": null,
+            "finish_reason": "stop",
+            "stop_reason": null,
+            "token_ids": null
+          }
+        ],
+        "system_fingerprint": "vllm-0.28.0-8973e087"
+      }
+    ],
+    "content": "",
+    "reasoning": "",
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "ttft_seconds": null,
+    "elapsed_seconds": 0.5249609470483847
+  },
+  "parsed_tool_valid": false
+}

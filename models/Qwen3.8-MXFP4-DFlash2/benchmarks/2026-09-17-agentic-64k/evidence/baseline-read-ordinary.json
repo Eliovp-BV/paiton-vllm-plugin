@@ -1,0 +1,91 @@
+{
+  "name": "read-ordinary",
+  "request": {
+    "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Call read_file now to read /workspace/config.json. You need the file contents to answer; do not guess them."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "read_file",
+          "description": "Read a UTF-8 text file and return its exact contents.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_tokens": 512,
+    "stream": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "raw": {
+      "id": "chatcmpl-94ed687cab64a476",
+      "object": "chat.completion",
+      "created": 1789627493,
+      "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "<tool_call>\n<function=read_file>\n<parameter=path>\n/workspace/config.json\n</parameter>\n</function>\n</tool_call>",
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "reasoning": null
+          },
+          "logprobs": null,
+          "finish_reason": "stop",
+          "stop_reason": null,
+          "token_ids": null,
+          "routed_experts": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": "vllm-0.28.0-8973e087",
+      "usage": {
+        "prompt_tokens": 305,
+        "total_tokens": 332,
+        "completion_tokens": 27,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "prompt_text": null,
+      "kv_transfer_params": null,
+      "ec_transfer_params": null,
+      "metrics": null
+    },
+    "content": "<tool_call>\n<function=read_file>\n<parameter=path>\n/workspace/config.json\n</parameter>\n</function>\n</tool_call>",
+    "reasoning": null,
+    "tool_calls": [],
+    "finish_reason": "stop",
+    "elapsed_seconds": 0.4396325630368665
+  },
+  "parsed_tool_valid": false
+}

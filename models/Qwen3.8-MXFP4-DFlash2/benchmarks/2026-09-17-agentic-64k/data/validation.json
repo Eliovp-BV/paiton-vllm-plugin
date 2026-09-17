@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "single_requests": 16,
+  "concurrent_requests": 32,
+  "prefill_requests": 4,
+  "recorded_requests": 62,
+  "warmups": 10,
+  "all_payloads_omit_chat_template_kwargs": true
+}

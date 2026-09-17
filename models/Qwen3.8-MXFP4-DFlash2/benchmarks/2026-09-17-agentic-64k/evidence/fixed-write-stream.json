@@ -1,0 +1,249 @@
+{
+  "name": "write-stream",
+  "request": {
+    "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Use write_file to create /workspace/hello.txt containing exactly these two lines: Hello, \"Ada\"!\nSecond line. Do not merely show the intended call; invoke the tool."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "write_file",
+          "description": "Write a UTF-8 text file.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ],
+    "tool_choice": "auto",
+    "temperature": 0.1,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_tokens": 512,
+    "stream": true,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "response": {
+    "status": 200,
+    "events": [
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "role": "assistant",
+              "content": ""
+            },
+            "logprobs": null,
+            "finish_reason": null
+          }
+        ],
+        "prompt_token_ids": null,
+        "prompt_text": null
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "id": "chatcmpl-tool-b84d081454b86fa0",
+                  "type": "function",
+                  "index": 0,
+                  "function": {
+                    "name": "write_file"
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": "{\"path\": \"/workspace"
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": "/hello.txt"
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": "\", \"content\": \"Hello,"
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": " \\\"Ada\\\"!\\nSecond line."
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "function": {
+                    "arguments": "\"}"
+                  }
+                }
+              ]
+            },
+            "logprobs": null,
+            "finish_reason": null,
+            "token_ids": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-af2735f8007623b0",
+        "object": "chat.completion.chunk",
+        "created": 1789629773,
+        "model": "Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {},
+            "logprobs": null,
+            "finish_reason": "tool_calls",
+            "stop_reason": null,
+            "token_ids": null
+          }
+        ],
+        "system_fingerprint": "vllm-0.28.0-58212ef3"
+      }
+    ],
+    "content": "",
+    "reasoning": "",
+    "tool_calls": [
+      {
+        "id": "chatcmpl-tool-b84d081454b86fa0",
+        "type": "function",
+        "function": {
+          "name": "write_file",
+          "arguments": "{\"path\": \"/workspace/hello.txt\", \"content\": \"Hello, \\\"Ada\\\"!\\nSecond line.\"}"
+        }
+      }
+    ],
+    "finish_reason": "tool_calls",
+    "ttft_seconds": 0.2597461480181664,
+    "elapsed_seconds": 0.5244990789797157
+  },
+  "parsed_tool_valid": true
+}
