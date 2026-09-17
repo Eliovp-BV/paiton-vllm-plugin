@@ -1,5 +1,36 @@
 # Qwen3.8 MXFP4 + DFlash2 on regular vLLM
 
+## Long coding conversations: prefix caching can remove most repeat-turn waiting
+
+**New APC investigation — 17 September 2026.** Automatic prefix caching reuses
+computation for an unchanged conversation prefix. It can make a large practical
+difference when a coding agent sends the same growing history on every turn.
+Our released profiles currently disable it because compact native GDN replay
+does not yet support prefix reuse.
+
+On one R9700, the stock-GDN APC path reduced **40K cold-to-repeat first-token
+latency from 15.58 s to 1.13 s**. Our experimental native-prefill APC candidate
+reduced **150K cold-to-repeat latency from 88.46 s to 2.04 s**, reproduced with a
+second distinct prefix at **88.61 s to 2.03 s**. Those are **43–44× faster response
+starts on cache hits**, not decode-throughput gains or new competitor results.
+The 150K tests used an 8 GiB cache and one active request.
+
+APC is a workload choice: it helps repeated documents and growing conversations,
+while the compact native path retains better decode performance and cache
+capacity for fresh prompts. The report includes these tradeoffs and the cache
+miss, branch, tool-result and concurrency checks.
+
+**Availability:** the existing GHCR images remain unchanged. They do **not**
+implement the new `PAITON_PREFIX_CACHING=1` convenience flag yet. Users can try
+the measured stock-GDN APC configuration on the published 64K image with the
+[explicit profile override](benchmarks/2026-09-17-prefix-caching/REPRODUCE.md).
+The native-prefill APC candidate is not yet distributed. Do not apply the
+fallback to the 200K image with its existing 8 GiB cache: that budget does not
+meet the stock-APC cache requirement at 200K.
+
+[APC results, raw evidence and limitations](benchmarks/2026-09-17-prefix-caching/README.md)
+· [Try stock-GDN APC and reproduce the controls](benchmarks/2026-09-17-prefix-caching/REPRODUCE.md).
+
 ## 64K and 200K images, tool-call fix, and quick benchmark — 17 September 2026
 
 New v1.1.0 images add Qwen XML tool-call parsing and configurable context limits.

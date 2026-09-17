@@ -1,0 +1,379 @@
+{
+  "schema": 1,
+  "date": "2026-09-17",
+  "gpu": "One Radeon AI PRO R9700, 32 GiB",
+  "host_ram_gib": 16,
+  "base_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:c3ec2528285b484b2e0af7f571f80f1da23c1970210e4d3d09f5d2a909414186",
+  "vllm_version": "0.28.0+rocm723",
+  "image_rocm": "7.2.3",
+  "checkpoints": {
+    "schema": 1,
+    "status": "Pinned original target and DFlash2 snapshots; SHA256 verification required",
+    "models": {
+      "target": {
+        "repository": "amd/Qwen3.8-27B-Quark-AWQ-MXFP4",
+        "revision": "5233554c5fa56afda40150556b95573c2d7d29c0",
+        "files": {
+          "chat_template.jinja": {
+            "bytes": 8952,
+            "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+          },
+          "config.json": {
+            "bytes": 10905,
+            "sha256": "4a139d3e01df039e17b4c8b8362f7944674d76051a8cd96f213c6bc332d69f55"
+          },
+          "generation_config.json": {
+            "bytes": 213,
+            "sha256": "07f857aba5260b2ea2513f80de8062d086661f00eada0a3794964e665ba680f5"
+          },
+          "model.safetensors": {
+            "bytes": 19798196184,
+            "sha256": "be1d745bc7312fdf1486059ec57cdeb514cc4d1aa06528c6677a0ebc0a0e1272"
+          },
+          "tokenizer.json": {
+            "bytes": 12809320,
+            "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+          },
+          "tokenizer_config.json": {
+            "bytes": 17928,
+            "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+          }
+        }
+      },
+      "draft": {
+        "repository": "tcclaviger/Qwen3.8-27B-DFlash2-FP8",
+        "revision": "ee0cb26a8279b7910cc28d82a8a3e15e4728d56f",
+        "files": {
+          "config.json": {
+            "bytes": 3256,
+            "sha256": "5b5668a00b26aaebd88c7e3d961f7d1cdef025867fee158dfccb84f29fd8caec"
+          },
+          "model.safetensors": {
+            "bytes": 2118882784,
+            "sha256": "7dbb99a8d0120f502e66b256aa7c0866d933ceeee4a02463d9db591811e8404e"
+          }
+        }
+      }
+    }
+  },
+  "sampling": {
+    "temperature": 0,
+    "top_p": 1,
+    "seed": 42,
+    "enable_thinking": false
+  },
+  "dflash_speculative_tokens": 7,
+  "kv_cache_dtype": "fp8",
+  "tensor_parallel_size": 1,
+  "servers": [
+    {
+      "name": "paiton-qwen38-apc-a",
+      "arm": "A",
+      "effective_prefix_caching": false,
+      "effective_mamba_cache_mode": "none",
+      "max_model_len": 65536,
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 5368709120,
+      "observed": {
+        "enable_prefix_caching": false,
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 5.0,
+        "reported_cache_token_capacity": 119088,
+        "reported_context_tokens": 65536,
+        "reported_max_concurrency": 1.82,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.24
+      },
+      "log_excerpts": [
+        {
+          "line": 73,
+          "text": "(EngineCore pid=203) INFO 09-17 08:31:58 [kv_cache_utils.py:1869] GPU KV cache size: 119,088 tokens, Maximum concurrency for 65,536 tokens per request: 1.82x"
+        },
+        {
+          "line": 74,
+          "text": "(EngineCore pid=203) WARNING 09-17 08:31:58 [compilation.py:1412] CUDAGraphMode.FULL is not supported with PaitonGDNBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 86,
+          "text": "(EngineCore pid=203) INFO 09-17 08:31:59 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        },
+        {
+          "line": 73,
+          "text": "(EngineCore pid=203) INFO 09-17 08:31:58 [kv_cache_utils.py:1869] GPU KV cache size: 119,088 tokens, Maximum concurrency for 65,536 tokens per request: 1.82x"
+        },
+        {
+          "line": 74,
+          "text": "(EngineCore pid=203) WARNING 09-17 08:31:58 [compilation.py:1412] CUDAGraphMode.FULL is not supported with PaitonGDNBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 86,
+          "text": "(EngineCore pid=203) INFO 09-17 08:31:59 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        }
+      ]
+    },
+    {
+      "name": "paiton-qwen38-apc-b",
+      "arm": "B",
+      "effective_prefix_caching": false,
+      "effective_mamba_cache_mode": "none",
+      "max_model_len": 65536,
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 5368709120,
+      "observed": {
+        "enable_prefix_caching": false,
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 5.0,
+        "reported_cache_token_capacity": 85063,
+        "reported_context_tokens": 65536,
+        "reported_max_concurrency": 1.3,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.24
+      },
+      "log_excerpts": [
+        {
+          "line": 73,
+          "text": "(EngineCore pid=196) INFO 09-17 08:53:45 [kv_cache_utils.py:1869] GPU KV cache size: 85,063 tokens, Maximum concurrency for 65,536 tokens per request: 1.30x"
+        },
+        {
+          "line": 74,
+          "text": "(EngineCore pid=196) WARNING 09-17 08:53:45 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 86,
+          "text": "(EngineCore pid=196) INFO 09-17 08:53:45 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        },
+        {
+          "line": 73,
+          "text": "(EngineCore pid=196) INFO 09-17 08:53:45 [kv_cache_utils.py:1869] GPU KV cache size: 85,063 tokens, Maximum concurrency for 65,536 tokens per request: 1.30x"
+        },
+        {
+          "line": 74,
+          "text": "(EngineCore pid=196) WARNING 09-17 08:53:45 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 86,
+          "text": "(EngineCore pid=196) INFO 09-17 08:53:45 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        }
+      ]
+    },
+    {
+      "name": "paiton-qwen38-apc-c",
+      "arm": "C",
+      "effective_prefix_caching": true,
+      "effective_mamba_cache_mode": "align",
+      "max_model_len": 65536,
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 5368709120,
+      "observed": {
+        "enable_prefix_caching": true,
+        "mamba_cache_mode": "align",
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 5.0,
+        "reported_cache_token_capacity": 81727,
+        "reported_context_tokens": 65536,
+        "reported_max_concurrency": 1.25,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.24
+      },
+      "log_excerpts": [
+        {
+          "line": 77,
+          "text": "(EngineCore pid=204) INFO 09-17 08:43:22 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 78,
+          "text": "(EngineCore pid=204) WARNING 09-17 08:43:22 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 90,
+          "text": "(EngineCore pid=204) INFO 09-17 08:43:24 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        },
+        {
+          "line": 77,
+          "text": "(EngineCore pid=204) INFO 09-17 08:43:22 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 78,
+          "text": "(EngineCore pid=204) WARNING 09-17 08:43:22 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 90,
+          "text": "(EngineCore pid=204) INFO 09-17 08:43:24 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.24 GiB"
+        }
+      ]
+    },
+    {
+      "name": "paiton-qwen38-apc-d2",
+      "arm": "D",
+      "effective_prefix_caching": true,
+      "effective_mamba_cache_mode": "align",
+      "max_model_len": 65536,
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 5368709120,
+      "observed": {
+        "enable_prefix_caching": true,
+        "mamba_cache_mode": "align",
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 5.0,
+        "reported_cache_token_capacity": 81727,
+        "reported_context_tokens": 65536,
+        "reported_max_concurrency": 1.25,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.25
+      },
+      "log_excerpts": [
+        {
+          "line": 75,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:24 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=198) WARNING 09-17 09:08:24 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 88,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:25 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.25 GiB"
+        },
+        {
+          "line": 75,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:24 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=198) WARNING 09-17 09:08:24 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 88,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:25 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.25 GiB"
+        },
+        {
+          "line": 75,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:24 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=198) WARNING 09-17 09:08:24 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 88,
+          "text": "(EngineCore pid=198) INFO 09-17 09:08:25 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.25 GiB"
+        }
+      ]
+    },
+    {
+      "name": "paiton-qwen38-apc-d3-c8",
+      "arm": "D",
+      "effective_prefix_caching": true,
+      "effective_mamba_cache_mode": "align",
+      "max_model_len": 65536,
+      "max_num_seqs": 8,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 5368709120,
+      "observed": {
+        "enable_prefix_caching": true,
+        "mamba_cache_mode": "align",
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 5.0,
+        "reported_cache_token_capacity": 81727,
+        "reported_context_tokens": 65536,
+        "reported_max_concurrency": 1.25,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.34
+      },
+      "log_excerpts": [
+        {
+          "line": 75,
+          "text": "(EngineCore pid=197) INFO 09-17 09:14:50 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=197) WARNING 09-17 09:14:50 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 92,
+          "text": "(EngineCore pid=197) INFO 09-17 09:14:52 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.34 GiB"
+        },
+        {
+          "line": 75,
+          "text": "(EngineCore pid=197) INFO 09-17 09:14:50 [kv_cache_utils.py:1869] GPU KV cache size: 81,727 tokens, Maximum concurrency for 65,536 tokens per request: 1.25x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=197) WARNING 09-17 09:14:50 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 92,
+          "text": "(EngineCore pid=197) INFO 09-17 09:14:52 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.34 GiB"
+        }
+      ]
+    },
+    {
+      "name": "paiton-qwen38-apc-d4-long",
+      "arm": "D",
+      "effective_prefix_caching": true,
+      "effective_mamba_cache_mode": "align",
+      "max_model_len": 160000,
+      "max_num_seqs": 1,
+      "max_num_batched_tokens": 4096,
+      "cache_bytes": 8589934592,
+      "observed": {
+        "enable_prefix_caching": true,
+        "mamba_cache_mode": "align",
+        "model_loading_gib": 19.25,
+        "initial_free_gib": 31.79,
+        "reserved_cache_gib": 8.0,
+        "reported_cache_token_capacity": 167227,
+        "reported_context_tokens": 160000,
+        "reported_max_concurrency": 1.05,
+        "effective_cudagraph_mode": "FULL_DECODE_ONLY",
+        "graph_capture_gib": 0.25
+      },
+      "log_excerpts": [
+        {
+          "line": 75,
+          "text": "(EngineCore pid=197) INFO 09-17 09:19:12 [kv_cache_utils.py:1869] GPU KV cache size: 167,227 tokens, Maximum concurrency for 160,000 tokens per request: 1.05x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=197) WARNING 09-17 09:19:12 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 88,
+          "text": "(EngineCore pid=197) INFO 09-17 09:19:13 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.25 GiB"
+        },
+        {
+          "line": 75,
+          "text": "(EngineCore pid=197) INFO 09-17 09:19:12 [kv_cache_utils.py:1869] GPU KV cache size: 167,227 tokens, Maximum concurrency for 160,000 tokens per request: 1.05x"
+        },
+        {
+          "line": 76,
+          "text": "(EngineCore pid=197) WARNING 09-17 09:19:12 [compilation.py:1412] CUDAGraphMode.FULL is not supported with GDNAttentionBackend backend (support: AttentionCGSupport.UNIFORM_BATCH); setting cudagraph_mode=FULL_DECODE_ONLY"
+        },
+        {
+          "line": 88,
+          "text": "(EngineCore pid=197) INFO 09-17 09:19:13 [model_runner.py:906] Graph capturing finished in 1 secs, took 0.25 GiB"
+        }
+      ]
+    }
+  ],
+  "availability": "Report/evidence publication only. C and D used local launcher/adapter changes; no updated APC image or runtime patch is published with this report.",
+  "native_artifact_rebuilt": false,
+  "notes": [
+    "Stored server-metadata.json is the base profile before launcher overrides. C/D effectively enable prefix caching and Mamba align; compact replay/prefill/conv registrations are disabled.",
+    "D restores only native recurrent prefill while retaining stock cache/state/convolution/decode ownership.",
+    "A/B/C/D 8K/40K runs use 65536 context, 5 GiB cache, max_num_seqs=1. D long uses 160000 context, 8 GiB cache, max_num_seqs=1.",
+    "D concurrency smoke uses max_num_seqs=8; client C1/2/4/8 is functional evidence, not a warmed throughput comparison or proof of eight simultaneously scheduled requests.",
+    "All serving arms requested FULL graphs; effective mode was FULL_DECODE_ONLY.",
+    "Request/response and metric data are original bytes except local filesystem references normalized to archive-relative paths in metadata. Original and exported hashes are both retained.",
+    "HTTP benchmark client portability changes only replace a local helper import path. No compiler/runtime implementation is included."
+  ]
+}

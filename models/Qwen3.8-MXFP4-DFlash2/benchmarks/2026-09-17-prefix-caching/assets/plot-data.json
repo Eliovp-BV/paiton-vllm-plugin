@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "metric": "Client time to first nonempty streamed content, seconds; includes queueing",
+  "forty_k": {
+    "a": {
+      "source_run": "a-40k",
+      "resource": {
+        "cache_gib": 5,
+        "max_model_len": 65536,
+        "max_num_seqs": 1
+      },
+      "cases": [
+        {
+          "case": "cold",
+          "ttft_seconds": 13.984786209010053,
+          "elapsed_seconds": 14.68904410302639
+        },
+        {
+          "case": "repeat",
+          "ttft_seconds": 14.063400466984604,
+          "elapsed_seconds": 14.769380340003408
+        },
+        {
+          "case": "grow1",
+          "ttft_seconds": 14.203211338026449,
+          "elapsed_seconds": 14.673154334013816
+        },
+        {
+          "case": "grow2",
+          "ttft_seconds": 14.387746015039738,
+          "elapsed_seconds": 14.860299040039536
+        }
+      ]
+    },
+    "c": {
+      "source_run": "c-40k",
+      "resource": {
+        "cache_gib": 5,
+        "max_model_len": 65536,
+        "max_num_seqs": 1
+      },
+      "cases": [
+        {
+          "case": "cold",
+          "ttft_seconds": 15.57830987899797,
+          "elapsed_seconds": 16.300932092999574
+        },
+        {
+          "case": "repeat",
+          "ttft_seconds": 1.133074699959252,
+          "elapsed_seconds": 1.857072235958185
+        },
+        {
+          "case": "grow1",
+          "ttft_seconds": 1.2307560829794966,
+          "elapsed_seconds": 1.7105457639554515
+        },
+        {
+          "case": "grow2",
+          "ttft_seconds": 1.3864010990364477,
+          "elapsed_seconds": 1.8673484140308574
+        }
+      ]
+    },
+    "d": {
+      "source_run": "d-40k",
+      "resource": {
+        "cache_gib": 5,
+        "max_model_len": 65536,
+        "max_num_seqs": 1
+      },
+      "cases": [
+        {
+          "case": "cold",
+          "ttft_seconds": 14.679737413011026,
+          "elapsed_seconds": 15.40079564001644
+        },
+        {
+          "case": "repeat",
+          "ttft_seconds": 1.0891118120052852,
+          "elapsed_seconds": 1.8119888529763557
+        },
+        {
+          "case": "grow1",
+          "ttft_seconds": 1.1789259089855477,
+          "elapsed_seconds": 1.657018878031522
+        },
+        {
+          "case": "grow2",
+          "ttft_seconds": 1.3257642930257134,
+          "elapsed_seconds": 1.8077886269893497
+        }
+      ]
+    }
+  },
+  "long_context": {
+    "primary": {
+      "source_run": "d-150k",
+      "resource": {
+        "cache_gib": 8,
+        "max_model_len": 160000,
+        "max_num_seqs": 1
+      },
+      "cases": [
+        {
+          "case": "cold",
+          "ttft_seconds": 88.45819045801181,
+          "elapsed_seconds": 89.47866020002402
+        },
+        {
+          "case": "repeat",
+          "ttft_seconds": 2.0438307669828646,
+          "elapsed_seconds": 3.0627995359827764
+        },
+        {
+          "case": "grow1",
+          "ttft_seconds": 2.1468376129632816,
+          "elapsed_seconds": 2.7497615829925053
+        },
+        {
+          "case": "grow2",
+          "ttft_seconds": 2.540299961983692,
+          "elapsed_seconds": 3.144473886000924
+        }
+      ]
+    },
+    "confirmation": {
+      "source_run": "d-repeat-150k",
+      "resource": {
+        "cache_gib": 8,
+        "max_model_len": 160000,
+        "max_num_seqs": 1
+      },
+      "cases": [
+        {
+          "case": "cold",
+          "ttft_seconds": 88.61075399402762,
+          "elapsed_seconds": 89.57036234997213
+        },
+        {
+          "case": "repeat",
+          "ttft_seconds": 2.032992133987136,
+          "elapsed_seconds": 2.990930464991834
+        }
+      ]
+    }
+  },
+  "publication_scope": "Report only. Native-prefill APC candidate is not distributed. Existing image stock-GDN APC uses the documented profile override."
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "archive_members": 511,
+  "raw_uncompressed_bytes": 43733456,
+  "files": {
+    "provenance.json": {
+      "sha256": "e25de8025f547061d2e213064498b6330f52a507ddede177bcadbebb5cf2a849",
+      "bytes": 16801
+    },
+    "raw-evidence.tar.gz": {
+      "sha256": "a28f73d825f2215188ad14439bfbb6e0696d6c659d0783c73c9cfa8d9f65f0a0",
+      "bytes": 1602715
+    },
+    "raw-input-manifest.json": {
+      "sha256": "d0e36ddfc09c451895f81edd953999de106f46f3c01e9d9f31ba5b617db77ead",
+      "bytes": 165594
+    },
+    "results.json": {
+      "sha256": "179dd7957885e18ae08eb997c0bfb9639f18c467384dd95c713b50f5909f17bb",
+      "bytes": 429143
+    },
+    "scripts/apc_benchmark.py": {
+      "sha256": "6bce3ff238404d4fb822685214a7e4daf53607ddeb8474a1c69e0568cf34bcf1",
+      "bytes": 19388
+    },
+    "scripts/decode_benchmark.py": {
+      "sha256": "4e8e17eaeb551d2a7e03ccde879e433cf8dfa24d79ba375c929b36778e777bc4",
+      "bytes": 2329
+    },
+    "scripts/probe_apc_concurrency.py": {
+      "sha256": "c49807a5d9eabfd54e8145d7da42ef583c184d67e1b63fa49a7ce0f247b3e0df",
+      "bytes": 14918
+    },
+    "scripts/probe_cached_tools.py": {
+      "sha256": "2dfbc6f9386b5afe1c8b2798fa41b42c333f12ef0380c30a6859bb32c06934b1",
+      "bytes": 11740
+    },
+    "scripts/probe_tools.py": {
+      "sha256": "19a88e04a4f104ed21c3441100904d302d049990a3b40a751e01bd3d4ac289f5",
+      "bytes": 7365
+    }
+  },
+  "scan": "PASS: reviewed path, credential, private-source and native-code patterns",
+  "excluded": "No full server logs, compiler/generated source, native libraries, runtime adapter or launcher implementation."
+}
