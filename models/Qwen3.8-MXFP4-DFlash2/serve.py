@@ -6,6 +6,8 @@ from pathlib import Path
 import re
 import subprocess
 
+from container_entrypoint import add_engine_override_arguments, engine_overrides
+
 
 def mount_path(path):
     value = str(path.resolve())
@@ -35,6 +37,18 @@ def command(args, image):
         entry_args.append("--offline")
     if args.download_only:
         entry_args.append("--download-only")
+    overrides = engine_overrides(args)
+    if overrides:
+        # The immutable release image's original entrypoint predates these flags.
+        # Overlay only this public launcher, preserving the image's profile/locks.
+        entrypoint = Path(__file__).resolve().with_name("container_entrypoint.py")
+        if not entrypoint.is_file():
+            raise ValueError(f"Updated container entrypoint does not exist: {entrypoint}")
+        cmd += ["-v", f"{mount_path(entrypoint)}:/opt/paiton-release/container_entrypoint.py:ro"]
+        for name, value in overrides.items():
+            entry_args.append("--" + name.replace("_", "-"))
+            if name != "disable_thinking":
+                entry_args.append(str(value))
     return [*cmd, image, *entry_args]
 
 
@@ -49,6 +63,7 @@ def main():
     parser.add_argument("--offline", action="store_true", help="Use only cached or mounted model snapshots")
     parser.add_argument("--download-only", action="store_true", help="Download and verify models without GPU access")
     parser.add_argument("--dry-run", action="store_true", help="Print Docker argv without downloading or launching")
+    add_engine_override_arguments(parser)
     args = parser.parse_args()
     if not 1 <= args.port <= 65535 or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,90}", args.name):
         parser.error("Invalid port or container name")
