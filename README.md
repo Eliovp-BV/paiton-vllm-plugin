@@ -41,17 +41,19 @@ both input and generated tokens.
 | --- | --- | ---: | ---: | --- |
 | [**MiniCPM5-2B W4A16**](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools; text | 8K | ~4.75 GiB | [**+54.4% output tok/s** vs stock; C1](models/MiniCPM5-2B/BENCHMARKS.md#sustained-generation-and-prefill) |
 | [**Qwen3.8 27B Qronos**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning; text | 8K | Not reported | [**+54.3% output tok/s** vs stock; coding workload, C1](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) |
-| [**Qwen3.8 27B MXFP4 + DFlash2**](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat, reasoning and coding; text | 8K | [Qualified profile](models/Qwen3.8-MXFP4-DFlash2/README.md#model-and-supported-profile) | [**+57% aggregate output tok/s** vs Radiance + DFlash2; C8](models/Qwen3.8-MXFP4-DFlash2/BENCHMARKS.md) |
+| [**Qwen3.8 27B MXFP4 + DFlash2**](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat, coding and tools; text | 65K / 200K | Not reported | [**146.9 tok/s weighted decode; 400.7 tok/s aggregate C8**; 65K profile](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
 | [**Qwen3.8 NEO CODER MAX 27B Q4_K_M**](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat; text + one image; native GGUF | 8K | ~23.74 GiB | [**6.4% lower request latency** vs llama.cpp; 128 input / 128 output, C1](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md#matched-text-comparison) |
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning; text | 8K | Not reported | [**+27.0% output tok/s** vs stock; includes DFlash, C1](models/Ornith-1.5/BENCHMARKS.md) |
 | [**GPT-OSS-20B**](models/GPT-OSS-20B/README.md) | Reasoning, coding, tools and JSON schemas; text | 8K | ~17.0 GiB | [**54.0% lower request latency** vs fastest qualified stock reference; 512 input / 256 output, C1](models/GPT-OSS-20B/BENCHMARKS.md) |
 | [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Code writing, review, testing and tools; text | 4K | ~20.1 GiB | [**+70.1% output tok/s** vs stock at C2; **+21.3%** at C1](models/Qwen3-Coder-30B/BENCHMARKS.md) |
 
-**Qwen3.8 MXFP4 + DFlash2** runs on the official vLLM image with Paiton native
-HIP kernels and adapted Radiance techniques. The matched full workload measures
-**22% higher weighted decode**, **12.5–17.3% faster prefill**, and **2.89× estimated
-token-cache capacity within the same 5 GiB pool** versus Radiance + DFlash2.
-[Three-engine graphs and complete results](models/Qwen3.8-MXFP4-DFlash2/BENCHMARKS.md).
+**Qwen3.8 MXFP4 + DFlash2** now has public **ROCm 10 / vLLM 0.29.0** images
+for **65,536-token** and **200,000-token** context. The current 65K profile
+measured **146.9 tok/s weighted decode**, **215.9 tok/s median JSON decode**,
+and **400.7 tok/s aggregate at C8** on one R9700 at 300 W.
+[Current results and launch instructions](models/Qwen3.8-MXFP4-DFlash2/README.md#run-the-current-release).
+The 200K profile is qualified for one active request; these throughput numbers
+come from the 65K profile.
 
 MiniCPM5 has the smallest model download here, **2.11 GB**, and a measured
 **27.98-second** prepared-cache launch to a completed answer. Its W4 thinking
@@ -111,7 +113,7 @@ cd paiton-vllm-plugin
 
 - **MiniCPM5:** `./models/MiniCPM5-2B/serve-docker.sh` — then `python3 models/MiniCPM5-2B/chat.py`; API port **8036**, model `minicpm5-2b`.
 - **Qronos Qwen3.8:** `./models/Qwen3.8/serve-docker.sh` — once ready, `docker exec -it paiton-qwen38 paiton-chat`; API port **8000**, model `qwen38`.
-- **Qwen3.8 MXFP4 + DFlash2:** `python3 models/Qwen3.8-MXFP4-DFlash2/serve.py --detach` — API port **8000**, model `Qwen3.8-27B-Quark-AWQ-MXFP4`; [verified downloads and streaming example](models/Qwen3.8-MXFP4-DFlash2/README.md#run-the-release).
+- **Qwen3.8 MXFP4 + DFlash2:** [download the pinned weights and set the three directory variables](models/Qwen3.8-MXFP4-DFlash2/README.md#run-the-current-release), then `bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh` — API port **18982**, model `Qwen3.8`. Use `run-rocm10-200k.sh` for the 200K profile.
 - **NEO CODER MAX:** `./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh` — API port **8000**, model `qwen38-neo`; [chat and image examples](models/Qwen3.8-NEO-CODER-MAX/README.md#launch).
 - **Ornith 1.5:** `./models/Ornith-1.5/serve-docker.sh --chat` — opens terminal chat after startup; API port **8000**, model `ornith`.
 - **GPT-OSS-20B:** `./models/GPT-OSS-20B/serve-docker.sh` — then `python3 models/GPT-OSS-20B/chat.py`; API port **8020**, model `gpt-oss-20b`.

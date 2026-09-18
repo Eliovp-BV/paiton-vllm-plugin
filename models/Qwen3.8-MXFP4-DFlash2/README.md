@@ -1,5 +1,143 @@
 # Qwen3.8 MXFP4 + DFlash2 on regular vLLM
 
+## Current release
+
+**18 September 2026: ROCm 10, vLLM 0.29.0, and the Paiton vLLM plugin.**
+The public 65K and 200K images include the qualified runtime and native libraries,
+with Qwen XML tool calling. The 65K profile measured **146.9 tok/s weighted decode**,
+**215.9 tok/s median JSON decode**, and **400.7 tok/s aggregate at concurrency eight**.
+
+| Profile | Total context limit | Maximum scheduled requests | Image |
+| --- | ---: | ---: | --- |
+| 65K | 65,536 tokens | 8 | [Public 65K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757845) |
+| 200K | 200,000 tokens | 1 | [Public 200K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900) |
+
+Both profiles use FP8 KV caching and disable automatic prefix caching (APC).
+The launchers pin the tested images by digest under
+`ghcr.io/eliovp/paiton-vllm-plugin`; no registry login is required.
+
+## Run the current release
+
+Use Linux x86-64, Docker, and one Radeon AI PRO R9700 with 32 GB VRAM and working
+AMD GPU device access. Run the following commands from the repository root.
+The images contain the runtime; download the target and draft weights separately
+using the Hugging Face CLI (`hf`), or point the variables at existing copies of
+these exact snapshots.
+
+This release loads the **Unsloth NVFP4 checkpoint through the MXFP4 runtime path**.
+The AMD checkpoint and automatic downloader in the historical release below
+are for the older images.
+
+```bash
+export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
+export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k"
+mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
+
+hf download unsloth/Qwen3.8-27B-NVFP4 \
+  --revision f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
+  --local-dir "$PAITON_TARGET_DIR"
+hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
+  --revision ee0cb26a8279b7910cc28d82a8a3e15e4728d56f \
+  --local-dir "$PAITON_DRAFT_DIR"
+
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
+```
+
+The server runs in the foreground at `http://127.0.0.1:18982/v1`, with API model
+name **`Qwen3.8`**. First startup loads/converts weights and compiles runtime
+components; wait for readiness before sending requests or measuring throughput.
+The persistent cache is reused on subsequent starts. The first image pull is
+approximately 9.6 GB, excluding model weights.
+
+From another terminal:
+
+```bash
+curl --fail http://127.0.0.1:18982/health
+curl --fail http://127.0.0.1:18982/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"Qwen3.8","messages":[{"role":"user","content":"Write a Python function that removes duplicate items while preserving order."}],"temperature":0.7,"top_p":0.95,"max_tokens":256,"stream":true,"chat_template_kwargs":{"enable_thinking":false}}'
+```
+
+To use 200K context, stop the 65K container (`docker stop paiton-qwen38-65k`),
+keep the same target and draft directories, and use the other launcher:
+
+```bash
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh
+```
+
+Select one profile at a time on the GPU. The 200K image passed a **198,989-token
+prompt** followed by generation, a fresh short request, and both ordinary and
+streaming XML tool calls. The performance tables below are for the **65K profile**;
+they are not measurements of 200K throughput.
+
+No private compiler checkout is needed to run these images. The full qualified
+runtime payload is distributed in the images; the public repository alone is
+not a complete build context for this release.
+
+## Current benchmark results
+
+Measured on **one Radeon AI PRO R9700, 32 GB, at a 300 W power limit**, using the
+published 65K configuration, BetterBench 0.6.0, thinking disabled, and APC off.
+Sampling: temperature 0.7, top-p 0.95, top-k 20, seed 42. These tables come from
+one complete validation run: **290 successful requests including warmups**.
+They do not combine the best numbers from different runs.
+
+### Decode
+
+Median decode throughput across five scored runs per category, after one warmup
+per category. The benchmark's weighted decode score is **146.9 tok/s**;
+JSON's **215.9 tok/s** is a category result, not the overall score.
+
+| Category | Median decode tok/s |
+| --- | ---: |
+| chat | 123.7 |
+| code | 169.2 |
+| file_edit | 185.0 |
+| json | 215.9 |
+| math | 182.7 |
+| prose | 74.9 |
+| reasoning | 112.5 |
+| summarization | 115.0 |
+
+### Prefill
+
+Median prompt throughput across eight scored runs per depth, after two warmups.
+BetterBench reports prompt tokens divided by time to first token. Its requested
+depth labels differ from the actual tokenized inputs, shown separately below.
+
+| Requested depth | Median actual prompt tokens | Median prefill tok/s |
+| ---: | ---: | ---: |
+| 2,000 | 1,516.5 | 3,503.6 |
+| 8,000 | 5,894.5 | 3,530.4 |
+| 16,000 | 11,802.0 | 3,536.9 |
+| 32,000 | 23,549.5 | 3,393.0 |
+| 64,000 | 47,016.5 | 3,113.0 |
+
+### Concurrency
+
+Aggregate output tokens divided by total wall time for 48 requests at each
+concurrency level. These rates are across all requests, not per-stream decode.
+
+| Concurrent requests | Aggregate tok/s |
+| ---: | ---: |
+| 1 | 115.0 |
+| 2 | 203.2 |
+| 4 | 296.5 |
+| 8 | 400.7 |
+
+## Historical releases and comparisons
+
+The sections below describe earlier images, checkpoints, launchers and benchmark
+settings. Their numbers are separate from the current release. In particular,
+`serve.py`, `runtime.lock.json`, and `checkpoint.lock.json` below describe the
+legacy release; use the `run-rocm10-*.sh` launchers above for the current images.
+
+<details>
+<summary>Earlier releases, APC investigation, benchmarks and reproduction instructions</summary>
+
 ## Long coding conversations: prefix caching can remove most repeat-turn waiting
 
 **New APC investigation — 17 September 2026.** Automatic prefix caching reuses
@@ -48,25 +186,6 @@ retrieval and OpenCode tool tests are documented alongside the benchmark.
 · [Tool calling and context details](SUPPORT.md).
 
 The comparison sections below retain the measurements from the earlier 8K release.
-
-## BetterBench 0.6.0 against current GGZ14 — 16 September 2026
-
-On one Radeon AI PRO R9700, the released Paiton integration delivers **17.45%
-higher weighted generation throughput**, **82.13% higher aggregate throughput
-at concurrency eight**, and **13–14% faster prefill** than the tested current
-GGZ14 implementation. These figures use its stronger repeat with matching HIP
-settings, the same AMD MXFP4 target and DFlash2 drafter, and an equal 5 GiB cache
-allocation.
-
-![BetterBench: Paiton versus current GGZ14 on one R9700](benchmarks/2026-09-16-betterbench/assets/throughput-and-cache.png)
-
-[Results, latency tradeoffs, all four runs and downloadable visual reports](benchmarks/2026-09-16-betterbench/README.md)
-· [Raw measurements and provenance](benchmarks/2026-09-16-betterbench/provenance.json)
-· [Reproduce](benchmarks/2026-09-16-betterbench/REPRODUCE.md).
-
-This is a 128-token quick screen with sampled generation. GGZ retains advantages
-in some short-prompt latency and per-request metrics. It is distinct from the
-earlier benchmark suites below and from the different NVFP4/two-GPU setup.
 
 ## Earlier release benchmark suites
 
@@ -236,3 +355,5 @@ Use this model's `runtime-pyproject.toml`, copied automatically by the preparer;
 the repository-wide package targets other runtime versions. The published
 container digest identifies the tested distribution; a local rebuild creates
 its own image identity.
+
+</details>
