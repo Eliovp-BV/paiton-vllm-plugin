@@ -11,4 +11,4 @@ exec docker run --rm --name paiton-qwen38-200k --network host \
   -v "$PAITON_TARGET_DIR:/models/target:ro" \
   -v "$PAITON_DRAFT_DIR:/models/draft:ro" \
   -v "$PAITON_CACHE_DIR:/cache:rw" \
-  ghcr.io/eliovp-bv/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178
