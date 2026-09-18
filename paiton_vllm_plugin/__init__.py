@@ -22,6 +22,9 @@ def paiton_platform_plugin() -> str | None:
     Returns the fully qualified name of the PaitonPlatform class if
     running on a supported AMD GPU, otherwise returns None.
     """
+    # external runtime compatibility uses the upstream ROCm platform and model classes.
+    if os.environ.get("PAITON_RUNTIME_COMPAT_FLOW", "0") == "1":
+        return None
     # Allow explicit opt-out so users can run vanilla vLLM on MI300 systems.
     # (Paiton's platform changes KV-cache layout and is only compatible with
     # Paiton-compiled model runtimes.)
@@ -54,6 +57,10 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    if os.environ.get("PAITON_RUNTIME_COMPAT_FLOW", "0") == "1":
+        from paiton_runtime_compat import register
+        register()
+        return
     if os.environ.get("PAITON_EXPERIMENTAL_MXFP4_W4A8") == "1":
         # Use upstream model classes and its ROCm platform in this isolated
         # integration lane; no unrelated model/loader compatibility patches.

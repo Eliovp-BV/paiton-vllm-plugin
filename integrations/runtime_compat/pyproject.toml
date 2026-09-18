@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paiton-runtime-compat-adapter"
+version = "0.1.1"
+description = "Pinned serving compatibility adapter for the Paiton vLLM plugin"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["paiton_runtime_compat*"]
+
+[tool.setuptools.package-data]
+paiton_runtime_compat = ["compat_manifest.json", "overlays/**/*.py"]

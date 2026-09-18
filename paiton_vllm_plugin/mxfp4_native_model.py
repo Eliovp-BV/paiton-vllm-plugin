@@ -48,6 +48,10 @@ class PaitonQwen3_5ForConditionalGeneration(Qwen3_5ForConditionalGeneration):
             or vllm_config.parallel_config.pipeline_parallel_size != 1
             or int(vllm_config.compilation_config.mode) != 0):
             raise ValueError("Native forward error scope currently requires TP1/PP1 and compilation mode NONE")
+        self.paiton_gdn_stock_prefill = os.getenv("PAITON_EXPERIMENTAL_GDN_STOCK_PREFILL") == "1"
+        if self.paiton_gdn_stock_prefill:
+            from .gdn_native_stock_prefill import validate_config
+            validate_config(vllm_config)
         super().__init__(vllm_config=vllm_config, prefix=prefix)
         self.paiton_forward_error_scope = None
         self.paiton_defer_warmup_error = os.getenv("PAITON_NATIVE_DEFER_WARMUP_ERROR") == "1"
@@ -92,6 +96,9 @@ class PaitonQwen3_5ForConditionalGeneration(Qwen3_5ForConditionalGeneration):
         if os.environ.get('PAITON_EXPERIMENTAL_NORM_FP8') == '1':
             from .norm_native_fp8 import bind
             bind(self,scope)
+        if self.paiton_gdn_stock_prefill:
+            from .gdn_native_stock_prefill import bind
+            self.paiton_gdn_stock_prefill_layers = bind(self, scope)
         self.paiton_forward_error_scope = scope
 
     def forward(self, input_ids, positions, intermediate_tensors=None, inputs_embeds=None, **kwargs):
