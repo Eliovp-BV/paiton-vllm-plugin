@@ -7,22 +7,33 @@ The public 65K and 200K images include the qualified runtime and native librarie
 with Qwen XML tool calling. The 65K profile measured **146.9 tok/s weighted decode**,
 **215.9 tok/s median JSON decode**, and **400.7 tok/s aggregate at concurrency eight**.
 
-| Profile | Total context limit | Maximum scheduled requests | Image |
+| Image default | Total context limit | Maximum scheduled requests | Image |
 | --- | ---: | ---: | --- |
-| 65K | 65,536 tokens | 8 | [Public 65K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757845) |
 | 200K | 200,000 tokens | 1 | [Public 200K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900) |
+| 65K | 65,536 tokens | 8 | [Public 65K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757845) |
 
-Both profiles use FP8 KV caching and disable automatic prefix caching (APC).
+Both image defaults use FP8 KV caching and disable automatic prefix caching (APC).
+The `chat` startup profile below enables APC for long conversations.
 The launchers pin the tested images by digest under
 `ghcr.io/eliovp/paiton-vllm-plugin`; no registry login is required.
 
+**Context is configurable at startup.** “65K” and “200K” are image defaults,
+not compiled limits. Use the [configurable runtime image with a 200K default](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900)
+and set `--context` in the launcher; a different context does not require a
+different image or a rebuild. Available VRAM and the model's supported range
+still limit what can run.
+
 ## Run the current release
 
-Use Linux x86-64, Docker, and one Radeon AI PRO R9700 with 32 GB VRAM and working
+Use Linux x86-64, Python 3, Docker, and one Radeon AI PRO R9700 with 32 GB VRAM and working
 AMD GPU device access. Run the following commands from the repository root.
 The images contain the runtime; download the target and draft weights separately
 using the Hugging Face CLI (`hf`), or point the variables at existing copies of
 these exact snapshots.
+
+The main setup below uses **200K context with prefix caching** for long
+conversations on a dedicated R9700. The 65K release preset is also available for
+reproducing the concurrency benchmarks.
 
 This release loads the **Unsloth NVFP4 checkpoint through the MXFP4 runtime path**.
 The AMD checkpoint and automatic downloader in the historical release below
@@ -31,7 +42,7 @@ are for the older images.
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"
 mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
 
 hf download unsloth/Qwen3.8-27B-NVFP4 \
@@ -41,7 +52,7 @@ hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
   --revision ee0cb26a8279b7910cc28d82a8a3e15e4728d56f \
   --local-dir "$PAITON_DRAFT_DIR"
 
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --profile chat --context 200000
 ```
 
 The server runs in the foreground at `http://127.0.0.1:18982/v1`, with API model
@@ -59,13 +70,14 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   -d '{"model":"Qwen3.8","messages":[{"role":"user","content":"Write a Python function that removes duplicate items while preserving order."}],"temperature":0.7,"top_p":0.95,"max_tokens":256,"stream":true,"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-To use 200K context, stop the 65K container (`docker stop paiton-qwen38-65k`),
-keep the same target and draft directories, and use the other launcher:
+To reproduce the 65K benchmark configuration, stop the 200K container
+(`docker stop paiton-qwen38-200k`), keep the same target and draft directories,
+and use the other launcher:
 
 ```bash
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k"
 mkdir -p "$PAITON_CACHE_DIR"
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
 ```
 
 Select one profile at a time on the GPU. The 200K image passed a **198,989-token
@@ -76,6 +88,121 @@ they are not measurements of 200K throughput.
 No private compiler checkout is needed to run these images. The full qualified
 runtime payload is distributed in the images; the public repository alone is
 not a complete build context for this release.
+
+## GPU, context, and memory controls
+
+The 65K and 200K names select startup presets. Context is **not compiled into the
+image**: the launchers can set both the target and DFlash draft limits at startup,
+using the existing images. The limit includes input and generated tokens. A larger
+limit still requires sufficient cache and VRAM; it does not guarantee useful
+model quality at that length.
+The checkpoint's configured ceiling is 262,144 tokens; the largest serving
+limit tested here is **220,000**, not a claim that 262K fits this GPU.
+
+List the physical GPUs, then select the R9700's render device:
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --list-gpus
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
+  --gpu /dev/dri/renderD128
+```
+
+Use the device shown for your R9700; `renderD128` is only an example. If more than
+one compatible card is present, select one explicitly. Only that render device
+is exposed to the container. Host `HIP_VISIBLE_DEVICES` and `ROCR_VISIBLE_DEVICES`
+are not GPU selectors for this launcher; use `--gpu` instead.
+If you previously exported visibility masks, clear them before launching:
+`unset HIP_VISIBLE_DEVICES ROCR_VISIBLE_DEVICES CUDA_VISIBLE_DEVICES`.
+
+For a GPU shared with a desktop, start with the smaller preset:
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh \
+  --gpu /dev/dri/renderD128 --profile desktop
+```
+
+This selects 32,768 tokens, one scheduled request, 1,024-token prefill chunks,
+smaller graph captures, and a 2 GiB KV allocation. It is a starting point
+for sharing VRAM, not a guarantee against memory exhaustion. The unchanged
+benchmark presets reserve a fixed KV pool and target a dedicated GPU.
+
+Customize the limits without rebuilding or downloading another image:
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh \
+  --gpu /dev/dri/renderD128 --profile desktop --context 16384
+```
+
+Setting memory utilization switches to automatic KV sizing unless you explicitly
+provide `--kv-cache-memory-bytes`. Lowering context alone does **not** reduce a
+fixed KV allocation. `--kv-cache-memory-bytes auto` also enables automatic sizing.
+Automatic profiling can leave insufficient cache for the requested context in
+this runtime; startup reports the required and available cache sizes.
+Use `--dry-run` to inspect the complete Docker command, or `--help` for all options.
+Customized settings are separate from the benchmark configuration below.
+
+### 200K and 220K with prefix caching
+
+Use the chat profile for 200K, or set a larger context on the **same image**:
+
+```bash
+# 200K total context, including generated tokens
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
+  --gpu /dev/dri/renderD128 --profile chat
+
+# Stop the existing server before selecting 220K instead
+docker stop paiton-qwen38-200k
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
+  --gpu /dev/dri/renderD128 --profile chat --context 220000
+```
+
+The chat profile uses one scheduled request, an 8 GiB KV pool, 1,024-token
+prefill chunks, prefix caching, and thinking disabled. It also applies the
+memory-allocation setting needed by this configuration. It leaves little spare
+VRAM: select a dedicated R9700 rather than a card driving a busy desktop.
+These settings differ from the 65K throughput benchmark configuration.
+
+On one R9700, the 220K configuration correctly retrieved a value from a
+**215,005-token prompt**. The identical repeat reused **213,840 cached tokens**
+and completed in **1.77 seconds versus 130.00 seconds cold**; both answers were
+nine tokens at temperature zero. These are complete response times from one
+functional probe, not general latency or decode-throughput claims. Changed-prefix
+retrieval, 380- and 409-token answers without observed looping, a subsequent XML tool call,
+and a fresh short request also passed.
+
+The unchanged release presets disable APC, so zero hits with their defaults is
+expected. The persistent disk cache used during startup is separate from the
+in-memory conversation prefix cache.
+
+`--prefix-caching on` enables the experimental APC configuration and selects the
+compatible recurrent-state settings. This changes memory requirements; do not
+assume the release preset's fixed cache budget remains sufficient. Use
+`--profile chat` for the complete long-context configuration. Cache hits require an
+unchanged token prefix that is still resident. They reduce repeated prompt work,
+not the cost of generating each new token.
+
+The chat profile reports cached tokens in `usage.prompt_tokens_details.cached_tokens`.
+Streaming clients must also request `"stream_options":{"include_usage":true}`
+to receive usage in the stream. Server-side cache counters are available at
+`http://127.0.0.1:18982/metrics`.
+
+These checks are not a full long-conversation quality evaluation. Repetition
+penalties and sampling settings belong in each client's API requests. Report the
+prompt, settings and server logs when diagnosing loops; a sampling workaround is
+not a general fix.
+
+The release preset's model template enables thinking when the client omits that
+setting. The chat profile and our benchmarks disable it. Use `--thinking off` to
+set the server default, or send
+`"chat_template_kwargs":{"enable_thinking":false}` in each request.
+
+### Images and vision
+
+These presets serve **text only** with `--language-model-only`. They do not accept
+a llama.cpp `mmproj` file. A separate single-image smoke test with an 8K context
+limit used the checkpoint's vision weights and passed color identification and
+subsequent text and tool requests. That configuration needs additional VRAM and
+is not included in these launchers; 200K/220K multimodal use has not been validated.
 
 ## Current benchmark results
 
