@@ -74,7 +74,7 @@ def cache_bytes(value):
 
 
 def parser():
-    result = argparse.ArgumentParser(description=__doc__, epilog=(
+    result = argparse.ArgumentParser(description=__doc__, allow_abbrev=False, epilog=(
         'No overrides preserves the selected release settings. --profile desktop reserves '
         'more VRAM for other applications; available VRAM still determines whether startup succeeds. '
         '--profile chat is the measured long-context APC configuration for a dedicated 32 GiB '
@@ -85,8 +85,6 @@ def parser():
     result.add_argument('--profile', choices=('release', 'desktop', 'chat'), default='release',
                         help='chat: 200000 context, APC on, thinking off, 8 GiB KV; '
                              'desktop: 32768 context, 2 GiB KV; both use one request and 1024 prefill chunks')
-    result.add_argument('--gpu', metavar='/dev/dri/renderD128',
-                        help='physical R9700 render device; automatic only when exactly one is available')
     result.add_argument('--list-gpus', action='store_true', help='list physical render devices without starting Docker')
     result.add_argument('--context', type=positive_integer, metavar='TOKENS', help='set both target and draft context limits')
     result.add_argument('--max-num-seqs', type=positive_integer, metavar='COUNT', help='maximum concurrent requests (1 to 8)')
@@ -160,21 +158,6 @@ def describe_gpu(gpu):
     vram = f"{gpu['vram'] / 1024**3:.1f} GiB" if gpu['vram'] else 'unknown VRAM'
     return (f"{gpu['path']}  PCI {gpu['pci']}  {gpu['vendor']:04x}:{gpu['device']:04x}  "
             f"{vram}  {label}")
-
-
-def select_gpu(devices, requested):
-    if requested:
-        matches = [gpu for gpu in devices if gpu['path'] == requested]
-        if not matches:
-            raise ValueError(f'GPU {requested!r} is not a discovered render device. Use --list-gpus.')
-        if not matches[0]['supported']:
-            raise ValueError(f'{describe_gpu(matches[0])}. Select a 32 GiB R9700 using --gpu.')
-        return matches[0]
-    supported = [gpu for gpu in devices if gpu['supported']]
-    if len(supported) != 1:
-        raise ValueError(f'Found {len(supported)} supported R9700 devices. Use --list-gpus and '
-                         '--gpu /dev/dri/renderD<N> to select one physical card.')
-    return supported[0]
 
 
 def replace_value(command, flag, value):
@@ -263,19 +246,21 @@ def model_mounts(environment):
     return mounts
 
 
-def docker_command(args, gpu, environment):
-    inherited = [name for name in ('HIP_VISIBLE_DEVICES', 'ROCR_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES')
-                 if name in environment]
-    if inherited:
-        raise ValueError('Unset ' + ', '.join(inherited) + '. Select a physical card with '
-                         '--gpu /dev/dri/renderD<N>; container device 0 is remapped to that card.')
+def docker_command(args, environment):
     name = args.name or f'paiton-qwen38-{args.release}'
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', name):
         raise ValueError('--name must be a valid Docker container name')
     engine = engine_command(args)
     command = ['docker', 'run', '--rm', '--name', name, '--network', 'host',
-               '--device', '/dev/kfd', '--device', gpu['path'], '--shm-size', '2g',
-               '-e', 'ROCR_VISIBLE_DEVICES=0', '-e', 'HIP_VISIBLE_DEVICES=0']
+               '--device', '/dev/kfd', '--device', '/dev/dri',
+               '--group-add', 'video', '--ipc', 'host']
+    if not args.detach and sys.stdin.isatty() and sys.stdout.isatty():
+        command.append('-it')
+    for variable in ('ROCR_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES'):
+        # A bare name removes an image default when absent from Docker's host
+        # environment. Explicit values, including empty strings, stay unchanged.
+        setting = variable + '=' + environment[variable] if variable in environment else variable
+        command += ['-e', setting]
     if prefix_caching_enabled(args):
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
     if args.profile == 'chat':
@@ -288,18 +273,15 @@ def docker_command(args, gpu, environment):
 def main(argv=None):
     arguments = parser()
     args = arguments.parse_args(argv)
-    devices = discover_gpus()
     if args.list_gpus:
+        devices = discover_gpus()
         print('\n'.join(describe_gpu(gpu) for gpu in devices) or 'No DRM render devices found.')
         return 0
     try:
-        # Validate numerical settings before device selection or Docker execution.
-        engine_command(args)
-        gpu = select_gpu(devices, args.gpu)
-        command = docker_command(args, gpu, os.environ)
+        command = docker_command(args, os.environ)
     except ValueError as error:
         arguments.error(str(error))
-    print('Selected ' + describe_gpu(gpu) + '; container GPU index 0.', file=sys.stderr)
+    print('Exposing /dev/dri; GPU selection follows your visibility environment and runtime.', file=sys.stderr)
     if args.dry_run:
         print(json.dumps(command, indent=2))
         return 0

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / 'models/Qwen3.8-MXFP4-DFlash2'
@@ -81,13 +82,19 @@ class Rocm10LauncherTests(unittest.TestCase):
         index = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
         return command[index + 1:]
 
-    def test_default_exec_preserves_release_limits_and_isolates_physical_device(self):
+    def test_default_exec_preserves_release_limits_and_leaves_gpu_choice_to_user(self):
         command = self.command()
         self.assertEqual([command[i + 1] for i, item in enumerate(command) if item == '--device'],
-                         ['/dev/kfd', '/dev/dri/renderD128'])
-        self.assertIn('ROCR_VISIBLE_DEVICES=0', command)
-        self.assertIn('HIP_VISIBLE_DEVICES=0', command)
-        self.assertNotIn('/dev/dri', command)
+                         ['/dev/kfd', '/dev/dri'])
+        self.assertIn('ROCR_VISIBLE_DEVICES', command)
+        self.assertIn('HIP_VISIBLE_DEVICES', command)
+        self.assertIn('CUDA_VISIBLE_DEVICES', command)
+        self.assertNotIn('ROCR_VISIBLE_DEVICES=0', command)
+        self.assertNotIn('HIP_VISIBLE_DEVICES=0', command)
+        self.assertEqual(value(command, '--group-add'), 'video')
+        self.assertEqual(value(command, '--ipc'), 'host')
+        self.assertNotIn('--shm-size', command)
+        self.assertNotIn('-it', command)
         self.assertIn(launcher.IMAGES['65k'], command)
         engine = self.engine(command)
         self.assertEqual(engine[:2], ['serve', '/models/target'])
@@ -147,7 +154,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.command('--release', '200k', '--profile', 'chat', *options)
                 image_index = command.index(launcher.IMAGES['200k'])
                 environment = [command[i + 1] for i in range(image_index) if command[i] == '-e']
-                self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
+                self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES',
+                                                   'CUDA_VISIBLE_DEVICES',
                                                    'RADIANCE_GDN_LAZY=0',
                                                    'PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
                 engine = self.engine(command)
@@ -226,38 +234,31 @@ class Rocm10LauncherTests(unittest.TestCase):
                     self.assertEqual(json.loads(engine[-1]), {'enable_thinking': expected})
                     self.assertEqual(engine.count('--default-chat-template-kwargs'), 1)
 
-    def test_two_compatible_cards_require_selection_and_remap_selected_card_to_zero(self):
+    def test_two_compatible_cards_are_allowed_without_automatic_selection(self):
         self.device(130, 0x1002, 0x7551, 120001, 32 * 1024**3)
-        result = self.run_launcher()
-        self.assertEqual(result.returncode, 2)
-        self.assertIn('Found 2 supported R9700', result.stderr)
-        self.assertFalse(self.record.exists())
-        command = self.command('--gpu', '/dev/dri/renderD130')
-        self.assertIn('/dev/dri/renderD130', command)
+        command = self.command()
+        self.assertIn('/dev/dri', command)
+        self.assertNotIn('/dev/dri/renderD130', command)
         self.assertNotIn('/dev/dri/renderD128', command)
         self.assertNotIn('/dev/dri/renderD129', command)
-        self.assertIn('ROCR_VISIBLE_DEVICES=0', command)
+        self.assertIn('ROCR_VISIBLE_DEVICES', command)
+        self.assertNotIn('ROCR_VISIBLE_DEVICES=0', command)
 
-    def test_mixed_amd_generations_exclude_unsupported_card(self):
+    def test_mixed_amd_generations_leave_selection_to_user_by_default(self):
         self.device(130, 0x1002, 0x73bf, 100300, 16 * 1024**3)
         command = self.command()
-        self.assertIn('/dev/dri/renderD128', command)
+        self.assertIn('/dev/dri', command)
+        self.assertNotIn('/dev/dri/renderD128', command)
         self.assertNotIn('/dev/dri/renderD130', command)
-        result = self.run_launcher('--gpu', '/dev/dri/renderD130')
-        self.assertEqual(result.returncode, 2)
-        self.assertIn('not supported', result.stderr)
 
-    def test_missing_or_malformed_kfd_information_fails_closed(self):
+    def test_launch_does_not_require_kfd_architecture_metadata(self):
         properties = self.kfd / '128' / 'properties'
         for contents in ('drm_render_minor 128\n',
                          'drm_render_minor invalid\ngfx_target_version 120001\n',
                          'drm_render_minor 128\ngfx_target_version invalid\n', ''):
             with self.subTest(contents=contents):
                 properties.write_text(contents)
-                result = self.run_launcher()
-                self.assertEqual(result.returncode, 2)
-                self.assertIn('Found 0 supported R9700', result.stderr)
-                self.assertFalse(self.record.exists())
+                self.assertIn('/dev/dri', self.command())
 
     def test_list_and_dry_run_do_not_invoke_docker(self):
         result = self.run_launcher('--list-gpus')
@@ -270,23 +271,51 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(json.loads(result.stdout), '--max-model-len'), '8192')
         self.assertFalse(self.record.exists())
 
-    def test_inherited_host_masks_are_rejected_instead_of_silently_ignored(self):
+    def test_inherited_host_masks_are_forwarded_exactly_including_empty_values(self):
         for name in ('HIP_VISIBLE_DEVICES', 'ROCR_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES'):
-            with self.subTest(name=name):
-                self.environment[name] = '1'
-                result = self.run_launcher('--gpu', '/dev/dri/renderD128')
-                self.assertEqual(result.returncode, 2)
-                self.assertIn('Unset ' + name, result.stderr)
-                self.assertIn('--gpu', result.stderr)
-                del self.environment[name]
-        self.assertFalse(self.record.exists())
+            for setting in ('1', '0', '', 'GPU-1234567890abcdef', '1,0'):
+                with self.subTest(name=name, setting=setting):
+                    self.environment[name] = setting
+                    command = self.command()
+                    self.assertIn(name + '=' + setting, command)
+                    self.assertNotIn(name, command)
+                    del self.environment[name]
+
+    def test_second_amd_render_device_preserves_user_rocr_and_hip_masks_without_uuid(self):
+        # Replace the Intel fixture with another AMD GPU; KFD properties contain
+        # no UUID, and their node names need not match GPU ordinals.
+        path = self.drm / 'renderD129' / 'device'
+        (path / 'vendor').write_text('0x1002')
+        (path / 'device').write_text('0x7551')
+        (path / 'mem_info_vram_total').write_text(str(32 * 1024**3))
+        (self.kfd / '129' / 'properties').write_text('drm_render_minor 129\ngfx_target_version 120001\n')
+        (self.kfd / '129').rename(self.kfd / '7')
+        self.environment.update(ROCR_VISIBLE_DEVICES='1', HIP_VISIBLE_DEVICES='0')
+        command = self.command()
+        self.assertEqual([command[i + 1] for i, item in enumerate(command) if item == '--device'],
+                         ['/dev/kfd', '/dev/dri'])
+        self.assertIn('ROCR_VISIBLE_DEVICES=1', command)
+        self.assertIn('HIP_VISIBLE_DEVICES=0', command)
+        self.assertIn('CUDA_VISIBLE_DEVICES', command)
+        self.assertFalse(any('GPU-' in item for item in command))
+
+    def test_interactive_docker_flags_require_foreground_stdin_and_stdout_ttys(self):
+        for detached in (False, True):
+            for stdin_tty, stdout_tty in ((False, False), (False, True), (True, False), (True, True)):
+                with self.subTest(detached=detached, stdin_tty=stdin_tty, stdout_tty=stdout_tty):
+                    args = launcher.parser().parse_args(['--detach'] if detached else [])
+                    with patch.object(launcher.sys.stdin, 'isatty', return_value=stdin_tty), \
+                         patch.object(launcher.sys.stdout, 'isatty', return_value=stdout_tty):
+                        command = launcher.docker_command(args, self.environment)
+                    self.assertEqual('-it' in command, not detached and stdin_tty and stdout_tty)
+                    self.assertEqual('--detach' in command, detached)
 
     def test_bad_inputs_fail_before_any_docker_execution(self):
         cases = [('--context', '0'), ('--context', '262145'), ('--max-num-seqs', '9'),
                  ('--gpu-memory-utilization', 'nan'), ('--gpu-memory-utilization', '1'),
                  ('--gpu-memory-utilization', '-0.1'), ('--kv-cache-memory-bytes', '4GiB'),
                  ('--kv-cache-memory-bytes', '-1'), ('--port', '65536'),
-                 ('--name', 'a b'), ('--gpu', '/dev/dri/renderD999'), ('--thinking', 'false'), ('--unknown',)]
+                 ('--name', 'a b'), ('--gpu', '0.9'), ('--thinking', 'false'), ('--unknown',)]
         for case in cases:
             with self.subTest(case=case):
                 result = self.run_launcher(*case)
@@ -304,7 +333,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                                     env=self.environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('--profile', result.stdout)
-            self.assertIn('--gpu', result.stdout)
+            self.assertIn('--list-gpus', result.stdout)
+            self.assertNotIn('--gpu ', result.stdout)
 
     def test_bash_wrappers_forward_arguments_without_shell_reinterpretation(self):
         python = self.root / 'bin' / 'python3'

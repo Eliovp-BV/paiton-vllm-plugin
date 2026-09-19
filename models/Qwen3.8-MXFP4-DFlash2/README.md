@@ -99,26 +99,37 @@ model quality at that length.
 The checkpoint's configured ceiling is 262,144 tokens; the largest serving
 limit tested here is **220,000**, not a claim that 262K fits this GPU.
 
-List the physical GPUs, then select the R9700's render device:
+The launcher exposes `/dev/kfd` and all of `/dev/dri`, adds the `video` group,
+and uses host IPC. Select the GPU with your usual ROCm environment variables.
+For example, if the R9700 is ROCm GPU 1:
 
 ```bash
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --list-gpus
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
-  --gpu /dev/dri/renderD128
+export ROCR_VISIBLE_DEVICES=1
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --profile chat
 ```
 
-Use the device shown for your R9700; `renderD128` is only an example. If more than
-one compatible card is present, select one explicitly. Only that render device
-is exposed to the container. Host `HIP_VISIBLE_DEVICES` and `ROCR_VISIBLE_DEVICES`
-are not GPU selectors for this launcher; use `--gpu` instead.
-If you previously exported visibility masks, clear them before launching:
-`unset HIP_VISIBLE_DEVICES ROCR_VISIBLE_DEVICES CUDA_VISIBLE_DEVICES`.
+Use the index or GPU UUID appropriate to your system. `--list-gpus` lists physical
+render devices and PCI addresses for identification; render-device numbers are
+not ROCm visibility indices. The launcher does not choose a GPU automatically.
+
+The launcher forwards your `ROCR_VISIBLE_DEVICES`, `HIP_VISIBLE_DEVICES` and
+`CUDA_VISIBLE_DEVICES` values unchanged. If a variable is unset on the host, it
+is also unset in the container, overriding the image's default. The launcher
+does not force a GPU index or UUID. An explicitly empty mask remains empty;
+it does not mean "show all GPUs".
+
+On Linux, `ROCR_VISIBLE_DEVICES` also filters ROCr tools such as `rocminfo`;
+`HIP_VISIBLE_DEVICES` applies at the HIP layer. If you set both, HIP indices refer
+to the GPUs remaining after the ROCr filter. Check any existing exports before
+launching: setting both variables to `1` does not necessarily select the second
+physical card. Leave unused variables unset rather than assigning empty strings.
+These controls do not make unsupported GPU architectures compatible with this image.
 
 For a GPU shared with a desktop, start with the smaller preset:
 
 ```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh \
-  --gpu /dev/dri/renderD128 --profile desktop
+  --profile desktop
 ```
 
 This selects 32,768 tokens, one scheduled request, 1,024-token prefill chunks,
@@ -130,7 +141,7 @@ Customize the limits without rebuilding or downloading another image:
 
 ```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh \
-  --gpu /dev/dri/renderD128 --profile desktop --context 16384
+  --profile desktop --context 16384
 ```
 
 Setting memory utilization switches to automatic KV sizing unless you explicitly
@@ -143,17 +154,18 @@ Customized settings are separate from the benchmark configuration below.
 
 ### 200K and 220K with prefix caching
 
-Use the chat profile for 200K, or set a larger context on the **same image**:
+With your GPU visibility configured as above, use the chat profile for 200K,
+or set a larger context on the **same image**:
 
 ```bash
 # 200K total context, including generated tokens
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
-  --gpu /dev/dri/renderD128 --profile chat
+  --profile chat
 
 # Stop the existing server before selecting 220K instead
 docker stop paiton-qwen38-200k
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh \
-  --gpu /dev/dri/renderD128 --profile chat --context 220000
+  --profile chat --context 220000
 ```
 
 The chat profile uses one scheduled request, an 8 GiB KV pool, 1,024-token
