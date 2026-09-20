@@ -23,6 +23,7 @@ paiton_platform = "paiton_vllm_plugin:paiton_platform_plugin"
 register_paiton_models = "paiton_vllm_plugin:register_paiton_models"
 
 [project.scripts]
+paiton-dflash-serve = "paiton_vllm_plugin.dflash.serve:main"
 paiton-offline-benchmark = "paiton_vllm_plugin.benchmarks.offline_benchmark:main"
 paiton-chat = "paiton_vllm_plugin.chat:main"
 paiton-qwen38-serve = "paiton_vllm_plugin.qwen38_release_server:main"

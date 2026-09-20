@@ -2,26 +2,28 @@
 
 ## Current release
 
-**18 September 2026: ROCm 10, vLLM 0.29.0, and the Paiton vLLM plugin.**
-The public 65K and 200K images include the qualified runtime and native libraries,
-with Qwen XML tool calling. The 65K profile measured **146.9 tok/s weighted decode**,
-**215.9 tok/s median JSON decode**, and **400.7 tok/s aggregate at concurrency eight**.
+**20 September 2026: updated 65K image, ROCm 10 and vLLM 0.29.0.**
+The combined Paiton target and DFlash2 runtime measured **154.42 tok/s weighted
+decode**, **218.1 tok/s median JSON decode**, and **421.20 tok/s aggregate at
+concurrency eight**. Weighted decode improved **5.16%** against a fresh run of
+the released image; large-prefill throughput improved **4.37–5.61%**.
 
 | Image default | Total context limit | Maximum scheduled requests | Image |
 | --- | ---: | ---: | --- |
-| 200K | 200,000 tokens | 1 | [Public 200K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900) |
-| 65K | 65,536 tokens | 8 | [Public 65K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757845) |
+| Updated 65K | 65,536 tokens | 8 | `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2` |
+| Existing 200K | 200,000 tokens | 1 | [18 September 200K package](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900) |
 
 Both image defaults use FP8 KV caching and disable automatic prefix caching (APC).
-The `chat` startup profile below enables APC for long conversations.
-The launchers pin the tested images by digest under
-`ghcr.io/eliovp/paiton-vllm-plugin`; no registry login is required.
+APC remains an optional launcher setting. The existing 200K `chat` profile below
+is the separately validated long-conversation configuration; its image has not
+been replaced by this 65K throughput update.
+The launchers pin images by digest under `ghcr.io/eliovp/paiton-vllm-plugin`.
+No registry login is required.
 
-**Context is configurable at startup.** “65K” and “200K” are image defaults,
-not compiled limits. Use the [configurable runtime image with a 200K default](https://github.com/users/Eliovp/packages/container/paiton-vllm-plugin/1266757900)
-and set `--context` in the launcher; a different context does not require a
-different image or a rebuild. Available VRAM and the model's supported range
-still limit what can run.
+**Context is configurable at startup.** The image names select defaults;
+`--context` changes the target and draft limits without rebuilding. Available
+VRAM and the supported model range still determine what fits. The performance
+results below use the unchanged 65,536-token benchmark profile.
 
 ## Run the current release
 
@@ -31,9 +33,8 @@ The images contain the runtime; download the target and draft weights separately
 using the Hugging Face CLI (`hf`), or point the variables at existing copies of
 these exact snapshots.
 
-The main setup below uses **200K context with prefix caching** for long
-conversations on a dedicated R9700. The 65K release preset is also available for
-reproducing the concurrency benchmarks.
+The main setup below uses the **updated 65K image with APC off**, matching the
+benchmark configuration. The optional long-context profile remains available below.
 
 This release loads the **Unsloth NVFP4 checkpoint through the MXFP4 runtime path**.
 The AMD checkpoint and automatic downloader in the historical release below
@@ -42,7 +43,7 @@ are for the older images.
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k-20260920"
 mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
 
 hf download unsloth/Qwen3.8-27B-NVFP4 \
@@ -52,7 +53,7 @@ hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
   --revision ee0cb26a8279b7910cc28d82a8a3e15e4728d56f \
   --local-dir "$PAITON_DRAFT_DIR"
 
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --profile chat --context 200000
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
 ```
 
 The server runs in the foreground at `http://127.0.0.1:18982/v1`, with API model
@@ -70,14 +71,14 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   -d '{"model":"Qwen3.8","messages":[{"role":"user","content":"Write a Python function that removes duplicate items while preserving order."}],"temperature":0.7,"top_p":0.95,"max_tokens":256,"stream":true,"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-To reproduce the 65K benchmark configuration, stop the 200K container
-(`docker stop paiton-qwen38-200k`), keep the same target and draft directories,
-and use the other launcher:
+For the separately validated 200K chat configuration, stop the 65K container
+(`docker stop paiton-qwen38-65k`), keep the same target and draft directories,
+and select the existing long-context image:
 
 ```bash
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"
 mkdir -p "$PAITON_CACHE_DIR"
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
+bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-200k.sh --profile chat --context 200000
 ```
 
 Select one profile at a time on the GPU. The 200K image passed a **198,989-token
@@ -218,54 +219,48 @@ is not included in these launchers; 200K/220K multimodal use has not been valida
 
 ## Current benchmark results
 
-Measured on **one Radeon AI PRO R9700, 32 GB, at a 300 W power limit**, using the
-published 65K configuration, BetterBench 0.6.0, thinking disabled, and APC off.
-Sampling: temperature 0.7, top-p 0.95, top-k 20, seed 42. These tables come from
-one complete validation run: **290 successful requests including warmups**.
-They do not combine the best numbers from different runs.
+R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC off; thinking off. Temperature 0.7, top-p 0.95, top-k 20, seed 42. Each arm uses a fresh process and the same fixed warmup.
 
-### Decode
+| Category | GGZ published update p50 ms | New Paiton update p50 ms | GGZ published tok/s | Previous post Paiton tok/s | Fresh release control tok/s | New package tok/s |
+|---|---:|---:|---:|---:|---:|---:|
+| chat | 42.3 | 33.2 | 67.1 | 123.6 | 123.2 | 121.3 |
+| code | 42.5 | 33.4 | 120.5 | 169.1 | 168.7 | 180.6 |
+| file edit | 42.5 | 33.3 | 138.0 | 185.7 | 185.5 | 181.2 |
+| json | 42.4 | 33.4 | 153.1 | 216.0 | 215.8 | 218.1 |
+| math | 42.5 | 33.5 | 140.0 | 182.5 | 182.7 | 184.3 |
+| prose | 42.3 | 33.4 | 69.2 | 75.4 | 75.4 | 79.8 |
+| reasoning | 34.3 | 33.4 | 123.9 | 112.4 | 112.5 | 117.8 |
+| summarization | 34.2 | 33.3 | 141.7 | 115.0 | 115.1 | 138.8 |
 
-Median decode throughput across five scored runs per category, after one warmup
-per category. The benchmark's weighted decode score is **146.9 tok/s**;
-JSON's **215.9 tok/s** is a category result, not the overall score.
+Weighted decode: **146.85 → 154.42 tok/s (+5.16%)**.
 
-| Category | Median decode tok/s |
-| --- | ---: |
-| chat | 123.7 |
-| code | 169.2 |
-| file_edit | 185.0 |
-| json | 215.9 |
-| math | 182.7 |
-| prose | 74.9 |
-| reasoning | 112.5 |
-| summarization | 115.0 |
+| Concurrent requests | GGZ published | Historical GGZ local | Previous post Paiton | Fresh release control | New package |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 120 | 110.20 | 115.96 | 115.43 | 122.62 |
+| 2 | 215 | 193.01 | 202.85 | 200.55 | 207.18 |
+| 4 | 322 | 289.02 | 301.75 | 300.15 | 308.17 |
+| 8 | 471 | 396.45 | 406.49 | 410.71 | 421.20 |
 
-### Prefill
+Concurrency values are aggregate generated tokens per second over each complete 48-request workload.
 
-Median prompt throughput across eight scored runs per depth, after two warmups.
-BetterBench reports prompt tokens divided by time to first token. Its requested
-depth labels differ from the actual tokenized inputs, shown separately below.
+| Nominal prefill depth | GGZ published input tok/s | Previous post Paiton | Fresh release control | New package |
+|---:|---:|---:|---:|---:|
+| 2,000 | 3,552 | 3,510 | 3501 | 3501 |
+| 8,000 | 3,536 | 3,532 | 3535 | 3692 |
+| 16,000 | 3,619 | 3,535 | 3540 | 3694 |
+| 32,000 | 3,437 | 3,389 | 3394 | 3584 |
+| 64,000 | 3,192 | 3,116 | 3118 | 3293 |
 
-| Requested depth | Median actual prompt tokens | Median prefill tok/s |
-| ---: | ---: | ---: |
-| 2,000 | 1,516.5 | 3,503.6 |
-| 8,000 | 5,894.5 | 3,530.4 |
-| 16,000 | 11,802.0 | 3,536.9 |
-| 32,000 | 23,549.5 | 3,393.0 |
-| 64,000 | 47,016.5 | 3,113.0 |
+Update p50 is the median streamed-update gap, not per-token latency or TTFT.
+Sampled output content and accepted-token work can differ; these are serving-throughput measurements, not identical-output timing.
+Nominal prefill depths correspond to median actual prompt lengths 1516.5, 5894.5, 11802, 23549.5 and 47016.5.
+GGZ comparison values are historical references from the previous post; GGZ was not rerun.
 
-### Concurrency
+Both arms: 290/290 successful benchmark requests. Candidate matches all 12/12 greedy controls before timing. Each arm repeats 12/12 greedy outputs after the benchmark. No unhandled serving errors.
 
-Aggregate output tokens divided by total wall time for 48 requests at each
-concurrency level. These rates are across all requests, not per-stream decode.
+Decode has five scored requests per category after one warmup. Prefill has eight scored requests per depth after two warmups. These are individual complete runs; category values are not selected across repeats.
 
-| Concurrent requests | Aggregate tok/s |
-| ---: | ---: |
-| 1 | 115.0 |
-| 2 | 203.2 |
-| 4 | 296.5 |
-| 8 | 400.7 |
+[Machine-readable results](benchmarks/2026-09-20-combined/numbers.json).
 
 ## Historical releases and comparisons
 

@@ -1,0 +1,234 @@
+{
+  "hardware": "Radeon AI PRO R9700 (gfx1201), 300 W",
+  "runtime": "vLLM 0.29 / ROCm 10",
+  "model": "Qwen3.8-MXFP4-DFlash2",
+  "context": 65536,
+  "maximum_sequences": 8,
+  "prefix_caching": false,
+  "sampling": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 20,
+    "seed": 42,
+    "thinking": false
+  },
+  "profile": {
+    "decode_scored_per_category": 5,
+    "decode_warmup_per_category": 1,
+    "concurrency_requests_per_level": 48,
+    "prefill_scored_per_depth": 8,
+    "prefill_warmup_per_depth": 2,
+    "fixed_pre_run_warmups": 76
+  },
+  "image": {
+    "image": "sha256:11fb4ed249d2b85b6a8174700272126e62b71b0be8157bc6647f12b0d0e6c5f2",
+    "base": "sha256:a896b5deca21e95771cd0057d27f3cb0f6ede95cb1146a7a78c883b9ae7d8444",
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2"
+  },
+  "runs": {
+    "control": {
+      "metrics": {
+        "weighted_decode": 146.85152646475586,
+        "C1": 115.43404438183532,
+        "C2": 200.5548634128059,
+        "C4": 300.1497303130125,
+        "C8": 410.7092268186357,
+        "prefill_2000": 3500.745001072175,
+        "prefill_8000": 3534.6054740991385,
+        "prefill_16000": 3539.605048535298,
+        "prefill_32000": 3394.14824886949,
+        "prefill_64000": 3118.0636355588645
+      },
+      "decode_categories": [
+        {
+          "category": "chat",
+          "runs": 5,
+          "update_p50": 33.599179005250335,
+          "ttft_p50": 91.39755700016394,
+          "decode_med": 123.21210577919744
+        },
+        {
+          "category": "code",
+          "runs": 5,
+          "update_p50": 33.742050000000745,
+          "ttft_p50": 88.26726200641133,
+          "decode_med": 168.7224578927026
+        },
+        {
+          "category": "file_edit",
+          "runs": 5,
+          "update_p50": 33.70488699874841,
+          "ttft_p50": 91.90558400587179,
+          "decode_med": 185.49460797649832
+        },
+        {
+          "category": "json",
+          "runs": 5,
+          "update_p50": 33.74674050428439,
+          "ttft_p50": 88.59942099661566,
+          "decode_med": 215.84698266656895
+        },
+        {
+          "category": "math",
+          "runs": 5,
+          "update_p50": 33.838881994597614,
+          "ttft_p50": 88.18985501420684,
+          "decode_med": 182.69604979227154
+        },
+        {
+          "category": "prose",
+          "runs": 5,
+          "update_p50": 33.750934002455324,
+          "ttft_p50": 53.7541100056842,
+          "decode_med": 75.41018080255886
+        },
+        {
+          "category": "reasoning",
+          "runs": 5,
+          "update_p50": 33.754501506336965,
+          "ttft_p50": 88.79420498851687,
+          "decode_med": 112.45265909612975
+        },
+        {
+          "category": "summarization",
+          "runs": 5,
+          "update_p50": 33.65371949621476,
+          "ttft_p50": 92.5887190096546,
+          "decode_med": 115.06221959700119
+        }
+      ],
+      "successful_benchmark_requests": 290,
+      "post_benchmark_greedy_matches": 12,
+      "runtime_errors": 0,
+      "generated_tokens": {
+        "decode": 14500,
+        "concurrency": 60263,
+        "prefill": 100
+      }
+    },
+    "candidate": {
+      "metrics": {
+        "weighted_decode": 154.42259157172583,
+        "C1": 122.6161441806842,
+        "C2": 207.17765089678565,
+        "C4": 308.1664861903757,
+        "C8": 421.2001158558575,
+        "prefill_2000": 3500.610413280724,
+        "prefill_8000": 3691.543438105257,
+        "prefill_16000": 3694.382267414012,
+        "prefill_32000": 3583.575855025102,
+        "prefill_64000": 3292.902208759117
+      },
+      "decode_categories": [
+        {
+          "category": "chat",
+          "runs": 5,
+          "update_p50": 33.23654699488543,
+          "ttft_p50": 92.3013320134487,
+          "decode_med": 121.32316715594474
+        },
+        {
+          "category": "code",
+          "runs": 5,
+          "update_p50": 33.40513099101372,
+          "ttft_p50": 88.04437899379991,
+          "decode_med": 180.5574945595375
+        },
+        {
+          "category": "file_edit",
+          "runs": 5,
+          "update_p50": 33.31176898791455,
+          "ttft_p50": 91.6485509951599,
+          "decode_med": 181.24008115056557
+        },
+        {
+          "category": "json",
+          "runs": 5,
+          "update_p50": 33.373173006111756,
+          "ttft_p50": 96.52039699722081,
+          "decode_med": 218.13853764218143
+        },
+        {
+          "category": "math",
+          "runs": 5,
+          "update_p50": 33.46045748912729,
+          "ttft_p50": 88.21259799879044,
+          "decode_med": 184.29700895628454
+        },
+        {
+          "category": "prose",
+          "runs": 5,
+          "update_p50": 33.359902998199686,
+          "ttft_p50": 58.05771399172954,
+          "decode_med": 79.82246341939408
+        },
+        {
+          "category": "reasoning",
+          "runs": 5,
+          "update_p50": 33.38398099003825,
+          "ttft_p50": 90.11616298812442,
+          "decode_med": 117.79482070772819
+        },
+        {
+          "category": "summarization",
+          "runs": 5,
+          "update_p50": 33.32156300893985,
+          "ttft_p50": 92.80281202518381,
+          "decode_med": 138.78220788026067
+        }
+      ],
+      "successful_benchmark_requests": 290,
+      "post_benchmark_greedy_matches": 12,
+      "runtime_errors": 0,
+      "generated_tokens": {
+        "decode": 14555,
+        "concurrency": 60064,
+        "prefill": 100
+      }
+    }
+  },
+  "change_percent": {
+    "weighted_decode": 5.155591698113549,
+    "C1": 6.221821159702046,
+    "C2": 3.302232302563479,
+    "C4": 2.670918900710939,
+    "C8": 2.5543348802958388,
+    "prefill_2000": -0.0038445471295278644,
+    "prefill_8000": 4.440041898767122,
+    "prefill_16000": 4.372725678610978,
+    "prefill_32000": 5.581005668173322,
+    "prefill_64000": 5.607280467478826
+  },
+  "request_parity": {
+    "decode": {
+      "request_multisets_equal": true,
+      "requests": 48,
+      "content_equal": 9,
+      "interpretation": "Sampled outputs can vary across independent processes; different content is not by itself a quality regression. Work counts remain explicit."
+    },
+    "concurrency": {
+      "request_multisets_equal": true,
+      "requests": 192,
+      "content_equal": 34,
+      "interpretation": "Sampled outputs can vary across independent processes; different content is not by itself a quality regression. Work counts remain explicit."
+    },
+    "prefill": {
+      "request_multisets_equal": true,
+      "requests": 50,
+      "content_equal": 50,
+      "interpretation": "Sampled outputs can vary across independent processes; different content is not by itself a quality regression. Work counts remain explicit."
+    }
+  },
+  "greedy_control_candidate_matches": 12,
+  "notes": [
+    "Update p50 is the median streamed-update gap, not per-token latency or TTFT.",
+    "Sampled output content and accepted-token work can differ; these are serving-throughput measurements, not identical-output timing.",
+    "Nominal prefill depths correspond to median actual prompt lengths 1516.5, 5894.5, 11802, 23549.5 and 47016.5.",
+    "GGZ comparison values are historical references from the previous post; GGZ was not rerun."
+  ],
+  "published_image": {
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2",
+    "digest": "sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd",
+    "identical_measured_filesystem_and_configuration": true
+  }
+}

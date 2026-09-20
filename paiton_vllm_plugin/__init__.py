@@ -57,6 +57,8 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    from .dflash import install as install_dflash
+    install_dflash()
     if os.environ.get("PAITON_RUNTIME_COMPAT_FLOW", "0") == "1":
         from paiton_runtime_compat import register
         register()

@@ -11,7 +11,7 @@ import sys
 
 
 IMAGES = {
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260918-r2@sha256:a896b5deca21e95771cd0057d27f3cb0f6ede95cb1146a7a78c883b9ae7d8444',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2@sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 SYS_DRM = Path('/sys/class/drm')
@@ -82,6 +82,7 @@ def parser():
         'Context includes prompt and generated tokens. Requests should set '
         'chat_template_kwargs.enable_thinking=false to match the reported benchmarks.'))
     result.add_argument('--release', choices=IMAGES, default='65k', help=argparse.SUPPRESS)
+    result.add_argument('--image', help='compatible runtime image override; preserves the selected release settings')
     result.add_argument('--profile', choices=('release', 'desktop', 'chat'), default='release',
                         help='chat: 200000 context, APC on, thinking off, 8 GiB KV; '
                              'desktop: 32768 context, 2 GiB KV; both use one request and 1024 prefill chunks')
@@ -250,6 +251,9 @@ def docker_command(args, environment):
     name = args.name or f'paiton-qwen38-{args.release}'
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', name):
         raise ValueError('--name must be a valid Docker container name')
+    image = args.image or IMAGES[args.release]
+    if image.startswith('-') or any(c.isspace() for c in image):
+        raise ValueError('--image must be a Docker image reference')
     engine = engine_command(args)
     command = ['docker', 'run', '--rm', '--name', name, '--network', 'host',
                '--device', '/dev/kfd', '--device', '/dev/dri',
@@ -267,7 +271,7 @@ def docker_command(args, environment):
         command += ['-e', 'PYTORCH_ALLOC_CONF=max_split_size_mb:64']
     if args.detach:
         command.append('--detach')
-    return command + model_mounts(environment) + [IMAGES[args.release]] + engine
+    return command + model_mounts(environment) + [image] + engine
 
 
 def main(argv=None):
