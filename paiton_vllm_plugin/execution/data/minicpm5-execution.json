@@ -1,0 +1,29 @@
+{
+  "execution_schema": 1,
+  "id": "minicpm5-awq-native-20260921",
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "adapter": "minicpm5-awq-v1",
+  "provenance": {
+    "release_image": "sha256:b8d6bf8e6c1934a82d8c99156061e0a44aed956ea021f73276fc07bf74c88e5e",
+    "compiler_source_included": false
+  },
+  "files": {
+    "minicpm5_awq_decode_gfx1201.json": {
+      "size_bytes": 892,
+      "sha256": "e9cf259a90a0b83ce1f5c18ef4ae2aaa9e6c2469f9b91d09bdf3682e09c1129e"
+    },
+    "minicpm5_awq_decode_gfx1201.so": {
+      "size_bytes": 428224,
+      "sha256": "ce4b5c78fd16666241b6a92530f461fd4357753244590bf1dfa3b4ca8ac52597"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    }
+  }
+}

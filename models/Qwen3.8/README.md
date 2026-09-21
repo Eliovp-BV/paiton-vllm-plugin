@@ -1,5 +1,42 @@
 # Qwen3.8 27B Qronos on RDNA4
 
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve qwen38-qronos
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve qwen38-qronos`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve qwen38-qronos` to prepare without starting the
+server, then `paiton --offline serve qwen38-qronos` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- **Native bundle:** `qronos-native-20260921`; downloaded and verified automatically.
+- **Checkpoint:** `amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16`, revision `649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2`.
+- **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- **Preset / profile:** `qwen38-qronos` / `qwen38-qronos-text-8k`.
+- **Serving behavior:** Explicit text-only 8K/C1 native compiled model; original source checkpoint unchanged, APC off, no speculation. Released Qronos W4 LM head and serialized external graphs.
+- **Runtime conversion:** the released LM-head path performs lossy BF16-to-W4 quantization during loading. The original checkpoint files stay unchanged; this preparation can take several minutes on the host CPU.
+- **API:** `http://127.0.0.1:8000/v1`, model name `qwen38`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile qwen38-qronos-text-8k vllm serve /models/existing-qwen38-qronos`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
 This package serves AMD's public
 [`Qwen3.8-27B-Quark-Qronos-INT4-W4A16`](https://huggingface.co/amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16)
 checkpoint on one Radeon AI PRO R9700.

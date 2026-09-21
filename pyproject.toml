@@ -4,17 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "paiton-vllm-plugin"
-version = "0.3.2.dev2026091801"
+version = "0.3.4"
 description = "vLLM platform plugin for Paiton compiled models"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
-dependencies = [
-    "vllm==0.29.0",
-    "torch==2.12.0",
-    "huggingface_hub==1.32.0",
-    "numpy>=1.26",
-    "safetensors>=0.4",
-]
+# The serving environment owns vLLM, Torch, ROCm and their dependencies.
+# Installing the adapter must not replace an existing runtime.
+dependencies = []
 
 [project.entry-points."vllm.platform_plugins"]
 paiton_platform = "paiton_vllm_plugin:paiton_platform_plugin"
@@ -23,6 +19,8 @@ paiton_platform = "paiton_vllm_plugin:paiton_platform_plugin"
 register_paiton_models = "paiton_vllm_plugin:register_paiton_models"
 
 [project.scripts]
+paiton = "paiton_vllm_plugin.cli:main"
+paiton-vllm = "paiton_vllm_plugin.existing_env:main"
 paiton-dflash-serve = "paiton_vllm_plugin.dflash.serve:main"
 paiton-offline-benchmark = "paiton_vllm_plugin.benchmarks.offline_benchmark:main"
 paiton-chat = "paiton_vllm_plugin.chat:main"
@@ -32,3 +30,6 @@ paiton-ornith-serve = "paiton_vllm_plugin.ornith_release_server:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["paiton_vllm_plugin*"]
+
+[tool.setuptools.package-data]
+paiton_vllm_plugin = ["execution/data/*.json", "_vendor/qwen38/compat/*.json", "_vendor/qwen38/compat/overlays/**/*.py", "notices/*.md", "notices/*.txt"]

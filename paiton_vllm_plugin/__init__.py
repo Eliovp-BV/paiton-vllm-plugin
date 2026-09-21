@@ -15,6 +15,9 @@ from paiton_vllm_plugin.artifact_manifest import (
 )
 
 
+from .activation import enabled as _enabled
+
+
 def paiton_platform_plugin() -> str | None:
     """
     Platform plugin entry point.
@@ -22,6 +25,12 @@ def paiton_platform_plugin() -> str | None:
     Returns the fully qualified name of the PaitonPlatform class if
     running on a supported AMD GPU, otherwise returns None.
     """
+    from .activation import mode
+    if mode() == "native":
+        from .execution.bootstrap import platform_plugin
+        return platform_plugin()
+    if not _enabled("paiton_platform"):
+        return None
     # external runtime compatibility uses the upstream ROCm platform and model classes.
     if os.environ.get("PAITON_RUNTIME_COMPAT_FLOW", "0") == "1":
         return None
@@ -57,11 +66,19 @@ def register_paiton_models() -> None:
     This registers the PaitonLlamaForCausalLM and other Paiton-compiled
     model classes with the vLLM ModelRegistry.
     """
+    if not _enabled("register_paiton_models"):
+        return
+    if os.environ.get("PAITON_PLUGIN_MODE") == "native":
+        from .execution.bootstrap import register_worker
+        register_worker()
+        return
     from .dflash import install as install_dflash
     install_dflash()
     if os.environ.get("PAITON_RUNTIME_COMPAT_FLOW", "0") == "1":
         from paiton_runtime_compat import register
         register()
+        return
+    if os.environ.get("PAITON_PLUGIN_MODE") == "dflash":
         return
     if os.environ.get("PAITON_EXPERIMENTAL_MXFP4_W4A8") == "1":
         # Use upstream model classes and its ROCm platform in this isolated

@@ -8,7 +8,13 @@ _installed = None
 def install():
     """Install once per worker, before draft imports; OFF imports no GPU framework."""
     global _installed
+    from ..activation import mode, activate
     settings = Settings.from_environment(os.environ)
+    requested = settings.native or settings.rerank or settings.context_graph or settings.context_norm_rope or settings.uniform_graphs or settings.verify_cap or settings.verify_trace or settings.sample_method != 'inherit'
+    if requested and mode() == 'off':
+        # Calling this installer with explicit legacy feature switches remains a
+        # supported API. It obeys the same disable and plugin-allowlist checks.
+        activate('dflash', os.environ)
     if settings.rerank or settings.sample_method != 'inherit' or settings.verify_cap:
         expected = json.dumps([settings.sample_method, settings.rerank, settings.block_candidates, settings.verify_cap])
         if os.environ.get('_PAITON_DFLASH_SERVER_OPTIONS_V3') != expected:

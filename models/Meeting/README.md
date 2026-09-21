@@ -1,5 +1,15 @@
 # Local meeting audio — standalone package
 
+## Serving interface
+
+Keep the existing recording workflow: after [preparation](REPRODUCE.md), run
+`./models/Meeting/run-docker.sh --paiton /path/to/meeting.mp4 /path/to/new-result`
+from the repository root. The package manages its own stages, including its
+text helper; no separately served chat endpoint is required. Existing flags,
+cache locations and commands remain available. The separate `paiton serve`
+command is explained in the [main launch guide](../../README.md#quick-start).
+
+
 **Release candidate, 1.0.0rc1 — image published on GHCR; source branch ready for PR review.** The tested Paiton pipeline meets the declared median speed-parity gate. Studio integration is a separate task; this package runs independently through its CLI/container.
 
 Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test and a repeated 39-minute meeting benchmark. Summaries are partial drafts for review against the recording.

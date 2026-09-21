@@ -40,6 +40,17 @@ from paiton_vllm_plugin.runtime.core.utils.qwen38_loader import (
 from paiton_vllm_plugin.vllm_compat import Attention, AttentionType
 
 
+class PaitonOrnithGDNCacheLayer(PaitonQwen38GDNCacheLayer):
+    """Allocate the released binary's state ABI even without a draft model."""
+
+    def __init__(self, config, vllm_config, prefix, *, state_shapes):
+        super().__init__(config, vllm_config, prefix)
+        self._compiled_state_shapes = state_shapes
+
+    def get_state_shape(self):
+        return self._compiled_state_shapes
+
+
 class PaitonOrnith15ForCausalLM(PaitonQwen38ForCausalLM):
     """Embedding/logits shell around the compiled Ornith text backbone."""
 
@@ -105,6 +116,12 @@ class PaitonOrnith15ForCausalLM(PaitonQwen38ForCausalLM):
             expected_constants,
         ) = ornith_specs_from_manifest(self.manifest)
         self.contract = self.manifest["paiton_ornith15_contract"]
+        state_shapes = (
+            tuple(self.contract["gdn_conv_state_shape"]),
+            tuple(self.contract["gdn_recurrent_state_shape"]),
+        )
+        if state_shapes != self.get_mamba_state_shape_from_config(vllm_config):
+            raise ValueError("Ornith configuration/artifact state-shape mismatch")
         if speculative_config is not None:
             if int(self.contract["version"]) != 11:
                 raise ValueError("Paiton Ornith DFlash requires a contract v11 artifact")
@@ -196,8 +213,8 @@ class PaitonOrnith15ForCausalLM(PaitonQwen38ForCausalLM):
         for index, layer_type in enumerate(self.layer_types):
             if layer_type == "linear_attention":
                 key = f"model.layers.{index}.linear_attn"
-                layer = PaitonQwen38GDNCacheLayer(
-                    self.config, vllm_config, prefix=key
+                layer = PaitonOrnithGDNCacheLayer(
+                    self.config, vllm_config, prefix=key, state_shapes=state_shapes
                 )
             else:
                 key = f"model.layers.{index}.self_attn"
@@ -218,6 +235,20 @@ class PaitonOrnith15ForCausalLM(PaitonQwen38ForCausalLM):
         self._stride_inputs = {}
         self._metadata_inputs = {}
         self._metadata_trace_records = []
+
+    @classmethod
+    def get_mamba_state_shape_from_config(cls, vllm_config):
+        contract = getattr(
+            vllm_config.model_config.hf_config, "paiton_ornith15_contract", None
+        )
+        if contract is None:
+            return super().get_mamba_state_shape_from_config(vllm_config)
+        # Contract v11 retains its 19-row convolution history for ordinary
+        # requests too. This reserves state only; it never enables speculation.
+        return (
+            tuple(contract["gdn_conv_state_shape"]),
+            tuple(contract["gdn_recurrent_state_shape"]),
+        )
 
     @staticmethod
     def _validate_dflash_draft_config(speculative_config: object) -> None:

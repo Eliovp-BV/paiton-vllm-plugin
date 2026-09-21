@@ -9,6 +9,7 @@ from unittest.mock import patch
 from paiton_vllm_plugin import paiton_platform_plugin, register_paiton_models
 
 
+@patch.dict(os.environ, {"VLLM_PLUGINS": "paiton_platform,register_paiton_models", "PAITON_PLUGIN_MODE":"legacy"})
 class PlatformRegistrationTests(unittest.TestCase):
     def test_registers_product_facing_rdna_architectures(self):
         class Registry:

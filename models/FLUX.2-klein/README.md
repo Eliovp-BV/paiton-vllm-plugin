@@ -1,5 +1,15 @@
 # FLUX.2 klein with Paiton on Radeon
 
+## Serving interface
+
+For this image generation package, keep using the existing launcher from the repository
+root: `./models/FLUX.2-klein/launch.sh`. Open [the included ComfyUI workflow](http://127.0.0.1:8188/?paiton=1) after startup.
+The setup, CLI alternatives, flags and cache locations documented below remain
+available. `paiton serve` provides vLLM chat APIs, including NEO visual chat;
+this package uses its existing generation workflow. See the
+[main launch guide](../../README.md#quick-start) to choose an interface.
+
+
 Create photographs, product concepts and illustrations locally on one **Radeon
 AI PRO R9700, 32 GB (`gfx1201`)**. This free profile generates 1024 × 1024 images
 in four steps, with the complete pipeline resident on the GPU.

@@ -1,0 +1,31 @@
+{
+  "execution_schema": 1,
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "provenance": {
+    "public_release_image": "sha256:f8feb0ea85e36f681eaf4f6c1d534551e4e0d1d98bf479f1cb6b6236a5893de2",
+    "assembly": "allowlisted existing release files; no compiler sources"
+  },
+  "files": {
+    "Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.manifest.json": {
+      "size_bytes": 342284,
+      "sha256": "78e1e2abfa540fcbd8da3ca9449a8c25cecb75a6ec6c3a5d8d6b052d129aeebb"
+    },
+    "Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4_gfx1201_tp1_mt8192_ctx8192.so": {
+      "size_bytes": 4096480,
+      "sha256": "6351af55b031691c170310ac93efb754868da3c7509f37d8b30eb5b9ef17c30d"
+    },
+    "config.json": {
+      "size_bytes": 17739,
+      "sha256": "65c9cbd329d26d5a4c856a3d82a27ba28ce2129f3b8e981e1b0a9be3e8984c92"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    }
+  }
+}

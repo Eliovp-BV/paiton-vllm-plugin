@@ -35,6 +35,8 @@ def prepare_server_args(argv, env):
 
 
 def main():
+    from ..activation import activate
+    activate('dflash', os.environ)
     args = prepare_server_args(sys.argv[1:], os.environ)
     settings = Settings.from_environment(os.environ)
     os.environ['_PAITON_DFLASH_SERVER_OPTIONS_V3'] = json.dumps([settings.sample_method, settings.rerank, settings.block_candidates, settings.verify_cap])

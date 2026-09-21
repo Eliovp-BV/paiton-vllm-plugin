@@ -1,5 +1,41 @@
 # Qwen3.8 NEO CODER MAX on RDNA4
 
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve qwen38-neo
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve qwen38-neo`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve qwen38-neo` to prepare without starting the
+server, then `paiton --offline serve qwen38-neo` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- **Native bundle:** `neo-native-20260921`; downloaded and verified automatically.
+- **Checkpoint:** `DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF`, revision `89230607b3708bc1efe174e8fd34d4b164476c88`.
+- **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- **Preset / profile:** `qwen38-neo` / `qwen38-neo-image-8k`.
+- **Serving behavior:** Explicit original mixed Q4_K_M GGUF, native FP32 activations and BF16 weight metadata; text plus one image (max 1,048,576 pixels), 8K/C1, 2048-token prefill, 2 GiB KV, APC and MTP off. Released native internal decode graphs; vLLM eager execution.
+- **API:** `http://127.0.0.1:8000/v1`, model name `qwen38-neo`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile qwen38-neo-image-8k vllm serve /models/existing-qwen38-neo`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
 **GGUF weights, vLLM serving, native Paiton execution.** This release runs the
 DavidAU Qwen3.8 NEO CODER MAX mixed Q4_K_M fine-tune through vLLM's actual model
 loader, scheduler, sampling and streaming API, with native HIP language and

@@ -1,5 +1,15 @@
 # Wan2.2 TI2V-5B on Radeon AI PRO R9700
 
+## Serving interface
+
+For this video generation package, keep using the existing launcher from the repository
+root: `./models/Wan2.2/launch.sh`. Open [the included ComfyUI workflow](http://127.0.0.1:8192/?paiton=1&preset=base) after startup.
+The setup, CLI alternatives, flags and cache locations documented below remain
+available. `paiton serve` provides vLLM chat APIs, including NEO visual chat;
+this package uses its existing generation workflow. See the
+[main launch guide](../../README.md#quick-start) to choose an interface.
+
+
 Local text-to-video and image-to-video with separate **stock** and **Paiton** choices. FastWan FullAttn 5B provides a three-evaluation text preview; original Wan2.2 TI2V-5B provides optional image input. Both produce silent video. [Hugging Face runtime package](https://huggingface.co/EliovpAI/Wan2.2-FastWan-5B-Paiton-RDNA4) · [FastWan text guide](../FastWan/README.md).
 
 FastWan Paiton reduced complete-clip latency by **2.8–4.7%** in the fixed R9700 set. The base image cases did not improve end to end, so they default to stock. [See the measurements](BENCHMARKS.md) and [retained clips](QUALITY.md).

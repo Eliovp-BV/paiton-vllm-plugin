@@ -1,0 +1,31 @@
+{
+  "execution_schema": 1,
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "provenance": {
+    "public_release_image": "sha256:0cf9c11304ade58e91d97db876a4462781fa2c18d2d4846f26d56fe5d207669d",
+    "assembly": "allowlisted existing release files; no compiler sources"
+  },
+  "files": {
+    "gptoss_mxfp4_decode_gfx1201.json": {
+      "size_bytes": 696,
+      "sha256": "ffd2b294e254e05c82905dd37215df71d7308756f0a2ba58d35ecab4468629e5"
+    },
+    "gptoss_mxfp4_decode_gfx1201.so": {
+      "size_bytes": 340232,
+      "sha256": "db2d6d6b4855b7cc3e97be0f499630c40758ebebdf97cb8abf34bb6c2a8f2e5b"
+    },
+    "harmony-cache/fb374d419588a4632f3f557e76b4b70aebbca790": {
+      "size_bytes": 3613922,
+      "sha256": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    }
+  }
+}

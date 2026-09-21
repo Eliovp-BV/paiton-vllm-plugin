@@ -1,5 +1,15 @@
 # FastWan FullAttn 5B on Radeon AI PRO R9700
 
+## Serving interface
+
+For this video generation package, keep using the existing launcher from the repository
+root: `./models/FastWan/launch.sh`. Open [the included ComfyUI workflow](http://127.0.0.1:8192/?paiton=1&preset=fast) after startup.
+The setup, CLI alternatives, flags and cache locations documented below remain
+available. `paiton serve` provides vLLM chat APIs, including NEO visual chat;
+this package uses its existing generation workflow. See the
+[main launch guide](../../README.md#quick-start) to choose an interface.
+
+
 Generate silent text-to-video locally in ComfyUI or the terminal. This three-evaluation distilled Wan2.2 setting defaults to Paiton, with a separate stock option. Image input is available through [Wan2.2 TI2V-5B](../Wan2.2/README.md).
 
 [![Five-second FastWan example](../Wan2.2/assets/fast-720-5-paiton.jpg)](https://huggingface.co/EliovpAI/Wan2.2-FastWan-5B-Paiton-RDNA4/resolve/main/models/Wan2.2/assets/fast-720-5-paiton.mp4)

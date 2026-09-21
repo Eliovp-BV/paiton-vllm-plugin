@@ -365,6 +365,8 @@ def build_server_command(extra_args: list[str] | None = None) -> list[str]:
 
 
 def main() -> None:
+    from .activation import activate
+    activate("legacy", os.environ)
     _validate_runtime_environment()
     if sys.argv[1:] == ["--check-runtime"]:
         print("Qualified Paiton Ornith 1.5 runtime detected.")

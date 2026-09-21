@@ -1,5 +1,41 @@
 # GPT-OSS-20B on Radeon AI PRO R9700
 
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve gpt-oss-20b
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve gpt-oss-20b`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve gpt-oss-20b` to prepare without starting the
+server, then `paiton --offline serve gpt-oss-20b` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- **Native bundle:** `gptoss-native-20260921`; downloaded and verified automatically.
+- **Checkpoint:** `openai/gpt-oss-20b`, revision `6cee5e81ee83917806bbde320786a8fb61efebee`.
+- **Existing runtime:** Python 3.14, vLLM `0.26.1.dev1+g396cd1a43.rocm714`, Torch `2.11.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- **Preset / profile:** `gpt-oss-20b` / `gptoss-text-8k`.
+- **Serving behavior:** Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 8K context, Harmony reasoning/tools, bundled pinned Harmony vocabulary.
+- **API:** `http://127.0.0.1:8020/v1`, model name `gpt-oss-20b`. Wait for readiness; `curl http://127.0.0.1:8020/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile gptoss-text-8k vllm serve /models/existing-gpt-oss-20b`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
 Free community release: original OpenAI MXFP4 weights with Paiton
 expert decode kernels, served through vLLM's OpenAI-compatible API. One R9700
 (gfx1201), 32 GB VRAM.

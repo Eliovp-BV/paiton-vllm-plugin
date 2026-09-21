@@ -1,0 +1,27 @@
+{
+  "execution_schema": 1,
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "provenance": {
+    "public_release_image": "sha256:fb47f4ab6073da943e553849985c81326e33b425e1017f97f3f79fad09586a8e",
+    "assembly": "allowlisted existing release files; no compiler sources"
+  },
+  "files": {
+    "qwen3_coder_moe_w4a16_g32_gfx1201.json": {
+      "size_bytes": 1050,
+      "sha256": "83284e476ce918726e0e216d8c29b9b7326061306380b7c875d6625b16872769"
+    },
+    "qwen3_coder_moe_w4a16_g32_gfx1201.so": {
+      "size_bytes": 336128,
+      "sha256": "74fb7015e285d3b7863fc8f54341204a252a2ab305921edd5b30f5724915958f"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    }
+  }
+}

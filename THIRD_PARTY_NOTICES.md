@@ -1,5 +1,22 @@
 # Third-party notices
 
+## Native CLI execution packages
+
+The native CLI retains released external Qwen runtime adapters and
+process-local vLLM overlays. Radiance/libr4d attribution and the maintainer's
+reported author permission remain as recorded in the
+[Qwen notices](models/Qwen3.8-MXFP4-DFlash2/THIRD_PARTY_NOTICES.md); no blanket
+license is granted for all third-party components. The native profile uses
+the separately obtained Unsloth NVFP4 checkpoint, not the historical AMD
+checkpoint named in that notice. MiniCPM retains its
+[model-specific notices](models/MiniCPM5-2B/THIRD_PARTY_NOTICES.md).
+
+The wheel includes these notices and retained license texts under
+`paiton_vllm_plugin/notices/`. Compiler source and generated implementation
+source are excluded. Existing framework dependencies and upstream-generated
+code remain external; new Paiton compiler features do not acquire those
+dependencies through this packaging change.
+
 The Paiton RDNA4 runtime and generated `.so` retain code or generated output
 from the following projects. Their licenses remain applicable to those
 portions.

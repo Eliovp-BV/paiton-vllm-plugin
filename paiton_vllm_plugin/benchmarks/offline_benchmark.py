@@ -96,6 +96,7 @@ def build_prompts(num_prompts: int) -> list[str]:
 
 
 def configure_environment(args: argparse.Namespace) -> None:
+    os.environ["PAITON_PLUGIN_MODE"] = "off" if args.backend == "vllm" else "legacy"
     if args.backend == "vllm":
         os.environ["VLLM_DISABLE_PAITON_PLATFORM"] = "1"
         if args.enable_aiter is not None:

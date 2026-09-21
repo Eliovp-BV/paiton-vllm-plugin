@@ -69,6 +69,29 @@ class OrnithDFlashModelContractTests(unittest.TestCase):
         self.assertEqual(len(profile_auxiliary), 8)
         self.assertEqual(len({value.data_ptr() for value in profile_auxiliary}), 8)
 
+    def test_released_state_abi_is_preserved_without_speculation(self):
+        cls = self._model_class()
+        contract = {
+            "gdn_conv_state_shape": [19, 8192],
+            "gdn_recurrent_state_shape": [32, 128, 128],
+        }
+        config = SimpleNamespace(
+            model_config=SimpleNamespace(
+                hf_config=SimpleNamespace(paiton_ornith15_contract=contract)
+            ),
+            speculative_config=None,
+        )
+        expected = ((19, 8192), (32, 128, 128))
+        self.assertEqual(cls.get_mamba_state_shape_from_config(config), expected)
+        self.assertIsNone(config.speculative_config)
+        config.speculative_config = SimpleNamespace(num_speculative_tokens=16)
+        self.assertEqual(cls.get_mamba_state_shape_from_config(config), expected)
+        layer_cls = sys.modules[cls.__module__].PaitonOrnithGDNCacheLayer
+        layer = layer_cls.__new__(layer_cls)
+        nn.Module.__init__(layer)
+        layer._compiled_state_shapes = expected
+        self.assertEqual(layer.get_state_shape(), expected)
+
     def test_v9_artifact_rejects_dflash_auxiliary_layer_request(self):
         cls = self._model_class()
         instance = cls.__new__(cls)

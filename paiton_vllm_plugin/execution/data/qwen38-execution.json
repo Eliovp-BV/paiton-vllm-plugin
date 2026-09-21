@@ -1,0 +1,124 @@
+{
+  "execution_schema": 1,
+  "id": "qwen38-rocm10-native-20260921",
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "adapter": "qwen38-runtime-v1",
+  "provenance": {
+    "release_image": "sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd",
+    "compiler_source_included": false,
+    "offline_guard": {
+      "source": "tools/native/offline_guard.c",
+      "source_sha256": "b3c9a0e6e58477bebc65d01b87b4aad7340c37c50936ee2e3a44998dbdb23b31",
+      "abi": 1,
+      "compiler": "gcc -shared -fPIC -O2 -Wl,-z,relro,-z,now -ldl",
+      "native_gpu_libraries_changed": false
+    }
+  },
+  "files": {
+    "native/gdn-merged-prefill/external-source-receipts.json": {
+      "size_bytes": 186,
+      "sha256": "be8e7f127b7447f24d70b5fa5052592b3aa672486b5cc953a2f505e5f3ea1ba4"
+    },
+    "native/gdn-merged-prefill/gdn_merged_prefill.so": {
+      "size_bytes": 127192,
+      "sha256": "549435d26039d3d5ff1e4b41adca0d398f0b699f9dbc5ebf7edea4a21507dfb0"
+    },
+    "native/gdn-merged-prefill/manifest.json": {
+      "size_bytes": 530,
+      "sha256": "cd20e1fe1719494d5a6e8a7d8c4f59e7994499512ef02cb349c3e98a6b1ca8a0"
+    },
+    "native/gdn-norm-fixed/gdn_norm_fixed.so": {
+      "size_bytes": 28088,
+      "sha256": "096b936660ce87b78e8a54cecc6d0c2c4fc67dc04072c110445df4aa3e9cc9f5"
+    },
+    "native/gdn-norm-fixed/manifest.json": {
+      "size_bytes": 556,
+      "sha256": "a40da9742d111301073af327e6caa7e9e50fafe76069d02f6643e0577e54ea93"
+    },
+    "native/gdn-small/gdn_norm_fp8.so": {
+      "size_bytes": 35248,
+      "sha256": "77307e738ba158cb0963eabca167814317e6f8049570b84a29aeb1cdcdf1a144"
+    },
+    "native/gdn-small/manifest.json": {
+      "size_bytes": 309,
+      "sha256": "fe91c22ea7db3c7aa6886ab9f2de1f33c5df8ed1a0d7583ab468555b7c5d2f18"
+    },
+    "native/gdn-tiled/gdn_tiled.so": {
+      "size_bytes": 28120,
+      "sha256": "f12ed0b10bfe81cf78eee3ee1b6772a871b110b3f5f8d252d5bf9d23846c9be3"
+    },
+    "native/gdn-tiled/manifest.json": {
+      "size_bytes": 576,
+      "sha256": "804fb3e1b2a0a9012717e7af26d81b3632799fd236e9312ffc4bf2ac7d3bfcd6"
+    },
+    "native/prefill-attention96/external-source-receipts.json": {
+      "size_bytes": 175,
+      "sha256": "269eb87e4c6ab8ab5c76978bb230890617bc5f82cb63d2de4623379b1664694e"
+    },
+    "native/prefill-attention96/manifest.json": {
+      "size_bytes": 391,
+      "sha256": "7a913ecf3b9d8257b07f6ade8ed4dc12fea1fb7350241de6aa5a339baf552522"
+    },
+    "native/prefill-attention96/prefill_attention.so": {
+      "size_bytes": 31984,
+      "sha256": "c0db8bde1a9dd487fa5b3555be5e19e3984bf820fa802f3ab7c0092fdc0057ed"
+    },
+    "native/prefill-tall/manifest.json": {
+      "size_bytes": 518,
+      "sha256": "e84154de7be30b765204ee63aee11aa40e40ceb7cae9ac53754f325690ee30f4"
+    },
+    "native/prefill-tall/prefill_tall.so": {
+      "size_bytes": 127176,
+      "sha256": "a3468bd142fda1b8383e64872ef3775efe12377e7f682d1300afb13c46fb0c18"
+    },
+    "native/rms-decode/manifest.json": {
+      "size_bytes": 497,
+      "sha256": "2825a21672118f2dffa2a59037946f461b353b7ebe6300c0ef8856aa6fe2d005"
+    },
+    "native/rms-decode/rms_decode.so": {
+      "size_bytes": 25208,
+      "sha256": "9b0c76b0245f0faba77c55c7c567703596111e0632484d0dea6f2729b1b2f3c5"
+    },
+    "native/rms-prefill/manifest.json": {
+      "size_bytes": 453,
+      "sha256": "7454aaaa0545e1dc67bef2a206fa5fd7a5bad8dfbcd9955eadcef899678c41c8"
+    },
+    "native/rms-prefill/rms_prefill.so": {
+      "size_bytes": 23776,
+      "sha256": "b3b1c2fb2b737afa797e28196b2edc982d4752845b8ceb083bba1296ee78ae53"
+    },
+    "native/silu-decode/manifest.json": {
+      "size_bytes": 490,
+      "sha256": "2a8816599d608ee36990d0de1589178ab6095fc25bf337131cdf9a4c71ecede7"
+    },
+    "native/silu-decode/silu_decode.so": {
+      "size_bytes": 61576,
+      "sha256": "24ce611d8b41afed6ff5cbeb659da33789c8ef1aa087376ccc7a1967f767736d"
+    },
+    "native/silu-prefill/manifest.json": {
+      "size_bytes": 444,
+      "sha256": "7476e6d8a05e46879ff2433d54d52829b0c130d477cf5899ee8d4e71ec7b9005"
+    },
+    "native/silu-prefill/silu_prefill.so": {
+      "size_bytes": 62048,
+      "sha256": "327ecd085d31b797d8e5d97475199195b6ce75a0b38af6ce337ef243cb5340ff"
+    },
+    "r4d.so": {
+      "size_bytes": 1926040,
+      "sha256": "4777356b4427c389588f9c8805fd4158ac6c727fab8393b347c1eb5f953292d4"
+    },
+    "radiance_mxfp4_fp8.so": {
+      "size_bytes": 2182576,
+      "sha256": "8e6a78248338ee6782b4a2dfc3d8df067cff7f9f5a6ffebbb4f9a03e77fa9394"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    }
+  }
+}

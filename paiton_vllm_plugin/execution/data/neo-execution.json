@@ -1,0 +1,123 @@
+{
+  "execution_schema": 1,
+  "binary_abi_version": 1,
+  "target": {
+    "arch": "gfx1201",
+    "wave_size": 32
+  },
+  "tp_size": 1,
+  "provenance": {
+    "public_release_image": "sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d",
+    "assembly": "allowlisted existing release files; no compiler sources"
+  },
+  "files": {
+    "LICENSE": {
+      "size_bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    "LICENSES/AITER-MIT.txt": {
+      "size_bytes": 1100,
+      "sha256": "0baca809927cad448401b252ce3bae12687c2987597ad7088cf3423f872d5bcd"
+    },
+    "LICENSES/Composable-Kernel-MIT.txt": {
+      "size_bytes": 1726,
+      "sha256": "20f3b83dfda01bd18d285e0edbb9d044be6dde04cdf76a1ec18d9fc7127936bf"
+    },
+    "LICENSES/Triton-MIT.txt": {
+      "size_bytes": 1132,
+      "sha256": "92640fb97222fd0a698ff28ce0c3782c172623f8d6c609b557636a80f28fb946"
+    },
+    "LICENSES/flash-linear-attention-MIT.txt": {
+      "size_bytes": 1085,
+      "sha256": "1350bfbef13ce4d3d3bdaa2f1fc4b1d1117d846732a2a62f891a67f3d5356d0d"
+    },
+    "LICENSES/ggml-MIT.txt": {
+      "size_bytes": 1078,
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d"
+    },
+    "LICENSES/rocWMMA-MIT.txt": {
+      "size_bytes": 1112,
+      "sha256": "317ad409c4f9cdd06145b6e2dc746f4985bf3b36570514dc1a448d1dc1747cbf"
+    },
+    "SHA256SUMS": {
+      "size_bytes": 2088,
+      "sha256": "4b77b6800e6945a8477a7f181f6a9ea1f80d86bb2b2803893fc5759354b167e9"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "size_bytes": 2532,
+      "sha256": "245561796ed5ac9dbbeceb9ddbbdc425badacb33bad1eb99624d081dde92547d"
+    },
+    "chat_template.jinja": {
+      "size_bytes": 8953,
+      "sha256": "514d5304fcac63bda60e6faf860d5657010cf43cbc4c633c8bf678ee184e7a37"
+    },
+    "config.json": {
+      "size_bytes": 7010,
+      "sha256": "9334b2f017a1a58c1ea5c22a8572e5d21700d43aaade65a305b486b0c52100d8"
+    },
+    "generation_config.json": {
+      "size_bytes": 213,
+      "sha256": "7ae9e193dbcef99733ccf647c95ef668c35d1a80a8aa88a51ee40a9bcacf5a74"
+    },
+    "gguf-runtime.json": {
+      "size_bytes": 128,
+      "sha256": "54b70bed90e995ae7c46f6000638ad923aa5197553580c3aae101c9a1266339b"
+    },
+    "libpaiton_gguf_runtime.so": {
+      "size_bytes": 306880,
+      "sha256": "5f555f3698280f6a3f6584ea6d234217878d27c7a96f9aae2518f3fc062ad6df"
+    },
+    "libpaiton_qwen38_vision.so": {
+      "size_bytes": 44568,
+      "sha256": "0ce89bc6a34ee0c672a128c70184d523ac41adaa285bd2f691bf1a2dfa5a2adf"
+    },
+    "paiton-release.manifest.json": {
+      "size_bytes": 5748,
+      "sha256": "a52b2850054fec1e9e33ff4c2ff48b3ac768153ccf933e7ee69da779f5e8d585"
+    },
+    "paiton-release.spdx.json": {
+      "size_bytes": 11330,
+      "sha256": "0fbc5d5018b5f19479bb4a0b2d21bf8290341f7e9978e6aedc10f4728300056f"
+    },
+    "preprocessor_config.json": {
+      "size_bytes": 390,
+      "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+    },
+    "processor_config.json": {
+      "size_bytes": 1191,
+      "sha256": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+    },
+    "provenance.json": {
+      "size_bytes": 1227,
+      "sha256": "1b26bdf6290c634aff168f2939eea8bd14eba3fa593c8c88e741ef6aa2b0fafd"
+    },
+    "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.manifest.json": {
+      "size_bytes": 453078,
+      "sha256": "e8c865d2aba4269cbf549310cabdbf637c8acaa2b77909b0dba59d2e02d7dda9"
+    },
+    "qwen38_neo_gfx1201_tp1_mt2048_ctx8192.so": {
+      "size_bytes": 6968288,
+      "sha256": "61008a42a634a95c095fc879dd2dd8d706a4f5eb31f1fe5a5278f00bb4c40b48"
+    },
+    "runtime-dependencies.spdx.json": {
+      "size_bytes": 535342,
+      "sha256": "442dd16dad37a170211209dd7536d7c978c3698b6ecb1398be89e8a62c144a13"
+    },
+    "support/offline_guard.so": {
+      "size_bytes": 16056,
+      "sha256": "34ad06e42fc8fa4ad48e8f067ebf2eff1381d366b5e23b26cc86d665dc107773"
+    },
+    "tokenizer.json": {
+      "size_bytes": 19989343,
+      "sha256": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4"
+    },
+    "tokenizer_config.json": {
+      "size_bytes": 16429,
+      "sha256": "1c419f0cef0fd06dcf116d7183c3af53978de71ef1c07a750a65b1c4c6517b0f"
+    },
+    "vision-runtime.json": {
+      "size_bytes": 66500,
+      "sha256": "3dabcf44f22089e828d8c5260ef2547d409e5fc8e7ebfd7587f5a2e88a2632f3"
+    }
+  }
+}

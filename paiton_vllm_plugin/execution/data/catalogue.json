@@ -1,0 +1,1338 @@
+{
+  "catalogue_schema": 1,
+  "catalogue_version": "2026-09-21.5",
+  "packages": [
+    {
+      "id": "qwen38-rocm10-native-20260921",
+      "presets": {
+        "qwen38-nvfp4": "qwen38-nvfp4-w4a8-text-65k"
+      },
+      "manifest": "qwen38-execution.json",
+      "adapter": "qwen38-runtime-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/qwen38-rocm10-native-20260921.tar.gz",
+        "size_bytes": 1201812,
+        "sha256": "9aa96f3e8747e4f70bd4f225c359b17c53ad3d5a2400aa01553f3bbfa85d30e1"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "unsloth/Qwen3.8-27B-NVFP4",
+        "revision": "f0b7c9e722f5565102fff8481c99e4d86ae099c7",
+        "storage_format": "NVFP4 / FP8 / BF16 mixed safetensors",
+        "files": {
+          "model.safetensors": {
+            "size_bytes": 22568192096,
+            "sha256": "c473512c70eace07e2256fe9fd76596ac03e3295bee7d54cfb72676416afcc05"
+          },
+          "model_mtp.safetensors": {
+            "size_bytes": 849400392,
+            "sha256": "1d8268aa85ace093a561e3e7b63b9d390dac1cd55a90cd55b5ec509c3c9da9fe"
+          },
+          "chat_template.jinja": {
+            "size_bytes": 9993,
+            "sha256": "12827f24b742ea4e80cdc12dbcf9622227056b9f797252a3149263d4f9aaadce"
+          },
+          "config.json": {
+            "size_bytes": 22564,
+            "sha256": "1b3c71868d1299e52df6fc907deb202d5132b1ef0f72aae0ef6d15185dd53a5c"
+          },
+          "generation_config.json": {
+            "size_bytes": 214,
+            "sha256": "d0d0ed2e37cdfafef4a5067d5ea2407b05f4fb50526e47c008a5b235d50240fb"
+          },
+          "preprocessor_config.json": {
+            "size_bytes": 390,
+            "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+          },
+          "tokenizer.json": {
+            "size_bytes": 19989325,
+            "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 1047,
+            "sha256": "529f30018c36dca5387c99b5edf368287f386f2c32d3790aa7141956bc5119fa"
+          },
+          "video_preprocessor_config.json": {
+            "size_bytes": 385,
+            "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+          },
+          "vocab.json": {
+            "size_bytes": 6722759,
+            "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+          }
+        },
+        "architecture": "Qwen3_5ForConditionalGeneration",
+        "shape": {
+          "num_hidden_layers": 64,
+          "hidden_size": 5120,
+          "intermediate_size": 17408,
+          "num_attention_heads": 24,
+          "num_key_value_heads": 4,
+          "head_dim": 256,
+          "vocab_size": 248320,
+          "linear_num_key_heads": 16,
+          "linear_num_value_heads": 48,
+          "linear_key_head_dim": 128,
+          "linear_value_head_dim": 128
+        }
+      },
+      "runtime": {
+        "python": "3.12",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.29.0",
+          "torch": "2.12.0+rocm10.0.0",
+          "triton": "3.8.0+git4cff872c.rocm10.0.0",
+          "transformers": "5.17.0",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "10.0.0",
+          "amd-aiter": "0.1.21.post1",
+          "compressed-tensors": "0.17.0"
+        },
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1,
+        "libc_min": "2.35",
+        "hip_version": "7.15.26333",
+        "hip_runtime_version": 71626361,
+        "torch_cxx11_abi": true
+      },
+      "profiles": {
+        "qwen38-nvfp4-w4a8-text-65k": {
+          "description": "Explicit text-only NVFP4\u2192MXFP4 requantization, FP8 activations, FP8 KV, FP16 recurrent cache, 65K context, APC off, no speculation. Original weights stay unchanged; conversion is lossy and occurs only in device memory at model load. Existing upstream warmup/graph compilation remains.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "max-model-len": 65536,
+            "max-num-seqs": 8,
+            "max-num-batched-tokens": 4096,
+            "kv-cache-dtype": "fp8",
+            "kv-cache-memory-bytes": 6535819798,
+            "gpu-memory-utilization": 0.98,
+            "enable-prefix-caching": false,
+            "enable-chunked-prefill": true,
+            "language-model-only": true,
+            "safetensors-load-strategy": "lazy",
+            "attention-backend": "R4D",
+            "mamba-cache-mode": "none",
+            "mamba-cache-dtype": "bfloat16",
+            "mamba-ssm-cache-dtype": "float16",
+            "async-scheduling": false,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2,
+                4,
+                8,
+                16,
+                24,
+                32,
+                40,
+                48,
+                56,
+                64
+              ],
+              "pass_config": {
+                "fuse_norm_quant": true,
+                "fuse_act_quant": true
+              }
+            },
+            "host": "0.0.0.0",
+            "port": 18982,
+            "served-model-name": "Qwen3.8"
+          },
+          "environment": {
+            "PAITON_RUNTIME_COMPAT_BUILD_ID": "qwen38-rocm10-vllm029-20260918-r1",
+            "PAITON_RUNTIME_COMPAT_FLOW": "1",
+            "PAITON_RUNTIME_COMPAT_GDN_NORM_MANIFEST": "{bundle}/native/gdn-small/manifest.json",
+            "PAITON_RUNTIME_COMPAT_NATIVE_PROVIDER": "gdn_norm_small",
+            "R4D_ATTN_FP8": "3",
+            "RADIANCE_AR_MAX_KB": "45056",
+            "RADIANCE_AR_OVERLAP": "0",
+            "RADIANCE_AR_QBITS": "6",
+            "RADIANCE_AR_QNB": "96",
+            "RADIANCE_AR_QNT": "1024",
+            "RADIANCE_DRAFT_RERANK": "80",
+            "RADIANCE_DRAFT_SCHEDULE": "1:8,2:7,4:6,8:5,16:4",
+            "RADIANCE_DRAFT_TAU": "0.20",
+            "RADIANCE_DYNAMIC_DRAFT": "1",
+            "RADIANCE_DYNAMIC_WIDTH": "1",
+            "RADIANCE_DYNW_ALPHA": "0.35",
+            "RADIANCE_DYNW_MARGIN": "2",
+            "RADIANCE_DYNW_MIN": "2",
+            "RADIANCE_DYNW_MIN_BATCH": "3",
+            "RADIANCE_FAST_DRAFT": "1",
+            "RADIANCE_FP8_STREAM": "1",
+            "RADIANCE_FP8_STREAM_TP1": "1",
+            "RADIANCE_FUSE_RMS_QUANT": "1",
+            "RADIANCE_GDN_EMPTY_OUT": "0",
+            "RADIANCE_GDN_FUSED_MAX_ITEMS": "48",
+            "RADIANCE_GDN_FUSED_UPDATE": "1",
+            "RADIANCE_GDN_LAZY": "0",
+            "RADIANCE_GDN_MERGE_INPROJ": "1",
+            "RADIANCE_GDN_NORM_QUANT": "1",
+            "RADIANCE_GDN_PATHS": "both",
+            "RADIANCE_GDN_STRIDED_GATES": "0",
+            "RADIANCE_GFX_ARCH": "gfx1201",
+            "RADIANCE_MXFP4": "1",
+            "RADIANCE_MXFP4_A_TILED_MIN_M": "513",
+            "RADIANCE_MXFP4_DECODE_MAX_M": "64",
+            "RADIANCE_MXFP4_DECODE_NT": "1",
+            "RADIANCE_MXFP4_EPIFAST": "1",
+            "RADIANCE_MXFP4_HOIST_QUANT": "1",
+            "RADIANCE_MXFP4_R4D_DECODE_MAX_M": "0",
+            "RADIANCE_MXFP4_SANITIZE": "0",
+            "RADIANCE_MXFP4_TN4_MIN_M": "2048",
+            "RADIANCE_MXFP4_TRACED_QUANT": "1",
+            "RADIANCE_MXFP4_W4A8": "1",
+            "RADIANCE_MXFP4_W4A8_MIN_M": "0",
+            "RADIANCE_MXFP4_WPERM": "1",
+            "RADIANCE_NVFP4_BF16_LAYERS": "in_proj_ba",
+            "RADIANCE_NVFP4_EXP": "mse",
+            "RADIANCE_NVFP4_FP8_LAYERS": "mxfp4",
+            "RADIANCE_NVFP4_LMHEAD": "bf16",
+            "RADIANCE_NVFP4_MXFP4": "1",
+            "RADIANCE_PRESHUFFLE": "1",
+            "RADIANCE_R4D_REPORT": "1",
+            "RADIANCE_RMS_QUANT_FUSION": "1",
+            "RADIANCE_RUN_BWTEST": "0",
+            "RADIANCE_SKINNY_GEMM": "1",
+            "RADIANCE_TOPK_TRITON_MIN_ROWS": "1",
+            "RADIANCE_TP_PAD": "0",
+            "RADIANCE_USE_R4D": "1",
+            "RADIANCE_USE_R4D_AR": "1",
+            "RADIANCE_USE_R4D_AR_QUANT": "1",
+            "RADIANCE_VERIFY_HEAD": "1",
+            "RADIANCE_VERIFY_HEAD_INIT_TRY_ORIGINAL": "1",
+            "RADIANCE_VERIFY_HEAD_MAX_M": "32",
+            "VLLM_ROCM_USE_AITER": "1",
+            "VLLM_ROCM_USE_AITER_FP4BMM": "0",
+            "VLLM_ROCM_USE_AITER_FP8BMM": "0",
+            "VLLM_ROCM_USE_AITER_LINEAR": "0",
+            "VLLM_ROCM_USE_AITER_MHA": "0",
+            "VLLM_ROCM_USE_AITER_MLA": "0",
+            "VLLM_ROCM_USE_AITER_MOE": "0",
+            "VLLM_ROCM_USE_AITER_RMSNORM": "0",
+            "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "1",
+            "PAITON_MXFP4_PREFILL_TALL_TILE": "1",
+            "PAITON_TARGET_SILU_PREFILL": "1",
+            "PAITON_TARGET_RMS_PREFILL": "1",
+            "PAITON_TARGET_SILU_DECODE": "1",
+            "PAITON_TARGET_RMS_DECODE": "1",
+            "PAITON_TARGET_GDN_NORM_FIXED": "1",
+            "PAITON_TARGET_GDN_TILED": "1",
+            "PAITON_MXFP4_GDN_MERGED_PREFILL": "1",
+            "PAITON_PREFILL_ATTENTION96": "1",
+            "PAITON_DFLASH_NATIVE": "0",
+            "PAITON_DFLASH_DOWN_PROJECTION": "0",
+            "PAITON_DFLASH_SILU_QUANT": "0",
+            "PAITON_DFLASH_CONTEXT_NORM_ROPE": "0",
+            "PAITON_DFLASH_RERANK": "0",
+            "PAITON_DFLASH_DRAFT_SAMPLE_METHOD": "inherit",
+            "PAITON_DFLASH_GATE_PROJECTION": "0",
+            "PAITON_DFLASH_CONTEXT_KV": "0",
+            "PAITON_DFLASH_VERIFY_CAP": "0",
+            "PAITON_DFLASH_VERIFY_TRACE": "0",
+            "PAITON_DFLASH_BLOCK_CANDIDATES": "0",
+            "PAITON_DFLASH_CONTEXT_GRAPH": "0",
+            "PAITON_DFLASH_UNIFORM_GRAPHS": "0",
+            "PAITON_ASYNC_ERROR_SNAPSHOT": "0",
+            "PAITON_MXFP4_PREFILL_GROUP4": "0",
+            "PAITON_MXFP4_PREFILL_PIPELINE": "0",
+            "PAITON_PREFILL_ATTENTION96_BUNDLE": "{bundle}/native/prefill-attention96",
+            "VLLM_DISABLE_PAITON_PLATFORM": "1",
+            "REFERENCE_SAFETENSORS_PREAD": "1",
+            "VLLM_USE_V2_MODEL_RUNNER": "1",
+            "OMP_NUM_THREADS": "6",
+            "HSA_NO_SCRATCH_RECLAIM": "1",
+            "HSA_ENABLE_IPC_MODE_LEGACY": "1",
+            "HIP_FORCE_DEV_KERNARG": "1",
+            "TRITON_CACHE_AUTOTUNING": "1",
+            "SAFETENSORS_FAST_GPU": "1",
+            "PYTORCH_NVML_BASED_CUDA_CHECK": "1"
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "kv-cache-dtype": "fp8",
+            "enable-prefix-caching": false,
+            "enable-chunked-prefill": true,
+            "language-model-only": true,
+            "safetensors-load-strategy": "lazy",
+            "attention-backend": "R4D",
+            "mamba-cache-mode": "none",
+            "mamba-cache-dtype": "bfloat16",
+            "mamba-ssm-cache-dtype": "float16",
+            "async-scheduling": false,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2,
+                4,
+                8,
+                16,
+                24,
+                32,
+                40,
+                48,
+                56,
+                64
+              ],
+              "pass_config": {
+                "fuse_norm_quant": true,
+                "fuse_act_quant": true
+              }
+            }
+          },
+          "bounds": {
+            "max-model-len": [
+              1,
+              65536
+            ],
+            "max-num-seqs": [
+              1,
+              8
+            ],
+            "max-num-batched-tokens": [
+              1,
+              4096
+            ],
+            "kv-cache-memory-bytes": [
+              1,
+              6535819798
+            ],
+            "gpu-memory-utilization": [
+              0.1,
+              0.98
+            ]
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "parallelism": {
+          "tp": 1,
+          "pp": 1,
+          "dp": 1
+        },
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "execution_precision": "MXFP4 weights / FP8 activations / BF16 intermediates",
+        "source_conversion": "explicit lossy requantization in device memory",
+        "native_abi": "cp312 / libtorch CXX11 / HIP 71626361; source-guarded runtime overlays"
+      }
+    },
+    {
+      "id": "minicpm5-awq-native-20260921",
+      "presets": {
+        "minicpm5": "minicpm5-awq-text-8k"
+      },
+      "manifest": "minicpm5-execution.json",
+      "adapter": "minicpm5-awq-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/minicpm5-awq-native-20260921.tar.gz",
+        "size_bytes": 130986,
+        "sha256": "1bb8978187733923a49990f3216ee046a3398cdd79a33392ccbe3c879ed8913e"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "openbmb/MiniCPM5-2B-GPTQ",
+        "revision": "6c1ee6fa521aa53f47cfb32696e6d8ef5b0db805",
+        "storage_format": "Asymmetric AWQ GEMM safetensors, in the upstream GPTQ-named repository",
+        "architecture": "LlamaForCausalLM",
+        "files": {
+          "README.md": {
+            "size_bytes": 110854,
+            "sha256": "3832c333f5818e3cd60ece1527e398288d2df33ccb90ed861c05ce8deb84deb6"
+          },
+          "chat_template.jinja": {
+            "size_bytes": 9060,
+            "sha256": "cc945752db555d60949b16989df4ccfeb52a313d6b4b5c5229dd786e2e9fcf1c"
+          },
+          "config.json": {
+            "size_bytes": 2700,
+            "sha256": "581f0497d90e2ed2a989b821aa610de586bd5a7989e7dff32e1c463597f2de9b"
+          },
+          "generation_config.json": {
+            "size_bytes": 213,
+            "sha256": "9ac4f32e5f32358697a9f438a3ea89ef80e6ba786c72c49e932f9f21c122fdb1"
+          },
+          "model.safetensors": {
+            "size_bytes": 2099615880,
+            "sha256": "b5d5133349bb95be18868890d8064a9bfb145e720f64e7e0ff16b905c376bed4"
+          },
+          "special_tokens_map.json": {
+            "size_bytes": 551,
+            "sha256": "82d96d7a9e6ced037f12394b7ea6a5b02e6ca87e0d11edaa8d60d9be857ce7db"
+          },
+          "tokenizer.json": {
+            "size_bytes": 9894271,
+            "sha256": "3e065a558a034185fe299917b398685c1facd0169a9eea1e629eb30c171fed81"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 94391,
+            "sha256": "e9b1064649e771d7a8e15637c68b2d2749724877ba3648bd74a4ece31c26303b"
+          }
+        }
+      },
+      "runtime": {
+        "python": "3.14",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.26.1.dev1+g396cd1a43.rocm714",
+          "torch": "2.11.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.14.0",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": "0.1.14rc1.dev177+g9bab8388c",
+          "compressed-tensors": "0.17.0"
+        },
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1,
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "hip_runtime_version": 71460850,
+        "torch_cxx11_abi": true
+      },
+      "profiles": {
+        "minicpm5-awq-text-8k": {
+          "description": "MiniCPM5 asymmetric AWQ G128, FP16 activations, lossless in-memory nibble transpose; upstream prefill and native 1/2-token decode. Explicit 8K context, C2, APC off, reasoning disabled by the released chat-template default, no speculation. Source weights and quantization are unchanged.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "float16",
+            "max-model-len": 8192,
+            "max-num-seqs": 2,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 1073741824,
+            "enable-prefix-caching": false,
+            "generation-config": "vllm",
+            "reasoning-parser": "qwen3",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "minicpm5",
+            "safetensors-load-strategy": "lazy",
+            "seed": 1201,
+            "attention-backend": "TRITON_ATTN",
+            "default-chat-template-kwargs": {
+              "enable_thinking": false
+            },
+            "compilation-config": {
+              "mode": 0,
+              "cudagraph_mode": "FULL_DECODE_ONLY",
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonMiniCPM5AWQForCausalLM"
+              ]
+            },
+            "host": "0.0.0.0",
+            "port": 8036,
+            "served-model-name": "minicpm5-2b"
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "float16",
+            "max-num-seqs": 2,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 1073741824,
+            "enable-prefix-caching": false,
+            "generation-config": "vllm",
+            "reasoning-parser": "qwen3",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "minicpm5",
+            "safetensors-load-strategy": "lazy",
+            "attention-backend": "TRITON_ATTN",
+            "default-chat-template-kwargs": {
+              "enable_thinking": false
+            },
+            "compilation-config": {
+              "mode": 0,
+              "cudagraph_mode": "FULL_DECODE_ONLY",
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonMiniCPM5AWQForCausalLM"
+              ]
+            }
+          },
+          "bounds": {
+            "max-model-len": [
+              1,
+              8192
+            ]
+          },
+          "environment": {
+            "PAITON_MINICPM5_ARTIFACT": "{bundle}/minicpm5_awq_decode_gfx1201.so",
+            "VLLM_DISABLE_PAITON_PLATFORM": "1",
+            "VLLM_ROCM_USE_AITER": "0",
+            "VLLM_USE_V2_MODEL_RUNNER": "1",
+            "OMP_NUM_THREADS": "1"
+          }
+        }
+      },
+      "capabilities": {
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1,
+        "execution_precision": "W4A16, unchanged AWQ quantization, lossless layout repack"
+      }
+    },
+    {
+      "id": "coder-native-20260921",
+      "manifest": "coder-execution.json",
+      "presets": {
+        "qwen3-coder": "qwen3-coder-text-4k"
+      },
+      "adapter": "qwen3-coder-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/coder-native-20260921.tar.gz",
+        "size_bytes": 121834,
+        "sha256": "00e953dd2f6cab5956d0b30316e6dd430ff0c64d83d22ca2c6d3f9696e6e2c72"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit",
+        "revision": "4bd30395b72ea6045edd04806c4fea448d4467b3",
+        "files": {
+          "added_tokens.json": {
+            "size_bytes": 707,
+            "sha256": "c0284b582e14987fbd3d5a2cb2bd139084371ed9acbae488829a1c900833c680"
+          },
+          "chat_template.jinja": {
+            "size_bytes": 6211,
+            "sha256": "5a38bfa05833266240066aedc497decc9b00cc0d3e3b8cceea98cf530196ab06"
+          },
+          "config.json": {
+            "size_bytes": 3514,
+            "sha256": "42981b44892a1940c8f93bf5fb40972bc62f2c9a6c8f0d10115175e68b11396d"
+          },
+          "generation_config.json": {
+            "size_bytes": 217,
+            "sha256": "1d03c892d92eb4cd826bf131cb2ba62e2aa2d2d3a2e6764a9ae52fb58ec0cec4"
+          },
+          "merges.txt": {
+            "size_bytes": 1671853,
+            "sha256": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5"
+          },
+          "model-00001-of-00004.safetensors": {
+            "size_bytes": 5001707008,
+            "sha256": "8c2b4374b90768ab1a6170d0dbe46da7c361fdb67c332197df9d7a5d199765ea"
+          },
+          "model-00002-of-00004.safetensors": {
+            "size_bytes": 5001283696,
+            "sha256": "fee932dc2545ab002497a9c5afc6eb46b0a92dbf68e0c44a1868dd61782027e2"
+          },
+          "model-00003-of-00004.safetensors": {
+            "size_bytes": 5001283912,
+            "sha256": "bed65943b9827596fd62ed22b4504819c29a95d9a2fdd6a64a31994e462c29d2"
+          },
+          "model-00004-of-00004.safetensors": {
+            "size_bytes": 3090232736,
+            "sha256": "9edfbef02e699159f1f8a7cc5e52d3f0b2ea5262fc565f6d12cd045496da1df5"
+          },
+          "model.safetensors.index.json": {
+            "size_bytes": 5412994,
+            "sha256": "0c3f353c78e88d8578823b831c11e6ee8d4c42a5c0fcc3c0a311f65d307c50ad"
+          },
+          "special_tokens_map.json": {
+            "size_bytes": 613,
+            "sha256": "76862e765266b85aa9459767e33cbaf13970f327a0e88d1c65846c2ddd3a1ecd"
+          },
+          "tokenizer.json": {
+            "size_bytes": 11422654,
+            "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 5405,
+            "sha256": "05a2d456eb807c8368fe6b60101b1d1160d6889071a751ed08576b96e77e01cd"
+          },
+          "vocab.json": {
+            "size_bytes": 2776833,
+            "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+          }
+        },
+        "architecture": "Qwen3MoeForCausalLM",
+        "storage_format": "Symmetric AWQ INT4 G32 safetensors"
+      },
+      "runtime": {
+        "python": "3.12",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714",
+          "torch": "2.12.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.15.1",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": null,
+          "compressed-tensors": "0.17.0"
+        },
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "torch_cxx11_abi": true,
+        "hip_runtime_version": 71460850,
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1
+      },
+      "profiles": {
+        "qwen3-coder-text-4k": {
+          "description": "Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 4K context, qwen3_xml tools.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "host": "0.0.0.0",
+            "max-num-seqs": 2,
+            "max-model-len": 4096,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 2147483648,
+            "generation-config": "vllm",
+            "attention-backend": "ROCM_ATTN",
+            "moe-backend": "triton",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "qwen3_xml",
+            "safetensors-load-strategy": "lazy",
+            "seed": 1201,
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonQwen3CoderForCausalLM"
+              ]
+            },
+            "port": 8010,
+            "served-model-name": "qwen3-coder"
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "max-num-seqs": 2,
+            "max-model-len": 4096,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 2147483648,
+            "generation-config": "vllm",
+            "attention-backend": "ROCM_ATTN",
+            "moe-backend": "triton",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "qwen3_xml",
+            "safetensors-load-strategy": "lazy",
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonQwen3CoderForCausalLM"
+              ]
+            }
+          },
+          "bounds": {},
+          "environment": {
+            "VLLM_DISABLE_PAITON_PLATFORM": "1",
+            "VLLM_ROCM_USE_AITER": "0",
+            "OMP_NUM_THREADS": "1",
+            "PAITON_QWEN3_CODER_ARTIFACT": "{bundle}/qwen3_coder_moe_w4a16_g32_gfx1201.so"
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1
+      }
+    },
+    {
+      "id": "gptoss-native-20260921",
+      "manifest": "gptoss-execution.json",
+      "presets": {
+        "gpt-oss-20b": "gptoss-text-8k"
+      },
+      "adapter": "gptoss-mxfp4-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/gptoss-native-20260921.tar.gz",
+        "size_bytes": 1815125,
+        "sha256": "a7d97eb930c828453ad9b1d6747d1b1ddaf8159bc1e836920f6900fa518a2f7c"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "openai/gpt-oss-20b",
+        "revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+        "files": {
+          "chat_template.jinja": {
+            "size_bytes": 16738,
+            "sha256": "a4c9919cbbd4acdd51ccffe22da049264b1b73e59055fa58811a99efbd7c8146"
+          },
+          "config.json": {
+            "size_bytes": 1806,
+            "sha256": "3a2a26ded679375b7928ddeca59764df7cea83220c1961035f6d6e232659e9ce"
+          },
+          "generation_config.json": {
+            "size_bytes": 177,
+            "sha256": "f9970ada892d2d1f72e3ed0a6535ccebadd11897318794ca671d8c7014c957da"
+          },
+          "model-00000-of-00002.safetensors": {
+            "size_bytes": 4792272488,
+            "sha256": "16d0f997dcfc4462089d536bffe51b4bcea2f872f5c430be09ef8ed392312427"
+          },
+          "model-00001-of-00002.safetensors": {
+            "size_bytes": 4798702184,
+            "sha256": "4fbe328ab445455d6f58dc73852b85873bd626986310abd91cd4d2ce3245eaea"
+          },
+          "model-00002-of-00002.safetensors": {
+            "size_bytes": 4170342232,
+            "sha256": "a18106b209e9ab35c3406db4f6f12a927364a058b21e9d1373d682e20674b303"
+          },
+          "model.safetensors.index.json": {
+            "size_bytes": 36355,
+            "sha256": "0e085b977c4c9942f85938828e8c989ed7d5cdabf852e4da6a67c116cd502cd1"
+          },
+          "special_tokens_map.json": {
+            "size_bytes": 98,
+            "sha256": "dd5e191d20c12d2fee1da5bae14ca1db0f5f4215300af691f23cdee97120a293"
+          },
+          "tokenizer.json": {
+            "size_bytes": 27868174,
+            "sha256": "0614fe83cadab421296e664e1f48f4261fa8fef6e03e63bb75c20f38e37d07d3"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 4200,
+            "sha256": "9279e942392b742d633c7adbb89ebe002c98399db8926a7af5125c726f404070"
+          }
+        },
+        "architecture": "GptOssForCausalLM",
+        "storage_format": "Original MXFP4 E2M1 G32 E8M0 safetensors"
+      },
+      "runtime": {
+        "python": "3.14",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.26.1.dev1+g396cd1a43.rocm714",
+          "torch": "2.11.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.14.0",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": "0.1.14rc1.dev177+g9bab8388c",
+          "compressed-tensors": "0.17.0"
+        },
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "torch_cxx11_abi": true,
+        "hip_runtime_version": 71460850,
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1
+      },
+      "profiles": {
+        "gptoss-text-8k": {
+          "description": "Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 8K context, Harmony reasoning/tools, bundled pinned Harmony vocabulary.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "host": "0.0.0.0",
+            "max-num-seqs": 2,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 2147483648,
+            "generation-config": "vllm",
+            "attention-backend": "TRITON_ATTN",
+            "moe-backend": "triton",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "openai",
+            "safetensors-load-strategy": "lazy",
+            "seed": 1201,
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonGptOssForCausalLM"
+              ]
+            },
+            "port": 8020,
+            "served-model-name": "gpt-oss-20b",
+            "reasoning-parser": "openai_gptoss"
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "max-num-seqs": 2,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 512,
+            "kv-cache-memory-bytes": 2147483648,
+            "generation-config": "vllm",
+            "attention-backend": "TRITON_ATTN",
+            "moe-backend": "triton",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "openai",
+            "safetensors-load-strategy": "lazy",
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1,
+                2
+              ],
+              "max_cudagraph_capture_size": 2
+            },
+            "hf-overrides": {
+              "architectures": [
+                "PaitonGptOssForCausalLM"
+              ]
+            },
+            "reasoning-parser": "openai_gptoss"
+          },
+          "bounds": {},
+          "environment": {
+            "VLLM_DISABLE_PAITON_PLATFORM": "1",
+            "VLLM_ROCM_USE_AITER": "0",
+            "OMP_NUM_THREADS": "1",
+            "PAITON_GPTOSS_ARTIFACT": "{bundle}/gptoss_mxfp4_decode_gfx1201.so",
+            "TIKTOKEN_RS_CACHE_DIR": "{bundle}/harmony-cache"
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1
+      }
+    },
+    {
+      "id": "qronos-native-20260921",
+      "manifest": "qronos-execution.json",
+      "presets": {
+        "qwen38-qronos": "qwen38-qronos-text-8k"
+      },
+      "adapter": "qwen38-qronos-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/qronos-native-20260921.tar.gz",
+        "size_bytes": 1341266,
+        "sha256": "c2e3add43a46cd6c017e8ce8c827319d7c45bda74f740256cbeee7d604fbf9d4"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16",
+        "revision": "649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2",
+        "storage_format": "Quark Qronos INT4 W4A16 safetensors",
+        "architecture": "Qwen3_5ForConditionalGeneration",
+        "files": {
+          "chat_template.jinja": {
+            "size_bytes": 8952,
+            "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041"
+          },
+          "config.json": {
+            "size_bytes": 10944,
+            "sha256": "aa38ad1583f2915a28ab3722d0c8f3504c71c93e4c7d288291f9024270caa331"
+          },
+          "crc32.txt": {
+            "size_bytes": 238,
+            "sha256": "0193833c505e6e4b57530d50ce524f5c8d88120b2dd76257f1ccba14bf26a92d"
+          },
+          "generation_config.json": {
+            "size_bytes": 213,
+            "sha256": "07f857aba5260b2ea2513f80de8062d086661f00eada0a3794964e665ba680f5"
+          },
+          "merges.txt": {
+            "size_bytes": 3353259,
+            "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+          },
+          "model.safetensors": {
+            "size_bytes": 19893384832,
+            "sha256": "32190ba51af3e048f927b446f251a171e475cc91456a831e374709e74a8f0454"
+          },
+          "preprocessor_config.json": {
+            "size_bytes": 482,
+            "sha256": "957eb01d1ea45341a92d543daec95857a7cbeff5803834bc0603b27ba7b41b3f"
+          },
+          "processor_config.json": {
+            "size_bytes": 1300,
+            "sha256": "14932921ca485d458a04dafd8069fbb0a4505622a48208d19ed247115801385b"
+          },
+          "tokenizer.json": {
+            "size_bytes": 12809320,
+            "sha256": "0997f410c57a1f4e53b09e4be8f4a172d90edd9564368fb0847030937229b9f3"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 17928,
+            "sha256": "b11349aafa7cdc6a320767cf7ceb29ed82f7eda5d65e8e0819e76f0ce947bf27"
+          },
+          "video_preprocessor_config.json": {
+            "size_bytes": 385,
+            "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+          },
+          "vocab.json": {
+            "size_bytes": 6722759,
+            "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+          }
+        }
+      },
+      "runtime": {
+        "python": "3.12",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714",
+          "torch": "2.12.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.15.1",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": null,
+          "compressed-tensors": "0.17.0"
+        },
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "torch_cxx11_abi": true,
+        "hip_runtime_version": 71460850,
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1
+      },
+      "profiles": {
+        "qwen38-qronos-text-8k": {
+          "description": "Explicit text-only 8K/C1 native compiled model; original source checkpoint unchanged, APC off, no speculation. Released Qronos W4 LM head and serialized external graphs.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "host": "0.0.0.0",
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 8192,
+            "kv-cache-dtype": "auto",
+            "kv-cache-memory-bytes": 2147483648,
+            "load-format": "safetensors",
+            "reasoning-parser": "qwen3",
+            "port": 8000,
+            "served-model-name": "qwen38",
+            "enforce-eager": false,
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1
+              ],
+              "max_cudagraph_capture_size": 1,
+              "cudagraph_num_of_warmups": 1
+            }
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 8192,
+            "kv-cache-dtype": "auto",
+            "kv-cache-memory-bytes": 2147483648,
+            "load-format": "safetensors",
+            "reasoning-parser": "qwen3",
+            "enforce-eager": false,
+            "optimization-level": 2,
+            "compilation-config": {
+              "cudagraph_capture_sizes": [
+                1
+              ],
+              "max_cudagraph_capture_size": 1,
+              "cudagraph_num_of_warmups": 1
+            }
+          },
+          "bounds": {},
+          "environment": {
+            "VLLM_USE_PAITON_PLATFORM": "1",
+            "VLLM_DISABLE_PAITON_PLATFORM": "0",
+            "PAITON_GPU_ARCH": "gfx1201",
+            "VLLM_ROCM_USE_AITER": "0",
+            "PAITON_QWEN38_W4_LM_HEAD": "1",
+            "PAITON_QWEN38_W4_LM_HEAD_SO": "{bundle}/benchmark_w4a16_n248320_k5120_gfx1201.so",
+            "PAITON_QWEN38_W4_LM_HEAD_SHA256": "56f48b41ac71331ae9f04fc1f20020dad61e18851f4ff5d25d3c7518faa6dd28",
+            "PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE": "1",
+            "PAITON_DECODE_ATTENTION_AOT": "1",
+            "PAITON_PREFILL_ATTENTION_AOT": "1"
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1
+      },
+      "serving_layout": "overlay"
+    },
+    {
+      "id": "ornith-native-20260921",
+      "manifest": "ornith-execution.json",
+      "presets": {
+        "ornith": "ornith-text-8k"
+      },
+      "adapter": "ornith15-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/ornith-native-20260921.tar.gz",
+        "size_bytes": 895885,
+        "sha256": "21cdcc8d37106164715cb4c1e06cd73000a6784954b347283f1fd0259290b6b8"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4",
+        "revision": "9e488f46c0f7969f84c9923ee0256311cd50316e",
+        "storage_format": "Quark MXFP4 safetensors",
+        "architecture": "Qwen3_5MoeForConditionalGeneration",
+        "files": {
+          "chat_template.jinja": {
+            "size_bytes": 7536,
+            "sha256": "182e77dd83bd8e9ca818b240b82e28f243762cd5dda32e6eef327df7b1cd107e"
+          },
+          "config.json": {
+            "size_bytes": 14280,
+            "sha256": "26ff174cbf62be9fdd84468e7c6f7f85a5fcbcf257fcb07a16018e0d285f14e8"
+          },
+          "configuration.json": {
+            "size_bytes": 58,
+            "sha256": "c1b09db419119513247e9b8b912c4b9897106c9b20c6cada7e107d993c5435eb"
+          },
+          "generation_config.json": {
+            "size_bytes": 214,
+            "sha256": "b8eb74d15e0a56623d00ccd14950a4bb87fabbf84b5cc030dcc904b899fb1eb5"
+          },
+          "merges.txt": {
+            "size_bytes": 3353259,
+            "sha256": "a9d356d7bdf1ef4949e3e748e95b8e10ad9d4e2e838eddc38a0a7b6b94d1db8d"
+          },
+          "model.safetensors": {
+            "size_bytes": 22931751024,
+            "sha256": "a33626f89489eaea92ab2f03f330c2df3c52da2b271fc3987ee253cea270f7b7"
+          },
+          "preprocessor_config.json": {
+            "size_bytes": 390,
+            "sha256": "27225450ac9c6529872ee1924fcb0962ff5634834f817040f444118116f4e516"
+          },
+          "processor_config.json": {
+            "size_bytes": 1191,
+            "sha256": "d89ef49ce9cd37fbf510158e13c1ef063d9286411c1ec9049932dbe0487143b1"
+          },
+          "tokenizer.json": {
+            "size_bytes": 19989325,
+            "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523"
+          },
+          "tokenizer_config.json": {
+            "size_bytes": 1124,
+            "sha256": "66e427c470fe580fe8c7b5725d857af23d8417e37fae62667ec698306a19987b"
+          },
+          "video_preprocessor_config.json": {
+            "size_bytes": 385,
+            "sha256": "7768af27c1fafa9cc9011c1dc20067e03f8915e03b63504550e11d5066986d13"
+          },
+          "vocab.json": {
+            "size_bytes": 6722759,
+            "sha256": "ce99b4cb2983d118806ce0a8b777a35b093e2000a503ebde25853284c9dfa003"
+          }
+        }
+      },
+      "runtime": {
+        "python": "3.12",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714",
+          "torch": "2.12.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.15.1",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": null,
+          "compressed-tensors": "0.17.0"
+        },
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "torch_cxx11_abi": true,
+        "hip_runtime_version": 71460850,
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1
+      },
+      "profiles": {
+        "ornith-text-8k": {
+          "description": "Explicit text-only 8K/C1 native compiled model; original source checkpoint unchanged, APC off, no speculation. Lossless cached resharding to fit host RAM. This non-speculative profile does not reproduce the separate DFlash benchmark; the existing DFlash launcher remains available.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "host": "0.0.0.0",
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 8192,
+            "kv-cache-dtype": "auto",
+            "kv-cache-memory-bytes": 3221225472,
+            "load-format": "safetensors",
+            "reasoning-parser": "qwen3",
+            "port": 8000,
+            "served-model-name": "ornith",
+            "enforce-eager": true,
+            "language-model-only": true,
+            "generation-config": "vllm"
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 8192,
+            "kv-cache-dtype": "auto",
+            "kv-cache-memory-bytes": 3221225472,
+            "load-format": "safetensors",
+            "reasoning-parser": "qwen3",
+            "enforce-eager": true,
+            "language-model-only": true,
+            "generation-config": "vllm"
+          },
+          "bounds": {},
+          "environment": {
+            "VLLM_USE_PAITON_PLATFORM": "1",
+            "VLLM_DISABLE_PAITON_PLATFORM": "0",
+            "PAITON_GPU_ARCH": "gfx1201",
+            "VLLM_ROCM_USE_AITER": "0",
+            "PAITON_ORNITH_DFLASH": "0"
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "modalities": [
+          "text"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1
+      },
+      "serving_layout": "ornith-resharded",
+      "resharded_files": {
+        "model.safetensors.index.json": {
+          "size_bytes": 6863662,
+          "sha256": "539ba77bd898e1e24b0a0defd0b22acc78b2ed05b3272f82a4be60d72c2f4792"
+        },
+        "model-00001-of-00006.safetensors": {
+          "size_bytes": 3999524216,
+          "sha256": "8a63bb123d1967c564aec1cf4f4815ff61a031cfb531b884fae70f8bfb7705c5"
+        },
+        "model-00002-of-00006.safetensors": {
+          "size_bytes": 4001295064,
+          "sha256": "766b5a69a69ca9d967766d5cd8803228120ba3c91a001ed88efbeadd54eb28ed"
+        },
+        "model-00003-of-00006.safetensors": {
+          "size_bytes": 4001541216,
+          "sha256": "008f114b295a5ba6efcf7d0735aaa7533cd50fc02511bba235d01e78c08e6d78"
+        },
+        "model-00004-of-00006.safetensors": {
+          "size_bytes": 4001479208,
+          "sha256": "f880a5ea24c4159a1a4e5f6a31db8051758a33080c8b5737a30909f5cc160259"
+        },
+        "model-00005-of-00006.safetensors": {
+          "size_bytes": 4001480744,
+          "sha256": "3c90e22db4584da41bd56fa4634c661881015676c3cf585cf4afcf24cb5df966"
+        },
+        "model-00006-of-00006.safetensors": {
+          "size_bytes": 2926307856,
+          "sha256": "cb95d1e6340b4c5cd33b69b24c05baefa2358366124aa0817baf5bce6b1992a9"
+        }
+      }
+    },
+    {
+      "id": "neo-native-20260921",
+      "manifest": "neo-execution.json",
+      "presets": {
+        "qwen38-neo": "qwen38-neo-image-8k"
+      },
+      "adapter": "qwen38-neo-v1",
+      "archive": {
+        "url": "https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/neo-native-20260921.tar.gz",
+        "size_bytes": 5168412,
+        "sha256": "43d5aaf5bb8a66d3e50b034de6d5581d5bc9b659c8f296ffcc752e8e20736d9e"
+      },
+      "release_status": "published-release-bundle",
+      "model": {
+        "repository": "DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF",
+        "revision": "89230607b3708bc1efe174e8fd34d4b164476c88",
+        "identification": "gguf-files",
+        "storage_format": "Original mixed Q4_K_M GGUF and BF16 vision projector",
+        "architecture": "PaitonQwen38GGUFForConditionalGeneration",
+        "files": {
+          "Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf": {
+            "size_bytes": 18498573856,
+            "sha256": "bc7a6cf2bcc78d1190aaf04d1ab1c5cb845b6ff23aa0e7d24fe0d2ea6d3a7c7c"
+          },
+          "mmproj-BF16.gguf": {
+            "size_bytes": 931145920,
+            "sha256": "b0d8d89e9c9c90e0fb8ca74742d9d9bd7cc0f966a29b6f8c14227000ea6bd89e"
+          }
+        }
+      },
+      "runtime": {
+        "python": "3.12",
+        "system": "Linux",
+        "machine": "x86_64",
+        "versions": {
+          "vllm": "0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714",
+          "torch": "2.12.0+rocm7.14.0",
+          "triton": "3.7.1+git0263a6a6.rocm7.14.0",
+          "transformers": "5.15.1",
+          "safetensors": "0.8.0",
+          "rocm-sdk-core": "7.14.0",
+          "amd-aiter": null,
+          "compressed-tensors": "0.17.0"
+        },
+        "libc_min": "2.39",
+        "hip_version": "7.14.60850",
+        "torch_cxx11_abi": true,
+        "hip_runtime_version": 71460850,
+        "gpu_arch": "gfx1201",
+        "gpu_count": 1
+      },
+      "profiles": {
+        "qwen38-neo-image-8k": {
+          "description": "Explicit original mixed Q4_K_M GGUF, native FP32 activations and BF16 weight metadata; text plus one image (max 1,048,576 pixels), 8K/C1, 2048-token prefill, 2 GiB KV, APC and MTP off. Released native internal decode graphs; vLLM eager execution.",
+          "settings": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "host": "0.0.0.0",
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 2048,
+            "block-size": 16,
+            "kv-cache-memory-bytes": 2147483648,
+            "load-format": "paiton_gguf",
+            "enforce-eager": true,
+            "reasoning-parser": "qwen3",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "qwen3_coder",
+            "worker-cls": "paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker",
+            "limit-mm-per-prompt": {
+              "image": 1,
+              "video": 0
+            },
+            "mm-processor-kwargs": {
+              "max_pixels": 1048576
+            },
+            "served-model-name": "qwen38-neo",
+            "port": 8000
+          },
+          "requirements": {
+            "tensor-parallel-size": 1,
+            "pipeline-parallel-size": 1,
+            "dtype": "bfloat16",
+            "enable-prefix-caching": false,
+            "max-num-seqs": 1,
+            "max-model-len": 8192,
+            "max-num-batched-tokens": 2048,
+            "block-size": 16,
+            "kv-cache-memory-bytes": 2147483648,
+            "load-format": "paiton_gguf",
+            "enforce-eager": true,
+            "reasoning-parser": "qwen3",
+            "enable-auto-tool-choice": true,
+            "tool-call-parser": "qwen3_coder",
+            "worker-cls": "paiton_vllm_plugin.gguf_worker.PaitonGGUFWorker",
+            "limit-mm-per-prompt": {
+              "image": 1,
+              "video": 0
+            },
+            "mm-processor-kwargs": {
+              "max_pixels": 1048576
+            }
+          },
+          "bounds": {},
+          "environment": {
+            "VLLM_USE_PAITON_PLATFORM": "1",
+            "VLLM_DISABLE_PAITON_PLATFORM": "0",
+            "PAITON_GPU_ARCH": "gfx1201",
+            "VLLM_ROCM_USE_AITER": "0",
+            "PAITON_GGUF_CHECKPOINT": "{model}/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf",
+            "PAITON_GGUF_PROJECTOR": "{model}/mmproj-BF16.gguf",
+            "PAITON_GGUF_SAFE_DETOKENIZER": "1",
+            "PAITON_QWEN38_W4_LM_HEAD": "0",
+            "PAITON_PREFILL_ATTENTION_AOT": "0",
+            "PAITON_DECODE_ATTENTION_AOT": "0",
+            "PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE": "0",
+            "GPU_MAX_HW_QUEUES": "1"
+          }
+        }
+      },
+      "capabilities": {
+        "qualified_profiles_only": true,
+        "modalities": [
+          "text",
+          "image"
+        ],
+        "speculation": false,
+        "prefix_caching": false,
+        "tp": 1,
+        "pp": 1
+      },
+      "serving_layout": "bundle"
+    }
+  ]
+}

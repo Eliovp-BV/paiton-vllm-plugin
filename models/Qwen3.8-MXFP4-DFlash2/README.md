@@ -1,5 +1,41 @@
 # Qwen3.8 MXFP4 + DFlash2 on regular vLLM
 
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve qwen38-nvfp4
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve qwen38-nvfp4`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve qwen38-nvfp4` to prepare without starting the
+server, then `paiton --offline serve qwen38-nvfp4` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- **Native bundle:** `qwen38-rocm10-native-20260921`; downloaded and verified automatically.
+- **Checkpoint:** `unsloth/Qwen3.8-27B-NVFP4`, revision `f0b7c9e722f5565102fff8481c99e4d86ae099c7`.
+- **Existing runtime:** Python 3.12, vLLM `0.29.0`, Torch `2.12.0+rocm10.0.0`, ROCm SDK 10.0.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- **Preset / profile:** `qwen38-nvfp4` / `qwen38-nvfp4-w4a8-text-65k`.
+- **Serving behavior:** Explicit text-only NVFP4→MXFP4 requantization, FP8 activations, FP8 KV, FP16 recurrent cache, 65K context, APC off, no speculation. Original weights stay unchanged; conversion is lossy and occurs only in device memory at model load. Existing upstream warmup/graph compilation remains.
+- **API:** `http://127.0.0.1:18982/v1`, model name `Qwen3.8`. Wait for readiness; `curl http://127.0.0.1:18982/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile qwen38-nvfp4-w4a8-text-65k vllm serve /models/existing-qwen38-nvfp4`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
 ## Current release
 
 **20 September 2026: updated 65K image, ROCm 10 and vLLM 0.29.0.**

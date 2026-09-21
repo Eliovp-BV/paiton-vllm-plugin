@@ -1,5 +1,41 @@
 # MiniCPM5-2B: quick local chat and code on R9700
 
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve minicpm5
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve minicpm5`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve minicpm5` to prepare without starting the
+server, then `paiton --offline serve minicpm5` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- **Native bundle:** `minicpm5-awq-native-20260921`; downloaded and verified automatically.
+- **Checkpoint:** `openbmb/MiniCPM5-2B-GPTQ`, revision `6c1ee6fa521aa53f47cfb32696e6d8ef5b0db805`.
+- **Existing runtime:** Python 3.14, vLLM `0.26.1.dev1+g396cd1a43.rocm714`, Torch `2.11.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- **Preset / profile:** `minicpm5` / `minicpm5-awq-text-8k`.
+- **Serving behavior:** MiniCPM5 asymmetric AWQ G128, FP16 activations, lossless in-memory nibble transpose; upstream prefill and native 1/2-token decode. Explicit 8K context, C2, APC off, reasoning disabled by the released chat-template default, no speculation. Source weights and quantization are unchanged.
+- **API:** `http://127.0.0.1:8036/v1`, model name `minicpm5-2b`. Wait for readiness; `curl http://127.0.0.1:8036/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile minicpm5-awq-text-8k vllm serve /models/existing-minicpm5`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
 A small Apache-2.0 instruction model, with Paiton-compiled W4A16 decode and an
 OpenAI-compatible vLLM API. Qualified target: one Radeon AI PRO R9700, gfx1201,
 32 GB VRAM. This separate image preserves every existing community package.

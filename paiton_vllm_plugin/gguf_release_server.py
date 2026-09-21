@@ -103,14 +103,16 @@ def main() -> None:
     # any tensor to the device. Resolving Hub links lets it reuse the blob itself.
     os.environ.update(PAITON_GGUF_CHECKPOINT=str(checkpoint),
         VLLM_USE_PAITON_PLATFORM='1', PAITON_GGUF_SAFE_DETOKENIZER='1',
-        VLLM_PLUGINS='paiton_platform,register_paiton_models',
         PAITON_QWEN38_W4_LM_HEAD='0', PAITON_PREFILL_ATTENTION_AOT='0',
         PAITON_DECODE_ATTENTION_AOT='0',
         PAITON_QWEN38_SERIALIZED_EXTERNAL_GRAPH_CAPTURE='0')
+    from .activation import activate
+    activate('legacy', os.environ)
     command = serving_command(directory, args.host, args.port, multimodal=contract.get('multimodal', False),
                               prefill_chunk_tokens=args.prefill_chunk_tokens)
     print('Starting native Paiton GGUF execution through vLLM; checkpoint:', checkpoint, flush=True)
-    os.execvp(command[0], command)
+    import sys
+    os.execv(sys.executable, [sys.executable, '-m', 'vllm.entrypoints.cli.main', *command[1:]])
 
 
 if __name__ == '__main__':

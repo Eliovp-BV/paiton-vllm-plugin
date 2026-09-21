@@ -76,8 +76,9 @@ def main():
     parser.add_argument("--download-only", action="store_true")
     parser.add_argument("--qualification", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+    from paiton_vllm_plugin.activation import activate_model_launcher
+    activate_model_launcher(args.stock, os.environ)
     os.environ.update(
-        VLLM_PLUGINS="" if args.stock else "register_paiton_models",
         VLLM_ROCM_USE_AITER="0",
         OMP_NUM_THREADS="1",
     )

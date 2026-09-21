@@ -1,5 +1,15 @@
 # MiniMax H3 with Paiton on Radeon
 
+## Serving interface
+
+For this video and audio generation package, keep using the existing launcher from the repository
+root: `./models/MiniMax-H3/launch.sh`. Open [the included ComfyUI workflow](http://127.0.0.1:8190/?paiton=1&studio=1) after startup.
+The setup, CLI alternatives, flags and cache locations documented below remain
+available. `paiton serve` provides vLLM chat APIs, including NEO visual chat;
+this package uses its existing generation workflow. See the
+[main launch guide](../../README.md#quick-start) to choose an interface.
+
+
 Create **video with native stereo audio** locally on one **Radeon AI PRO R9700, 32 GB**. The included workflow generates a continuous **15.08-second, 864×480 clip at 24 fps**. Powered by MiniMax H3.
 
 Paiton takes **332.85 seconds** versus **399.40 seconds** for the matched stock request: **16.66% lower end-to-end latency** and **19.99% more clips per hour**. Fresh conditioning, video/audio decoding and writing a playable MP4 are included. All three paired long clips have equal video/audio latents and byte-identical MP4s.
