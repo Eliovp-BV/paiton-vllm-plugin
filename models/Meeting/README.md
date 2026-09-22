@@ -1,5 +1,117 @@
 # Local meeting audio — standalone package
 
+## Model weights and existing downloads
+
+Run the following examples from the repository root. This package needs the
+pinned Parakeet, pyannote, Granite and Silero components in
+[models.lock.json](models.lock.json). It does not download models during recording
+processing. Complete the preparation step before starting a job.
+
+### First download
+
+Follow [Prepare persistent models](REPRODUCE.md#prepare-persistent-models),
+including the separate download environment and your own pyannote access
+approval. Then [pull the image](REPRODUCE.md#pull-the-image) and run:
+
+```bash
+export PAITON_MEETING_CACHE="$HOME/.cache/paiton-meeting"
+./models/Meeting/run-docker.sh /absolute/path/to/meeting.mp4 /absolute/path/to/new-result
+```
+
+The launcher mounts `$PAITON_MEETING_CACHE/models` read-only and keeps runtime
+caches separately. Creating an empty `models/` directory is not preparation.
+
+### Already in a local folder
+
+For an existing prepared package cache, select its parent directory:
+
+```bash
+export PAITON_MEETING_CACHE="/absolute/path/to/prepared-meeting-cache"
+./models/Meeting/run-docker.sh /absolute/path/to/meeting.mp4 /absolute/path/to/new-result
+```
+
+It must contain `models/parakeet`, `models/pyannote`, `models/granite-summary`,
+`models/silero/silero_vad.jit` and `models/model-provenance.json`. Keep the
+`models/hub` files referenced by any snapshot links. The runtime creates its
+writable `runtime/` sibling as needed.
+
+If your complete prepared **models folder itself** is stored elsewhere, mount
+it explicitly instead of rearranging it:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/prepared-meeting-models"
+export PAITON_RECORDING="/absolute/path/to/meeting.mp4"
+export PAITON_RESULTS="$HOME/paiton-meeting-results"
+export PAITON_MEETING_RUNTIME="$HOME/.cache/paiton-meeting/runtime"
+mkdir -p "$PAITON_RESULTS" "$PAITON_MEETING_RUNTIME"
+flock "/tmp/paiton-studio-gpu-$(id -u).lock" \
+  docker run --rm --network none --device /dev/kfd --device /dev/dri \
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g \
+  -e HOME=/tmp -e OMP_NUM_THREADS=1 -e HF_HUB_OFFLINE=1 \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/meeting,readonly" \
+  --mount "type=bind,src=$PAITON_MEETING_RUNTIME,dst=/models/cache" \
+  --mount "type=bind,src=$PAITON_RECORDING,dst=/recording/input,readonly" \
+  --mount "type=bind,src=$PAITON_RESULTS,dst=/results" \
+  ghcr.io/eliovp/paiton-vllm-plugin:meeting-rdna4-v1.0.0-rc1 \
+  process /recording/input --models /models/meeting --output /results/new-result \
+  --artifact /opt/paiton/meeting-artifacts/meeting_lstm_float16_gfx1201.so
+```
+
+`new-result` must not already exist. This keeps the package's GPU lease and
+network-disabled recording processing. For unprepared Hub downloads, use the
+next option to create the required links and provenance record first.
+
+### Already in the Hugging Face cache
+
+A Hub cache alone is not the prepared meeting directory. Mount the cache into
+preparation and processing at the same location so its snapshot links survive.
+The following preparation reads the three pinned Hub snapshots without
+redownloading them. It fetches the small pinned Silero file if that file is not
+already in the prepared model directory. No recording is mounted for preparation.
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+export PAITON_MEETING_CACHE="$HOME/.cache/paiton-meeting-existing"
+mkdir -p "$PAITON_MEETING_CACHE/models" "$PAITON_MEETING_CACHE/runtime"
+docker run --rm --user "$(id -u):$(id -g)" \
+  -e HOME=/tmp -e HF_HUB_OFFLINE=1 --entrypoint python3 \
+  --mount "type=bind,src=$PWD/models/Meeting,dst=/prepare,readonly" \
+  --mount "type=bind,src=$PAITON_MEETING_CACHE/models,dst=/models/meeting" \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/meeting/hub,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:meeting-rdna4-v1.0.0-rc1 \
+  /prepare/scripts/prepare.py --models /models/meeting
+```
+
+Use a fresh preparation directory if it contains incompatible role links.
+All three Hub snapshots must already be complete at their locked revisions.
+For a cache on another drive, set `HF_HUB_CACHE` to that absolute directory.
+The preparation step is separate from recording processing; it does not need
+a GPU or access to your Hugging Face token when these snapshots are complete.
+
+After preparation succeeds, keep the extra Hub mount during processing:
+
+```bash
+export PAITON_RECORDING="/absolute/path/to/meeting.mp4"
+export PAITON_RESULTS="$HOME/paiton-meeting-results"
+mkdir -p "$PAITON_RESULTS"
+flock "/tmp/paiton-studio-gpu-$(id -u).lock" \
+  docker run --rm --network none --device /dev/kfd --device /dev/dri \
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g \
+  -e HOME=/tmp -e OMP_NUM_THREADS=1 -e HF_HUB_OFFLINE=1 \
+  --mount "type=bind,src=$PAITON_MEETING_CACHE/models,dst=/models/meeting,readonly" \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/meeting/hub,readonly" \
+  --mount "type=bind,src=$PAITON_MEETING_CACHE/runtime,dst=/models/cache" \
+  --mount "type=bind,src=$PAITON_RECORDING,dst=/recording/input,readonly" \
+  --mount "type=bind,src=$PAITON_RESULTS,dst=/results" \
+  ghcr.io/eliovp/paiton-vllm-plugin:meeting-rdna4-v1.0.0-rc1 \
+  process /recording/input --models /models/meeting --output /results/new-cached-result \
+  --artifact /opt/paiton/meeting-artifacts/meeting_lstm_float16_gfx1201.so
+```
+
+Choose an unused result name. The ordinary `run-docker.sh` does not add this
+external Hub mount, so retain the explicit command for this layout.
+[Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Serving interface
 
 Keep the existing recording workflow: after [preparation](REPRODUCE.md), run

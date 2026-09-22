@@ -5,6 +5,11 @@ AI PRO R9700**. The managed container enables the qualified Paiton optimizations
 and downloads the balanced checkpoint from
 [EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4).
 
+For compatible framework runtimes beyond RDNA4, see the separate
+[portable MXFP4 checkpoint](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4).
+This container uses the RDNA4 package; portable setup and hardware measurements
+are documented in that model's card.
+
 At **2048 × 2048, 40 steps, guidance 1.0**, median warm complete-request latency
 was **168.10 seconds**, compared with **188.79 seconds** for the matched Quark HIP
 control: **10.96% lower latency**. Settings and checkpoint bytes are unchanged.

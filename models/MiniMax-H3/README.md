@@ -1,5 +1,88 @@
 # MiniMax H3 with Paiton on Radeon
 
+## Model weights and existing downloads
+
+Run these examples from the repository root. Turbo8 needs the selected W4A8
+denoiser, Qwen text/vision encoder, INT8 video VAE, audio VAE and Turbo8 adapter.
+Use the exact files, revisions and destination names in
+[checkpoints.lock.json](checkpoints.lock.json), under the `turbo8` profile.
+The original MiniMax repository alone does not supply this prepared combination.
+
+### First download
+
+```bash
+./models/MiniMax-H3/launch.sh
+```
+
+The launcher downloads and verifies the selected components, then starts
+ComfyUI. Its model cache is separate from the host's default Hugging Face cache.
+
+### Already in a local folder
+
+If you already have this package's full data directory, set
+`export PAITON_H3_DATA="/absolute/path/to/h3-data"` before launching.
+It contains `models/` and `cache/`; existing verified files are reused.
+
+For model files in another folder, use the directory that contains
+`diffusion_models/`, `text_encoders/`, `vae/` and `loras/`, with the selected
+files arranged as the checkpoint lock specifies. Mount it read-only. This
+Docker example verifies the files and generates one clip using the published
+runtime, without needing a ComfyUI build:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/h3-models"
+export PAITON_H3_DATA="$HOME/.local/share/paiton/h3-existing"
+export PAITON_H3_OUTPUTS="$HOME/paiton-videos"
+mkdir -p "$PAITON_H3_DATA" "$PAITON_H3_OUTPUTS"
+h3_local=(docker run --rm --init --device /dev/kfd --device /dev/dri
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g
+  --mount "type=bind,src=$PAITON_H3_DATA,dst=/data"
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/data/models,readonly"
+  --mount "type=bind,src=$PAITON_H3_OUTPUTS,dst=/outputs"
+  -e HF_HUB_OFFLINE=1
+  ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0)
+"${h3_local[@]}" download --profile turbo8 --verify-only
+"${h3_local[@]}" generate --engine paiton --preset turbo8 --frames 124 \
+  --prompt 'A red fox walks beside a stream. Audio: flowing water and birds.' \
+  --seed 771 --output /outputs/h3-existing
+```
+
+Only generate after verification succeeds. Choose a new output name on later
+runs. Original models remain read-only; verification and runtime caches are
+writable. For linked Hub snapshots, use the complete-cache mount below.
+
+### Already in the Hugging Face cache
+
+Mount the Hub root so all pinned repositories and their blobs remain visible.
+Preparation finds the original cached files, verifies them and places the
+selected components in the package's `models/` layout:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+export PAITON_H3_DATA="$HOME/.local/share/paiton/h3-existing"
+export PAITON_H3_OUTPUTS="$HOME/paiton-videos"
+mkdir -p "$PAITON_H3_DATA" "$PAITON_H3_OUTPUTS"
+h3_cached=(docker run --rm --init --device /dev/kfd --device /dev/dri
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g
+  --mount "type=bind,src=$PAITON_H3_DATA,dst=/data"
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/data/cache/hub,readonly"
+  --mount "type=bind,src=$PAITON_H3_OUTPUTS,dst=/outputs"
+  -e HF_HUB_OFFLINE=1
+  ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0)
+"${h3_cached[@]}" download --profile turbo8
+"${h3_cached[@]}" generate --engine paiton --preset turbo8 --frames 124 \
+  --prompt 'A red fox walks beside a stream. Audio: flowing water and birds.' \
+  --seed 771 --output /outputs/h3-cached
+```
+
+The Bash array reuses the same Docker mounts. Only generate when preparation
+succeeds. For another drive, replace `HF_HUB_CACHE` with its absolute path.
+Missing pinned components stop preparation because downloads are disabled.
+Files are hard-linked when possible and copied otherwise; allow up to about
+34 GB for a separate prepared copy. Source weights are preserved. These commands
+run the CLI workflow; `launch.sh` retains its own ComfyUI setup and mounts.
+[Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Serving interface
 
 For this video and audio generation package, keep using the existing launcher from the repository

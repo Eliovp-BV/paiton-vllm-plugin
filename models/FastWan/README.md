@@ -1,5 +1,98 @@
 # FastWan FullAttn 5B on Radeon AI PRO R9700
 
+## Model weights and existing downloads
+
+Run these examples from the repository root. The FastWan denoiser and shared Wan text encoder/VAE are pinned in [the shared checkpoint lock](../Wan2.2/checkpoints.lock.json).
+A denoiser alone is not the complete pipeline. Wan2.2 and FastWan share the same
+container and persistent data layout.
+
+### First download
+
+```bash
+./models/FastWan/launch.sh
+```
+
+The launcher builds the local runtime image, downloads this preset and starts
+ComfyUI. Its cache is under `PAITON_WAN_DATA/cache/hub`, not automatically your
+host's default Hub cache.
+
+### Already in a local folder
+
+An existing prepared data directory can be selected with
+`export PAITON_WAN_DATA="/absolute/path/to/wan-data"` before launching. It must
+retain both `models/` and `cache/hub/`, so the preparation check can reuse files.
+
+For models stored elsewhere, bind the complete ComfyUI-style model folder
+read-only and use the Docker CLI below. It needs:
+
+- `diffusion_models/fastwan22_5b_fullattn_comfy_bf16.safetensors` and its `.conversion.json` manifest.
+- `text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors`.
+- `vae/wan2.2_vae.safetensors`.
+
+The original FastWan Diffusers denoiser requires the package's lossless
+conversion before generation. If you have that original download, use
+**Already in the Hugging Face cache** below to perform preparation.
+
+Prepare the two local images once if they are not already built. These commands
+build the runtime and do not download checkpoint weights:
+
+```bash
+docker build -t paiton-wan22-artifacts:local-v1 \
+  -f models/Wan2.2/Dockerfile models/Wan2.2
+docker build --build-arg PAITON_WAN_BASE_IMAGE=paiton-wan22-artifacts:local-v1 \
+  -t paiton-wan22:local-v1 -f models/Wan2.2/Dockerfile.local models/Wan2.2
+```
+
+Then generate from your existing files:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/comfy-models"
+export PAITON_WAN_DATA="$HOME/.local/share/paiton/wan22-existing"
+export PAITON_WAN_OUTPUTS="$HOME/paiton-videos"
+mkdir -p "$PAITON_WAN_DATA" "$PAITON_WAN_OUTPUTS"
+docker run --rm --init --device /dev/kfd --device /dev/dri \
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g \
+  --mount "type=bind,src=$PAITON_WAN_DATA,dst=/data" \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/data/models,readonly" \
+  --mount "type=bind,src=$PAITON_WAN_OUTPUTS,dst=/outputs" \
+  -e HF_HUB_OFFLINE=1 paiton-wan22:local-v1 \
+  generate --preset fast --engine paiton --resolution 480 --duration 2 \
+  --prompt 'A red fox walks through a sunlit woodland clearing.' --seed 1201
+```
+
+Use standalone files here. A model folder containing links outside the mounted
+folder needs the linked storage mounted too; the following recipe does that
+for Hub downloads.
+
+### Already in the Hugging Face cache
+
+After building the images above, mount the entire Hub cache for preparation
+and generation. The download command runs in offline mode and reuses the exact
+files in the checkpoint lock. It still creates model links and, for FastWan,
+the converted denoiser in the writable data directory:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+export PAITON_WAN_DATA="$HOME/.local/share/paiton/wan22-existing"
+export PAITON_WAN_OUTPUTS="$HOME/paiton-videos"
+mkdir -p "$PAITON_WAN_DATA" "$PAITON_WAN_OUTPUTS"
+wan_cached=(docker run --rm --init --device /dev/kfd --device /dev/dri
+  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g
+  --mount "type=bind,src=$PAITON_WAN_DATA,dst=/data"
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/data/cache/hub,readonly"
+  --mount "type=bind,src=$PAITON_WAN_OUTPUTS,dst=/outputs"
+  -e HF_HUB_OFFLINE=1 paiton-wan22:local-v1)
+"${wan_cached[@]}" download --preset fast --offline
+"${wan_cached[@]}" generate --preset fast --engine paiton --resolution 480 --duration 2 \
+  --prompt 'A red fox walks through a sunlit woodland clearing.' --seed 1201
+```
+
+The Bash array keeps the same mounts for both commands. Only run generation
+when preparation succeeds. Set `HF_HUB_CACHE` to your cache drive's absolute
+path if needed. Keep this cache mount on later runs because the prepared links
+refer to it. These direct commands generate a clip; they do not start ComfyUI
+or change the ordinary launcher's mounts. [Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Serving interface
 
 For this video generation package, keep using the existing launcher from the repository

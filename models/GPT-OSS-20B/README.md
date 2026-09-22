@@ -1,5 +1,72 @@
 # GPT-OSS-20B on Radeon AI PRO R9700
 
+## Model weights and existing downloads
+
+Choose one option below. Run commands from the repository root. This release
+requires `openai/gpt-oss-20b` at revision `6cee5e81ee83917806bbde320786a8fb61efebee`, including its configuration,
+tokenizer and complete weight files. The compiled runtime is included in the
+container; the weights are separate.
+
+### First download
+
+The launcher downloads the pinned checkpoint on first use and reuses its own
+persistent cache afterward:
+
+```bash
+./models/GPT-OSS-20B/serve-docker.sh
+```
+
+Use `--download-only` to prepare ahead of time. To reuse an earlier download,
+choose one of the following options before starting the container.
+
+### Already in a local folder
+
+In the [supported native environment](#native-serving), point directly to it:
+
+```bash
+paiton --model-dir /absolute/path/to/gpt-oss serve gpt-oss-20b
+```
+
+For Docker, bind your complete standalone checkpoint into the pinned snapshot
+location expected by this image. This does not copy or download the weights:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/gpt-oss"
+docker run --rm --name paiton-gpt-oss-local \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8020:8020 \
+  --mount type=volume,src=paiton-gpt-oss-local-runtime,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--openai--gpt-oss-20b/snapshots/6cee5e81ee83917806bbde320786a8fb61efebee,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0 --offline
+```
+
+Use the exact checkpoint above. The mount path selects the release's expected
+location; it does not make a different model compatible. For a Hub snapshot
+containing links to blobs, use the cache option below instead.
+
+### Already in the Hugging Face cache
+
+For a previous `hf download openai/gpt-oss-20b` without `--local-dir`,
+mount the **Hub cache root**, keeping snapshots and blobs together. Select your
+configured cache, or replace the first line with
+`export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+docker run --rm --name paiton-gpt-oss-cached \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8020:8020 \
+  --mount type=volume,src=paiton-gpt-oss-cached-runtime,dst=/models/cache \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0 --offline
+```
+
+The required revision must already be complete. If it is missing, download that
+revision on the host with `hf download openai/gpt-oss-20b --revision 6cee5e81ee83917806bbde320786a8fb61efebee`,
+then retry. `--offline` prevents model downloads inside this container.
+These examples start the same API in the foreground. Run one server on this
+port at a time. [Cache paths and Docker mounts](../../docs/MODEL_WEIGHTS.md).
+
 ## Native serving
 
 Activate the supported environment listed below, then install and serve:

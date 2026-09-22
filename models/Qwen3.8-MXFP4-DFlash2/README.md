@@ -76,6 +76,25 @@ This release loads the **Unsloth NVFP4 checkpoint through the MXFP4 runtime path
 The AMD checkpoint and automatic downloader in the historical release below
 are for the older images.
 
+## Model weights and existing downloads
+
+Choose **one** of the following paths. The current container needs both:
+
+| Component | Repository | Required revision |
+| --- | --- | --- |
+| Target | `unsloth/Qwen3.8-27B-NVFP4` | `f0b7c9e722f5565102fff8481c99e4d86ae099c7` |
+| DFlash2 draft | `tcclaviger/Qwen3.8-27B-DFlash2-FP8` | `ee0cb26a8279b7910cc28d82a8a3e15e4728d56f` |
+
+The native `paiton serve qwen38-nvfp4` preset above is non-speculative. The
+instructions here preserve the Docker release's **DFlash2** profile.
+
+### First download
+
+Run this complete block from the repository root. The `hf download` commands
+populate the model directories; the exports and `mkdir` commands alone do not.
+Install the [Hugging Face CLI](https://huggingface.co/docs/huggingface_hub/guides/cli)
+if `hf` is not available.
+
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
@@ -88,9 +107,102 @@ hf download unsloth/Qwen3.8-27B-NVFP4 \
 hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
   --revision ee0cb26a8279b7910cc28d82a8a3e15e4728d56f \
   --local-dir "$PAITON_DRAFT_DIR"
+```
 
+After both downloads complete, use [Launch with prepared local folders](#launch-with-prepared-local-folders).
+If either download fails, resolve that failure before starting the server.
+
+### Already in a local folder
+
+Point to your complete **standalone** target and draft directories. These can
+be folders created with `hf download --local-dir` or complete local copies of
+the same pinned files. Do not point to the parent directory holding both models.
+
+```bash
+export PAITON_TARGET_DIR="/absolute/path/to/qwen38-nvfp4"
+export PAITON_DRAFT_DIR="/absolute/path/to/qwen38-dflash2"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k-20260920"
+mkdir -p "$PAITON_CACHE_DIR"
+```
+
+Each model directory must contain its own `config.json` and complete weight
+files; keep the target tokenizer too. The launcher mounts these directories
+read-only as `/models/target` and `/models/draft`. It uses `/cache` for the
+separate writable runtime cache. Then [launch below](#launch-with-prepared-local-folders).
+
+### Already in the Hugging Face cache
+
+If you previously ran `hf download` without `--local-dir`, select the Hub cache
+that contains both pinned snapshots. The following **65K Docker command** mounts
+the entire cache read-only and selects the snapshots inside it, preserving their
+links to `blobs/`. It uses the same image and inference settings as the default
+65K launcher; only the weight paths differ.
+
+For a cache on another drive, replace the first export with
+`export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`.
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-65k-20260920"
+mkdir -p "$PAITON_CACHE_DIR"
+
+docker run --rm --name paiton-qwen38-65k-cached --network host \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/hf-hub,readonly" \
+  --mount "type=bind,src=$PAITON_CACHE_DIR,dst=/cache" \
+  -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2@sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd \
+  serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
+  --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
+  --served-model-name Qwen3.8 \
+  --host 127.0.0.1 \
+  --port 18982 \
+  --tensor-parallel-size 1 \
+  --dtype bfloat16 \
+  --max-model-len 65536 \
+  --max-num-seqs 8 \
+  --max-num-batched-tokens 4096 \
+  --kv-cache-dtype fp8 \
+  --kv-cache-memory-bytes 6535819798 \
+  --gpu-memory-utilization 0.98 \
+  --no-enable-prefix-caching \
+  --enable-chunked-prefill \
+  --language-model-only \
+  --safetensors-load-strategy lazy \
+  --attention-backend R4D \
+  --compilation-config '{"cudagraph_capture_sizes": [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64], "pass_config": {"fuse_norm_quant": true, "fuse_act_quant": true}}' \
+  --speculative-config '{"method":"dflash","model":"/hf-hub/models--tcclaviger--Qwen3.8-27B-DFlash2-FP8/snapshots/ee0cb26a8279b7910cc28d82a8a3e15e4728d56f","num_speculative_tokens":7,"draft_tensor_parallel_size":1,"attention_backend":"TRITON_ATTN","max_model_len":65536,"disable_padded_drafter_batch":true,"draft_sample_method":"greedy"}' \
+  --mamba-cache-mode align \
+  --mamba-cache-dtype bfloat16 \
+  --mamba-ssm-cache-dtype float16 \
+  --no-async-scheduling \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_coder \
+  --reasoning-parser qwen3 \
+  --override-generation-config '{"temperature": 0.7, "top_p": 0.95, "top_k": 20}' \
+  --seed 42
+```
+
+Both snapshots must be complete; a different cached revision is not selected
+implicitly. If one is missing, run the corresponding pinned `hf download`
+command from [First download](#first-download) **without `--local-dir`** to fill
+your configured Hub cache, then retry this command. Do not mount only a linked
+snapshot at `/models/target` or `/models/draft`: that can break its blob links.
+[Cache layout and path guide](../../docs/MODEL_WEIGHTS.md).
+
+### Launch with prepared local folders
+
+After completing **First download** or **Already in a local folder**, run:
+
+```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh
 ```
+
+The current launcher checks that directories exist, but does not check that
+checkpoint files are present. An error about `/models/target` and `config.json`
+means the mounted target is missing, incomplete, or has inaccessible links.
+Check the selected host directory and both downloads before retrying. The Hub
+cache option above launches Docker directly and does not need this extra step.
 
 The server runs in the foreground at `http://127.0.0.1:18982/v1`, with API model
 name **`Qwen3.8`**. First startup loads/converts weights and compiles runtime
@@ -107,9 +219,12 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   -d '{"model":"Qwen3.8","messages":[{"role":"user","content":"Write a Python function that removes duplicate items while preserving order."}],"temperature":0.7,"top_p":0.95,"max_tokens":256,"stream":true,"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-For the separately validated 200K chat configuration, stop the 65K container
-(`docker stop paiton-qwen38-65k`), keep the same target and draft directories,
-and select the existing long-context image:
+For the separately validated 200K chat configuration, use the **standalone
+local-folder** setup above. Stop your 65K container (`paiton-qwen38-65k` for the
+launcher, or `paiton-qwen38-65k-cached` for the direct Hub-cache example), keep
+`PAITON_TARGET_DIR` and `PAITON_DRAFT_DIR` pointing to the standalone folders,
+and select the existing long-context image. The direct Hub-cache command above
+is specifically the 65K profile:
 
 ```bash
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-200k"

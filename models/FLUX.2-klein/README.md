@@ -1,5 +1,91 @@
 # FLUX.2 klein with Paiton on Radeon
 
+## Model weights and existing downloads
+
+Run these examples from the repository root. The source is
+`Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic`, revision
+`45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd`. Paiton also needs the prepared
+`flux2-klein-runtime/` tensors produced by this package. Source weights and
+prepared tensors are different directories.
+
+### First download
+
+```bash
+./models/FLUX.2-klein/launch.sh
+```
+
+This downloads the source, prepares the tensors and starts ComfyUI. Its Docker
+volumes are separate from your host's Hugging Face cache.
+
+### Already in a local folder
+
+If you already have a complete prepared `flux2-klein-runtime/` directory with
+`conversion.json`, mount it directly and start the simple browser interface:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/flux2-klein-runtime"
+export PAITON_OUTPUTS="$HOME/paiton-images"
+mkdir -p "$PAITON_OUTPUTS"
+docker run --rm --name paiton-flux2-local \
+  --device /dev/kfd --device /dev/dri --group-add "$(stat -c '%g' /dev/kfd)" --shm-size 2g \
+  -p 127.0.0.1:7860:7860 \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/flux2-klein-runtime,readonly" \
+  --mount type=volume,src=paiton-flux2-local-runtime,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_OUTPUTS,dst=/outputs" \
+  ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1 serve --port 7860
+```
+
+Open `http://127.0.0.1:7860`. This starts the simple interface, rather than the
+ComfyUI launcher above, and needs no source-weight download.
+
+If your folder instead contains the original Diffusers/SDNQ snapshot, prepare
+it once with the existing conversion tool. It must be a standalone complete
+folder, including encoder, tokenizer, scheduler and VAE:
+
+```bash
+export PAITON_SOURCE_DIR="/absolute/path/to/flux2-sdnq-source"
+export PAITON_CACHE="$HOME/.local/share/paiton/flux2-existing"
+mkdir -p "$PAITON_CACHE/cache"
+docker run --rm \
+  --device /dev/kfd --device /dev/dri --group-add "$(stat -c '%g' /dev/kfd)" --shm-size 2g \
+  --mount "type=bind,src=$PAITON_SOURCE_DIR,dst=/source,readonly" \
+  --mount "type=bind,src=$PAITON_CACHE,dst=/models" \
+  -e HF_HUB_OFFLINE=1 --entrypoint python3 \
+  ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1 \
+  -m sdnq_tool.convert --snapshot /source --output /models/flux2-klein-runtime
+export PAITON_MODEL_DIR="$PAITON_CACHE/flux2-klein-runtime"
+```
+
+The output directory must not already exist. Use this resulting
+`PAITON_MODEL_DIR` in the browser command without replacing it with the example
+path. Original source files remain read-only. Prepared tensors require about
+12 GB in addition to the source download.
+
+### Already in the Hugging Face cache
+
+Mount the complete Hub cache into the tools image and prepare from the pinned
+snapshot without downloading source weights again:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+export PAITON_CACHE="$HOME/.local/share/paiton/flux2-existing"
+mkdir -p "$PAITON_CACHE/cache"
+docker run --rm \
+  --device /dev/kfd --device /dev/dri --group-add "$(stat -c '%g' /dev/kfd)" --shm-size 2g \
+  --mount "type=bind,src=$PAITON_CACHE,dst=/models" \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/hub,readonly" \
+  -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1 convert
+export PAITON_MODEL_DIR="$PAITON_CACHE/flux2-klein-runtime"
+```
+
+Then use the direct browser command from **Already in a local folder**, keeping
+this `PAITON_MODEL_DIR`. Set `HF_HUB_CACHE` to an absolute path on another disk
+if needed. The complete source revision must be present; an offline cache miss
+requires completing that download on the host first. This cache mount applies
+to this Docker command, not to later invocations of `launch.sh`.
+[Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Serving interface
 
 For this image generation package, keep using the existing launcher from the repository

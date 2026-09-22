@@ -1,5 +1,61 @@
 # Qwen3.8 27B Qronos on RDNA4
 
+## Model weights and existing downloads
+
+Run these examples from the repository root. Use
+`amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16`, revision
+`649ca9d47a7de5364c6fcccc0c1b4f6e542e15e2`. Other Qwen quantizations are separate
+packages. The image includes the runtime, not the original checkpoint.
+
+### First download
+
+```bash
+./models/Qwen3.8/serve-docker.sh
+```
+
+The launcher checks the host's configured Hugging Face cache first. If the
+pinned files are absent, it downloads them into its persistent Docker volume.
+It prints which location it selected.
+
+### Already in a local folder
+
+Use your complete standalone AMD checkpoint, including tokenizer and processor
+files. With the [native environment](#native-serving), use
+`paiton --model-dir /absolute/path/to/qronos serve qwen38-qronos`.
+For Docker, mount that folder explicitly:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/qronos"
+docker run --rm --name paiton-qwen38-local \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8000:8000 \
+  --mount type=volume,src=paiton-qwen38-cache,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/base,readonly" \
+  -e PAITON_BASE_MODEL=/models/base -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-qronos-rdna4-v1.3.0
+```
+
+The runtime verifies the source and creates its prepared copy in the writable
+cache. It preserves your original files. If your folder is a Hub snapshot with
+blob links, use the next option to keep those links accessible.
+
+### Already in the Hugging Face cache
+
+The default launcher recognizes `HF_HUB_CACHE`, `HF_HOME`, `XDG_CACHE_HOME` and
+the legacy `HUGGINGFACE_HUB_CACHE`. Require an existing complete checkpoint:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+./models/Qwen3.8/serve-docker.sh --require-cache
+```
+
+For a cache on another drive, replace the export with
+`export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`.
+The helper mounts the complete Qronos repository cache read-only, preserving its
+snapshot links, and disables model downloads. `--dry-run --require-cache`
+prints the checked paths and Docker mount command without starting the server.
+An incomplete revision stops before Docker starts. [Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Native serving
 
 Activate the supported environment listed below, then install and serve:

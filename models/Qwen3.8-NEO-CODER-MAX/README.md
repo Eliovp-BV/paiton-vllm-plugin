@@ -1,5 +1,67 @@
 # Qwen3.8 NEO CODER MAX on RDNA4
 
+## Model weights and existing downloads
+
+Run these commands from the repository root. This release requires both the
+selected **Q4_K_M language GGUF** and **`mmproj-BF16.gguf`** from revision
+`89230607b3708bc1efe174e8fd34d4b164476c88` of the
+[author's GGUF repository](https://huggingface.co/DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF/tree/89230607b3708bc1efe174e8fd34d4b164476c88).
+The image supplies the matching tokenizer and runtime configuration. A different
+GGUF quantization is not interchangeable.
+
+### First download
+
+```bash
+./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
+```
+
+This downloads the two pinned files into its named Docker volume. It does not
+search the host's Hub cache automatically.
+
+### Already in a local folder
+
+Select the directory containing both files, then mount it read-only:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/neo-gguf"
+docker run --rm --name paiton-qwen38-neo-local \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8000:8000 \
+  --mount type=volume,src=paiton-qwen38-neo-cache,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/source,readonly" \
+  -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin@sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d \
+  --checkpoint /models/source/Qwen3.8-27B-TurboFCFusion-735-882-Here-Uncen-NEO-CODER-MAX-MTP-Q4_K_M.gguf \
+  --projector /models/source/mmproj-BF16.gguf
+```
+
+The two files are hash-verified by the runtime. For linked Hub snapshots,
+use the cache mount below instead of mounting just the snapshot directory.
+The [native CLI](#native-serving) also supports an explicitly selected complete
+local model directory with `paiton --model-dir /absolute/path/to/neo-gguf serve qwen38-neo`.
+
+### Already in the Hugging Face cache
+
+Mount your Hub root, then tell this image to resolve both pinned files there:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+docker run --rm --name paiton-qwen38-neo-cached \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8000:8000 \
+  --mount type=volume,src=paiton-qwen38-neo-cache,dst=/models/cache \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/hf-hub,readonly" \
+  -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin@sha256:534287969135f581744ae481b578599468b0bf7ac9a4051b0941500e4c18da4d \
+  --cache-dir /hf-hub
+```
+
+For another disk, set `HF_HUB_CACHE="/absolute/path/to/your/hub-cache"` first.
+Keep both files and their blobs at the pinned revision. The writable runtime
+volume is separate from the read-only model cache. `PAITON_NEO_CACHE` in the
+ordinary launcher names a **Docker volume**, not a host model directory.
+[Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Native serving
 
 Activate the supported environment listed below, then install and serve:
