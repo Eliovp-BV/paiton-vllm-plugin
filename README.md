@@ -125,6 +125,71 @@ Once ready, use the same API request above, or run
 [All container launchers →](#managed-containers) ·
 [Use your existing vLLM environment →](#native-cli)
 
+## Model weights and existing downloads
+
+**Choose where your weights come from before launching a model.** Cloning this
+repository downloads the launchers and documentation, not the model weights.
+Creating a directory with `mkdir` does not download a checkpoint.
+
+| Your situation | What to do |
+| --- | --- |
+| **First download** | Follow the model's **First download** instructions. Most launchers download their pinned weights automatically; Qwen3.8 MXFP4 + DFlash2 and Meeting require a preparation step. |
+| **Already in a local folder** | Follow **Already in a local folder** and supply the absolute path to your complete checkpoint. Use the exact model and quantization listed in that guide. |
+| **Already in the Hugging Face cache** | Follow **Already in the Hugging Face cache**. A download made with `hf download REPOSITORY` without `--local-dir` normally lives here. Containers need the cache explicitly mounted or prepared as described for that model. |
+
+For the [native language-model CLI](#native-cli), a complete local MiniCPM5
+checkpoint can be selected explicitly:
+
+```bash
+paiton --model-dir /absolute/path/to/minicpm5 serve minicpm5
+```
+
+Without `--model-dir`, the native CLI uses its remembered model location, or
+resolves the pinned checkpoint from the Hugging Face cache and downloads missing
+files. This behavior does not apply automatically to every Docker launcher.
+
+The default Hub cache is `$HOME/.cache/huggingface/hub`. `HF_HOME`,
+`HF_HUB_CACHE`, or `XDG_CACHE_HOME` can change it. A **Hub cache** contains
+`models--OWNER--MODEL` directories; a **checkpoint folder** contains that model's
+files. They are different inputs. See the [cache and path guide](docs/MODEL_WEIGHTS.md)
+for locating your cache, exact revisions, and Docker snapshot links.
+
+For example, to run the MiniCPM5 container with weights already downloaded to
+your Hub cache, mount that cache read-only and keep runtime files in a separate
+Docker volume:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+# Or use: export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"
+docker run --rm --name paiton-minicpm5-cached \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8036:8036 \
+  --mount type=volume,src=paiton-minicpm5-cached-runtime,dst=/models/cache \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0 --offline
+```
+
+This example needs the complete pinned MiniCPM5 snapshot. For other models or
+a standalone model folder, use the matching guide below; container paths and
+companion models differ. No model files are copied by this bind mount.
+
+Every model guide has instructions for all three starting points:
+
+| Model | Weight setup |
+| --- | --- |
+| MiniCPM5-2B | [Download or reuse weights](models/MiniCPM5-2B/README.md#model-weights-and-existing-downloads) |
+| Qwen3.8 Qronos | [Download or reuse weights](models/Qwen3.8/README.md#model-weights-and-existing-downloads) |
+| Qwen3.8 MXFP4 + DFlash2 | [Download or reuse target and draft](models/Qwen3.8-MXFP4-DFlash2/README.md#model-weights-and-existing-downloads) |
+| Qwen3.8 NEO CODER MAX | [Download or reuse GGUF and projector](models/Qwen3.8-NEO-CODER-MAX/README.md#model-weights-and-existing-downloads) |
+| Ornith 1.5 | [Download or reuse weights](models/Ornith-1.5/README.md#model-weights-and-existing-downloads) |
+| GPT-OSS-20B | [Download or reuse weights](models/GPT-OSS-20B/README.md#model-weights-and-existing-downloads) |
+| Qwen3-Coder 30B | [Download or reuse weights](models/Qwen3-Coder-30B/README.md#model-weights-and-existing-downloads) |
+| FLUX.2 klein | [Download or reuse source and prepared tensors](models/FLUX.2-klein/README.md#model-weights-and-existing-downloads) |
+| FastWan | [Download or reuse the denoiser and shared components](models/FastWan/README.md#model-weights-and-existing-downloads) |
+| Wan2.2 | [Download or reuse the denoiser, encoder and VAE](models/Wan2.2/README.md#model-weights-and-existing-downloads) |
+| MiniMax H3 | [Download or reuse the selected model components](models/MiniMax-H3/README.md#model-weights-and-existing-downloads) |
+| Meeting | [Download or reuse the prepared speech and summary models](models/Meeting/README.md#model-weights-and-existing-downloads) |
+
 ## Model library
 
 **Tested hardware: one Radeon AI PRO R9700 · 32 GB · RDNA4 (`gfx1201`).**
@@ -359,6 +424,11 @@ Clone the repository as shown in [Quick start](#quick-start),
 then choose one launcher below. Run commands from the repository root unless
 noted otherwise.
 
+**Already downloaded the weights?** Set the model-specific paths in
+[Model weights and existing downloads](#model-weights-and-existing-downloads)
+before running these commands. Host cache variables are not automatically
+forwarded into every container.
+
 <details>
 <summary><strong>Chat, coding and visual-chat launchers</strong></summary>
 
@@ -380,7 +450,9 @@ Once ready, run `docker exec -it paiton-qwen38 paiton-chat` from another termina
 
 **Qwen3.8 MXFP4 + DFlash2** · API port **18982** · model `Qwen3.8`
 
-First [download the pinned weights and set the three directory variables](models/Qwen3.8-MXFP4-DFlash2/README.md#run-the-current-release), then launch:
+First [choose a new download, existing local folders, or your Hugging Face cache](models/Qwen3.8-MXFP4-DFlash2/README.md#model-weights-and-existing-downloads)
+and set the target, draft and runtime-cache paths. This launcher requires
+prepared weights; creating empty directories is not sufficient. Then launch:
 
 ```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh

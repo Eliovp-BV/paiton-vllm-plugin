@@ -1,5 +1,63 @@
 # Paiton Ornith 1.5 on Radeon AI PRO R9700
 
+## Model weights and existing downloads
+
+Run these commands from the repository root. The Docker release needs the full
+`Capicua25x/Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4` checkpoint at revision
+`9e488f46c0f7969f84c9923ee0256311cd50316e`, including its `dflash-draft/`
+directory. Allow writable space for the prepared shards as described below.
+
+### First download
+
+```bash
+./models/Ornith-1.5/serve-docker.sh --chat
+```
+
+This downloads missing weights into the `paiton-ornith-cache` Docker volume.
+It does not automatically mount your host's Hugging Face cache.
+
+### Already in a local folder
+
+With the [supported native environment](#native-serving), use
+`paiton --model-dir /absolute/path/to/ornith serve ornith` for the non-speculative
+native preset. To retain the Docker release's DFlash profile, mount the full
+standalone checkpoint:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/ornith"
+docker run --rm --name paiton-ornith-local \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8000:8000 \
+  --mount type=volume,src=paiton-ornith-cache,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/base,readonly" \
+  -e PAITON_BASE_MODEL=/models/base -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin:ornith15-mxfp4-rdna4-v1.0.0
+```
+
+Your source stays read-only. The runtime verifies it and keeps its prepared
+shards in the Docker volume. Use the cache example for linked Hub snapshots.
+
+### Already in the Hugging Face cache
+
+Mount the entire Hub cache so the snapshot's links to `blobs/` remain valid:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+docker run --rm --name paiton-ornith-cached \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 127.0.0.1:8000:8000 \
+  --mount type=volume,src=paiton-ornith-cache,dst=/models/cache \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/hf-hub,readonly" \
+  -e PAITON_BASE_MODEL=/hf-hub/models--Capicua25x--Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4/snapshots/9e488f46c0f7969f84c9923ee0256311cd50316e \
+  -e HF_HUB_OFFLINE=1 \
+  ghcr.io/eliovp/paiton-vllm-plugin:ornith15-mxfp4-rdna4-v1.0.0
+```
+
+Set `HF_HUB_CACHE` to an absolute path on another drive if needed. Both target
+and draft files must already be present at the pinned revision. These direct
+Docker commands start the API in the foreground; use the [chat commands](#chat)
+in a second terminal with the selected container name. [Cache path guide](../../docs/MODEL_WEIGHTS.md).
+
 ## Native serving
 
 Activate the supported environment listed below, then install and serve:
