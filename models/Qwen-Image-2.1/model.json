@@ -59,8 +59,8 @@
     "health": "/health"
   },
   "quality_scope": "The checkpoint's original eight-prompt quantization screen measured loss against BF16. The optimization separately passed a bounded seven-pair screen against the identical balanced checkpoint; no arbitrary-prompt quality-equivalence claim.",
-  "performance_scope": "Managed launchers enable qualified BF16 regions: 188.790 \u2192 168.101 seconds warm complete HTTP median (10.96% lower latency) against matched Quark HIP with contiguous attention; n=3 cold and n=3 warm per path, fixed 2048/40/CFG1 neon workload. The unpack-only fallback retains its previous performance scope.",
-  "memory_scope": "25.939 GiB maximum independently sampled complete-request device use across the qualified suite; resident components, no CPU offload or VAE tiling",
+  "performance_scope": "v1.0.1: 165.141 seconds warm complete-request median in three fresh container processes (range 165.098\u2013166.725; first seed 42, warm seed 43). Separate matched qualification against v1.0.0: 168.228 to 165.953 seconds warm HTTP median, 1.35% lower, n=3 per path, fixed 2048/40/CFG1 seed-42 neon workload. These are separate experiments.",
+  "memory_scope": "28.336 GiB maximum independently sampled whole-device use in the latest three-process container repeat; resident components, no CPU offload or VAE tiling. Sampling can miss shorter transients.",
   "repository": "EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4",
   "tested_gpu": "AMD Radeon AI PRO R9700",
   "hardware_compatibility": {
@@ -72,5 +72,7 @@
   "repository_revision": "b52373faeac233fb27c8bba2d334729208ee7b22",
   "native_fusions_option": "Enabled by the managed launchers; --no-native-fusions selects the unpack-only fallback",
   "native_fusions_measurements": "measurements/bf16-regions-r9700.json",
-  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.0"
+  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1",
+  "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
+  "container_repeat_measurements": "measurements/container-followup-r9700.json"
 }

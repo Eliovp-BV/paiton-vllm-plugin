@@ -1,5 +1,5 @@
 {
-  "status": "qualified_local_followup_not_in_published_container",
+  "status": "qualified_release_v1.0.1",
   "baseline": "Published Qwen Image21 v1.0.0 native runtime",
   "change": "Exact native MXFP4 weight reconstruction",
   "settings": {
@@ -197,5 +197,6 @@
       }
     }
   },
-  "limits": "Three process pairs, one cold and one warm request per process; descriptive matched evidence, no broad hardware/prompt claim. Graphs cover the native decoder only. First screened request was instrumented and excluded from timing aggregates."
+  "limits": "Three process pairs, one cold and one warm request per process; descriptive matched evidence, no broad hardware/prompt claim. Graphs cover the native decoder only. First screened request was instrumented and excluded from timing aggregates.",
+  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1"
 }

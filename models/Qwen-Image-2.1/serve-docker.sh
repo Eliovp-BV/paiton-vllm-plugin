@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.0}"
+image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1}"
 cache="${PAITON_CACHE:-paiton-qwen-image21-cache}"
 port="${PAITON_PORT:-8191}"
 bind="${PAITON_BIND:-127.0.0.1}"

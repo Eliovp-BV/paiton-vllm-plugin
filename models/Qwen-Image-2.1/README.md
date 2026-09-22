@@ -10,9 +10,10 @@ For compatible framework runtimes beyond RDNA4, see the separate
 This container uses the RDNA4 package; portable setup and hardware measurements
 are documented in that model's card.
 
-At **2048 × 2048, 40 steps, guidance 1.0**, median warm complete-request latency
-was **168.10 seconds**, compared with **188.79 seconds** for the matched Quark HIP
-control: **10.96% lower latency**. Settings and checkpoint bytes are unchanged.
+At **2048 × 2048, 40 steps, guidance 1.0**, v1.0.1 measured **165.14 seconds**
+median warm complete-request latency in three fresh container processes. A separate
+matched test measured **168.228 → 165.953 seconds** against v1.0.0 (1.35% lower
+latency). Settings and checkpoint bytes are unchanged.
 [Measurements, quality checks and limits](BENCHMARKS.md).
 
 ## Start with one command
@@ -21,7 +22,7 @@ Linux, Docker and a working AMD GPU driver are required. Run one model at a time
 on the R9700; the worker requires at least 30 GiB free before loading.
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.0
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1
 ```
 
 The first launch downloads **9.33 GB** of checkpoint files, verifies their SHA-256
@@ -91,8 +92,8 @@ repository's `paiton serve` vLLM language-model presets.
 | Precision | Balanced MXFP4 weight storage; BF16 activation arithmetic and intentionally BF16 components |
 | Graphs | Whole-pipeline capture unsupported |
 
-Maximum sampled complete-device memory across the qualification suite was
-**25.94 GiB**. Smaller GPUs and other architectures are not qualified. Loading
+Maximum sampled complete-device memory in the latest container repeat was
+**28.34 GiB**. Smaller GPUs and other architectures are not qualified. Loading
 also uses host memory; qualification used a host with approximately 16 GiB RAM.
 The container occupies about 10.4 GB before registry compression. Allow additional
 disk space for the 9.33 GB checkpoint, runtime caches and generated images.
@@ -146,17 +147,24 @@ and [NOTICE](NOTICE). The adapter and distributed Paiton runtime binaries use th
 repository's Apache-2.0 runtime license. Dependency licenses remain applicable.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Release v1.0.1
 
-## Qualified local follow-up
+The managed image includes the qualified exact native weight reconstruction
+improvement. In three matched fresh-process pairs, warm complete HTTP median
+changed from **168.228 to 165.953 seconds** (1.35% lower latency) against
+v1.0.0, with unchanged checkpoint, BF16 arithmetic and 2048/40/guidance-1 settings.
+Native arithmetic/lifecycle tests, saved denoiser tensors, final image quality,
+RGBA/editing and A-B-A checks passed. [Matched samples and quality](measurements/weight-reconstruction-r9700.json).
 
-This checkout includes a further exact native weight reconstruction improvement.
-In three matched fresh-process pairs, warm complete HTTP median changed from
-**168.228 to 165.953 seconds** (1.35% lower latency), with the
-same balanced checkpoint, BF16 arithmetic, 2048 resolution, 40 steps and guidance
-1.0. This is an incremental comparison against the already optimized v1.0.0
-runtime. Native arithmetic/lifecycle tests, saved denoiser tensors, image-quality
-and RGBA/editing/A-B-A checks passed.
+A separate three-process repeat of this same runtime measured **165.141 seconds
+warm**, range **165.098–166.725 s**, sample SD **0.927 s**. Each process used seed
+42 first and seed 43 warm, with isolated application caches. First-request median
+was **179.319 s**; startup-to-ready median **75.050 s**; launch-to-first-image
+median **256.170 s**. Whole-device request peak reached **28.336 GiB** with 5 ms
+nominal sampling. The complete PNG delivery/client decoding is included; startup
+and model download are separate. This repeat has no newly matched competing
+backend and must not be pooled with the incremental qualification above.
+[Individual container samples, settings, versions and hashes](measurements/container-followup-r9700.json).
 
-The published Docker command above still uses v1.0.0. This follow-up is available
-in the local review checkout and has not been published in a new container.
-[Samples and qualification limits](measurements/weight-reconstruction-r9700.json).
+The v1.0.1 container retains the qualified executable files and dependencies;
+release metadata is updated. The original v1.0.0 tag remains available.

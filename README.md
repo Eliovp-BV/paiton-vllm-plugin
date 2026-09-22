@@ -267,11 +267,13 @@ mode explicitly when comparing responses or benchmarking.
 | Model & setup | Supported workflow | Measured GPU use | Measured result |
 | --- | --- | ---: | --- |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Text → image<br>1024 × 1024 · four steps<br>ComfyUI, web or CLI | ~14.6 GiB | [**36.7% less sampled GPU memory**<br>**16.2% lower generation latency**](models/FLUX.2-klein/BENCHMARKS.md) |
-| [**Qwen-Image-2.1 MXFP4**](models/Qwen-Image-2.1/README.md) | Text → image or transparent RGBA; image editing<br>2048 × 2048 generation, 1024 × 1024 editing · 40 steps<br>API or CLI | Up to 25.94 GiB | [**10.96% lower warm complete-request latency**<br>168.10 s vs matched Quark HIP](models/Qwen-Image-2.1/BENCHMARKS.md) |
+| [**Qwen-Image-2.1 MXFP4**](models/Qwen-Image-2.1/README.md) | Text → image or transparent RGBA; image editing<br>2048 × 2048 generation, 1024 × 1024 editing · 40 steps<br>API or CLI | Up to 28.34 GiB | [**165.14 s warm complete-request median**<br>v1.0.1 · three fresh container processes](models/Qwen-Image-2.1/BENCHMARKS.md#release-v101) |
 
 FLUX timings include text encoding, generation and image conversion, but exclude
 PNG writing and UI transport; its image editing path is not qualified.
 Qwen-Image timings include the complete HTTP response and PNG serialization.
+The v1.0.1 repeat measured 165.14 s warm; its separate matched incremental test
+measured 168.228 → 165.953 s against v1.0.0 (1.35% lower latency).
 
 Qwen-Image checkpoints are available in two packages:
 [the optimized RDNA4 package](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4)
@@ -285,7 +287,7 @@ the pinned [RDNA4 Hugging Face checkpoint](https://huggingface.co/EliovpAI/Qwen_
 on first use:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.0
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1
 ```
 
 [Generate, edit and save images →](models/Qwen-Image-2.1/README.md#generate-an-image)

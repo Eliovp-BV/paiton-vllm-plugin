@@ -31,3 +31,5 @@ EXPOSE 8191
 HEALTHCHECK --interval=30s --timeout=5s --start-period=1800s \
   CMD python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8191/health", timeout=3).read()'
 ENTRYPOINT ["python", "/app/run.py"]
+
+LABEL org.opencontainers.image.version="qwen-image21-mxfp4-rdna4-v1.0.1"

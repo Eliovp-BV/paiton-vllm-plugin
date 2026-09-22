@@ -1,5 +1,10 @@
 # Qwen-Image-2.1 R9700 measurements
 
+Current release: **v1.0.1**. Its separate repeat measured **165.141 seconds warm**;
+matched incremental qualification measured **168.228 → 165.953 seconds**.
+See [v1.0.1 results](#release-v101). The earlier Quark comparison below belongs
+to v1.0.0 and is retained as historical qualification.
+
 One Radeon AI PRO R9700, 32 GB, gfx1201, unchanged 300 W power cap. Balanced
 MXFP4 checkpoint, batch one, 2048 × 2048, 40 steps, guidance 1.0, seed 42 and
 the same neon-street prompt for both paths. All model components remain resident;
@@ -7,7 +12,7 @@ no CPU model offload, VAE tiling, precision changes or approximate caching.
 
 Exact prompt: `A neon shop sign that reads "QWEN IMAGE 2.1", rainy night, reflections on wet pavement`.
 
-## Complete requests
+## Original v1.0.0 complete-request qualification
 
 The control uses Quark HIP weight reconstruction with an exact contiguous
 attention layout. It is faster than the original Quark path. The candidate uses
@@ -101,7 +106,7 @@ independent physical VRAM monitoring is additionally required for a device-memor
 qualification like the one reported above.
 
 
-## Managed container validation
+## Original v1.0.0 managed container validation
 
 The managed image was built only from public, pinned runtime dependencies and the
 allowlisted adapter/binaries. An anonymous first launch downloaded and SHA-256
@@ -123,17 +128,24 @@ seven container image pairs passed the unchanged quality screen. The standalone
 native stream/event/graph executable also passed inside the container without
 framework imports. See [container-validation.json](measurements/container-validation.json).
 
+## Release v1.0.1
 
-## Qualified local follow-up
+The managed image includes the qualified exact native weight reconstruction
+improvement. In three matched fresh-process pairs, warm complete HTTP median
+changed from **168.228 to 165.953 seconds** (1.35% lower latency) against
+v1.0.0, with unchanged checkpoint, BF16 arithmetic and 2048/40/guidance-1 settings.
+Native arithmetic/lifecycle tests, saved denoiser tensors, final image quality,
+RGBA/editing and A-B-A checks passed. [Matched samples and quality](measurements/weight-reconstruction-r9700.json).
 
-This checkout includes a further exact native weight reconstruction improvement.
-In three matched fresh-process pairs, warm complete HTTP median changed from
-**168.228 to 165.953 seconds** (1.35% lower latency), with the
-same balanced checkpoint, BF16 arithmetic, 2048 resolution, 40 steps and guidance
-1.0. This is an incremental comparison against the already optimized v1.0.0
-runtime. Native arithmetic/lifecycle tests, saved denoiser tensors, image-quality
-and RGBA/editing/A-B-A checks passed.
+A separate three-process repeat of this same runtime measured **165.141 seconds
+warm**, range **165.098–166.725 s**, sample SD **0.927 s**. Each process used seed
+42 first and seed 43 warm, with isolated application caches. First-request median
+was **179.319 s**; startup-to-ready median **75.050 s**; launch-to-first-image
+median **256.170 s**. Whole-device request peak reached **28.336 GiB** with 5 ms
+nominal sampling. The complete PNG delivery/client decoding is included; startup
+and model download are separate. This repeat has no newly matched competing
+backend and must not be pooled with the incremental qualification above.
+[Individual container samples, settings, versions and hashes](measurements/container-followup-r9700.json).
 
-The published Docker command above still uses v1.0.0. This follow-up is available
-in the local review checkout and has not been published in a new container.
-[Samples and qualification limits](measurements/weight-reconstruction-r9700.json).
+The v1.0.1 container retains the qualified executable files and dependencies;
+release metadata is updated. The original v1.0.0 tag remains available.
