@@ -1,0 +1,201 @@
+{
+  "status": "qualified_local_followup_not_in_published_container",
+  "baseline": "Published Qwen Image21 v1.0.0 native runtime",
+  "change": "Exact native MXFP4 weight reconstruction",
+  "settings": {
+    "batch": 1,
+    "width": 2048,
+    "height": 2048,
+    "steps": 40,
+    "guidance": 1.0,
+    "precision": "balanced MXFP4/BF16",
+    "resident": true,
+    "offload": false,
+    "vae_tiling": false
+  },
+  "artifact_sha256": "8f8943e4161a71aa786ff5c570e82ffe02324aedfdeb71757109f08773708027",
+  "complete_requests": {
+    "released": {
+      "cold_http_seconds": {
+        "n": 3,
+        "median": 179.46160128701013,
+        "mean": 179.44085972364215,
+        "stdev": 0.09866606683839825,
+        "minimum": 179.33347176096868,
+        "maximum": 179.52750612294767,
+        "samples": [
+          179.52750612294767,
+          179.33347176096868,
+          179.46160128701013
+        ]
+      },
+      "warm_http_seconds": {
+        "n": 3,
+        "median": 168.2282778089866,
+        "mean": 168.19531313099046,
+        "stdev": 0.12851457084950788,
+        "minimum": 168.05352719099028,
+        "maximum": 168.30413439299446,
+        "samples": [
+          168.05352719099028,
+          168.30413439299446,
+          168.2282778089866
+        ]
+      },
+      "startup_to_ready_seconds": {
+        "n": 3,
+        "median": 38.03649641602533,
+        "mean": 37.7037516956722,
+        "stdev": 0.5780218227338584,
+        "minimum": 37.03631053696154,
+        "maximum": 38.03844813402975,
+        "samples": [
+          38.03649641602533,
+          38.03844813402975,
+          37.03631053696154
+        ]
+      },
+      "max_complete_device_gib": 25.328006744384766
+    },
+    "candidate": {
+      "cold_http_seconds": {
+        "n": 3,
+        "median": 177.22345387400128,
+        "mean": 177.3482956760175,
+        "stdev": 0.23278629214677052,
+        "minimum": 177.20456044405,
+        "maximum": 177.6168727100012,
+        "samples": [
+          177.20456044405,
+          177.22345387400128,
+          177.6168727100012
+        ]
+      },
+      "warm_http_seconds": {
+        "n": 3,
+        "median": 165.9525443399907,
+        "mean": 165.99341811431805,
+        "stdev": 0.07327018099485356,
+        "minimum": 165.94970267999452,
+        "maximum": 166.07800732296892,
+        "samples": [
+          165.94970267999452,
+          166.07800732296892,
+          165.9525443399907
+        ]
+      },
+      "startup_to_ready_seconds": {
+        "n": 3,
+        "median": 37.03664040303556,
+        "mean": 36.37086666134807,
+        "stdev": 1.1556513640614314,
+        "minimum": 35.0364364470006,
+        "maximum": 37.03952313400805,
+        "samples": [
+          37.03952313400805,
+          37.03664040303556,
+          35.0364364470006
+        ]
+      },
+      "max_complete_device_gib": 25.288867950439453
+    }
+  },
+  "paired_savings": [
+    {
+      "pair": 1,
+      "cold_seconds_saved": 2.3229456788976677,
+      "warm_seconds_saved": 2.1038245109957643
+    },
+    {
+      "pair": 2,
+      "cold_seconds_saved": 2.1100178869673982,
+      "warm_seconds_saved": 2.226127070025541
+    },
+    {
+      "pair": 3,
+      "cold_seconds_saved": 1.8447285770089366,
+      "warm_seconds_saved": 2.2757334689958952
+    }
+  ],
+  "denoiser_intermediates": [
+    {
+      "tensor": "denoiser-step-1",
+      "shape": [
+        1,
+        16415,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    },
+    {
+      "tensor": "denoiser-step-20",
+      "shape": [
+        1,
+        16384,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    },
+    {
+      "tensor": "denoiser-step-40",
+      "shape": [
+        1,
+        16384,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    }
+  ],
+  "quality": {
+    "means": {
+      "rgb_mae_255": 0.06566008646041155,
+      "alpha_mae_255": 0.005725721518198649,
+      "clipscore_reference": 0.9876448102295399,
+      "clipscore_candidate": 0.9876743455727895,
+      "clipscore_delta": 2.9535343249638874e-05,
+      "lpips": 5.598345978796715e-05
+    },
+    "screen_gates": {
+      "unpack-pair-0": {
+        "passed": true
+      },
+      "unpack-pair-1": {
+        "passed": true
+      },
+      "unpack-pair-2": {
+        "passed": true
+      },
+      "unpack-pair-3": {
+        "passed": true
+      },
+      "unpack-pair-4": {
+        "passed": true
+      },
+      "unpack-pair-5": {
+        "passed": true
+      },
+      "unpack-pair-6": {
+        "passed": true
+      },
+      "unpack-pair-7": {
+        "passed": true
+      },
+      "unpack-pair-8": {
+        "passed": true
+      },
+      "unpack-pair-9": {
+        "passed": true
+      },
+      "unpack-pair-10": {
+        "passed": true
+      },
+      "unpack-pair-11": {
+        "passed": true
+      }
+    }
+  },
+  "limits": "Three process pairs, one cold and one warm request per process; descriptive matched evidence, no broad hardware/prompt claim. Graphs cover the native decoder only. First screened request was instrumented and excluded from timing aggregates."
+}

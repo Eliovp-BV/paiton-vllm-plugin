@@ -145,3 +145,18 @@ The complete model still uses its pinned external framework runtime.
 and [NOTICE](NOTICE). The adapter and distributed Paiton runtime binaries use the
 repository's Apache-2.0 runtime license. Dependency licenses remain applicable.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+
+## Qualified local follow-up
+
+This checkout includes a further exact native weight reconstruction improvement.
+In three matched fresh-process pairs, warm complete HTTP median changed from
+**168.228 to 165.953 seconds** (1.35% lower latency), with the
+same balanced checkpoint, BF16 arithmetic, 2048 resolution, 40 steps and guidance
+1.0. This is an incremental comparison against the already optimized v1.0.0
+runtime. Native arithmetic/lifecycle tests, saved denoiser tensors, image-quality
+and RGBA/editing/A-B-A checks passed.
+
+The published Docker command above still uses v1.0.0. This follow-up is available
+in the local review checkout and has not been published in a new container.
+[Samples and qualification limits](measurements/weight-reconstruction-r9700.json).
