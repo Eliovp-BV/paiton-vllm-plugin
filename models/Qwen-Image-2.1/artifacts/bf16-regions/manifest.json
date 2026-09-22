@@ -1,0 +1,19 @@
+{
+  "file": "qwen_image21_bf16_gfx1201.so",
+  "sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "scope": "BF16 Qwen Image21 normalization/rotary, modulation/residual, SiLU and lossless attention layout regions",
+  "limits": {
+    "batch": 1,
+    "heads": 32,
+    "head_dim": 128,
+    "hidden_dim": 4096,
+    "max_tokens": 40000,
+    "max_silu_elements": 491520000
+  },
+  "arithmetic": "BF16 activation and required intermediate rounding; FP32 RMS reduction and transcendental arithmetic",
+  "graph_contract": "Fixed shapes; caller-owned buffers and stream; initialize before capture; changed inputs supported",
+  "qualification": "R9700 bounded BF16 region and matched complete-request numerical, image, stream, graph and cache qualification"
+}

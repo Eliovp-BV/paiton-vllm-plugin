@@ -199,12 +199,24 @@ mode explicitly when comparing responses or benchmarking.
 
 ### Image generation
 
-| Model & setup | Supported workflow | Measured GPU use | Result vs stock |
+| Model & setup | Supported workflow | Measured GPU use | Measured result |
 | --- | --- | ---: | --- |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Text → image<br>1024 × 1024 · four steps<br>ComfyUI, web or CLI | ~14.6 GiB | [**36.7% less sampled GPU memory**<br>**16.2% lower generation latency**](models/FLUX.2-klein/BENCHMARKS.md) |
+| [**Qwen-Image-2.1 MXFP4**](models/Qwen-Image-2.1/README.md) | Text → image or transparent RGBA; image editing<br>2048 × 2048 generation, 1024 × 1024 editing · 40 steps<br>API or CLI | Up to 25.94 GiB | [**10.96% lower warm complete-request latency**<br>168.10 s vs matched Quark HIP](models/Qwen-Image-2.1/BENCHMARKS.md) |
 
-Timings include text encoding, generation and image conversion, but exclude PNG
-writing and UI transport. Image editing is not qualified in this package.
+FLUX timings include text encoding, generation and image conversion, but exclude
+PNG writing and UI transport; its image editing path is not qualified.
+Qwen-Image timings include the complete HTTP response and PNG serialization.
+
+Start the optimized Qwen-Image API with one command; model files download from
+the pinned [RDNA4 Hugging Face checkpoint](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4)
+on first use:
+
+```sh
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.0
+```
+
+[Generate, edit and save images →](models/Qwen-Image-2.1/README.md#generate-an-image)
 
 ### Video generation
 
@@ -253,7 +265,7 @@ paiton serve minicpm5
 ```
 
 Native serving needs neither the private compiler nor a repository checkout.
-FLUX, MiniMax H3, Wan and FastWan use their [existing launchers](#managed-containers)
+Qwen-Image, FLUX, MiniMax H3, Wan and FastWan use their [existing launchers](#managed-containers)
 for image and video generation instead.
 
 <details>
@@ -425,11 +437,12 @@ Provides terminal chat and a coding API.
 <details>
 <summary><strong>Image and video launchers</strong></summary>
 
-These ComfyUI launchers also require Docker Compose.
+The ComfyUI entries also require Docker Compose.
 
 | Model | Launch command | Open when ready |
 | --- | --- | --- |
 | [FLUX.2 klein](models/FLUX.2-klein/README.md) | `./models/FLUX.2-klein/launch.sh` | [ComfyUI · 8188](http://127.0.0.1:8188/?paiton=1) |
+| [Qwen-Image-2.1 MXFP4](models/Qwen-Image-2.1/README.md) | `./models/Qwen-Image-2.1/serve-docker.sh` | Image API · 8191 |
 | [FastWan](models/FastWan/README.md) | `./models/FastWan/launch.sh` | [ComfyUI · 8192](http://127.0.0.1:8192/?paiton=1&preset=fast) |
 | [Wan2.2](models/Wan2.2/README.md) | `./models/Wan2.2/launch.sh` | [ComfyUI · 8192](http://127.0.0.1:8192/?paiton=1&preset=base) |
 | [MiniMax H3](models/MiniMax-H3/README.md) | `./models/MiniMax-H3/launch.sh` | [ComfyUI · 8190](http://127.0.0.1:8190/?paiton=1&studio=1) |

@@ -1,0 +1,142 @@
+{
+  "status": "container_profile_qualified",
+  "checkpoint_repository": "EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4",
+  "checkpoint_revision": "b52373faeac233fb27c8bba2d334729208ee7b22",
+  "cached_startup_to_ready_seconds": 57.06505923502846,
+  "requests": [
+    {
+      "index": 0,
+      "mode": "text-to-image",
+      "seed": 42,
+      "size": "2048x2048",
+      "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+      "http_body_seconds": 180.32712010998512,
+      "png_sha256": "5933b60ff81f78d3d239d5d2294945ca5b30941dbc5552391b51b091d1151f63",
+      "peak_device_gib": 25.738006591796875
+    },
+    {
+      "index": 1,
+      "mode": "text-to-image",
+      "seed": 42,
+      "size": "2048x2048",
+      "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+      "http_body_seconds": 167.41466666699853,
+      "png_sha256": "5933b60ff81f78d3d239d5d2294945ca5b30941dbc5552391b51b091d1151f63",
+      "peak_device_gib": 25.77910614013672
+    },
+    {
+      "index": 2,
+      "mode": "text-to-image",
+      "seed": 51,
+      "size": "1024x1024",
+      "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+      "http_body_seconds": 29.127813425962813,
+      "png_sha256": "26e29f5e657ce5441888dce08eacc353ecfa05979b248d998700aaf3437b4b90",
+      "peak_device_gib": 24.038902282714844
+    },
+    {
+      "index": 3,
+      "mode": "rgba",
+      "seed": 52,
+      "size": "2048x2048",
+      "prompt": "A cute cartoon dragon sticker.",
+      "http_body_seconds": 168.09420585498447,
+      "png_sha256": "55d4a1476e284c2e95f4dc51ea4a5f9d8221c23af99f2be26bc40cdeff938466",
+      "peak_device_gib": 25.8182373046875
+    },
+    {
+      "index": 4,
+      "mode": "edit",
+      "seed": 53,
+      "size": "1024x1024",
+      "prompt": "Change the blue teapot to bright red. Keep the table and composition.",
+      "http_body_seconds": 38.125189015001524,
+      "png_sha256": "c5b5eeef58777df9ca349b219ac424919f8ecdcc89b148d74911647eca4df888",
+      "peak_device_gib": 24.086559295654297
+    },
+    {
+      "index": 5,
+      "mode": "text-to-image",
+      "seed": 51,
+      "size": "1024x1024",
+      "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+      "http_body_seconds": 29.0024797989754,
+      "png_sha256": "26e29f5e657ce5441888dce08eacc353ecfa05979b248d998700aaf3437b4b90",
+      "peak_device_gib": 13.8486328125
+    }
+  ],
+  "max_sampled_device_gib": 25.8182373046875,
+  "repeat_png_identical": true,
+  "aba_png_identical": true,
+  "anonymous_download": "all 76 files verified",
+  "offline_cache": "passed with network disabled and no GPU devices",
+  "unit_tests": 17,
+  "native_lifecycle": "standalone native stream/event/graph/poisoned-input/A-B-A tests passed inside container without framework imports",
+  "one_shot": [
+    {
+      "mode": "native",
+      "complete_request_to_png_seconds": 37.70283869601553,
+      "peak_device_gib": 13.513790130615234,
+      "native_fusions": "active"
+    },
+    {
+      "mode": "fallback",
+      "complete_request_to_png_seconds": 39.7306248130044,
+      "peak_device_gib": 13.458171844482422,
+      "native_fusions": "disabled"
+    }
+  ],
+  "image_quality_screen_passed": true,
+  "image_quality": [
+    {
+      "id": "container-neon-first",
+      "psnr_db": 58.80573654702797,
+      "lpips": 4.203216667519882e-05,
+      "clipscore_delta": 0.0010607391595840454,
+      "alpha_mae_255": 0.0011494159698486328
+    },
+    {
+      "id": "container-neon-warm",
+      "psnr_db": 58.80573654702797,
+      "lpips": 4.203216667519882e-05,
+      "clipscore_delta": 0.0010607391595840454,
+      "alpha_mae_255": 0.0011494159698486328
+    },
+    {
+      "id": "container-teapot",
+      "psnr_db": 61.69860023960527,
+      "lpips": 7.57367379264906e-05,
+      "clipscore_delta": -0.0001093745231628418,
+      "alpha_mae_255": 0.013302803039550781
+    },
+    {
+      "id": "container-rgba",
+      "psnr_db": 56.848455743851254,
+      "lpips": 4.6720539103262126e-05,
+      "clipscore_delta": -0.0006525963544845581,
+      "alpha_mae_255": 0.029231548309326172
+    },
+    {
+      "id": "container-edit",
+      "psnr_db": 54.68336454022829,
+      "lpips": 0.00021426560124382377,
+      "clipscore_delta": 8.068978786468506e-05,
+      "alpha_mae_255": 0.008715629577636719
+    },
+    {
+      "id": "container-one-shot-native",
+      "psnr_db": 61.67458800478447,
+      "lpips": 7.399429159704596e-05,
+      "clipscore_delta": 0.0006551295518875122,
+      "alpha_mae_255": 0.013309478759765625
+    },
+    {
+      "id": "container-one-shot-fallback",
+      "psnr_db": 61.684589869026226,
+      "lpips": 6.889054930070415e-05,
+      "clipscore_delta": -0.00025540590286254883,
+      "alpha_mae_255": 0.013482093811035156
+    }
+  ],
+  "scope": "Packaging validation; one cold/warm process plus mixed-mode and separate direct CLI/fallback checks. Not a new repeated matched-control speedup experiment."
+}

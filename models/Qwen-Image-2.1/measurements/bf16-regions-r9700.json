@@ -1,0 +1,135 @@
+{
+  "status": "qualified_bounded_r9700_profile",
+  "workload": {
+    "batch": 1,
+    "width": 2048,
+    "height": 2048,
+    "steps": 40,
+    "guidance": 1.0,
+    "seed": 42,
+    "checkpoint": "balanced MXFP4 unchanged",
+    "activation": "BF16 with required intermediate rounding",
+    "resident": true,
+    "cpu_offload": false,
+    "vae_tiling": false
+  },
+  "control": "Quark HIP reconstruction plus exact contiguous attention layout",
+  "candidate": "Existing Paiton native reconstruction plus optional BF16 regions",
+  "first_request": {
+    "quark": {
+      "n": 3,
+      "median": 200.2869268450304,
+      "mean": 200.28146473234906,
+      "min": 200.25666690600337,
+      "max": 200.30080044601345,
+      "sample_stddev": 0.02256808243211858,
+      "values": [
+        200.2869268450304,
+        200.30080044601345,
+        200.25666690600337
+      ]
+    },
+    "native": {
+      "n": 3,
+      "median": 179.7021402589744,
+      "mean": 179.66136834999392,
+      "min": 179.52407252800185,
+      "max": 179.7578922630055,
+      "sample_stddev": 0.12212566700217936,
+      "values": [
+        179.7578922630055,
+        179.52407252800185,
+        179.7021402589744
+      ]
+    }
+  },
+  "warm_request": {
+    "quark": {
+      "n": 3,
+      "median": 188.78974603500683,
+      "mean": 188.79275078266315,
+      "min": 188.7069973849575,
+      "max": 188.88150892802514,
+      "sample_stddev": 0.08729456482118841,
+      "values": [
+        188.78974603500683,
+        188.7069973849575,
+        188.88150892802514
+      ]
+    },
+    "native": {
+      "n": 3,
+      "median": 168.10124726698268,
+      "mean": 168.09752535664788,
+      "min": 168.06613081600517,
+      "max": 168.12519798695575,
+      "sample_stddev": 0.029708957124605927,
+      "values": [
+        168.10124726698268,
+        168.06613081600517,
+        168.12519798695575
+      ]
+    }
+  },
+  "startup": {
+    "quark": {
+      "n": 3,
+      "median": 32.03511636896292,
+      "mean": 32.035733347312394,
+      "min": 32.035028473997954,
+      "max": 32.037055198976304,
+      "sample_stddev": 0.0011456003872456263,
+      "values": [
+        32.03511636896292,
+        32.037055198976304,
+        32.035028473997954
+      ]
+    },
+    "native": {
+      "n": 3,
+      "median": 32.035615773987956,
+      "mean": 32.03543941732884,
+      "min": 32.034852390992455,
+      "max": 32.03585008700611,
+      "sample_stddev": 0.0005217045019231081,
+      "values": [
+        32.03585008700611,
+        32.034852390992455,
+        32.035615773987956
+      ]
+    }
+  },
+  "median_improvement": {
+    "first_request": {
+      "seconds": 20.584786586055998,
+      "latency_reduction_percent": 10.277648626554258,
+      "speed_ratio": 1.1145494792459936
+    },
+    "warm_request": {
+      "seconds": 20.688498768024147,
+      "latency_reduction_percent": 10.958486465778671,
+      "speed_ratio": 1.123071655352837
+    }
+  },
+  "sampled_complete_request_peak_gib": 25.938594818115234,
+  "independent_physical_memory_sampling_ms": 5,
+  "hip_memory_sampling_ms": 20,
+  "allocator_budget_gib": 26,
+  "allocator_config": "expandable_segments:True",
+  "quality_screen_passed": true,
+  "max_lpips": 0.00023422969388775527,
+  "min_clipscore_delta": -0.00038407742977142334,
+  "max_intermediate_relative_l2": 0.0,
+  "limitations": [
+    "Fixed gfx1201, pinned model/environment and fresh dedicated process only",
+    "Small descriptive quality suite, not general quality equivalence",
+    "Whole-pipeline graph capture unsupported",
+    "Native region graphs require initialization and fixed shapes/addresses",
+    "Editing retains the 1024 limit",
+    "Managed launchers enable optimized regions; original unpack-only regions remain available through --no-native-fusions",
+    "Cold means fresh process/software caches; startup is separate",
+    "Three independent cold/warm processes per path",
+    "Finite memory sampling cannot exclude arbitrarily shorter transients"
+  ],
+  "artifact_sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5"
+}

@@ -1,0 +1,7 @@
+# Use the separately pinned ROCm Torch environment. This file does not replace Torch.
+diffusers @ git+https://github.com/huggingface/diffusers.git@7263f3317f6b392d62f41e9d75ed9d7e21fc5a5c
+transformers==5.17.0
+accelerate==1.15.0
+safetensors==0.8.0
+Pillow==12.1.0
+numpy==2.4.2

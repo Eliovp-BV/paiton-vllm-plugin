@@ -1,0 +1,86 @@
+{
+  "status": "bounded_screen_passed",
+  "scope": "Optimization versus identical balanced MXFP4 checkpoint; not a new comparison against original BF16 weights",
+  "pairs": [
+    {
+      "id": "neon-pair-1",
+      "kind": "candidate",
+      "psnr_db": 58.82180464168991,
+      "alpha_mae_255": 0.0011777877807617188,
+      "lpips": 4.2998035496566445e-05,
+      "clipscore_delta": 5.662441253662109e-06
+    },
+    {
+      "id": "neon-pair-2",
+      "kind": "candidate",
+      "psnr_db": 58.860778961029254,
+      "alpha_mae_255": 0.0011680126190185547,
+      "lpips": 4.266353789716959e-05,
+      "clipscore_delta": 0.0012111663818359375
+    },
+    {
+      "id": "baseline-process-variation-1-vs-2",
+      "kind": "baseline_variation",
+      "psnr_db": 58.811982225869784,
+      "alpha_mae_255": 0.0011646747589111328,
+      "lpips": 4.354210614110343e-05,
+      "clipscore_delta": -0.0007500499486923218
+    },
+    {
+      "id": "neon-pair-3",
+      "kind": "candidate",
+      "psnr_db": 58.86343793825658,
+      "alpha_mae_255": 0.0011637210845947266,
+      "lpips": 4.3574713345151395e-05,
+      "clipscore_delta": 0.0007557123899459839
+    },
+    {
+      "id": "baseline-process-variation-1-vs-3",
+      "kind": "baseline_variation",
+      "psnr_db": 58.811982225869784,
+      "alpha_mae_255": 0.0011646747589111328,
+      "lpips": 4.354210614110343e-05,
+      "clipscore_delta": -0.0007500499486923218
+    },
+    {
+      "id": "teapot-1024",
+      "kind": "candidate",
+      "psnr_db": 61.65657974975243,
+      "alpha_mae_255": 0.013345718383789062,
+      "lpips": 7.47697486076504e-05,
+      "clipscore_delta": 0.00017940998077392578
+    },
+    {
+      "id": "rgba-2048",
+      "kind": "candidate",
+      "psnr_db": 56.75952864643285,
+      "alpha_mae_255": 0.029408693313598633,
+      "lpips": 5.382429662859067e-05,
+      "clipscore_delta": -8.650124073028564e-05
+    },
+    {
+      "id": "edit-1024",
+      "kind": "candidate",
+      "psnr_db": 54.29435134535023,
+      "alpha_mae_255": 0.008542060852050781,
+      "lpips": 0.00023422969388775527,
+      "clipscore_delta": 4.16487455368042e-05
+    },
+    {
+      "id": "product-2048",
+      "kind": "candidate",
+      "psnr_db": 61.14725577362744,
+      "alpha_mae_255": 0.00030517578125,
+      "lpips": 3.2909258152358234e-05,
+      "clipscore_delta": -0.00038407742977142334
+    }
+  ],
+  "sampled_denoiser_steps": [
+    1,
+    20,
+    40
+  ],
+  "text_prompts_with_intermediates": 2,
+  "unequal_captured_elements": 0,
+  "max_intermediate_relative_l2": 0.0
+}

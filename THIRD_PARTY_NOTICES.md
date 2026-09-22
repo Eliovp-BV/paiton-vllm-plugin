@@ -51,3 +51,14 @@ when the user assembles the local video engine. They are not part of the
 published H3 artifact image. See the [complete video package notices](models/MiniMax-H3/THIRD_PARTY_NOTICES.md)
 for attribution, encoder provenance and the distinction between the distributed
 artifacts and the locally assembled engine.
+
+## Qwen-Image-2.1 image package
+
+The balanced MXFP4 checkpoint is downloaded separately from the pinned
+`EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4` repository. It retains the original
+Qwen Research License and attribution. The public package contains the external
+Python adapter and allowlisted compiled Paiton runtime binaries; compiler and
+generated implementation source remain private. The managed image installs its
+pinned PyTorch/ROCm, Diffusers and Transformers dependencies from public upstream
+distributions, retaining their notices. See the
+[image package notices](models/Qwen-Image-2.1/THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,6 @@
+Paiton native runtime artifact. Copyright 2026 ElioVP.
+This compiled runtime artifact is distributed under the Apache License 2.0,
+copied in ../LICENSES/Apache-2.0.txt, following the Paiton plugin's runtime
+distribution policy. The proprietary compiler and generated implementation
+source are not included or relicensed. The separate Qwen Research License
+continues to govern the model weights and upstream model configuration.

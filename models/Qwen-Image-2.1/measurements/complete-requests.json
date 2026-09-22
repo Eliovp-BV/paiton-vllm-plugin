@@ -1,0 +1,150 @@
+{
+  "workload": {
+    "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+    "seed": 42,
+    "width": 2048,
+    "height": 2048,
+    "steps": 40,
+    "guidance": 1.0
+  },
+  "runs": [
+    {
+      "path": "quark",
+      "process": 1,
+      "startup_seconds": 32.03511636896292,
+      "requests": [
+        {
+          "http_body_seconds": 200.2869268450304,
+          "png_sha256": "ade109c7b585aefb0c63f217b9373d8c0526a6ede3cebda7e8e7902e2a498853",
+          "sampled_peak_sysfs_vram_bytes": 27049930752,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 188.78974603500683,
+          "png_sha256": "ade109c7b585aefb0c63f217b9373d8c0526a6ede3cebda7e8e7902e2a498853",
+          "sampled_peak_sysfs_vram_bytes": 26863370240,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    },
+    {
+      "path": "native",
+      "process": 1,
+      "startup_seconds": 32.03585008700611,
+      "requests": [
+        {
+          "http_body_seconds": 179.7578922630055,
+          "png_sha256": "2b69eb956b3e43f4c8f3104e149c59271b5194f85a24e787b78ece3901982b52",
+          "sampled_peak_sysfs_vram_bytes": 27111858176,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 168.10124726698268,
+          "png_sha256": "2b69eb956b3e43f4c8f3104e149c59271b5194f85a24e787b78ece3901982b52",
+          "sampled_peak_sysfs_vram_bytes": 26944167936,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    },
+    {
+      "path": "quark",
+      "process": 2,
+      "startup_seconds": 32.037055198976304,
+      "requests": [
+        {
+          "http_body_seconds": 200.30080044601345,
+          "png_sha256": "c3f4030d3fb447cf450ccc881f1bf295ccd95aad37f134256c85e7143581b73b",
+          "sampled_peak_sysfs_vram_bytes": 27154890752,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 188.7069973849575,
+          "png_sha256": "c3f4030d3fb447cf450ccc881f1bf295ccd95aad37f134256c85e7143581b73b",
+          "sampled_peak_sysfs_vram_bytes": 26884444160,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    },
+    {
+      "path": "native",
+      "process": 2,
+      "startup_seconds": 32.034852390992455,
+      "requests": [
+        {
+          "http_body_seconds": 179.52407252800185,
+          "png_sha256": "586b9f5d8357b72a437a4131d205fa87d04314531e845e9b4feee21b72530dbf",
+          "sampled_peak_sysfs_vram_bytes": 27216650240,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 168.06613081600517,
+          "png_sha256": "586b9f5d8357b72a437a4131d205fa87d04314531e845e9b4feee21b72530dbf",
+          "sampled_peak_sysfs_vram_bytes": 27197853696,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    },
+    {
+      "path": "quark",
+      "process": 3,
+      "startup_seconds": 32.035028473997954,
+      "requests": [
+        {
+          "http_body_seconds": 200.25666690600337,
+          "png_sha256": "c3f4030d3fb447cf450ccc881f1bf295ccd95aad37f134256c85e7143581b73b",
+          "sampled_peak_sysfs_vram_bytes": 27217743872,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 188.88150892802514,
+          "png_sha256": "c3f4030d3fb447cf450ccc881f1bf295ccd95aad37f134256c85e7143581b73b",
+          "sampled_peak_sysfs_vram_bytes": 27094093824,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    },
+    {
+      "path": "native",
+      "process": 3,
+      "startup_seconds": 32.035615773987956,
+      "requests": [
+        {
+          "http_body_seconds": 179.7021402589744,
+          "png_sha256": "2b69eb956b3e43f4c8f3104e149c59271b5194f85a24e787b78ece3901982b52",
+          "sampled_peak_sysfs_vram_bytes": 27216302080,
+          "sampled_peak_device_bytes": 26969374720,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26380075008
+        },
+        {
+          "http_body_seconds": 168.12519798695575,
+          "png_sha256": "2b69eb956b3e43f4c8f3104e149c59271b5194f85a24e787b78ece3901982b52",
+          "sampled_peak_sysfs_vram_bytes": 27197722624,
+          "sampled_peak_device_bytes": 26679967744,
+          "peak_allocated_bytes": 25129627648,
+          "peak_reserved_bytes": 26088570880
+        }
+      ]
+    }
+  ]
+}

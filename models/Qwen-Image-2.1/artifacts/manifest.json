@@ -1,0 +1,14 @@
+{
+  "file": "mxfp4_weights_gfx1201.so",
+  "sha256": "17765a0945268d700e0fe62ac7999040876845d7ff9dae4cc609cb46c20d2d59",
+  "architecture": "gfx1201",
+  "abi": "paiton_mxfp4_unpack(uint8*, uint8*, bf16*, size_t, hipStream_t) -> int",
+  "rocm": "10.0",
+  "framework_dependencies": [],
+  "scope": "MXFP4 weight reconstruction only; caller-owned buffers and HIP stream; no allocation or synchronization in kernel entry point",
+  "limits": {
+    "count_multiple": 32,
+    "max_count": 68719476736
+  },
+  "qualification": "Independent native C++ arithmetic, all scale/nibble encodings, bounds, non-default streams and changed-input graph replay; actual Qwen-Image-2.1 packed tensor oracle"
+}

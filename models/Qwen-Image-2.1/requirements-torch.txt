@@ -1,0 +1,9 @@
+# Public, immutable-by-hash upstream runtime inputs for CPython 3.12 / Linux x86_64.
+# Install with --no-deps; only gfx1201 device libraries are included.
+https://stable.repo.amd.com/rocm/core/whl-next/rocm/rocm-10.0.0.tar.gz#sha256=65b5982249612a310135f5e061b9f28909e8ad718a1ddb3f1abba92298b7216b
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-core/rocm_sdk_core-10.0.0-py3-none-linux_x86_64.whl#sha256=3bf4a72d11aa2a4ee1e90572c73630f937d38c1b7af4dda45b483b54655138a7
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-device-gfx1201/rocm_sdk_device_gfx1201-10.0.0-py3-none-linux_x86_64.whl#sha256=81856692c18e5d6ccce486193d0f4a54b368d2e84ff5a0811b644f6f788ed4b2
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-libraries/rocm_sdk_libraries-10.0.0-py3-none-linux_x86_64.whl#sha256=bbe83a550cb8ceeb306abf6d57df6617857a1b19384549526db2ec81a4374e57
+https://download-r2.pytorch.org/whl/nightly/rocm10.0/torch-2.15.0.dev20260907%2Brocm10.0-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=a86ecb6410d6bbc81be0181a5850b032040957f568c05952135c5586a9b039ac
+https://download-r2.pytorch.org/whl/nightly/rocm10.0/torchvision-0.30.0.dev20260909%2Brocm10.0-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=5a58f6deccb6e844656e70020dc8d0aaaaa3915c3cd68668858c9841b946d516
+https://download-r2.pytorch.org/whl/nightly/triton_rocm-3.8.0%2Bgitc01b6774-cp312-cp312-linux_x86_64.whl#sha256=88587e1355bee5c4ee7c3e4bade08cbae8d66bede3e47f312476df764672536e
