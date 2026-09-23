@@ -188,3 +188,130 @@ class AttentionCallShape(unittest.TestCase):
         self.assertEqual(len(attn),20);self.assertEqual(attn[-2],777);self.assertEqual(attn[-1],0)   # (..., sm_scale, stream, variant)
         self.assertEqual((attn[5],attn[6],attn[7],attn[8]),(3,3,2,32))
         self.assertAlmostEqual(attn[17],1/128**0.5)
+
+
+class Fp8Contract(unittest.TestCase):
+    """Candidate fp8 GEMM path: off unless explicitly requested; call sequence and artifact checks without a GPU."""
+    def _model(self):
+        weight=torch.ones(128,dtype=torch.bfloat16); norm=NS(weight=weight,bias=None)
+        block=NS(attn=NS(processor=adapter.QwenImage21AttnProcessor(),norm_q=norm,norm_k=norm,set_processor=lambda p:None),
+                 img_norm1=torch.nn.LayerNorm(4096,elementwise_affine=False),img_norm2=torch.nn.LayerNorm(4096,elementwise_affine=False),forward=lambda *a,**k:None)
+        return NS(config=NS(num_attention_heads=32,attention_head_dim=128,num_layers=32,mlp_ratio=3),transformer_blocks=[block])
+
+    def test_fp8_is_off_unless_directories_are_given(self):
+        class Regions:
+            def __init__(self,*a):self.normfuse_library=None;self.counts={}
+        with mock.patch.object(adapter,'qualified_upstream',return_value=True), mock.patch.object(adapter,'NativeRegions',Regions):
+            native=adapter.install(self._model(),'regions','attention','normfuse')
+        self.assertIsNone(native.fp8)
+
+    def test_fp8_directories_construct_the_candidate_regions(self):
+        class Regions:
+            def __init__(self,*a):self.normfuse_library=None;self.counts={}
+        built=[]
+        from paiton_image21 import fp8_regions
+        class Fake:
+            active=False
+            def __init__(self,*dirs,**config):built.append(dirs or tuple(sorted(config)))
+        with mock.patch.object(adapter,'qualified_upstream',return_value=True), mock.patch.object(adapter,'NativeRegions',Regions), mock.patch.object(fp8_regions,'Fp8Regions',Fake):
+            native=adapter.install(self._model(),'regions','attention','normfuse',('gemm','quant','unpack'))
+        self.assertEqual(built,[('gemm','quant','unpack')]);self.assertIsInstance(native.fp8,Fake)
+
+    def test_fp8_feed_forward_call_sequence(self):
+        calls=[]
+        class Fp8:
+            active=True
+            def quantize(self,x,y=None,activation=0,int8=False):calls.append(('quantize',x.shape,None if y is None else y.shape,activation));return ('codes',x.shape[-1]),'scale'
+            def linear(self,module,codes,scale):calls.append(('linear',module.name,codes,scale));return torch.zeros((x_rows,module.out),dtype=torch.bfloat16)
+        x_rows=5
+        mlp=NS(gate_layer=NS(name='gate',out=12288),proj=NS(name='proj',out=12288),out=NS(name='out',out=4096))
+        regions=NS(fp8=Fp8(),counts={'silu':0})
+        x=torch.zeros((1,x_rows,4096),dtype=torch.bfloat16)
+        out=adapter.NativeRegions.feed_forward(regions,mlp,x)
+        self.assertEqual(tuple(out.shape),(1,x_rows,4096))
+        self.assertEqual([c[0]+':'+str(c[1]) for c in calls],['quantize:torch.Size([1, 5, 4096])','linear:gate','linear:proj','quantize:torch.Size([5, 12288])','linear:out'])
+        self.assertEqual(calls[3][3],2)   # fused silu(gate)*up quantization
+        self.assertEqual(regions.counts['silu'],1)
+
+    def test_fp8_corrupt_artifact_rejected_before_dlopen(self):
+        from paiton_image21 import fp8_regions
+        with tempfile.TemporaryDirectory() as directory:
+            p=Path(directory);(p/'fixture.so').write_bytes(b'corrupt')
+            (p/'manifest.json').write_text(json.dumps(dict(file='fixture.so',sha256='0'*64,architecture='gfx1201',abi_version=1)))
+            with mock.patch.object(adapter.C,'CDLL',side_effect=AssertionError('must not load corrupt library')):
+                with self.assertRaisesRegex(RuntimeError,'artifact identity mismatch'):
+                    fp8_regions.Fp8Regions(p,p,p)
+
+
+class LowPrecisionSchedule(unittest.TestCase):
+    """The per-forward decision of the candidate low-precision path, without loading any library."""
+    def _regions(self, from_step=0, exact_prefix=True):
+        from paiton_image21.fp8_regions import Fp8Regions
+        r=Fp8Regions.__new__(Fp8Regions)
+        r.from_step=from_step; r.exact_prefix=exact_prefix; r.forwards=0; r.active=False; r.schedule_active=False
+        r.counts=dict(exact_forwards=0, low_precision_forwards=0)
+        return r
+
+    def _forward(self, r, mode, blocks=3):
+        r.begin_transformer_forward()
+        return [r.begin_forward(mode) for _ in range(blocks)]
+
+    def test_prefix_pass_stays_exact_and_denoiser_forwards_are_low_precision(self):
+        r=self._regions()
+        self.assertEqual(self._forward(r,'extract'), [False]*3)
+        self.assertEqual(self._forward(r,'cached'), [True]*3); self.assertEqual(self._forward(r,'cached'), [True]*3)
+        self.assertEqual(r.counts, dict(exact_forwards=3, low_precision_forwards=6))
+
+    def test_schedule_counts_transformer_forwards_not_blocks(self):
+        r=self._regions(from_step=3)
+        decisions=[self._forward(r,'extract')[0]]+[self._forward(r,'cached',blocks=32)[-1] for _ in range(4)]
+        self.assertEqual(decisions, [False, False, False, True, True])   # transformer forwards 1-3 exact, 4 and 5 low precision
+
+    def test_prefix_quantization_can_be_requested_explicitly(self):
+        r=self._regions(exact_prefix=False)
+        self.assertEqual(self._forward(r,'extract'), [True]*3)
+
+    def test_formats_map_to_kernel_flags(self):
+        from paiton_image21.fp8_regions import FORMATS
+        self.assertEqual(FORMATS['fp8-row'], (False, 0)); self.assertEqual(FORMATS['int8-32'], (True, 32)); self.assertEqual(FORMATS['int8-256'], (True, 256))
+
+
+class Qk8Routing(unittest.TestCase):
+    """The int8-QK attention companion is used only on low-precision forwards; exact forwards keep the exact kernel."""
+    def _run(self, active, has_qk8):
+        calls=[]
+        class Fp8:
+            def __init__(self): self.active=active
+            def quantize(self,x,y=None,activation=0,int8=None,block=None): return 'codes','scale'
+            def linear(self,module,codes,scale): return torch.zeros((1,3,4096),dtype=torch.bfloat16).view(3,4096)
+        regions=NS(fp8=Fp8(), counts={'fallback':0,'attention_native':0}, qk8_library=object() if has_qk8 else None,
+                   norm_rope=lambda x,norm,freq: x,
+                   attention_native_usable=lambda *a: True,
+                   attention_native=lambda *a: (calls.append('exact') or torch.zeros((1,3,32,128),dtype=torch.bfloat16)),
+                   attention_qk8=lambda *a: (calls.append('qk8') or torch.zeros((1,3,32,128),dtype=torch.bfloat16)))
+        lin=lambda x: torch.zeros((1,3,4096),dtype=torch.bfloat16)
+        attn=NS(to_q=lin,to_k=lin,to_v=lin,norm_q=None,norm_k=None,to_out=[lambda x: x, lambda x: x])
+        processor=adapter.NativeAttentionProcessor(regions, NS(_attention_backend=None,_parallel_config=None))
+        hidden=torch.zeros((1,3,4096),dtype=torch.bfloat16)
+        with mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True), torch.no_grad():
+            processor(attn, hidden, None, None, None, 'cached')
+        return calls
+
+    def test_low_precision_forward_uses_qk8_when_present(self):
+        self.assertEqual(self._run(active=True, has_qk8=True), ['qk8'])
+
+    def test_exact_forward_keeps_the_exact_kernel(self):
+        self.assertEqual(self._run(active=False, has_qk8=True), ['exact'])
+
+    def test_without_the_companion_low_precision_forwards_keep_the_exact_kernel(self):
+        self.assertEqual(self._run(active=True, has_qk8=False), ['exact'])
+
+
+class PrecisionProfiles(unittest.TestCase):
+    def test_profile_table_is_explicit_and_exact_is_empty(self):
+        from paiton_image21.runtime import ImageEngine
+        p=ImageEngine.PRECISION_PROFILES
+        self.assertEqual(p['exact'], {})
+        self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP'], 'int8-256'); self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP_FROM_STEP'], '11')
+        self.assertEqual(p['schedule-fp8']['PAITON_IMAGE21_LP'], 'fp8-row')
+        self.assertEqual(set(p['exact-w64']), {'PAITON_IMAGE21_ATTENTION_W64'})

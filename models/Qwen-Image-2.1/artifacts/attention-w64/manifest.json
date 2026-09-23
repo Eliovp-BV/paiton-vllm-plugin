@@ -1,0 +1,20 @@
+{
+  "file": "qwen_image21_attention_gfx1201.so",
+  "sha256": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+  "architecture": "gfx1201",
+  "abi_version": 2,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "Exact dense BF16 attention, wave64 with 32 queries per wave (same ABI and arithmetic contract as the attention companion); candidate until the 45-case bit-exact suite passes",
+  "arithmetic": "wave64 v_wmma_f32_16x16x16_bf16 with the accumulator-layout k-slot mapping (bit-identical products), reference row-sum association through lane exchanges, software RNE BF16, correctly rounded reciprocal",
+  "abi": "PaitonImage21AttentionPackV / PaitonImage21Attention (see attention_w64.hip)",
+  "limits": {
+    "batch": 1,
+    "heads": 32,
+    "head_dim": 128,
+    "max_query_tokens": 65536,
+    "prefix_plus_key_tokens_multiple": null,
+    "stride_multiple": 8
+  },
+  "graph_contract": "Fixed shapes; caller-owned buffers, workspace and stream; initialize before capture; changed inputs supported"
+}

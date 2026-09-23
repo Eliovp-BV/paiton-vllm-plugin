@@ -34,9 +34,28 @@ def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
                 true_cfg_scale=guidance,use_kv_cache=True)
 
 class ImageEngine:
-    def __init__(self,model_dir,backend="native",artifact_dir=None,verify=True,native_fusions=False):
+    PRECISION_PROFILES={
+        "exact":{},
+        # candidate: cached prefix + first 10 denoising steps exact; steps 11-40 with int8 (per 256-block) activations
+        # through the wave64 int8 GEMMs, wave64 exact attention on exact steps, int8-QK attention on the others
+        "schedule-int8":{"PAITON_IMAGE21_LP":"int8-256","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"11",
+                         "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # candidate with bit-exact weights: fp8 e4m3 activations per row on the same schedule (slower GEMMs)
+        "schedule-fp8":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"11","PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # exact wave64 attention only (bit-exact)
+        "exact-w64":{"PAITON_IMAGE21_ATTENTION_W64":"1"},
+    }
+    def __init__(self,model_dir,backend="native",artifact_dir=None,verify=True,native_fusions=False,precision_profile=None):
         if native_fusions and backend != "native":
             raise ValueError("native_fusions requires the native backend")
+        precision_profile=precision_profile or os.environ.get("PAITON_IMAGE21_PROFILE") or "exact"
+        if precision_profile not in self.PRECISION_PROFILES:
+            raise ValueError(f"unknown precision profile {precision_profile!r}")
+        if precision_profile != "exact" and not native_fusions:
+            raise ValueError("precision profiles other than exact require native fusions")
+        for key,value in self.PRECISION_PROFILES[precision_profile].items():
+            os.environ.setdefault(key,value)   # explicit environment switches still win (experiments)
+        self.precision_profile=precision_profile
         import torch
         from .weights import load_pipeline,enable_native_unpack,sha256
         if backend not in ("native","reference"):
@@ -74,13 +93,29 @@ class ImageEngine:
         self.pipeline=load_pipeline(self.model_dir,self.model_dir,verify_hashes=verify)
         if native_fusions:
             from .native_regions import install
-            companions={name:artifacts/name for name in ("attention","normfuse") if (artifacts/name/"manifest.json").is_file()}
+            companions={name:artifacts/name for name in ("attention","attention-w64","attention-qk8","normfuse","gemm-fp8","gemm-int8","gemm-w64","quantize","unpack-fp8") if (artifacts/name/"manifest.json").is_file()}
+            if os.environ.get("PAITON_IMAGE21_ATTENTION_W64")=="1" and "attention-w64" in companions:   # candidate wave64 exact attention
+                companions["attention"]=companions["attention-w64"]
+            fp8_directories=None
+            low_precision=os.environ.get("PAITON_IMAGE21_LP") or ("fp8-row" if os.environ.get("PAITON_IMAGE21_FP8")=="1" else None)
+            if low_precision:   # candidate low-precision GEMM path: explicit opt-in only, not qualified
+                fp8_directories=dict(gemm_directory=companions.get("gemm-fp8"),quantize_directory=companions["quantize"],
+                                     unpack_directory=companions["unpack-fp8"],gemm_int8_directory=companions.get("gemm-int8"),
+                                     gemm_w64_directory=companions.get("gemm-w64"),format=low_precision,
+                                     wave64=os.environ.get("PAITON_IMAGE21_LP_W64")=="1",
+                                     from_step=int(os.environ.get("PAITON_IMAGE21_LP_FROM_STEP","0")),
+                                     exact_prefix=os.environ.get("PAITON_IMAGE21_LP_QUANTIZE_PREFIX")!="1")
+            qk8_directory=companions.get("attention-qk8") if (low_precision and os.environ.get("PAITON_IMAGE21_ATTENTION_QK8")=="1") else None
             self.native_regions=install(self.pipeline.transformer,artifacts/"bf16-regions",
-                                        companions.get("attention"),companions.get("normfuse"))
+                                        companions.get("attention"),companions.get("normfuse"),fp8_directories,qk8_directory)
             self.native_fusion_status="active" if self.native_regions is not None else "unsupported configuration; original regions retained"
             if self.native_regions is not None:
                 active=["bf16-regions"]+[name for name,library in (("attention",self.native_regions.attention_library),
                                                                 ("normfuse",self.native_regions.normfuse_library)) if library is not None]
+                if self.native_regions.fp8 is not None:
+                    active.append(f"low-precision {self.native_regions.fp8.format}{' wave64' if self.native_regions.fp8.wave64 else ''} (candidate, not qualified)")
+                if getattr(self.native_regions,"qk8_library",None) is not None:
+                    active.append("int8-QK attention on low-precision forwards (candidate, not qualified)")
                 self.native_fusion_status="active ("+", ".join(active)+")"
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
@@ -92,6 +127,9 @@ class ImageEngine:
             cache=kwargs.get("kv_cache")
             if cache is not None and all(cache is not old for old in self._prefix_caches):
                 self._prefix_caches.append(cache)
+            fp8=getattr(self.native_regions,"fp8",None) if self.native_regions is not None else None
+            if fp8 is not None:
+                fp8.begin_transformer_forward()   # precision schedule counts transformer forwards, not block forwards
         self.pipeline.transformer.register_forward_pre_hook(remember_prefix,with_kwargs=True)
 
     def _release_prefix(self):
@@ -107,6 +145,8 @@ class ImageEngine:
         if not self.busy.acquire(blocking=False):
             raise RuntimeError("The single-request GPU worker is busy")
         started=time.perf_counter()
+        if self.native_regions is not None and getattr(self.native_regions,"fp8",None) is not None:
+            self.native_regions.fp8.forwards=0   # precision schedule counts transformer forwards per request
         stop=threading.Event()
         samples=[]
         def sample():
@@ -142,6 +182,7 @@ class ImageEngine:
                      sampled_peak_device_bytes=max(samples,default=0),sampling_interval_seconds=.02,
                      stream="dedicated non-default HIP stream",alpha_extrema=list(result.getextrema()[3]))
             row["native_fusions"]=self.native_fusion_status
+            row["precision_profile"]=self.precision_profile
             row["allocator_budget_gib"]=self.allocator_budget_gib
             row["allocator_config"]=self.allocator_config
             if self.native_regions is not None:
@@ -150,6 +191,12 @@ class ImageEngine:
                     if manifest is not None:
                         row[f"native_{name}_sha256"]=manifest["sha256"]
                 row["native_counts"]=dict(self.native_regions.counts)
+                fp8=self.native_regions.fp8
+                if fp8 is not None:
+                    inexact=fp8.check_exact()
+                    row["fp8_gemm"]=dict(inexact_weight_values=inexact,**fp8.receipt())
+                    if inexact and not fp8.int8:
+                        raise RuntimeError(f"fp8 weight reconstruction was not exact: {inexact} values")
             self.request_count+=1
             return result,buffer.getvalue(),row
         finally:

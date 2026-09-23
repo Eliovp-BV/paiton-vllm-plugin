@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_gemm_w64_gfx1201.so",
+  "sha256": "b5b36fa0e12a7189c46bf813b2f9f2af853bc5cc98c63e44c12444f896625181",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "wave64 fp8 and int8 GEMMs (int8 with per-row or 32/64/128/256-block activation scales); 64x64 wave tiles",
+  "arithmetic": "wave64 v_wmma 16x16x16 fp8/iu8 with the accumulator-layout k-slot mapping, fp32 accumulation, bf16 output with bias",
+  "abi": "PaitonImage21GemmFp8W64 / PaitonImage21GemmInt8W64 (see gemm_w64.hip)"
+}

@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_gemm_fp8_gfx1201.so",
+  "sha256": "ef1f1b949654f78f9c99cba4da7457005f4e18b173187892423468a7aa542de4",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "fp8 e4m3fn GEMM C = bf16(sa[m] sw[n] sum_k A[m][k] W[n][k] + bias[n]) for the image-stream projections; N % 128 == 0, K % 64 == 0, any M",
+  "arithmetic": "wave32 v_wmma_f32_16x16x16_fp8_fp8 with fp32 accumulation, per-row x per-channel scales and bf16 bias in the epilogue, software RNE bf16 output",
+  "abi": "PaitonImage21GemmFp8 (see gemm_fp8.hip); caller-owned buffers and HIP stream"
+}

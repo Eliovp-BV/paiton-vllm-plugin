@@ -59,7 +59,22 @@ def _load_library(directory, abi_version, abi_symbol, arch_symbol, init_symbol):
 
 
 class NativeRegions:
-    def __init__(self, directory, attention_directory=None, normfuse_directory=None):
+    def __init__(self, directory, attention_directory=None, normfuse_directory=None, qk8_directory=None):
+        self.fp8 = None   # candidate fp8 GEMM path (Fp8Regions), attached by install() only on explicit opt-in
+        self.qk8_library = self.qk8_manifest = None
+        if qk8_directory is not None:   # candidate int8-QK^T attention, only for the low-precision forwards of the schedule
+            self.qk8_library, self.qk8_manifest = _load_library(
+                qk8_directory, 3, 'PaitonImage21AttentionQk8GetAbiVersion', 'PaitonImage21AttentionQk8GetTargetArch', 'PaitonImage21AttentionQk8Initialize')
+            self.qk8_pack = self.qk8_library.PaitonImage21AttentionPackKV
+            self.qk8_pack.argtypes = [C.c_void_p]*5 + [C.c_int]*3 + [C.c_long]*4 + [C.c_void_p]
+            self.qk8_pack.restype = C.c_int
+            self.qk8_kernel = self.qk8_library.PaitonImage21AttentionQk8
+            self.qk8_kernel.argtypes = [C.c_void_p]*3 + [C.c_int]*4 + [C.c_long]*4 + [C.c_float, C.c_void_p]
+            self.qk8_kernel.restype = C.c_int
+            self.qk8_elements = self.qk8_library.PaitonImage21AttentionQk8Elements
+            self.qk8_elements.argtypes = [C.c_int]*3
+            self.qk8_elements.restype = C.c_size_t
+            self._qk8_workspace = None
         self.library, meta = _load_library(directory, 1, 'PaitonImage21GetAbiVersion',
                                            'PaitonImage21GetTargetArch', 'PaitonImage21Initialize')
         self.norm = self.library.PaitonImage21NormRope
@@ -152,6 +167,16 @@ class NativeRegions:
         return hidden, out
 
     def feed_forward(self, mlp, x):
+        fp8 = getattr(self, 'fp8', None)
+        if fp8 is not None and fp8.active:
+            codes, scale = self.fp8.quantize(x)
+            gate = self.fp8.linear(mlp.gate_layer, codes, scale)
+            up = self.fp8.linear(mlp.proj, codes, scale)
+            del codes, scale
+            product, product_scale = self.fp8.quantize(gate, up, activation=2)
+            del gate, up
+            self.counts['silu'] += 1
+            return self.fp8.linear(mlp.out, product, product_scale).view(1, -1, HIDDEN)
         gate = mlp.gate_layer(x)
         up = mlp.proj(x)
         product = torch.empty_like(gate)
@@ -173,6 +198,24 @@ class NativeRegions:
             inputs.append(packed.permute(0,2,1,3))
             self.counts['attention_pack']+=1
         return dispatch_attention_fn(*inputs,**kwargs)
+
+    def attention_qk8(self, query, key, value, key_prefix=None, value_prefix=None):
+        """Approximate attention with per-row int8 Q and K (int32 scores), bf16 softmax/PV as the exact kernel."""
+        tokens_q, tokens_k = query.shape[1], key.shape[1]
+        prefix = 0 if key_prefix is None else key_prefix.shape[1]
+        needed = self.qk8_elements(tokens_k, prefix, HEADS)
+        if self._qk8_workspace is None or self._qk8_workspace.numel() < needed or self._qk8_workspace.device != query.device:
+            self._qk8_workspace = torch.empty(needed, dtype=torch.bfloat16, device=query.device)
+        out = torch.empty_like(query)
+        tok, head = HEADS*HEAD_DIM, HEAD_DIM
+        self.call(self.qk8_pack, key.data_ptr(), 0 if key_prefix is None else key_prefix.data_ptr(), value.data_ptr(),
+                  0 if value_prefix is None else value_prefix.data_ptr(), self._qk8_workspace.data_ptr(), tokens_k, prefix, HEADS, tok, head, tok, head)
+        rc = self.qk8_kernel(query.data_ptr(), self._qk8_workspace.data_ptr(), out.data_ptr(), tokens_q, tokens_k, prefix, HEADS,
+                             tok, head, tok, head, SM_SCALE, torch.cuda.current_stream().cuda_stream)
+        if rc:
+            raise RuntimeError(f'Image21 int8-QK attention failed with HIP status {rc}')
+        self.counts['attention_qk8'] = self.counts.get('attention_qk8', 0) + 1
+        return out
 
     # ---- exact native attention ------------------------------------------------------------------
     @staticmethod
@@ -265,9 +308,19 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
             self.native.counts['fallback'] += 1
             return self.fallback(attn,hidden_states,attention_mask,rotary_emb,
                                  layer_cache,kv_cache_mode,cache_write_slice,segments,key_valid)
-        query = attn.to_q(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
-        key = attn.to_k(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
-        value = attn.to_v(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
+        fp8 = getattr(self.native, 'fp8', None)
+        if fp8 is not None and not fp8.active:
+            fp8 = None
+        if fp8 is not None:
+            codes, scale = fp8.quantize(hidden_states)
+            query = fp8.linear(attn.to_q, codes, scale).view(1,-1,HEADS,HEAD_DIM)
+            key = fp8.linear(attn.to_k, codes, scale).view(1,-1,HEADS,HEAD_DIM)
+            value = fp8.linear(attn.to_v, codes, scale).view(1,-1,HEADS,HEAD_DIM)
+            del codes, scale
+        else:
+            query = attn.to_q(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
+            key = attn.to_k(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
+            value = attn.to_v(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
         query = self.native.norm_rope(query,attn.norm_q,rotary_emb)
         key = self.native.norm_rope(key,attn.norm_k,rotary_emb)
         cached_k = cached_v = None
@@ -277,7 +330,10 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
             elif kv_cache_mode == 'cached':
                 cached_k,cached_v = layer_cache.get()
         if segments is None and self.native.attention_native_usable(query,key,value,cached_k,cached_v,attention_mask):
-            result = self.native.attention_native(query,key,value,cached_k,cached_v)
+            if getattr(self.native, 'qk8_library', None) is not None and fp8 is not None:   # fp8 is None unless this forward is low precision
+                result = self.native.attention_qk8(query,key,value,cached_k,cached_v)
+            else:
+                result = self.native.attention_native(query,key,value,cached_k,cached_v)
         else:
             if cached_k is not None:
                 key = torch.cat([cached_k,key],dim=1)
@@ -305,6 +361,9 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
                     dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
                 result = torch.cat(outputs,dim=1)
         result = result[:,:query.shape[1]].flatten(2,3).type_as(query)
+        if fp8 is not None:
+            codes, scale = fp8.quantize(result.contiguous())
+            return attn.to_out[1](fp8.linear(attn.to_out[0], codes, scale).view(1,-1,HIDDEN))
         return attn.to_out[1](attn.to_out[0](result))
 
 
@@ -331,7 +390,7 @@ def _plain_layer_norm(norm):
             and isinstance(norm.eps, float) and 0.0 < norm.eps < 1e-3)
 
 
-def install(transformer, directory, attention_directory=None, normfuse_directory=None):
+def install(transformer, directory, attention_directory=None, normfuse_directory=None, fp8_directories=None, qk8_directory=None):
     """Validate the complete region before mutating this engine's model objects."""
     if not qualified_upstream():
         return None
@@ -349,7 +408,12 @@ def install(transformer, directory, attention_directory=None, normfuse_directory
     if normfuse_directory is not None and not all(_plain_layer_norm(block.img_norm1) and _plain_layer_norm(block.img_norm2)
                                                   for block in transformer.transformer_blocks):
         normfuse_directory = None   # keep the framework LayerNorm path for an unexpected normalization configuration
-    native = NativeRegions(directory, attention_directory, normfuse_directory)
+    fp8 = None
+    if fp8_directories is not None:
+        from .fp8_regions import Fp8Regions
+        fp8 = Fp8Regions(**fp8_directories) if isinstance(fp8_directories, dict) else Fp8Regions(*fp8_directories)
+    native = NativeRegions(directory, attention_directory, normfuse_directory) if qk8_directory is None else NativeRegions(directory, attention_directory, normfuse_directory, qk8_directory)
+    native.fp8 = fp8
     fused_norm = native.normfuse_library is not None
     for block in transformer.transformer_blocks:
         block.attn.set_processor(NativeAttentionProcessor(native,block.attn.processor))
@@ -366,6 +430,8 @@ def install(transformer, directory, attention_directory=None, normfuse_directory
                 return _fallback(hidden_states,modulation,rotary_emb,attention_mask,
                     target_token_mask,layer_cache,kv_cache_mode,cache_write_slice,segments,key_valid)
             parameters = native.parameters(modulation)
+            if fp8 is not None:
+                fp8.begin_forward(kv_cache_mode)
             if fused_norm:
                 first = native.norm_modulate(hidden_states,parameters,target_token_mask,0,self.img_norm1.eps)
             else:

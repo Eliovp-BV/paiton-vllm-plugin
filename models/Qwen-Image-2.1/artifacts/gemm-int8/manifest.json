@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_gemm_int8_gfx1201.so",
+  "sha256": "2d978f2268bd520c6d02dbc75c2c97376283e3bf104eb277c7ceb99329e43741",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "int8 GEMM with per-row or per-K-block (128/256) activation scales and per-channel weight scales; wave32",
+  "arithmetic": "v_wmma_i32_16x16x16_iu8, int32 partials scaled into fp32 per block, bf16 output with bias",
+  "abi": "PaitonImage21GemmInt8 (see gemm_int8.hip)"
+}

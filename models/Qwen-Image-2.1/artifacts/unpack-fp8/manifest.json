@@ -1,0 +1,11 @@
+{
+  "file": "mxfp4_fp8_gfx1201.so",
+  "sha256": "9a09cbaffcc30dbbd2a0b579b7d9f470cb1541164a6fd79adc8a7dccdfbab29e",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "exact MXFP4 (E2M1/G32/E8M0) -> fp8 e4m3fn reconstruction with one power-of-two scale per row (inexact values zeroed and counted); int8 mode exact for block-exponent spreads <= 3, rounded and counted otherwise",
+  "arithmetic": "integer exponent arithmetic only; row scale 2^(max block exponent - 6)",
+  "abi": "paiton_mxfp4_unpack_fp8 / paiton_mxfp4_unpack_int8 (see unpack_fp8.hip)"
+}

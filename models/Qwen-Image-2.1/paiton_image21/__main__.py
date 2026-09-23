@@ -8,6 +8,8 @@ def main():
     parser.add_argument("--model-dir",type=Path,required=True)
     parser.add_argument("--backend",choices=("native","reference"),default="native")
     parser.add_argument("--native-fusions",action="store_true",help="Enable the qualified gfx1201 BF16 regions; native backend only")
+    parser.add_argument("--precision-profile",choices=("exact","exact-w64","schedule-int8","schedule-fp8"),default=None,
+                        help="exact (default) or a candidate low-precision schedule; requires --native-fusions")
     commands=parser.add_subparsers(dest="command",required=True)
     generate=commands.add_parser("generate")
     generate.add_argument("--prompt",required=True)
@@ -29,7 +31,7 @@ def main():
         source=Image.open(args.image) if args.image else None
         validate_request(args.prompt,args.size,args.size,seed=args.seed,mode=args.mode,image=source)
     print("Verifying checkpoint files and loading the GPU pipeline...",file=sys.stderr,flush=True)
-    engine=ImageEngine(args.model_dir,args.backend,native_fusions=args.native_fusions)
+    engine=ImageEngine(args.model_dir,args.backend,native_fusions=args.native_fusions,precision_profile=args.precision_profile)
     print(f"Pipeline ready in {engine.load_seconds:.2f} seconds.",file=sys.stderr,flush=True)
     if args.command=="serve":
         from .server import serve
