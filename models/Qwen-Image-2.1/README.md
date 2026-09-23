@@ -10,10 +10,11 @@ For compatible framework runtimes beyond RDNA4, see the separate
 This container uses the RDNA4 package; portable setup and hardware measurements
 are documented in that model's card.
 
-At **2048 × 2048, 40 steps, guidance 1.0**, v1.0.1 measured **165.14 seconds**
-median warm complete-request latency in three fresh container processes. A separate
-matched test measured **168.228 → 165.953 seconds** against v1.0.0 (1.35% lower
-latency). Settings and checkpoint bytes are unchanged.
+At **2048 × 2048, 40 steps, guidance 1.0**, v1.0.2 measured **103.64 seconds** median warm
+complete-request latency against **136.65 seconds** for its bit-exact profile in matched fresh-process
+pairs (24.2% lower latency), and the bit-exact profile itself is 17.7% faster than v1.0.1
+(165.588 → 136.285 seconds, denoiser tensors bit-exact).
+Checkpoint bytes and settings are unchanged; the default profile's precision schedule is described below.
 [Measurements, quality checks and limits](BENCHMARKS.md).
 
 ## Start with one command
@@ -22,7 +23,7 @@ Linux, Docker and a working AMD GPU driver are required. Run one model at a time
 on the R9700; the worker requires at least 30 GiB free before loading.
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2
 ```
 
 The first launch downloads **9.33 GB** of checkpoint files, verifies their SHA-256
@@ -106,11 +107,12 @@ already populated cache. Network access is disabled in the model loader after
 checkpoint preparation; it does not execute Python code downloaded from the Hub.
 
 Append `--precision-profile exact` to keep every step bit-exact against the pinned
-BF16 arithmetic (the v1.0.1 contract). The default profile `schedule-int8` keeps the
-cached text prefix and the first ten denoising steps exact and runs steps 11–40 with
-int8 activations through native kernels; the checkpoint bytes are unchanged, the
-receipts record the profile, and [measurements](measurements/low-precision-r9700.json)
-hold the matched samples and quality grades. Append `--no-native-fusions` to use the
+BF16 arithmetic (the v1.0.1 contract, with the exact native attention). The default profile
+`schedule-int8` keeps the cached text prefix and the first seven denoising steps exact and runs
+steps 8–40 with int8 activations and int8/fp8 attention through native kernels; the checkpoint
+bytes are unchanged, the receipts record the profile, and [measurements](measurements/low-precision-r9700.json)
+hold the matched samples and quality grades. `schedule-int8-11` keeps ten steps exact with int8-QK
+attention (more quality headroom, measured 112.7 s). Append `--no-native-fusions` to use the
 existing native weight reconstruction with the original BF16 regions. The optimized regions check the pinned framework,
 upstream sources, artifact hashes, ABI and target before use. Unsupported upstream
 contracts retain original regions and report that state in `/health`. The managed
@@ -152,6 +154,27 @@ and [NOTICE](NOTICE). The adapter and distributed Paiton runtime binaries use th
 repository's Apache-2.0 runtime license. Dependency licenses remain applicable.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+## Release v1.0.2
+
+The managed image runs a **precision schedule** by default. The cached text-prefix pass and the
+first seven denoising steps stay bit-exact against the pinned BF16 arithmetic; steps 8–40 run int8
+activations (one scale per 256-element block, quantized inside the fused LayerNorm) through wave64
+int8 WMMA GEMMs against an exact-weight int8 reconstruction of the unchanged MXFP4 checkpoint, with
+an int8-QKᵀ / fp8-P·V attention on those steps. Exact steps use the wave64 exact attention kernel.
+`--precision-profile exact` keeps every step bit-exact: that path is the exact native attention and
+fused normalization qualified for this release, **165.588 → 136.285 seconds** warm
+against v1.0.1 (17.70% lower latency, denoiser tensors bit-exact).
+
+In two matched fresh-process pairs against that exact path, the default profile changed warm complete HTTP
+median from **136.65 to 103.64 seconds** (24.2% lower latency) and the first request from
+**148.50 to 115.37 seconds**, with whole-device use at 25.62 GiB. Against the exact images
+the default grades 41.8 dB PSNR / 0.0008 LPIPS at 2048×2048 and 50.2 dB at
+1024×1024 (gates: PSNR ≥ 35 dB, LPIPS ≤ 0.02, CLIP Δ ≥ −0.01).
+
+Compared with v1.0.1 (165.141 s warm in its container repeat), the default profile is
+37% faster and the bit-exact profile 17% faster.
+[Matched samples, quality and limits](BENCHMARKS.md#release-v102).
+
 ## Release v1.0.1
 
 The managed image includes the qualified exact native weight reconstruction
@@ -173,27 +196,3 @@ backend and must not be pooled with the incremental qualification above.
 
 The v1.0.1 container retains the qualified executable files and dependencies;
 release metadata is updated. The original v1.0.0 tag remains available.
-
-## Candidate: precision schedule (local, unreleased)
-
-This checkout also carries a second local candidate, the `schedule-int8` precision profile (the
-container default in this checkout; `--precision-profile exact` restores the bit-exact path). The cached
-text prefix and the first ten denoising steps stay bit-exact; steps 11–40 run int8 activations (one scale
-per 256-element block) through wave64 int8 WMMA GEMMs against an exact-weight int8 reconstruction of the
-unchanged MXFP4 checkpoint, with the wave64 exact attention on exact steps and an int8-QKᵀ attention on the
-low-precision steps. In two matched fresh-process pairs against the exact path, warm complete HTTP median
-changed from **136.3 to 112.7 seconds** (17.3% lower latency), first request from **148.0 to 124.3 seconds**,
-with whole-device use at 25.5 GiB. Against the exact images the candidate grades 42.1 dB PSNR / 0.0007 LPIPS at
-2048×2048 and 51.2 dB at 1024×1024; the RGBA, editing and A-B-A checks passed.
-[Matched samples, quality and limits](BENCHMARKS.md#candidate-precision-schedule-local-qualification).
-
-## Candidate: exact native attention (local, unreleased)
-
-This checkout carries a qualified local candidate that is not yet published as a container tag. In
-three matched fresh-process pairs against v1.0.1, warm complete HTTP median changed from
-**165.588 to 136.285 seconds** (17.70% lower latency) with unchanged
-checkpoint, BF16 arithmetic and 2048/40/guidance-1 settings; first-request median changed from
-**176.981 to 147.428 seconds**. Saved denoiser tensors are bit-exact, image,
-RGBA/editing and A-B-A checks passed, and whole-device use stayed below 26 GiB.
-[Matched samples, quality and limits](BENCHMARKS.md#candidate-exact-native-attention-and-fused-normalization-local-qualification).
-

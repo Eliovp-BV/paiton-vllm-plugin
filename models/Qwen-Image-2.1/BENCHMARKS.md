@@ -1,68 +1,43 @@
 # Qwen-Image-2.1 R9700 measurements
 
-Current release: **v1.0.1**. Its separate repeat measured **165.141 seconds warm**;
-matched incremental qualification measured **168.228 → 165.953 seconds**.
-See [v1.0.1 results](#release-v101). The earlier Quark comparison below belongs
-to v1.0.0 and is retained as historical qualification.
+Current release: **v1.0.2**. Matched fresh-process pairs measured **136.65 → 103.64 seconds** warm for
+its default precision schedule against its bit-exact profile, and **165.588 → 136.285 seconds**
+for the bit-exact profile against v1.0.1.
+See [v1.0.2 results](#release-v102). The v1.0.1 and v1.0.0 sections below are retained as historical
+qualification.
 
 One Radeon AI PRO R9700, 32 GB, gfx1201, unchanged 300 W power cap. Balanced
 MXFP4 checkpoint, batch one, 2048 × 2048, 40 steps, guidance 1.0, seed 42 and
 the same neon-street prompt for both paths. All model components remain resident;
-no CPU model offload, VAE tiling, precision changes or approximate caching.
+no CPU model offload, VAE tiling or approximate caching. The default profile's precision schedule is
+documented below; `--precision-profile exact` restores the bit-exact path.
 
 Exact prompt: `A neon shop sign that reads "QWEN IMAGE 2.1", rainy night, reflections on wet pavement`.
 
-## Candidate: precision schedule (local qualification)
+## Release v1.0.2
 
-Not yet released. Built from this checkout (private compiler commits `b52d9314` and `234968af`), the
-`schedule-int8` profile keeps the cached text-prefix pass and the first ten denoising steps on the
-bit-exact path and runs steps 11–40 with int8 activations (one fp32 scale per 256-element block) through
-wave64 int8 WMMA GEMMs against an int8 reconstruction of the unchanged MXFP4 weights (exact for 99.6% of
-channels, the rest rounded and counted per request). The wave64 exact attention (bit-exact, 45/45
-reference cases) serves the exact steps and an int8-QKᵀ attention (per-row int8 Q and K, int32 scores,
-bf16 softmax and P·Vᵀ) the low-precision steps. Checkpoint bytes, residency, the 2048/40/guidance-1
-workload and the allocation policy are unchanged.
+Built from this checkout and private compiler commits `ab6affcf`, `b52d9314` and `234968af`. Two things changed
+against v1.0.1: every step now runs the exact native attention and fused normalization (the `exact` profile,
+bit-exact denoiser tensors), and the default profile `schedule-int8` adds a precision schedule on top of it.
+Checkpoint bytes, residency, the 2048/40/guidance-1 workload and the allocation policy are unchanged.
 
-| Measurement | Exact (control) | schedule-int8 + int8-QK attention | Latency reduction |
-| --- | ---: | ---: | ---: |
-| First request median | 147.97 s | 124.26 s | 16.0% |
-| Warm request median | 136.24 s | 112.72 s | 17.3% |
-| Warm samples | 136.28 / 136.21 s | 112.68 / 112.76 s | |
-| Peak whole-device VRAM | 25.5 GiB | 25.5 GiB | |
+### Bit-exact profile: exact native attention and fused normalization
 
-Without the int8-QK attention (exact attention on every step): warm **118.53 s** (136.51 s control),
-first request 129.8 s. The wave64 exact attention alone (bit-exact): warm **133.56 s** (136.31 s control).
-
-Quality against the exact pipeline's images (gates: PSNR ≥ 35 dB, LPIPS ≤ 0.02, CLIP Δ ≥ −0.01):
-
-| Image | schedule-int8 | + int8-QK attention |
-| --- | --- | --- |
-| 2048² neon prompt | 44.6 dB / 0.0006 | 42.1 dB / 0.0007 |
-| 1024² teapot prompt | 51.6 dB / 0.0004 | 51.2 dB / 0.0005 |
-| Mode suite (1024 text, 2048 RGBA, 1024 edit, A-B-A, 2048 text) | 51.2 / 38.5 / 52.2 / identical / 49.7 dB | |
-
-The same formats applied to all 40 steps fail the gate (30–33 dB): the early steps decide the composition.
-Two alternating fresh server processes per path, one first and one warm request each, isolated caches,
-whole-device VRAM sampled every 5 ms; complete HTTP timings to PNG receipt.
-[Samples, switches and grades](measurements/low-precision-r9700.json).
-
-## Candidate: exact native attention and fused normalization (local qualification)
-
-Not yet released. Built from this checkout (private compiler commit `ab6affcf`), the candidate replaces
+Released as the `exact` profile of v1.0.2. Built from private compiler commit `ab6affcf`, it replaces
 the framework attention of the dense text-to-image and cached decode steps with an exact native HIP kernel
 that reproduces the pinned framework arithmetic bit for bit, reads the cached text prefix and the
 token-major projections in place (no concatenation or relayout copies), and fuses each block's
 LayerNorm with the preceding gated residual and the following modulation. Checkpoint bytes, BF16
 arithmetic, residency, the 2048/40/guidance-1 workload and the allocation policy are unchanged.
 
-| Measurement | v1.0.1 control | Candidate | Latency reduction |
+| Measurement | v1.0.1 control | v1.0.2 exact profile | Latency reduction |
 | --- | ---: | ---: | ---: |
 | First request median | 176.981 s | 147.428 s | 16.70% |
 | Warm request median | 165.588 s | 136.285 s | 17.70% |
 | Warm range | 165.540–165.660 s | 136.248–136.296 s | |
 | Warm sample standard deviation | 0.060 s | 0.025 s | |
 
-| Pair | Control warm | Candidate warm | Saving |
+| Pair | v1.0.1 warm | Exact profile warm | Saving |
 | --- | ---: | ---: | ---: |
 | 1 | 165.588 s | 136.285 s | 29.304 s |
 | 2 | 165.540 s | 136.296 s | 29.245 s |
@@ -75,12 +50,12 @@ timings include text encoding, denoising, VAE, PNG encoding and receipt of the J
 startup was separate. This is a bounded matched reproducibility check on one R9700, not a population
 confidence interval.
 
-Saved denoiser outputs at steps 1, 20 and 40 of the candidate are **bit-exact** against the v1.0.1 run
+Saved denoiser outputs at steps 1, 20 and 40 of the exact profile are **bit-exact** against the v1.0.1 run
 of the same request. Complete images differ from fresh-process v1.0.1 images only at the documented
 cross-process VAE/post-processing variability level: over 10 graded pairs (neon workload, warm
 benchmark pairs, and the RGBA/edit/repeat suite) RGB PSNR ranged **54.55–61.71 dB**,
 maximum LPIPS **0.0002177**, minimum CLIPscore delta **-0.001065**, maximum alpha MAE
-**0.02912**; every predefined gate passed. Each candidate process repeated its first request
+**0.02912**; every predefined gate passed. Each process repeated its first request
 byte-identically after intervening RGBA and edit requests, with no prefix-cache objects retained.
 
 The native attention serves calls without a mask or with an all-valid key mask; the segmented prefill
@@ -90,6 +65,44 @@ bounds/canary checks, nondefault streams, event handoffs, poisoned changed-input
 the attention library is bit-exact against the pinned framework on synthetic, one-hot and captured
 denoiser calls in both memory layouts. Records:
 [native-attention-r9700.json](measurements/native-attention-r9700.json).
+
+### Default profile: precision schedule
+
+The cached text-prefix pass and the first seven denoising steps run the bit-exact path. Steps 8–40 run int8
+activations, one fp32 scale per 256-element block, quantized inside the fused LayerNorm/modulation kernel and
+multiplied through wave64 int8 WMMA GEMMs against an int8 reconstruction of the unchanged MXFP4 weights (exact for
+99.6% of channels, the rest rounded and counted per request). On those steps the attention computes QKᵀ from
+per-row int8 Q and K (int32 scores, bf16 softmax) and P·V from fp8 probabilities and per-channel fp8 values;
+exact steps use the wave64 exact attention (bit-exact, 45/45 reference cases). The switch point is counted per
+transformer forward.
+
+| Profile (two matched pairs each) | Exact control warm | Candidate warm | Warm reduction | First request |
+| --- | ---: | ---: | ---: | ---: |
+| `schedule-int8` (default): 7 exact steps, int8-QK + fp8-PV attention | 136.65 s | 103.64 s | 24.2% | 148.50 → 115.37 s |
+| 7 exact steps, int8-QK attention (bf16 P·V) | 136.58 s | 112.56 s | 17.6% | 149.17 → 124.13 s |
+| `schedule-int8-11`: 10 exact steps, int8-QK attention | 136.24 s | 112.72 s | 17.3% | 147.97 → 124.26 s |
+| 10 exact steps, exact attention on every step | 136.51 s | 118.53 s | 13.2% | 147.74 → 129.82 s |
+| wave64 exact attention only (bit-exact) | 136.31 s | 133.56 s | 2.0% | 147.85 → 145.25 s |
+
+Default-profile warm samples: 103.79 / 103.48 s against 136.49 / 136.82 s; peak whole-device VRAM
+25.62 GiB. Two alternating fresh server processes per path, one first and one warm request each, isolated caches,
+whole-device VRAM sampled every 5 ms; complete HTTP timings to PNG receipt; startup separate. Bounded matched checks on one R9700.
+
+Quality against the exact pipeline's images (gates: PSNR ≥ 35 dB, LPIPS ≤ 0.02, CLIP Δ ≥ −0.01):
+
+| Image | `schedule-int8` (default) | 7 exact, int8-QK | `schedule-int8-11` | 10 exact, exact attention |
+| --- | --- | --- | --- | --- |
+| 2048² neon prompt (PSNR / LPIPS) | 41.8 dB / 0.0008 | 43.0 dB / 0.0010 | 42.1 dB / 0.0007 | 44.6 dB / 0.0006 |
+| 1024² teapot prompt | 50.2 dB / 0.0005 | 50.8 dB / 0.0005 | 51.2 dB / 0.0005 | 51.6 dB / 0.0004 |
+
+The same formats applied to all 40 steps fail the gate (30–33 dB): the early steps decide the composition, and
+fewer than seven exact steps costs quality quickly (prefix-only 36.7 dB). Simulated per-GEMM error does not predict
+the image gate; the schedule was chosen on graded images.
+
+All eleven companion libraries passed independent execution without Torch/Triton, bounds/canary checks, nondefault
+streams, event handoffs and A-B-A; the int8 and fp8 GEMMs are checked against fp32 references and the exact-weight
+reconstruction against the BF16 path per channel. The int8 quantization exactness claim covers weights only; activations
+are rounded on the low-precision steps by design. Records: [low-precision-r9700.json](measurements/low-precision-r9700.json).
 
 ## Original v1.0.0 complete-request qualification
 
@@ -163,8 +176,8 @@ in [complete-requests.json](measurements/complete-requests.json).
 Runtime: Torch `2.15.0.dev20260907+rocm10.0`, HIP `7.15.26333`, Diffusers commit
 `7263f3317f6b392d62f41e9d75ed9d7e21fc5a5c`, Transformers `5.17.0`. The Dockerfile
 and requirement files pin the managed runtime. Checkpoint revision and all file
-hashes are in `checkpoint.lock.json`; runtime artifact hashes are in the two
-`artifacts/**/manifest.json` files. The optimized-region SHA-256 is
+hashes are in `checkpoint.lock.json`; runtime artifact hashes are in the
+`artifacts/**/manifest.json` files (twelve libraries in v1.0.2). The optimized-region SHA-256 is
 `96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5`.
 
 Use the [launch and request commands](README.md) for the optimized path. For a

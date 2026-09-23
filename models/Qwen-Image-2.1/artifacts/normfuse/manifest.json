@@ -4,7 +4,7 @@
   "architecture": "gfx1201",
   "abi_version": 1,
   "framework_dependencies": [],
-  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate)",
+  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate) | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate)",
   "limits": {
     "hidden_dim": 4096,
     "max_rows": 40000

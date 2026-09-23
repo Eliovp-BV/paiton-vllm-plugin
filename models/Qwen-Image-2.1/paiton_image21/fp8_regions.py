@@ -145,4 +145,4 @@ class Fp8Regions:
             if manifest is not None:
                 manifests[f'{name}_sha256'] = manifest['sha256']
         return dict(format=self.format, wave64=self.wave64, from_step=self.from_step, exact_prefix=self.exact_prefix,
-                    variant=self.variant, group_m=self.group_m, counts=dict(self.counts), qualification='candidate, not qualified', **manifests)
+                    variant=self.variant, group_m=self.group_m, counts=dict(self.counts), qualification='precision schedule; graded profiles in measurements/low-precision-r9700.json', **manifests)

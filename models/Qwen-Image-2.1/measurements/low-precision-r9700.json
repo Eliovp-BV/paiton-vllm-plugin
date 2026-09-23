@@ -1,9 +1,10 @@
 {
-  "schema": "paiton-image21-low-precision-measurements-v1",
+  "schema": "paiton-image21-low-precision-measurements-v2",
+  "release": "qwen-image21-mxfp4-rdna4-v1.0.2 (default profile schedule-int8: cached prefix pass and seven denoising steps exact, steps 8-40 int8 GEMMs with int8-QK / fp8-PV attention; --precision-profile exact restores the bit-exact path)",
   "gpu": "AMD Radeon AI PRO R9700 (gfx1201, 32 GB), unchanged 300 W power cap",
   "workload": "batch 1, 2048x2048, 40 steps, guidance 1.0, seed 42, neon-street prompt; 31-token cached text prefix",
   "method": "Matched alternating pairs of fresh server processes: the exact package versus the same package with the candidate precision switches; one first and one warm request each; whole-device VRAM sampled every 5 ms; complete HTTP timing to PNG receipt.",
-  "precision_schedule": "The cached text-prefix pass and the first ten denoising steps run the exact BF16 path; steps 11-40 run int8 activations (one scale per 256-element block, exact-weight int8 reconstruction from the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs; the wave64 exact attention serves exact steps and, when enabled, an int8-QK attention serves the low-precision steps.",
+  "precision_schedule": "The cached text-prefix pass and the first N denoising steps (LP_FROM_STEP-1; seven in the released default, ten in schedule-int8-11) run the exact BF16 path; later steps run int8 activations (one scale per 256-element block from the fused LayerNorm quantizer, exact-weight int8 reconstruction from the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs; the wave64 exact attention serves exact steps and, when enabled, an int8-QK attention (ATTENTION_FULL8: fp8 probabilities and fp8 values) serves the low-precision steps.",
   "quality_gates": "PSNR >= 35 dB, LPIPS <= 0.02, CLIP delta >= -0.01 against the exact pipeline images at 2048x2048 (neon prompt) and 1024x1024 (teapot prompt); mode suite: 1024 text, 2048 RGBA, 1024 edit, A-B-A repeat, 2048 text.",
   "pairs": {
     "attn-w64": {
@@ -204,6 +205,143 @@
           "native_fusions": "active (bf16-regions, attention, normfuse)"
         }
       ]
+    },
+    "int8-256-s8-full8": {
+      "candidate_switches": {
+        "LP": "int8-256",
+        "LP_W64": "1",
+        "ATTENTION_QK8": "1",
+        "ATTENTION_W64": "1",
+        "LP_FROM_STEP": "8",
+        "ATTENTION_FULL8": "1"
+      },
+      "control_warm": {
+        "n": 2,
+        "median": 136.65174508150085,
+        "minimum": 136.4860904950183,
+        "maximum": 136.8173996679834,
+        "sample_sd": 0.2342709628729435
+      },
+      "candidate_warm": {
+        "n": 2,
+        "median": 103.6372979154985,
+        "minimum": 103.48123861296335,
+        "maximum": 103.79335721803363,
+        "sample_sd": 0.22070118217968218
+      },
+      "control_first": {
+        "n": 2,
+        "median": 148.50008444147534,
+        "minimum": 148.47610496595735,
+        "maximum": 148.52406391699333,
+        "sample_sd": 0.033912099496135155
+      },
+      "candidate_first": {
+        "n": 2,
+        "median": 115.37483377248282,
+        "minimum": 115.36618908698438,
+        "maximum": 115.38347845798125,
+        "sample_sd": 0.012225431474342135
+      },
+      "warm_saving_percent": 24.159550356500837,
+      "runs": [
+        {
+          "label": "int8-256-s8-full8-1-control",
+          "first_request_seconds": 148.47610496595735,
+          "warm_request_seconds": 136.4860904950183,
+          "peak_vram_gib": 25.32802963256836,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "int8-256-s8-full8-1-candidate",
+          "first_request_seconds": 115.38347845798125,
+          "warm_request_seconds": 103.79335721803363,
+          "peak_vram_gib": 25.449878692626953,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK + fp8-PV attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s8-full8-2-candidate",
+          "first_request_seconds": 115.36618908698438,
+          "warm_request_seconds": 103.48123861296335,
+          "peak_vram_gib": 25.566978454589844,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK + fp8-PV attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s8-full8-2-control",
+          "first_request_seconds": 148.52406391699333,
+          "warm_request_seconds": 136.8173996679834,
+          "peak_vram_gib": 25.621177673339844,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        }
+      ]
+    },
+    "int8-256-s8-qk8": {
+      "candidate_switches": {
+        "LP": "int8-256",
+        "LP_W64": "1",
+        "ATTENTION_QK8": "1",
+        "ATTENTION_W64": "1",
+        "LP_FROM_STEP": "8"
+      },
+      "control_warm": {
+        "n": 2,
+        "median": 136.58116284146672,
+        "minimum": 136.39145922998432,
+        "maximum": 136.77086645294912,
+        "sample_sd": 0.26828142018956713
+      },
+      "candidate_warm": {
+        "n": 2,
+        "median": 112.5613056299917,
+        "minimum": 112.5272946379846,
+        "maximum": 112.59531662199879,
+        "sample_sd": 0.04809880616619983
+      },
+      "control_first": {
+        "n": 2,
+        "median": 149.16642417100957,
+        "minimum": 148.36029759503435,
+        "maximum": 149.97255074698478,
+        "sample_sd": 1.1400351367335317
+      },
+      "candidate_first": {
+        "n": 2,
+        "median": 124.1290417065029,
+        "minimum": 124.03874335199362,
+        "maximum": 124.21934006101219,
+        "sample_sd": 0.12770115760700682
+      },
+      "warm_saving_percent": 17.58650805994052,
+      "runs": [
+        {
+          "label": "int8-256-s8-qk8-1-control",
+          "first_request_seconds": 148.36029759503435,
+          "warm_request_seconds": 136.39145922998432,
+          "peak_vram_gib": 25.369094848632812,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "int8-256-s8-qk8-1-candidate",
+          "first_request_seconds": 124.03874335199362,
+          "warm_request_seconds": 112.5272946379846,
+          "peak_vram_gib": 25.549633026123047,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s8-qk8-2-candidate",
+          "first_request_seconds": 124.21934006101219,
+          "warm_request_seconds": 112.59531662199879,
+          "peak_vram_gib": 25.491012573242188,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s8-qk8-2-control",
+          "first_request_seconds": 149.97255074698478,
+          "warm_request_seconds": 136.77086645294912,
+          "peak_vram_gib": 25.601661682128906,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        }
+      ]
     }
   },
   "quality_2048_and_1024": {
@@ -260,6 +398,20 @@
       "psnr_db": 51.22,
       "lpips": 0.0004774851258844137,
       "clip_delta": -0.00132,
+      "alpha_mae": 0.0197,
+      "passed": true
+    },
+    "real-int8-256-s8-full8-neon-2048": {
+      "psnr_db": 41.81,
+      "lpips": 0.0008461558609269559,
+      "clip_delta": 0.00013,
+      "alpha_mae": 0.0025,
+      "passed": true
+    },
+    "real-int8-256-s8-full8-teapot-1024": {
+      "psnr_db": 50.22,
+      "lpips": 0.0004715195100288838,
+      "clip_delta": -0.00011,
       "alpha_mae": 0.0197,
       "passed": true
     },
@@ -419,5 +571,66 @@
         "passed": true
       }
     ]
-  }
+  },
+  "profile_qualification": {
+    "exact-w64": {
+      "requests": [
+        144.516,
+        133.477
+      ],
+      "intermediates": [
+        {
+          "tensor": "denoiser-step-1",
+          "bit_exact": true,
+          "relative_l2": null
+        },
+        {
+          "tensor": "denoiser-step-20",
+          "bit_exact": true,
+          "relative_l2": null
+        },
+        {
+          "tensor": "denoiser-step-40",
+          "bit_exact": true,
+          "relative_l2": null
+        }
+      ],
+      "images": [],
+      "artifacts": {
+        "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "attention": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "normfuse": "86aa6cb1155cc6b161ccad4b89a0f4acc9fade832688314666c79ebffc043d58"
+      }
+    },
+    "schedule-int8": {
+      "requests": [
+        124.119,
+        113.027
+      ],
+      "intermediates": [
+        {
+          "tensor": "denoiser-step-1",
+          "bit_exact": true,
+          "relative_l2": null
+        },
+        {
+          "tensor": "denoiser-step-20",
+          "bit_exact": false,
+          "relative_l2": 0.007991963997483253
+        },
+        {
+          "tensor": "denoiser-step-40",
+          "bit_exact": false,
+          "relative_l2": 0.053516361862421036
+        }
+      ],
+      "images": [],
+      "artifacts": {
+        "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "attention": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "normfuse": "86aa6cb1155cc6b161ccad4b89a0f4acc9fade832688314666c79ebffc043d58"
+      }
+    }
+  },
+  "container_pairs": {}
 }

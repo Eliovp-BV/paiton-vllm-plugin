@@ -60,11 +60,11 @@ def _load_library(directory, abi_version, abi_symbol, arch_symbol, init_symbol):
 
 class NativeRegions:
     def __init__(self, directory, attention_directory=None, normfuse_directory=None, qk8_directory=None):
-        self.fp8 = None   # candidate fp8 GEMM path (Fp8Regions), attached by install() only on explicit opt-in
+        self.fp8 = None   # low-precision GEMM path (Fp8Regions) of the precision schedule, attached by install() when a profile selects it
         self.pending_quantized = None   # (codes, scale) of the fused LayerNorm quantizer for the next attention projection
         self.norm_modulate_quant_kernel = None
         self.qk8_library = self.qk8_manifest = None
-        if qk8_directory is not None:   # candidate int8-QK^T attention, only for the low-precision forwards of the schedule
+        if qk8_directory is not None:   # int8-QK^T attention (optionally fp8 P/V), only for the low-precision forwards of the schedule
             self.qk8_library, self.qk8_manifest = _load_library(
                 qk8_directory, 3, 'PaitonImage21AttentionQk8GetAbiVersion', 'PaitonImage21AttentionQk8GetTargetArch', 'PaitonImage21AttentionQk8Initialize')
             self.qk8_pack = self.qk8_library.PaitonImage21AttentionPackKV

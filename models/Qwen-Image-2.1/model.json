@@ -9,8 +9,8 @@
   "batch_size": 1,
   "steps": 40,
   "guidance": 1.0,
-  "native_region": "MXFP4 reconstruction, qualified BF16 denoiser regions, exact native attention and fused normalization",
-  "runtime": "Pinned Diffusers/BF16 with native HIP reconstruction, BF16 regions, exact attention and fused normalization",
+  "native_region": "MXFP4 reconstruction, qualified BF16 denoiser regions, exact native attention, fused normalization, and a precision schedule (int8 GEMMs with int8-QK/fp8-PV attention on denoising steps 8-40)",
+  "runtime": "Pinned Diffusers/BF16 with native HIP reconstruction, BF16 regions, exact attention, fused normalization and the default int8 precision schedule (--precision-profile exact restores the bit-exact path)",
   "checkpoint_offload": false,
   "status": "Hardware-qualified bounded R9700 model profile",
   "tasks": {
@@ -59,8 +59,8 @@
     "health": "/health"
   },
   "quality_scope": "The checkpoint's original eight-prompt quantization screen measured loss against BF16. The optimization separately passed a bounded seven-pair screen against the identical balanced checkpoint; no arbitrary-prompt quality-equivalence claim.",
-  "performance_scope": "v1.0.1: 165.141 seconds warm complete-request median in three fresh container processes (range 165.098\u2013166.725; first seed 42, warm seed 43). Separate matched qualification against v1.0.0: 168.228 to 165.953 seconds warm HTTP median, 1.35% lower, n=3 per path, fixed 2048/40/CFG1 seed-42 neon workload. These are separate experiments.",
-  "memory_scope": "28.336 GiB maximum independently sampled whole-device use in the latest three-process container repeat; resident components, no CPU offload or VAE tiling. Sampling can miss shorter transients.",
+  "performance_scope": "v1.0.2: default profile schedule-int8 measured 103.637 s warm / 115.375 s first request versus 136.652 / 148.500 s for the bit-exact profile (two alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload). The bit-exact profile measured 136.285 s warm versus 165.588 s for v1.0.1 (three matched pairs, denoiser tensors bit-exact).",
+  "memory_scope": "25.874 GiB maximum independently sampled whole-device use in the v1.0.2 matched pairs; resident components, no CPU offload or VAE tiling. Sampling can miss shorter transients.",
   "repository": "EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4",
   "tested_gpu": "AMD Radeon AI PRO R9700",
   "hardware_compatibility": {
@@ -72,20 +72,20 @@
   "repository_revision": "b52373faeac233fb27c8bba2d334729208ee7b22",
   "native_fusions_option": "Enabled by the managed launchers; --no-native-fusions selects the unpack-only fallback",
   "native_fusions_measurements": "measurements/bf16-regions-r9700.json",
-  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1",
+  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2",
   "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
   "container_repeat_measurements": "measurements/container-followup-r9700.json",
-  "candidate_scope": "Local candidate (not published): warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload; denoiser tensors bit-exact; maximum sampled whole-device use 25.582 GiB.",
   "native_attention_measurements": "measurements/native-attention-r9700.json",
   "precision_profiles": {
     "default": "schedule-int8",
-    "option": "--precision-profile {exact,exact-w64,schedule-int8,schedule-int8-full8,schedule-fp8} (or PAITON_IMAGE21_PROFILE); requires native fusions",
-    "exact": "Every step bit-exact against the pinned BF16 framework arithmetic (the v1.0.1 contract with the exact native attention and fused normalization).",
-    "exact_w64": "As exact, with the wave64 exact attention kernel (bit-exact, 133.6 s warm in matched pairs).",
-    "schedule_int8": "Cached text prefix and the first ten denoising steps exact; steps 11-40 with int8 activations (per 256-element block scales, exact-weight int8 reconstruction of the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs, wave64 exact attention on exact steps and int8-QK attention on the low-precision steps.",
-    "schedule_int8_full8": "schedule-int8 with fp8 probabilities and fp8 values inside the low-precision attention (candidate under measurement).",
-    "schedule_fp8": "The schedule with bit-exact fp8 weights and fp8 per-row activations (slower GEMMs; 44.6 dB).",
+    "option": "--precision-profile {exact,exact-w32,schedule-int8,schedule-int8-11,schedule-fp8} (or PAITON_IMAGE21_PROFILE); requires native fusions",
+    "exact": "Every step bit-exact against the pinned BF16 framework arithmetic, with the wave64 exact native attention and fused normalization.",
+    "exact_w32": "As exact, with the v1.0.1 wave32 exact attention kernel.",
+    "schedule_int8": "Cached text prefix and the first seven denoising steps exact; steps 8-40 with int8 activations (per 256-element block scales from the fused LayerNorm quantizer, exact-weight int8 reconstruction of the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs and int8-QK / fp8-PV attention. Graded 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images.",
+    "schedule_int8_11": "Ten exact denoising steps and int8-QK attention with bf16 P.V (more headroom: 42.1 dB at 2048x2048; 112.7 s warm).",
+    "schedule_fp8": "The eleven-forward schedule with bit-exact fp8 weights and fp8 per-row activations (slower GEMMs; 44.6 dB).",
     "measurements": "measurements/low-precision-r9700.json"
   },
-  "low_precision_candidate_scope": "Local candidate (not published): schedule-int8 with int8-QK attention measured 112.7 s warm / 124.3 s first request versus 136.3 / 148.0 s for the exact path (two alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload, peak 25.5 GiB); graded 42.1 dB PSNR / 0.0007 LPIPS at 2048x2048 and 51.2 dB at 1024x1024 against the exact images; mode suite passed (RGBA 38.5 dB, edit 52.2 dB, A-B-A identical). Checkpoint bytes unchanged."
+  "native_attention_scope": "Released in v1.0.2 as the exact profile: warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs; denoiser tensors bit-exact.",
+  "precision_schedule_scope": "Default profile: 103.637 s warm (24.2% below the bit-exact profile) with 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images. Bounded graded checks on the documented prompts; no arbitrary-prompt equivalence claim. Checkpoint bytes unchanged."
 }

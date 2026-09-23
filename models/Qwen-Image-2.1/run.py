@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 
 
-PRECISION_PROFILES = ("exact", "exact-w64", "schedule-int8", "schedule-int8-full8", "schedule-fp8")
+PRECISION_PROFILES = ("exact", "exact-w32", "schedule-int8", "schedule-int8-11", "schedule-fp8")
 DEFAULT_PROFILE = "schedule-int8"
 
 
@@ -37,7 +37,7 @@ def main(argv=None):
         command_parser.add_argument("--model-dir", type=Path, default=argparse.SUPPRESS)
         command_parser.add_argument("--cache-dir", type=Path, default=argparse.SUPPRESS)
         command_parser.add_argument("--precision-profile", choices=PRECISION_PROFILES, default=argparse.SUPPRESS,
-                                    help="exact keeps every step bit-exact; schedule-int8 (default) runs steps 11-40 in int8 (measured 112.7 s warm)")
+                                    help="exact keeps every step bit-exact; schedule-int8 (default) runs steps 8-40 in low precision (measured 103.6 s warm)")
     args = parser.parse_args(argv)
     if args.command == "generate":
         if args.output.exists():

@@ -311,7 +311,9 @@ class PrecisionProfiles(unittest.TestCase):
     def test_profile_table_is_explicit_and_exact_is_empty(self):
         from paiton_image21.runtime import ImageEngine
         p=ImageEngine.PRECISION_PROFILES
-        self.assertEqual(p['exact'], {})
-        self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP'], 'int8-256'); self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP_FROM_STEP'], '11')
+        self.assertEqual(p['exact-w32'], {})
+        self.assertEqual(set(p['exact']), {'PAITON_IMAGE21_ATTENTION_W64'})
+        self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP'], 'int8-256'); self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_LP_FROM_STEP'], '8')
+        self.assertEqual(p['schedule-int8']['PAITON_IMAGE21_ATTENTION_FULL8'], '1')
+        self.assertEqual(p['schedule-int8-11']['PAITON_IMAGE21_LP_FROM_STEP'], '11'); self.assertNotIn('PAITON_IMAGE21_ATTENTION_FULL8', p['schedule-int8-11'])
         self.assertEqual(p['schedule-fp8']['PAITON_IMAGE21_LP'], 'fp8-row')
-        self.assertEqual(set(p['exact-w64']), {'PAITON_IMAGE21_ATTENTION_W64'})

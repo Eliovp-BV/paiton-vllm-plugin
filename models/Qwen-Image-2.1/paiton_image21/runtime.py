@@ -35,18 +35,21 @@ def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
 
 class ImageEngine:
     PRECISION_PROFILES={
-        "exact":{},
-        # candidate: cached prefix + first 10 denoising steps exact; steps 11-40 with int8 (per 256-block) activations
-        # through the wave64 int8 GEMMs, wave64 exact attention on exact steps, int8-QK attention on the others
-        "schedule-int8":{"PAITON_IMAGE21_LP":"int8-256","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"11",
-                         "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
-        # candidate with fp8 probabilities and values inside the low-precision attention as well
-        "schedule-int8-full8":{"PAITON_IMAGE21_LP":"int8-256","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"11",
-                               "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_FULL8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
-        # candidate with bit-exact weights: fp8 e4m3 activations per row on the same schedule (slower GEMMs)
+        # exact: every step bit-exact against the pinned BF16 framework arithmetic; the wave64 exact attention kernel
+        # (bit-exact on the reference suite and end to end) serves the dense and cached-decode attention
+        "exact":{"PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # exact with the v1.0.1 wave32 attention kernel (fallback / comparison)
+        "exact-w32":{},
+        # release candidate: cached text prefix + first 7 denoising steps exact; steps 8-40 with int8 activations
+        # (per 256-block scales, exact-weight int8 reconstruction) through wave64 int8 GEMMs fed by the fused LayerNorm
+        # quantizer, int8-QK + fp8-P/V attention on those steps, wave64 exact attention on the exact steps
+        "schedule-int8":{"PAITON_IMAGE21_LP":"int8-256","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"8",
+                         "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_FULL8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # the same with ten exact denoising steps and int8-QK-only attention (more headroom, measured 112.7 s)
+        "schedule-int8-11":{"PAITON_IMAGE21_LP":"int8-256","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"11",
+                            "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # bit-exact fp8 weights with fp8 per-row activations on the eleven-forward schedule (slower GEMMs)
         "schedule-fp8":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"11","PAITON_IMAGE21_ATTENTION_W64":"1"},
-        # exact wave64 attention only (bit-exact)
-        "exact-w64":{"PAITON_IMAGE21_ATTENTION_W64":"1"},
     }
     def __init__(self,model_dir,backend="native",artifact_dir=None,verify=True,native_fusions=False,precision_profile=None):
         if native_fusions and backend != "native":
@@ -97,11 +100,11 @@ class ImageEngine:
         if native_fusions:
             from .native_regions import install
             companions={name:artifacts/name for name in ("attention","attention-w64","attention-qk8","attention-full8","normfuse","gemm-fp8","gemm-int8","gemm-w64","quantize","unpack-fp8") if (artifacts/name/"manifest.json").is_file()}
-            if os.environ.get("PAITON_IMAGE21_ATTENTION_W64")=="1" and "attention-w64" in companions:   # candidate wave64 exact attention
+            if os.environ.get("PAITON_IMAGE21_ATTENTION_W64")=="1" and "attention-w64" in companions:   # wave64 exact attention (bit-exact; the exact profile)
                 companions["attention"]=companions["attention-w64"]
             fp8_directories=None
             low_precision=os.environ.get("PAITON_IMAGE21_LP") or ("fp8-row" if os.environ.get("PAITON_IMAGE21_FP8")=="1" else None)
-            if low_precision:   # candidate low-precision GEMM path: explicit opt-in only, not qualified
+            if low_precision:   # low-precision GEMM path of the precision schedule (selected by the profile switches)
                 fp8_directories=dict(gemm_directory=companions.get("gemm-fp8"),quantize_directory=companions["quantize"],
                                      unpack_directory=companions["unpack-fp8"],gemm_int8_directory=companions.get("gemm-int8"),
                                      gemm_w64_directory=companions.get("gemm-w64"),format=low_precision,
@@ -118,9 +121,9 @@ class ImageEngine:
                 active=["bf16-regions"]+[name for name,library in (("attention",self.native_regions.attention_library),
                                                                 ("normfuse",self.native_regions.normfuse_library)) if library is not None]
                 if self.native_regions.fp8 is not None:
-                    active.append(f"low-precision {self.native_regions.fp8.format}{' wave64' if self.native_regions.fp8.wave64 else ''} (candidate, not qualified)")
+                    active.append(f"low-precision {self.native_regions.fp8.format}{' wave64' if self.native_regions.fp8.wave64 else ''}")
                 if getattr(self.native_regions,"qk8_library",None) is not None:
-                    active.append(("int8-QK + fp8-PV" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "int8-QK")+" attention on low-precision forwards (candidate, not qualified)")
+                    active.append(("int8-QK + fp8-PV" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "int8-QK")+" attention on low-precision forwards")
                 self.native_fusion_status="active ("+", ".join(active)+")"
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
