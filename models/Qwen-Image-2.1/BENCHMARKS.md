@@ -2,7 +2,7 @@
 
 Current release: **v1.0.2**. Matched fresh-process pairs measured **136.65 → 103.64 seconds** warm for
 its default precision schedule against its bit-exact profile, and **165.588 → 136.285 seconds**
-for the bit-exact profile against v1.0.1.
+for the bit-exact profile against v1.0.1. Three fresh container processes measured **103.29 seconds warm** (default profile); one with `exact` measured **133.74 seconds**.
 See [v1.0.2 results](#release-v102). The v1.0.1 and v1.0.0 sections below are retained as historical
 qualification.
 
@@ -94,15 +94,39 @@ Quality against the exact pipeline's images (gates: PSNR ≥ 35 dB, LPIPS ≤ 0.
 | --- | --- | --- | --- | --- |
 | 2048² neon prompt (PSNR / LPIPS) | 41.8 dB / 0.0008 | 43.0 dB / 0.0010 | 42.1 dB / 0.0007 | 44.6 dB / 0.0006 |
 | 1024² teapot prompt | 50.2 dB / 0.0005 | 50.8 dB / 0.0005 | 51.2 dB / 0.0005 | 51.6 dB / 0.0004 |
+| Mode suite (1024 text, 2048 RGBA, 1024 edit, A-B-A, 2048 text) | 50.2 / 35.0 / 52.0 / 50.2 / 48.9 dB; repeat byte-identical: True |
+
+The 2048² RGBA case is the most sensitive mode: the default grades 35.02 dB PSNR / 0.0088 LPIPS there against the 35 dB gate
+(the ten-exact-step profile `schedule-int8-11` scores 38.5 dB on the same case); transparent-image workloads wanting more margin can
+select that profile or `exact`.
 
 The same formats applied to all 40 steps fail the gate (30–33 dB): the early steps decide the composition, and
 fewer than seven exact steps costs quality quickly (prefix-only 36.7 dB). Simulated per-GEMM error does not predict
 the image gate; the schedule was chosen on graded images.
 
+Qualification of the released default (two 2048² requests in one fresh process, step-1 denoiser tensor bit-exact:
+True; relative L2 at steps 20 / 40: 0.0093 / 0.0554) graded 41.8 dB, 41.8 dB against the exact reference images.
+
 All eleven companion libraries passed independent execution without Torch/Triton, bounds/canary checks, nondefault
 streams, event handoffs and A-B-A; the int8 and fp8 GEMMs are checked against fp32 references and the exact-weight
 reconstruction against the BF16 path per channel. The int8 quantization exactness claim covers weights only; activations
 are rounded on the low-precision steps by design. Records: [low-precision-r9700.json](measurements/low-precision-r9700.json).
+
+### Container validation
+
+Fresh containers of the published image `ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2` (`sha256:c7ab0c5f900bf16c2b56fa5aa0f9dd7b8c32a0ea6106db954b43556c4cc07d97`): three with the default profile and one with `--precision-profile exact`, alternating, one first (seed 42) and one warm (seed 43)
+request each, isolated caches, whole-device VRAM sampled every 5 ms, complete HTTP timing to PNG receipt; `/health` reported
+the native regions active and every receipt carries the precision profile and the kernel hashes.
+
+| Container | Startup to ready | First request | Warm request | Peak whole-device VRAM | Profile |
+| --- | ---: | ---: | ---: | ---: | --- |
+| lpimage-1-default | 69.1 s | 113.66 s | 103.35 s | 25.51 GiB | schedule-int8 |
+| lpimage-1-exact | 85.1 s | 147.83 s | 133.74 s | 25.33 GiB | exact |
+| lpimage-2-default | 60.0 s | 114.52 s | 103.24 s | 25.47 GiB | schedule-int8 |
+| lpimage-3-default | 65.0 s | 113.95 s | 103.29 s | 25.55 GiB | schedule-int8 |
+
+Default profile medians: warm **103.29 s**, first **113.95 s**, startup 65.00 s. Exact profile medians:
+warm **133.74 s**, first **147.83 s**. [Container samples](measurements/low-precision-r9700.json).
 
 ## Original v1.0.0 complete-request qualification
 

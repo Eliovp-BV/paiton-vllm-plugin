@@ -570,6 +570,48 @@
         "alpha_mae": 0.0005915164947509766,
         "passed": true
       }
+    ],
+    "schedule-int8-v102": [
+      {
+        "id": "suite-lp-schedule-int8-v102-0-text-to-image",
+        "psnr_db": 50.21162848774908,
+        "lpips": 0.0004673415969591588,
+        "clip_delta": 0.0006089359521865845,
+        "alpha_mae": 0.019411087036132812,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-v102-1-rgba",
+        "psnr_db": 35.01902767738394,
+        "lpips": 0.008750611916184425,
+        "clip_delta": 0.003501027822494507,
+        "alpha_mae": 0.3221406936645508,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-v102-2-edit",
+        "psnr_db": 52.00232018781068,
+        "lpips": 0.00035563460551202297,
+        "clip_delta": 0.0005404651165008545,
+        "alpha_mae": 0.009116172790527344,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-v102-3-text-to-image",
+        "psnr_db": 50.21162848774908,
+        "lpips": 0.0004673415969591588,
+        "clip_delta": 0.0006089359521865845,
+        "alpha_mae": 0.019411087036132812,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-v102-4-text-to-image",
+        "psnr_db": 48.9211778758273,
+        "lpips": 0.0003310712636448443,
+        "clip_delta": -0.008967891335487366,
+        "alpha_mae": 0.0006055831909179688,
+        "passed": true
+      }
     ]
   },
   "profile_qualification": {
@@ -595,7 +637,20 @@
           "relative_l2": null
         }
       ],
-      "images": [],
+      "images": [
+        {
+          "id": "exact-w64-request-0",
+          "psnr_db": 58.814348639307106,
+          "lpips": 4.498026464716531e-05,
+          "clip_delta": 6.660819053649902e-05
+        },
+        {
+          "id": "exact-w64-request-1",
+          "psnr_db": 58.814348639307106,
+          "lpips": 4.498026464716531e-05,
+          "clip_delta": 6.660819053649902e-05
+        }
+      ],
       "artifacts": {
         "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
         "attention": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
@@ -624,13 +679,251 @@
           "relative_l2": 0.053516361862421036
         }
       ],
-      "images": [],
+      "images": [
+        {
+          "id": "schedule-int8-request-0",
+          "psnr_db": 42.094332018087606,
+          "lpips": 0.0007003013743087649,
+          "clip_delta": 0.002111494541168213
+        },
+        {
+          "id": "schedule-int8-request-1",
+          "psnr_db": 42.094332018087606,
+          "lpips": 0.0007003013743087649,
+          "clip_delta": 0.002111494541168213
+        }
+      ],
       "artifacts": {
         "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
         "attention": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
         "normfuse": "86aa6cb1155cc6b161ccad4b89a0f4acc9fade832688314666c79ebffc043d58"
       }
+    },
+    "schedule-int8-v102": {
+      "requests": [
+        115.136,
+        103.683
+      ],
+      "intermediates": [
+        {
+          "tensor": "denoiser-step-1",
+          "bit_exact": true,
+          "relative_l2": null
+        },
+        {
+          "tensor": "denoiser-step-20",
+          "bit_exact": false,
+          "relative_l2": 0.009269427508115768
+        },
+        {
+          "tensor": "denoiser-step-40",
+          "bit_exact": false,
+          "relative_l2": 0.05542433634400368
+        }
+      ],
+      "images": [
+        {
+          "id": "schedule-int8-v102-request-0",
+          "psnr_db": 41.80669995660522,
+          "lpips": 0.0008500447729602456,
+          "clip_delta": -7.040798664093018e-05
+        },
+        {
+          "id": "schedule-int8-v102-request-1",
+          "psnr_db": 41.80669995660522,
+          "lpips": 0.0008500447729602456,
+          "clip_delta": -7.040798664093018e-05
+        }
+      ],
+      "artifacts": {
+        "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "attention": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "normfuse": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9"
+      }
     }
   },
-  "container_pairs": {}
+  "container_pairs": {
+    "lpimage-1-default": {
+      "profile": "schedule-int8",
+      "startup_to_ready_seconds": 69.0614198599942,
+      "first_request_seconds": 113.65555761399446,
+      "warm_request_seconds": 103.35231936897617,
+      "first_seed": 42,
+      "warm_seed": 43,
+      "peak_whole_device_vram_gib": 25.50830841064453,
+      "png_sha256": [
+        "2606e50c31ee70730f38037cd232b1512aa83052e8ecbf3f125b29ed229b7ba1",
+        "cf730e0205c0d7a06087faffc0573222535eae753accf230c286dd5382ea39aa"
+      ],
+      "image": "paiton-qwen-image21:v1.0.2-20260923",
+      "health_native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)",
+      "receipt_hashes": {
+        "checkpoint_sha256": "4fc5e17cf71f50543237d62398e470e4c6755ce502fff92a2997ad27ec07c345",
+        "precision_profile": "schedule-int8",
+        "native_fusions_sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "native_attention_sha256": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "native_normfuse_sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9"
+      },
+      "receipt_fp8_gemm": {
+        "format": "int8-256",
+        "wave64": true,
+        "from_step": 8,
+        "quantize_sha256": "29c9070bd7a1f8dcdcddd94c0e4b2cee676bccbcaefbefcae5aabc78ecfb4a65",
+        "unpack_sha256": "9a09cbaffcc30dbbd2a0b579b7d9f470cb1541164a6fd79adc8a7dccdfbab29e",
+        "gemm_w64_sha256": "b5b36fa0e12a7189c46bf813b2f9f2af853bc5cc98c63e44c12444f896625181"
+      },
+      "native_counts": {
+        "blocks": 1280,
+        "norm_rope": 2560,
+        "prepare": 1280,
+        "modulation": 0,
+        "residual": 1280,
+        "silu": 1280,
+        "attention_pack": 192,
+        "fallback": 0,
+        "attention_native": 224,
+        "attention_mask_fallback": 0,
+        "norm_modulate": 256,
+        "residual_norm_modulate": 256,
+        "norm_modulate_quant": 1024,
+        "attention_qk8": 1024,
+        "residual_norm_modulate_quant": 1024
+      },
+      "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)"
+    },
+    "lpimage-1-exact": {
+      "profile": "exact",
+      "startup_to_ready_seconds": 85.05698274302995,
+      "first_request_seconds": 147.82855686102994,
+      "warm_request_seconds": 133.74482072202954,
+      "first_seed": 42,
+      "warm_seed": 43,
+      "peak_whole_device_vram_gib": 25.32813262939453,
+      "png_sha256": [
+        "5494dfb237b397f71403d6bab96a8036753906c6be5e580d66f461641076ddaf",
+        "6a6569233fb9056630ba5f495be9e10914ac041ab537a632e2650e9fd9627c81"
+      ],
+      "image": "paiton-qwen-image21:v1.0.2-20260923",
+      "health_native_fusions": "active (bf16-regions, attention, normfuse)",
+      "receipt_hashes": {
+        "checkpoint_sha256": "4fc5e17cf71f50543237d62398e470e4c6755ce502fff92a2997ad27ec07c345",
+        "precision_profile": "exact",
+        "native_fusions_sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "native_attention_sha256": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "native_normfuse_sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9"
+      },
+      "receipt_fp8_gemm": {},
+      "native_counts": {
+        "blocks": 1280,
+        "norm_rope": 2560,
+        "prepare": 1280,
+        "modulation": 0,
+        "residual": 1280,
+        "silu": 1280,
+        "attention_pack": 192,
+        "fallback": 0,
+        "attention_native": 1248,
+        "attention_mask_fallback": 0,
+        "norm_modulate": 1280,
+        "residual_norm_modulate": 1280
+      },
+      "native_fusions": "active (bf16-regions, attention, normfuse)"
+    },
+    "lpimage-2-default": {
+      "profile": "schedule-int8",
+      "startup_to_ready_seconds": 60.04466312599834,
+      "first_request_seconds": 114.51764809800079,
+      "warm_request_seconds": 103.23987761198077,
+      "first_seed": 42,
+      "warm_seed": 43,
+      "peak_whole_device_vram_gib": 25.471481323242188,
+      "png_sha256": [
+        "8369723259c9c46cda77ae1f5779628735fabce7877c3d16f81dd0bd9c3dff4c",
+        "daa4ce9985cffc13580561e06629f1868b5632e047d1ab9e43d1a28242df221b"
+      ],
+      "image": "paiton-qwen-image21:v1.0.2-20260923",
+      "health_native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)",
+      "receipt_hashes": {
+        "checkpoint_sha256": "4fc5e17cf71f50543237d62398e470e4c6755ce502fff92a2997ad27ec07c345",
+        "precision_profile": "schedule-int8",
+        "native_fusions_sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "native_attention_sha256": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "native_normfuse_sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9"
+      },
+      "receipt_fp8_gemm": {
+        "format": "int8-256",
+        "wave64": true,
+        "from_step": 8,
+        "quantize_sha256": "29c9070bd7a1f8dcdcddd94c0e4b2cee676bccbcaefbefcae5aabc78ecfb4a65",
+        "unpack_sha256": "9a09cbaffcc30dbbd2a0b579b7d9f470cb1541164a6fd79adc8a7dccdfbab29e",
+        "gemm_w64_sha256": "b5b36fa0e12a7189c46bf813b2f9f2af853bc5cc98c63e44c12444f896625181"
+      },
+      "native_counts": {
+        "blocks": 1280,
+        "norm_rope": 2560,
+        "prepare": 1280,
+        "modulation": 0,
+        "residual": 1280,
+        "silu": 1280,
+        "attention_pack": 192,
+        "fallback": 0,
+        "attention_native": 224,
+        "attention_mask_fallback": 0,
+        "norm_modulate": 256,
+        "residual_norm_modulate": 256,
+        "norm_modulate_quant": 1024,
+        "attention_qk8": 1024,
+        "residual_norm_modulate_quant": 1024
+      },
+      "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)"
+    },
+    "lpimage-3-default": {
+      "profile": "schedule-int8",
+      "startup_to_ready_seconds": 65.04735490004532,
+      "first_request_seconds": 113.94868229201529,
+      "warm_request_seconds": 103.29244055500021,
+      "first_seed": 42,
+      "warm_seed": 43,
+      "peak_whole_device_vram_gib": 25.54761505126953,
+      "png_sha256": [
+        "0a0d8add7b6433df361bf14e5f2c791093bc905385c326b8923cd8e3f3148f80",
+        "0101ff5790d7e79e432f02bfd42bcef542cedc50579abc0e2e6ed9a037103627"
+      ],
+      "image": "paiton-qwen-image21:v1.0.2-20260923",
+      "health_native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)",
+      "receipt_hashes": {
+        "checkpoint_sha256": "4fc5e17cf71f50543237d62398e470e4c6755ce502fff92a2997ad27ec07c345",
+        "precision_profile": "schedule-int8",
+        "native_fusions_sha256": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+        "native_attention_sha256": "c87341d1ba64a55fcde9c901e41732a18ee97e903403df4aa9192a09839141b7",
+        "native_normfuse_sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9"
+      },
+      "receipt_fp8_gemm": {
+        "format": "int8-256",
+        "wave64": true,
+        "from_step": 8,
+        "quantize_sha256": "29c9070bd7a1f8dcdcddd94c0e4b2cee676bccbcaefbefcae5aabc78ecfb4a65",
+        "unpack_sha256": "9a09cbaffcc30dbbd2a0b579b7d9f470cb1541164a6fd79adc8a7dccdfbab29e",
+        "gemm_w64_sha256": "b5b36fa0e12a7189c46bf813b2f9f2af853bc5cc98c63e44c12444f896625181"
+      },
+      "native_counts": {
+        "blocks": 1280,
+        "norm_rope": 2560,
+        "prepare": 1280,
+        "modulation": 0,
+        "residual": 1280,
+        "silu": 1280,
+        "attention_pack": 192,
+        "fallback": 0,
+        "attention_native": 224,
+        "attention_mask_fallback": 0,
+        "norm_modulate": 256,
+        "residual_norm_modulate": 256,
+        "norm_modulate_quant": 1024,
+        "attention_qk8": 1024,
+        "residual_norm_modulate_quant": 1024
+      },
+      "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64, int8-QK + fp8-PV attention on low-precision forwards)"
+    }
+  }
 }

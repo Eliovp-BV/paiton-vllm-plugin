@@ -59,8 +59,8 @@
     "health": "/health"
   },
   "quality_scope": "The checkpoint's original eight-prompt quantization screen measured loss against BF16. The optimization separately passed a bounded seven-pair screen against the identical balanced checkpoint; no arbitrary-prompt quality-equivalence claim.",
-  "performance_scope": "v1.0.2: default profile schedule-int8 measured 103.637 s warm / 115.375 s first request versus 136.652 / 148.500 s for the bit-exact profile (two alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload). The bit-exact profile measured 136.285 s warm versus 165.588 s for v1.0.1 (three matched pairs, denoiser tensors bit-exact).",
-  "memory_scope": "25.874 GiB maximum independently sampled whole-device use in the v1.0.2 matched pairs; resident components, no CPU offload or VAE tiling. Sampling can miss shorter transients.",
+  "performance_scope": "v1.0.2: default profile schedule-int8 measured 103.637 s warm / 115.375 s first request versus 136.652 / 148.500 s for the bit-exact profile (two alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload). The bit-exact profile measured 136.285 s warm versus 165.588 s for v1.0.1 (three matched pairs, denoiser tensors bit-exact). Container repeat of the published image: 103.290 s warm / 113.950 s first (default, n=3), 133.740 / 147.830 s (exact, n=1); first seed 42, warm seed 43.",
+  "memory_scope": "25.874 GiB maximum independently sampled whole-device use in the v1.0.2 matched pairs; 25.550 GiB in the container repeat; resident components, no CPU offload or VAE tiling. Sampling can miss shorter transients.",
   "repository": "EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4",
   "tested_gpu": "AMD Radeon AI PRO R9700",
   "hardware_compatibility": {
@@ -87,5 +87,6 @@
     "measurements": "measurements/low-precision-r9700.json"
   },
   "native_attention_scope": "Released in v1.0.2 as the exact profile: warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs; denoiser tensors bit-exact.",
-  "precision_schedule_scope": "Default profile: 103.637 s warm (24.2% below the bit-exact profile) with 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images. Bounded graded checks on the documented prompts; no arbitrary-prompt equivalence claim. Checkpoint bytes unchanged."
+  "precision_schedule_scope": "Default profile: 103.637 s warm (24.2% below the bit-exact profile) with 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images; mode suite 50.2 / 35.0 / 52.0 / 50.2 / 48.9 dB, A-B-A repeat identical: True. Bounded graded checks on the documented prompts; no arbitrary-prompt equivalence claim. Checkpoint bytes unchanged.",
+  "container_digest": "sha256:c7ab0c5f900bf16c2b56fa5aa0f9dd7b8c32a0ea6106db954b43556c4cc07d97"
 }

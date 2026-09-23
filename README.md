@@ -267,7 +267,7 @@ mode explicitly when comparing responses or benchmarking.
 | Model & setup | Supported workflow | Measured GPU use | Measured result |
 | --- | --- | ---: | --- |
 | [**FLUX.2 klein 4B**](models/FLUX.2-klein/README.md) | Text → image<br>1024 × 1024 · four steps<br>ComfyUI, web or CLI | ~14.6 GiB | [**36.7% less sampled GPU memory**<br>**16.2% lower generation latency**](models/FLUX.2-klein/BENCHMARKS.md) |
-| [**Qwen-Image-2.1 MXFP4**](models/Qwen-Image-2.1/README.md) | Text → image or transparent RGBA; image editing<br>2048 × 2048 generation, 1024 × 1024 editing · 40 steps<br>API or CLI | Up to 25.62 GiB | [**103.64 s warm complete-request median**<br>v1.0.2 default profile · matched pairs · 136.65 s bit-exact profile](models/Qwen-Image-2.1/BENCHMARKS.md#release-v102) |
+| [**Qwen-Image-2.1 MXFP4**](models/Qwen-Image-2.1/README.md) | Text → image or transparent RGBA; image editing<br>2048 × 2048 generation, 1024 × 1024 editing · 40 steps<br>API or CLI | Up to 25.62 GiB | [**103.29 s warm complete-request median**<br>v1.0.2 default profile · three fresh container processes · 133.74 s bit-exact profile](models/Qwen-Image-2.1/BENCHMARKS.md#release-v102) |
 
 FLUX timings include text encoding, generation and image conversion, but exclude
 PNG writing and UI transport; its image editing path is not qualified.
