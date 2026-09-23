@@ -76,5 +76,16 @@
   "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
   "container_repeat_measurements": "measurements/container-followup-r9700.json",
   "candidate_scope": "Local candidate (not published): warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload; denoiser tensors bit-exact; maximum sampled whole-device use 25.582 GiB.",
-  "native_attention_measurements": "measurements/native-attention-r9700.json"
+  "native_attention_measurements": "measurements/native-attention-r9700.json",
+  "precision_profiles": {
+    "default": "schedule-int8",
+    "option": "--precision-profile {exact,exact-w64,schedule-int8,schedule-int8-full8,schedule-fp8} (or PAITON_IMAGE21_PROFILE); requires native fusions",
+    "exact": "Every step bit-exact against the pinned BF16 framework arithmetic (the v1.0.1 contract with the exact native attention and fused normalization).",
+    "exact_w64": "As exact, with the wave64 exact attention kernel (bit-exact, 133.6 s warm in matched pairs).",
+    "schedule_int8": "Cached text prefix and the first ten denoising steps exact; steps 11-40 with int8 activations (per 256-element block scales, exact-weight int8 reconstruction of the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs, wave64 exact attention on exact steps and int8-QK attention on the low-precision steps.",
+    "schedule_int8_full8": "schedule-int8 with fp8 probabilities and fp8 values inside the low-precision attention (candidate under measurement).",
+    "schedule_fp8": "The schedule with bit-exact fp8 weights and fp8 per-row activations (slower GEMMs; 44.6 dB).",
+    "measurements": "measurements/low-precision-r9700.json"
+  },
+  "low_precision_candidate_scope": "Local candidate (not published): schedule-int8 with int8-QK attention measured 112.7 s warm / 124.3 s first request versus 136.3 / 148.0 s for the exact path (two alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload, peak 25.5 GiB); graded 42.1 dB PSNR / 0.0007 LPIPS at 2048x2048 and 51.2 dB at 1024x1024 against the exact images; mode suite passed (RGBA 38.5 dB, edit 52.2 dB, A-B-A identical). Checkpoint bytes unchanged."
 }

@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_attention_qk8_gfx1201.so",
+  "sha256": "cc06c6fcdb2cd28eda1077b16e52bfce5e8c1ebbf663c0d65edd8d8a71853409",
+  "architecture": "gfx1201",
+  "abi_version": 3,
+  "framework_dependencies": [],
+  "qualification": "CANDIDATE_NOT_QUALIFIED",
+  "scope": "Approximate attention with per-row int8 Q and K, fp8 e4m3fn probabilities and per-channel fp8 values through the fp8 WMMA (wave64); same ABI as attention-qk8; for the low-precision forwards of the schedule only",
+  "arithmetic": "int32 scores, fp32 scaling, base-2 online softmax; P and V^T in fp8 e4m3fn (hardware conversion), fp32 accumulation, per-dim value scale in the epilogue, correctly rounded reciprocal",
+  "abi": "PaitonImage21AttentionPackKV / PaitonImage21AttentionQk8 / PaitonImage21AttentionQk8Elements / ...ValueFormat (see attention_qk8.hip, PAITON_PV8=1)"
+}

@@ -1,10 +1,10 @@
 {
   "file": "qwen_image21_normfuse_gfx1201.so",
-  "sha256": "86aa6cb1155cc6b161ccad4b89a0f4acc9fade832688314666c79ebffc043d58",
+  "sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9",
   "architecture": "gfx1201",
   "abi_version": 1,
   "framework_dependencies": [],
-  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization",
+  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate)",
   "limits": {
     "hidden_dim": 4096,
     "max_rows": 40000

@@ -61,6 +61,8 @@ def _load_library(directory, abi_version, abi_symbol, arch_symbol, init_symbol):
 class NativeRegions:
     def __init__(self, directory, attention_directory=None, normfuse_directory=None, qk8_directory=None):
         self.fp8 = None   # candidate fp8 GEMM path (Fp8Regions), attached by install() only on explicit opt-in
+        self.pending_quantized = None   # (codes, scale) of the fused LayerNorm quantizer for the next attention projection
+        self.norm_modulate_quant_kernel = None
         self.qk8_library = self.qk8_manifest = None
         if qk8_directory is not None:   # candidate int8-QK^T attention, only for the low-precision forwards of the schedule
             self.qk8_library, self.qk8_manifest = _load_library(
@@ -118,6 +120,10 @@ class NativeRegions:
                 normfuse_directory, 1, 'PaitonImage21NormFuseGetAbiVersion',
                 'PaitonImage21NormFuseGetTargetArch', 'PaitonImage21NormModulateInitialize')
             self.norm_modulate_kernel = self.normfuse_library.PaitonImage21NormModulate
+            self.norm_modulate_quant_kernel = getattr(self.normfuse_library, 'PaitonImage21NormModulateQuant', None)
+            if self.norm_modulate_quant_kernel is not None:
+                self.norm_modulate_quant_kernel.argtypes = [C.c_void_p]*7 + [C.c_int]*3 + [C.c_float, C.c_int, C.c_void_p]
+                self.norm_modulate_quant_kernel.restype = C.c_int
             self.norm_modulate_kernel.argtypes = [C.c_void_p]*6+[C.c_int]*3+[C.c_float,C.c_void_p]
             self.norm_modulate_kernel.restype = C.c_int
 
@@ -166,10 +172,36 @@ class NativeRegions:
         self.counts['residual_norm_modulate'] += 1
         return hidden, out
 
-    def feed_forward(self, mlp, x):
+    def fused_quant_available(self):
+        fp8 = getattr(self, 'fp8', None)
+        return (fp8 is not None and fp8.active and fp8.int8 and fp8.block == 256
+                and getattr(self, 'norm_modulate_quant_kernel', None) is not None)
+
+    def norm_modulate_quant(self, x, parameters, mask, scale_offset, eps):
+        """LayerNorm + modulation emitted as int8 codes with per-256-block scales (bit-identical to quantizing the bf16
+        output); returns (placeholder, codes, scale) — the placeholder keeps the attention processor's tensor API."""
+        rows = x.shape[1]
+        codes = torch.empty((rows, HIDDEN), dtype=torch.uint8, device=x.device)
+        scale = torch.empty((rows, HIDDEN // 256), dtype=torch.float32, device=x.device)
+        self.call(self.norm_modulate_quant_kernel, x.data_ptr(), 0, parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
+                  0, codes.data_ptr(), scale.data_ptr(), rows, 0, scale_offset, eps, 256)
+        self.counts['norm_modulate_quant'] = self.counts.get('norm_modulate_quant', 0) + 1
+        return x, codes, scale
+
+    def residual_norm_modulate_quant(self, x, branch, parameters, mask, gate_offset, scale_offset, eps):
+        hidden = torch.empty_like(x)
+        rows = x.shape[1]
+        codes = torch.empty((rows, HIDDEN), dtype=torch.uint8, device=x.device)
+        scale = torch.empty((rows, HIDDEN // 256), dtype=torch.float32, device=x.device)
+        self.call(self.norm_modulate_quant_kernel, x.data_ptr(), branch.data_ptr(), parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
+                  hidden.data_ptr(), codes.data_ptr(), scale.data_ptr(), rows, gate_offset, scale_offset, eps, 256)
+        self.counts['residual_norm_modulate_quant'] = self.counts.get('residual_norm_modulate_quant', 0) + 1
+        return hidden, codes, scale
+
+    def feed_forward(self, mlp, x, quantized=None):
         fp8 = getattr(self, 'fp8', None)
         if fp8 is not None and fp8.active:
-            codes, scale = self.fp8.quantize(x)
+            codes, scale = quantized if quantized is not None else self.fp8.quantize(x)
             gate = self.fp8.linear(mlp.gate_layer, codes, scale)
             up = self.fp8.linear(mlp.proj, codes, scale)
             del codes, scale
@@ -312,7 +344,9 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
         if fp8 is not None and not fp8.active:
             fp8 = None
         if fp8 is not None:
-            codes, scale = fp8.quantize(hidden_states)
+            pending = getattr(self.native, 'pending_quantized', None)
+            self.native.pending_quantized = None
+            codes, scale = pending if pending is not None else fp8.quantize(hidden_states)
             query = fp8.linear(attn.to_q, codes, scale).view(1,-1,HEADS,HEAD_DIM)
             key = fp8.linear(attn.to_k, codes, scale).view(1,-1,HEADS,HEAD_DIM)
             value = fp8.linear(attn.to_v, codes, scale).view(1,-1,HEADS,HEAD_DIM)
@@ -432,21 +466,31 @@ def install(transformer, directory, attention_directory=None, normfuse_directory
             parameters = native.parameters(modulation)
             if fp8 is not None:
                 fp8.begin_forward(kv_cache_mode)
-            if fused_norm:
+            fused_quant = fused_norm and native.fused_quant_available()
+            second_quantized = None
+            if fused_quant:
+                first, codes, scale = native.norm_modulate_quant(hidden_states,parameters,target_token_mask,0,self.img_norm1.eps)
+                native.pending_quantized = (codes, scale)
+            elif fused_norm:
                 first = native.norm_modulate(hidden_states,parameters,target_token_mask,0,self.img_norm1.eps)
             else:
                 first = native.pointwise(self.img_norm1(hidden_states),parameters,target_token_mask,0)
             branch = self.attn(hidden_states=first,attention_mask=attention_mask,rotary_emb=rotary_emb,
                 layer_cache=layer_cache,kv_cache_mode=kv_cache_mode,cache_write_slice=cache_write_slice,
                 segments=segments,key_valid=key_valid)
-            if fused_norm:
+            native.pending_quantized = None
+            if fused_quant:
+                hidden_states,codes,scale = native.residual_norm_modulate_quant(hidden_states,branch,parameters,target_token_mask,
+                                                                                HIDDEN,2*HIDDEN,self.img_norm2.eps)
+                second = hidden_states; second_quantized = (codes, scale)
+            elif fused_norm:
                 hidden_states,second = native.residual_norm_modulate(hidden_states,branch,parameters,target_token_mask,
                                                                      HIDDEN,2*HIDDEN,self.img_norm2.eps)
             else:
                 hidden_states = native.pointwise(hidden_states,parameters,target_token_mask,HIDDEN,branch)
                 second = native.pointwise(self.img_norm2(hidden_states),parameters,target_token_mask,2*HIDDEN)
             del first, branch
-            branch = native.feed_forward(self.img_mlp,second)
+            branch = native.feed_forward(self.img_mlp,second,second_quantized)
             result = native.pointwise(hidden_states,parameters,target_token_mask,3*HIDDEN,branch)
             native.counts['blocks'] += 1
             return result

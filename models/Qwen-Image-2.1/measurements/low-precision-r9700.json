@@ -1,0 +1,423 @@
+{
+  "schema": "paiton-image21-low-precision-measurements-v1",
+  "gpu": "AMD Radeon AI PRO R9700 (gfx1201, 32 GB), unchanged 300 W power cap",
+  "workload": "batch 1, 2048x2048, 40 steps, guidance 1.0, seed 42, neon-street prompt; 31-token cached text prefix",
+  "method": "Matched alternating pairs of fresh server processes: the exact package versus the same package with the candidate precision switches; one first and one warm request each; whole-device VRAM sampled every 5 ms; complete HTTP timing to PNG receipt.",
+  "precision_schedule": "The cached text-prefix pass and the first ten denoising steps run the exact BF16 path; steps 11-40 run int8 activations (one scale per 256-element block, exact-weight int8 reconstruction from the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs; the wave64 exact attention serves exact steps and, when enabled, an int8-QK attention serves the low-precision steps.",
+  "quality_gates": "PSNR >= 35 dB, LPIPS <= 0.02, CLIP delta >= -0.01 against the exact pipeline images at 2048x2048 (neon prompt) and 1024x1024 (teapot prompt); mode suite: 1024 text, 2048 RGBA, 1024 edit, A-B-A repeat, 2048 text.",
+  "pairs": {
+    "attn-w64": {
+      "candidate_switches": {
+        "ATTENTION_W64": "1"
+      },
+      "control_warm": {
+        "n": 2,
+        "median": 136.31089549098397,
+        "minimum": 136.1881652569864,
+        "maximum": 136.43362572498154,
+        "sample_sd": 0.17356676143259014
+      },
+      "candidate_warm": {
+        "n": 2,
+        "median": 133.55837339599384,
+        "minimum": 133.54594382597134,
+        "maximum": 133.57080296601634,
+        "sample_sd": 0.01757806650029231
+      },
+      "control_first": {
+        "n": 2,
+        "median": 147.8538130505185,
+        "minimum": 147.28570359403966,
+        "maximum": 148.42192250699736,
+        "sample_sd": 0.8034280982647986
+      },
+      "candidate_first": {
+        "n": 2,
+        "median": 145.2548874874774,
+        "minimum": 144.7883569249534,
+        "maximum": 145.72141805000138,
+        "sample_sd": 0.6597738487829692
+      },
+      "warm_saving_percent": 2.019297199299952,
+      "runs": [
+        {
+          "label": "attn-w64-1-control",
+          "first_request_seconds": 147.28570359403966,
+          "warm_request_seconds": 136.1881652569864,
+          "peak_vram_gib": 25.659950256347656,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "attn-w64-1-candidate",
+          "first_request_seconds": 144.7883569249534,
+          "warm_request_seconds": 133.57080296601634,
+          "peak_vram_gib": 25.759586334228516,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "attn-w64-2-candidate",
+          "first_request_seconds": 145.72141805000138,
+          "warm_request_seconds": 133.54594382597134,
+          "peak_vram_gib": 25.777359008789062,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "attn-w64-2-control",
+          "first_request_seconds": 148.42192250699736,
+          "warm_request_seconds": 136.43362572498154,
+          "peak_vram_gib": 25.87436294555664,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        }
+      ]
+    },
+    "int8-256-s11": {
+      "candidate_switches": {
+        "LP": "int8-256",
+        "LP_W64": "1",
+        "LP_FROM_STEP": "11",
+        "ATTENTION_W64": "1"
+      },
+      "control_warm": {
+        "n": 2,
+        "median": 136.51336486500804,
+        "minimum": 136.42780127900187,
+        "maximum": 136.59892845101422,
+        "sample_sd": 0.12100518377520784
+      },
+      "candidate_warm": {
+        "n": 2,
+        "median": 118.53073620150099,
+        "minimum": 118.51264374901075,
+        "maximum": 118.54882865399122,
+        "sample_sd": 0.02558659168828349
+      },
+      "control_first": {
+        "n": 2,
+        "median": 147.74067954148632,
+        "minimum": 147.60543130198494,
+        "maximum": 147.8759277809877,
+        "sample_sd": 0.19126989458993535
+      },
+      "candidate_first": {
+        "n": 2,
+        "median": 129.8224950429867,
+        "minimum": 129.52724639797816,
+        "maximum": 130.11774368799524,
+        "sample_sd": 0.417544638043359
+      },
+      "warm_saving_percent": 13.172797169924921,
+      "runs": [
+        {
+          "label": "int8-256-s11-1-control",
+          "first_request_seconds": 147.8759277809877,
+          "warm_request_seconds": 136.59892845101422,
+          "peak_vram_gib": 25.369220733642578,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "int8-256-s11-1-candidate",
+          "first_request_seconds": 130.11774368799524,
+          "warm_request_seconds": 118.54882865399122,
+          "peak_vram_gib": 25.40697479248047,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s11-2-candidate",
+          "first_request_seconds": 129.52724639797816,
+          "warm_request_seconds": 118.51264374901075,
+          "peak_vram_gib": 25.448123931884766,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s11-2-control",
+          "first_request_seconds": 147.60543130198494,
+          "warm_request_seconds": 136.42780127900187,
+          "peak_vram_gib": 25.464855194091797,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        }
+      ]
+    },
+    "int8-256-s11-qk8": {
+      "candidate_switches": {
+        "LP": "int8-256",
+        "LP_W64": "1",
+        "LP_FROM_STEP": "11",
+        "ATTENTION_QK8": "1",
+        "ATTENTION_W64": "1"
+      },
+      "control_warm": {
+        "n": 2,
+        "median": 136.2410961954738,
+        "minimum": 136.20525810599793,
+        "maximum": 136.27693428494968,
+        "sample_sd": 0.050682712186321296
+      },
+      "candidate_warm": {
+        "n": 2,
+        "median": 112.71795048253261,
+        "minimum": 112.67835663602455,
+        "maximum": 112.75754432904068,
+        "sample_sd": 0.05599415471822974
+      },
+      "control_first": {
+        "n": 2,
+        "median": 147.97163455249392,
+        "minimum": 147.95137332298327,
+        "maximum": 147.99189578200458,
+        "sample_sd": 0.028653705564317906
+      },
+      "candidate_first": {
+        "n": 2,
+        "median": 124.25752683202154,
+        "minimum": 124.25184216001071,
+        "maximum": 124.26321150403237,
+        "sample_sd": 0.008039340255358057
+      },
+      "warm_saving_percent": 17.2658224058848,
+      "runs": [
+        {
+          "label": "int8-256-s11-qk8-1-control",
+          "first_request_seconds": 147.95137332298327,
+          "warm_request_seconds": 136.27693428494968,
+          "peak_vram_gib": 25.310543060302734,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        },
+        {
+          "label": "int8-256-s11-qk8-1-candidate",
+          "first_request_seconds": 124.26321150403237,
+          "warm_request_seconds": 112.67835663602455,
+          "peak_vram_gib": 25.547161102294922,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s11-qk8-2-candidate",
+          "first_request_seconds": 124.25184216001071,
+          "warm_request_seconds": 112.75754432904068,
+          "peak_vram_gib": 25.530170440673828,
+          "native_fusions": "active (bf16-regions, attention, normfuse, low-precision int8-256 wave64 (candidate, not qualified), int8-QK attention on low-precision forwards (candidate, not qualified))"
+        },
+        {
+          "label": "int8-256-s11-qk8-2-control",
+          "first_request_seconds": 147.99189578200458,
+          "warm_request_seconds": 136.20525810599793,
+          "peak_vram_gib": 25.621013641357422,
+          "native_fusions": "active (bf16-regions, attention, normfuse)"
+        }
+      ]
+    }
+  },
+  "quality_2048_and_1024": {
+    "real-attnw64-exact-neon-2048": {
+      "psnr_db": 58.83,
+      "lpips": 4.422033816808835e-05,
+      "clip_delta": 0.0012,
+      "alpha_mae": 0.0011,
+      "passed": true
+    },
+    "real-attnw64-exact-teapot-1024": {
+      "psnr_db": 61.69,
+      "lpips": 7.033184374449775e-05,
+      "clip_delta": 3e-05,
+      "alpha_mae": 0.0136,
+      "passed": true
+    },
+    "real-int8-256-prefixonly-neon-2048": {
+      "psnr_db": 36.73,
+      "lpips": 0.003906578756868839,
+      "clip_delta": -0.00022,
+      "alpha_mae": 0.0027,
+      "passed": true
+    },
+    "real-int8-256-prefixonly-teapot-1024": {
+      "psnr_db": 47.38,
+      "lpips": 0.0007705288007855415,
+      "clip_delta": -0.00106,
+      "alpha_mae": 0.0199,
+      "passed": true
+    },
+    "real-int8-256-s11-neon-2048": {
+      "psnr_db": 44.56,
+      "lpips": 0.0005837655626237392,
+      "clip_delta": 0.00065,
+      "alpha_mae": 0.0024,
+      "passed": true
+    },
+    "real-int8-256-s11-teapot-1024": {
+      "psnr_db": 51.64,
+      "lpips": 0.0004265329916961491,
+      "clip_delta": 4e-05,
+      "alpha_mae": 0.0196,
+      "passed": true
+    },
+    "real-int8-256-s11-qk8-neon-2048": {
+      "psnr_db": 42.09,
+      "lpips": 0.0007003013743087649,
+      "clip_delta": 0.00211,
+      "alpha_mae": 0.0024,
+      "passed": true
+    },
+    "real-int8-256-s11-qk8-teapot-1024": {
+      "psnr_db": 51.22,
+      "lpips": 0.0004774851258844137,
+      "clip_delta": -0.00132,
+      "alpha_mae": 0.0197,
+      "passed": true
+    },
+    "real-int8-256-s8-qk8-neon-2048": {
+      "psnr_db": 43.0,
+      "lpips": 0.00099033466540277,
+      "clip_delta": 0.00439,
+      "alpha_mae": 0.0024,
+      "passed": true
+    },
+    "real-int8-256-s8-qk8-teapot-1024": {
+      "psnr_db": 50.81,
+      "lpips": 0.0004717005358543247,
+      "clip_delta": -0.00114,
+      "alpha_mae": 0.0196,
+      "passed": true
+    },
+    "real-int8-64-neon-2048": {
+      "psnr_db": 35.65,
+      "lpips": 0.004099213983863592,
+      "clip_delta": 0.00572,
+      "alpha_mae": 0.0026,
+      "passed": true
+    },
+    "real-int8-64-teapot-1024": {
+      "psnr_db": 48.03,
+      "lpips": 0.0007786376518197358,
+      "clip_delta": -0.00118,
+      "alpha_mae": 0.0197,
+      "passed": true
+    },
+    "real-int8-64-prefixonly-neon-2048": {
+      "psnr_db": 35.65,
+      "lpips": 0.0041280933655798435,
+      "clip_delta": 0.00602,
+      "alpha_mae": 0.0026,
+      "passed": true
+    },
+    "real-int8-64-prefixonly-teapot-1024": {
+      "psnr_db": 48.03,
+      "lpips": 0.0007949960418045521,
+      "clip_delta": -0.00215,
+      "alpha_mae": 0.0197,
+      "passed": true
+    },
+    "real-int8-64-s11-neon-2048": {
+      "psnr_db": 45.34,
+      "lpips": 0.0004764897166751325,
+      "clip_delta": 0.00125,
+      "alpha_mae": 0.0022,
+      "passed": true
+    },
+    "real-int8-64-s11-teapot-1024": {
+      "psnr_db": 52.75,
+      "lpips": 0.0003590471460483968,
+      "clip_delta": 4e-05,
+      "alpha_mae": 0.0189,
+      "passed": true
+    },
+    "real-int8-row-s11-neon-2048": {
+      "psnr_db": 38.07,
+      "lpips": 0.002996292896568775,
+      "clip_delta": 0.01331,
+      "alpha_mae": 0.0039,
+      "passed": true
+    },
+    "real-int8-row-s11-teapot-1024": {
+      "psnr_db": 47.24,
+      "lpips": 0.0012415099190548062,
+      "clip_delta": -0.0002,
+      "alpha_mae": 0.0231,
+      "passed": true
+    }
+  },
+  "mode_suites": {
+    "exact-w64": [
+      {
+        "id": "suite-lp-exact-w64-0-text-to-image",
+        "psnr_db": 61.69364310697961,
+        "lpips": 6.985251093283296e-05,
+        "clip_delta": 0.000910535454750061,
+        "alpha_mae": 0.013564109802246094,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-exact-w64-1-rgba",
+        "psnr_db": 56.83896858811369,
+        "lpips": 5.189893636270426e-05,
+        "clip_delta": 0.0003906339406967163,
+        "alpha_mae": 0.029172897338867188,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-exact-w64-2-edit",
+        "psnr_db": 54.60746792764036,
+        "lpips": 0.00023433275055140257,
+        "clip_delta": -0.0003283470869064331,
+        "alpha_mae": 0.00849151611328125,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-exact-w64-3-text-to-image",
+        "psnr_db": 61.69364310697961,
+        "lpips": 6.985251093283296e-05,
+        "clip_delta": 0.000910535454750061,
+        "alpha_mae": 0.013564109802246094,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-exact-w64-4-text-to-image",
+        "psnr_db": 61.19907724163972,
+        "lpips": 3.1421273888554424e-05,
+        "clip_delta": -0.001180395483970642,
+        "alpha_mae": 0.0003161430358886719,
+        "passed": true
+      }
+    ],
+    "schedule-int8": [
+      {
+        "id": "suite-lp-schedule-int8-0-text-to-image",
+        "psnr_db": 51.21815705154394,
+        "lpips": 0.00047732528764754534,
+        "clip_delta": -0.001419857144355774,
+        "alpha_mae": 0.0197906494140625,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-1-rgba",
+        "psnr_db": 38.49869169336153,
+        "lpips": 0.005871955305337906,
+        "clip_delta": 0.0015578418970108032,
+        "alpha_mae": 0.19809222221374512,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-2-edit",
+        "psnr_db": 52.15127015358891,
+        "lpips": 0.00035734701668843627,
+        "clip_delta": -0.00017918646335601807,
+        "alpha_mae": 0.009057044982910156,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-3-text-to-image",
+        "psnr_db": 51.21815705154394,
+        "lpips": 0.00047732528764754534,
+        "clip_delta": -0.001419857144355774,
+        "alpha_mae": 0.0197906494140625,
+        "passed": true
+      },
+      {
+        "id": "suite-lp-schedule-int8-4-text-to-image",
+        "psnr_db": 49.73913628180775,
+        "lpips": 0.000244596682023257,
+        "clip_delta": -0.00483877956867218,
+        "alpha_mae": 0.0005915164947509766,
+        "passed": true
+      }
+    ]
+  }
+}

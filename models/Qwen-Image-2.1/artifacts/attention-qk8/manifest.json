@@ -1,6 +1,6 @@
 {
   "file": "qwen_image21_attention_qk8_gfx1201.so",
-  "sha256": "0fc3361b150f9e0633113dc5ae77d0647efba8de4362e5a208c548c1c484412d",
+  "sha256": "79c1de8ec6ceb1854fc40973f5f312da18cccad8bfe03496aa9a1fcb022fc65a",
   "architecture": "gfx1201",
   "abi_version": 3,
   "framework_dependencies": [],

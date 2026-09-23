@@ -105,8 +105,13 @@ and verify without initializing the GPU. Append `--offline` to require the
 already populated cache. Network access is disabled in the model loader after
 checkpoint preparation; it does not execute Python code downloaded from the Hub.
 
-Append `--no-native-fusions` to use the existing native weight reconstruction
-with the original BF16 regions. The optimized regions check the pinned framework,
+Append `--precision-profile exact` to keep every step bit-exact against the pinned
+BF16 arithmetic (the v1.0.1 contract). The default profile `schedule-int8` keeps the
+cached text prefix and the first ten denoising steps exact and runs steps 11–40 with
+int8 activations through native kernels; the checkpoint bytes are unchanged, the
+receipts record the profile, and [measurements](measurements/low-precision-r9700.json)
+hold the matched samples and quality grades. Append `--no-native-fusions` to use the
+existing native weight reconstruction with the original BF16 regions. The optimized regions check the pinned framework,
 upstream sources, artifact hashes, ABI and target before use. Unsupported upstream
 contracts retain original regions and report that state in `/health`. The managed
 image pins the qualified environment and enables the optimized path by default.
@@ -168,6 +173,19 @@ backend and must not be pooled with the incremental qualification above.
 
 The v1.0.1 container retains the qualified executable files and dependencies;
 release metadata is updated. The original v1.0.0 tag remains available.
+
+## Candidate: precision schedule (local, unreleased)
+
+This checkout also carries a second local candidate, the `schedule-int8` precision profile (the
+container default in this checkout; `--precision-profile exact` restores the bit-exact path). The cached
+text prefix and the first ten denoising steps stay bit-exact; steps 11–40 run int8 activations (one scale
+per 256-element block) through wave64 int8 WMMA GEMMs against an exact-weight int8 reconstruction of the
+unchanged MXFP4 checkpoint, with the wave64 exact attention on exact steps and an int8-QKᵀ attention on the
+low-precision steps. In two matched fresh-process pairs against the exact path, warm complete HTTP median
+changed from **136.3 to 112.7 seconds** (17.3% lower latency), first request from **148.0 to 124.3 seconds**,
+with whole-device use at 25.5 GiB. Against the exact images the candidate grades 42.1 dB PSNR / 0.0007 LPIPS at
+2048×2048 and 51.2 dB at 1024×1024; the RGBA, editing and A-B-A checks passed.
+[Matched samples, quality and limits](BENCHMARKS.md#candidate-precision-schedule-local-qualification).
 
 ## Candidate: exact native attention (local, unreleased)
 

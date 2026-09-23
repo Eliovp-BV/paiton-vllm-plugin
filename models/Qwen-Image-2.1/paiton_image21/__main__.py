@@ -8,7 +8,7 @@ def main():
     parser.add_argument("--model-dir",type=Path,required=True)
     parser.add_argument("--backend",choices=("native","reference"),default="native")
     parser.add_argument("--native-fusions",action="store_true",help="Enable the qualified gfx1201 BF16 regions; native backend only")
-    parser.add_argument("--precision-profile",choices=("exact","exact-w64","schedule-int8","schedule-fp8"),default=None,
+    parser.add_argument("--precision-profile",choices=("exact","exact-w64","schedule-int8","schedule-int8-full8","schedule-fp8"),default=None,
                         help="exact (default) or a candidate low-precision schedule; requires --native-fusions")
     commands=parser.add_subparsers(dest="command",required=True)
     generate=commands.add_parser("generate")

@@ -12,6 +12,40 @@ no CPU model offload, VAE tiling, precision changes or approximate caching.
 
 Exact prompt: `A neon shop sign that reads "QWEN IMAGE 2.1", rainy night, reflections on wet pavement`.
 
+## Candidate: precision schedule (local qualification)
+
+Not yet released. Built from this checkout (private compiler commits `b52d9314` and `234968af`), the
+`schedule-int8` profile keeps the cached text-prefix pass and the first ten denoising steps on the
+bit-exact path and runs steps 11–40 with int8 activations (one fp32 scale per 256-element block) through
+wave64 int8 WMMA GEMMs against an int8 reconstruction of the unchanged MXFP4 weights (exact for 99.6% of
+channels, the rest rounded and counted per request). The wave64 exact attention (bit-exact, 45/45
+reference cases) serves the exact steps and an int8-QKᵀ attention (per-row int8 Q and K, int32 scores,
+bf16 softmax and P·Vᵀ) the low-precision steps. Checkpoint bytes, residency, the 2048/40/guidance-1
+workload and the allocation policy are unchanged.
+
+| Measurement | Exact (control) | schedule-int8 + int8-QK attention | Latency reduction |
+| --- | ---: | ---: | ---: |
+| First request median | 147.97 s | 124.26 s | 16.0% |
+| Warm request median | 136.24 s | 112.72 s | 17.3% |
+| Warm samples | 136.28 / 136.21 s | 112.68 / 112.76 s | |
+| Peak whole-device VRAM | 25.5 GiB | 25.5 GiB | |
+
+Without the int8-QK attention (exact attention on every step): warm **118.53 s** (136.51 s control),
+first request 129.8 s. The wave64 exact attention alone (bit-exact): warm **133.56 s** (136.31 s control).
+
+Quality against the exact pipeline's images (gates: PSNR ≥ 35 dB, LPIPS ≤ 0.02, CLIP Δ ≥ −0.01):
+
+| Image | schedule-int8 | + int8-QK attention |
+| --- | --- | --- |
+| 2048² neon prompt | 44.6 dB / 0.0006 | 42.1 dB / 0.0007 |
+| 1024² teapot prompt | 51.6 dB / 0.0004 | 51.2 dB / 0.0005 |
+| Mode suite (1024 text, 2048 RGBA, 1024 edit, A-B-A, 2048 text) | 51.2 / 38.5 / 52.2 / identical / 49.7 dB | |
+
+The same formats applied to all 40 steps fail the gate (30–33 dB): the early steps decide the composition.
+Two alternating fresh server processes per path, one first and one warm request each, isolated caches,
+whole-device VRAM sampled every 5 ms; complete HTTP timings to PNG receipt.
+[Samples, switches and grades](measurements/low-precision-r9700.json).
+
 ## Candidate: exact native attention and fused normalization (local qualification)
 
 Not yet released. Built from this checkout (private compiler commit `ab6affcf`), the candidate replaces

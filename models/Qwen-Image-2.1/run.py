@@ -7,6 +7,10 @@ from pathlib import Path
 import sys
 
 
+PRECISION_PROFILES = ("exact", "exact-w64", "schedule-int8", "schedule-int8-full8", "schedule-fp8")
+DEFAULT_PROFILE = "schedule-int8"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--model-dir", type=Path, help="Verify and reuse an existing published checkpoint")
@@ -32,6 +36,8 @@ def main(argv=None):
             command_parser.add_argument(flag, action="store_true", default=argparse.SUPPRESS)
         command_parser.add_argument("--model-dir", type=Path, default=argparse.SUPPRESS)
         command_parser.add_argument("--cache-dir", type=Path, default=argparse.SUPPRESS)
+        command_parser.add_argument("--precision-profile", choices=PRECISION_PROFILES, default=argparse.SUPPRESS,
+                                    help="exact keeps every step bit-exact; schedule-int8 (default) runs steps 11-40 in int8 (measured 112.7 s warm)")
     args = parser.parse_args(argv)
     if args.command == "generate":
         if args.output.exists():
@@ -51,6 +57,8 @@ def main(argv=None):
     command = [sys.executable, "-u", "-m", "paiton_image21", "--model-dir", str(checkpoint)]
     if not args.no_native_fusions:
         command.append("--native-fusions")
+        profile = getattr(args, "precision_profile", os.environ.get("PAITON_IMAGE21_PROFILE", DEFAULT_PROFILE))
+        command += ["--precision-profile", profile]
     if args.command in (None, "serve"):
         command += ["serve", "--host", getattr(args, "host", "0.0.0.0"),
                     "--port", str(getattr(args, "port", 8191))]
