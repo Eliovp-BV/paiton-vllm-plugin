@@ -288,7 +288,7 @@ the pinned [RDNA4 Hugging Face checkpoint](https://huggingface.co/EliovpAI/Qwen_
 on first use:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2
+./models/Qwen-Image-2.1/serve-docker.sh
 ```
 
 [Generate, edit and save images →](models/Qwen-Image-2.1/README.md#generate-an-image)

@@ -20,10 +20,11 @@ Checkpoint bytes and settings are unchanged; the default profile's precision sch
 ## Start with one command
 
 Linux, Docker and a working AMD GPU driver are required. Run one model at a time
-on the R9700; the worker requires at least 30 GiB free before loading.
+on the R9700; the worker requires at least 30 GiB free before loading. From a
+repository checkout, start the image API like every other Paiton launcher:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2
+./models/Qwen-Image-2.1/serve-docker.sh
 ```
 
 The first launch downloads **9.33 GB** of checkpoint files, verifies their SHA-256
@@ -32,15 +33,15 @@ Wait for `READY http://0.0.0.0:8191`. The download is separate from the reported
 inference timings. The container contains the inference environment and compiled
 runtime libraries; model weights are downloaded at launch.
 
-From a repository checkout, the equivalent launcher is:
-
-```sh
-./models/Qwen-Image-2.1/serve-docker.sh
-```
-
 `PAITON_PORT`, `PAITON_BIND`, `PAITON_CONTAINER`, `PAITON_CACHE` and `PAITON_IMAGE`
 override the host port/address, container name, cache volume/path and image.
 Use an absolute path for a host cache directory. The default API binds to localhost.
+
+Without a repository checkout, the same container starts with:
+
+```sh
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2
+```
 
 ## Generate an image
 
@@ -106,13 +107,15 @@ and verify without initializing the GPU. Append `--offline` to require the
 already populated cache. Network access is disabled in the model loader after
 checkpoint preparation; it does not execute Python code downloaded from the Hub.
 
-Append `--precision-profile exact` to keep every step bit-exact against the pinned
-BF16 arithmetic (the v1.0.1 contract, with the exact native attention). The default profile
-`schedule-int8` keeps the cached text prefix and the first seven denoising steps exact and runs
-steps 8–40 with int8 activations and int8/fp8 attention through native kernels; the checkpoint
-bytes are unchanged, the receipts record the profile, and [measurements](measurements/low-precision-r9700.json)
-hold the matched samples and quality grades. `schedule-int8-11` keeps ten steps exact with int8-QK
-attention (more quality headroom, measured 112.7 s). Append `--no-native-fusions` to use the
+Add `serve --precision-profile exact` to the launcher
+(`./models/Qwen-Image-2.1/serve-docker.sh serve --precision-profile exact`, or after the image
+name in the `docker run` form) to keep every step bit-exact against the pinned BF16 arithmetic
+(the v1.0.1 contract, with the exact native attention). The default profile `schedule-int8`
+keeps the cached text prefix and the first seven denoising steps exact and runs steps 8–40 with
+int8 activations and int8/fp8 attention through native kernels; the checkpoint bytes are
+unchanged, the receipts record the profile, and [measurements](measurements/low-precision-r9700.json)
+hold the matched samples and quality grades. `serve --precision-profile schedule-int8-11` keeps
+ten steps exact with int8-QK attention (more quality headroom, measured 112.7 s). Append `--no-native-fusions` to use the
 existing native weight reconstruction with the original BF16 regions. The optimized regions check the pinned framework,
 upstream sources, artifact hashes, ABI and target before use. Unsupported upstream
 contracts retain original regions and report that state in `/health`. The managed
