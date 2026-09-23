@@ -1,0 +1,237 @@
+{
+  "status": "qualified_local_candidate",
+  "baseline": "Published Qwen Image21 v1.0.1 native runtime (plugin main 6d761a0)",
+  "change": "Exact native attention (dense text-to-image and cached decode steps) and fused LayerNorm+modulation regions",
+  "settings": {
+    "batch": 1,
+    "width": 2048,
+    "height": 2048,
+    "steps": 40,
+    "guidance": 1.0,
+    "seed": 42,
+    "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+    "allocator_budget_gib": 26,
+    "allocator_config": "expandable_segments:True",
+    "resident": true,
+    "cpu_offload": false,
+    "vae_tiling": false
+  },
+  "artifact_sha256": {
+    "regions": "96ca54713c96ec15068e25d252281aee225a57236c2627f3886d1b9a138817f5",
+    "attention": "314670dff171fe40184cbd14970a2b016bc223f43ca7dd1299a8dab1818dec30",
+    "normfuse": "86aa6cb1155cc6b161ccad4b89a0f4acc9fade832688314666c79ebffc043d58"
+  },
+  "complete_requests": {
+    "control": {
+      "first": {
+        "n": 3,
+        "median": 176.98097655997844,
+        "mean": 177.4346063239888,
+        "minimum": 176.97072303696768,
+        "maximum": 178.35211937502027,
+        "sample_sd": 0.7946061494811991
+      },
+      "warm": {
+        "n": 3,
+        "median": 165.58838394499617,
+        "mean": 165.59609646565514,
+        "minimum": 165.54039410699625,
+        "maximum": 165.659511344973,
+        "sample_sd": 0.059931972493726865
+      },
+      "max_sampled_device_gib": 25.46477508544922
+    },
+    "candidate": {
+      "first": {
+        "n": 3,
+        "median": 147.4284619279788,
+        "mean": 147.42977579000095,
+        "minimum": 147.36635471199406,
+        "maximum": 147.49451073003002,
+        "sample_sd": 0.06408811055701194
+      },
+      "warm": {
+        "n": 3,
+        "median": 136.28450582100777,
+        "mean": 136.27617431133208,
+        "minimum": 136.24822047998896,
+        "maximum": 136.29579663299955,
+        "sample_sd": 0.024858260677867335
+      },
+      "max_sampled_device_gib": 25.582008361816406
+    }
+  },
+  "paired_savings": [
+    {
+      "pair": 1,
+      "order": [
+        "control",
+        "candidate"
+      ],
+      "control_warm_seconds": 165.58838394499617,
+      "candidate_warm_seconds": 136.28450582100777,
+      "control_first_seconds": 178.35211937502027,
+      "candidate_first_seconds": 147.4284619279788,
+      "warm_saving_seconds": 29.303878123988397,
+      "png_identical": false
+    },
+    {
+      "pair": 2,
+      "order": [
+        "candidate",
+        "control"
+      ],
+      "control_warm_seconds": 165.54039410699625,
+      "candidate_warm_seconds": 136.29579663299955,
+      "control_first_seconds": 176.98097655997844,
+      "candidate_first_seconds": 147.49451073003002,
+      "warm_saving_seconds": 29.24459747399669,
+      "png_identical": false
+    },
+    {
+      "pair": 3,
+      "order": [
+        "control",
+        "candidate"
+      ],
+      "control_warm_seconds": 165.659511344973,
+      "candidate_warm_seconds": 136.24822047998896,
+      "control_first_seconds": 176.97072303696768,
+      "candidate_first_seconds": 147.36635471199406,
+      "warm_saving_seconds": 29.41129086498404,
+      "png_identical": false
+    }
+  ],
+  "warm_median_saving_percent": 17.69681992531694,
+  "denoiser_intermediates": [
+    {
+      "tensor": "denoiser-step-1",
+      "shape": [
+        1,
+        16415,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    },
+    {
+      "tensor": "denoiser-step-20",
+      "shape": [
+        1,
+        16384,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    },
+    {
+      "tensor": "denoiser-step-40",
+      "shape": [
+        1,
+        16384,
+        64
+      ],
+      "dtype": "torch.bfloat16",
+      "bit_exact": true
+    }
+  ],
+  "exactness": {
+    "png_bit_identical_to_v101": false,
+    "repeat_png_identical": true,
+    "native_counts_warm_request": {
+      "blocks": 1280,
+      "norm_rope": 2560,
+      "prepare": 1280,
+      "modulation": 0,
+      "residual": 1280,
+      "silu": 1280,
+      "attention_pack": 192,
+      "fallback": 0,
+      "attention_native": 1248,
+      "attention_mask_fallback": 0,
+      "norm_modulate": 1280,
+      "residual_norm_modulate": 1280
+    }
+  },
+  "quality": {
+    "mode_suite": {
+      "status": "complete",
+      "repeat_png_identical": true,
+      "requests": [
+        {
+          "index": 0,
+          "mode": "text-to-image",
+          "size": "1024x1024",
+          "seed": 51,
+          "seconds": 34.95694079896202,
+          "png_sha256": "b7cf5627013129767467554460b9b58d0223676752f8a4e9294d1c60e2a114aa",
+          "alpha_extrema": [
+            253,
+            255
+          ],
+          "sampled_peak_gib": 14.043327331542969,
+          "prefix_cache_objects_retained": null
+        },
+        {
+          "index": 1,
+          "mode": "rgba",
+          "size": "2048x2048",
+          "seed": 52,
+          "seconds": 136.05732341803377,
+          "png_sha256": "2ddfd72429231eb08ac4b49881333906b9a9a9dbb2c47fe833de4349e86880a7",
+          "alpha_extrema": [
+            0,
+            255
+          ],
+          "sampled_peak_gib": 25.523387908935547,
+          "prefix_cache_objects_retained": null
+        },
+        {
+          "index": 2,
+          "mode": "edit",
+          "size": "1024x1024",
+          "seed": 53,
+          "seconds": 30.67612919700332,
+          "png_sha256": "0a49100b5e8180acd0b6fd00e5780a834b5a2cab39e900dd93b83be5286f4bd6",
+          "alpha_extrema": [
+            253,
+            255
+          ],
+          "sampled_peak_gib": 13.932865142822266,
+          "prefix_cache_objects_retained": null
+        },
+        {
+          "index": 3,
+          "mode": "text-to-image",
+          "size": "1024x1024",
+          "seed": 51,
+          "seconds": 24.06170425802702,
+          "png_sha256": "b7cf5627013129767467554460b9b58d0223676752f8a4e9294d1c60e2a114aa",
+          "alpha_extrema": [
+            253,
+            255
+          ],
+          "sampled_peak_gib": 13.946537017822266,
+          "prefix_cache_objects_retained": null
+        },
+        {
+          "index": 4,
+          "mode": "text-to-image",
+          "size": "2048x2048",
+          "seed": 31415,
+          "seconds": 136.1785531360074,
+          "png_sha256": "4a17a570cfe31cee68ab1de626527eb1402eb16017a84fc818103a058d9ffba5",
+          "alpha_extrema": [
+            253,
+            255
+          ],
+          "sampled_peak_gib": 25.52853775024414,
+          "prefix_cache_objects_retained": null
+        }
+      ]
+    },
+    "container_launchers": null
+  },
+  "limits": "Three fresh process pairs (alternating order), one first and one warm request per process, isolated application caches, whole-device VRAM sampled every 5 ms; descriptive matched evidence for this workload on one R9700, not a population claim. The native attention serves dense unmasked or all-valid-mask calls; segmented prefill and other masks keep the previous paths.",
+  "container": "local review image only; not published"
+}

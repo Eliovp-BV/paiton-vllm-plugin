@@ -9,8 +9,8 @@
   "batch_size": 1,
   "steps": 40,
   "guidance": 1.0,
-  "native_region": "MXFP4 reconstruction and qualified BF16 denoiser regions",
-  "runtime": "Pinned Diffusers/BF16 with native HIP reconstruction and BF16 regions",
+  "native_region": "MXFP4 reconstruction, qualified BF16 denoiser regions, exact native attention and fused normalization",
+  "runtime": "Pinned Diffusers/BF16 with native HIP reconstruction, BF16 regions, exact attention and fused normalization",
   "checkpoint_offload": false,
   "status": "Hardware-qualified bounded R9700 model profile",
   "tasks": {
@@ -74,5 +74,7 @@
   "native_fusions_measurements": "measurements/bf16-regions-r9700.json",
   "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.1",
   "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
-  "container_repeat_measurements": "measurements/container-followup-r9700.json"
+  "container_repeat_measurements": "measurements/container-followup-r9700.json",
+  "candidate_scope": "Local candidate (not published): warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs, fixed 2048/40/CFG1 seed-42 neon workload; denoiser tensors bit-exact; maximum sampled whole-device use 25.582 GiB.",
+  "native_attention_measurements": "measurements/native-attention-r9700.json"
 }

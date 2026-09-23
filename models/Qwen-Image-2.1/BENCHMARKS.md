@@ -12,6 +12,51 @@ no CPU model offload, VAE tiling, precision changes or approximate caching.
 
 Exact prompt: `A neon shop sign that reads "QWEN IMAGE 2.1", rainy night, reflections on wet pavement`.
 
+## Candidate: exact native attention and fused normalization (local qualification)
+
+Not yet released. Built from this checkout (private compiler commit `ab6affcf`), the candidate replaces
+the framework attention of the dense text-to-image and cached decode steps with an exact native HIP kernel
+that reproduces the pinned framework arithmetic bit for bit, reads the cached text prefix and the
+token-major projections in place (no concatenation or relayout copies), and fuses each block's
+LayerNorm with the preceding gated residual and the following modulation. Checkpoint bytes, BF16
+arithmetic, residency, the 2048/40/guidance-1 workload and the allocation policy are unchanged.
+
+| Measurement | v1.0.1 control | Candidate | Latency reduction |
+| --- | ---: | ---: | ---: |
+| First request median | 176.981 s | 147.428 s | 16.70% |
+| Warm request median | 165.588 s | 136.285 s | 17.70% |
+| Warm range | 165.540–165.660 s | 136.248–136.296 s | |
+| Warm sample standard deviation | 0.060 s | 0.025 s | |
+
+| Pair | Control warm | Candidate warm | Saving |
+| --- | ---: | ---: | ---: |
+| 1 | 165.588 s | 136.285 s | 29.304 s |
+| 2 | 165.540 s | 136.296 s | 29.245 s |
+| 3 | 165.660 s | 136.248 s | 29.411 s |
+
+Three fresh server processes per path (`-m paiton_image21 serve --native-fusions`, the control from the
+v1.0.1 checkout), alternating order, one first and one warm request each, isolated application caches,
+whole-device VRAM sampled every 5 ms (maximum **25.582 GiB** across all timed requests). Complete HTTP
+timings include text encoding, denoising, VAE, PNG encoding and receipt of the JSON/base64 response;
+startup was separate. This is a bounded matched reproducibility check on one R9700, not a population
+confidence interval.
+
+Saved denoiser outputs at steps 1, 20 and 40 of the candidate are **bit-exact** against the v1.0.1 run
+of the same request. Complete images differ from fresh-process v1.0.1 images only at the documented
+cross-process VAE/post-processing variability level: over 10 graded pairs (neon workload, warm
+benchmark pairs, and the RGBA/edit/repeat suite) RGB PSNR ranged **54.55–61.71 dB**,
+maximum LPIPS **0.0002177**, minimum CLIPscore delta **-0.001065**, maximum alpha MAE
+**0.02912**; every predefined gate passed. Each candidate process repeated its first request
+byte-identically after intervening RGBA and edit requests, with no prefix-cache objects retained.
+
+The native attention serves calls without a mask or with an all-valid key mask; the segmented prefill
+step, any other mask, or unsupported shapes keep the previous framework paths (counted per request in
+the response metrics). Both companion libraries passed independent execution without Torch/Triton,
+bounds/canary checks, nondefault streams, event handoffs, poisoned changed-input graph replays and A-B-A;
+the attention library is bit-exact against the pinned framework on synthetic, one-hot and captured
+denoiser calls in both memory layouts. Records:
+[native-attention-r9700.json](measurements/native-attention-r9700.json).
+
 ## Original v1.0.0 complete-request qualification
 
 The control uses Quark HIP weight reconstruction with an exact contiguous

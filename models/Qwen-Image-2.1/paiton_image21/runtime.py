@@ -74,8 +74,14 @@ class ImageEngine:
         self.pipeline=load_pipeline(self.model_dir,self.model_dir,verify_hashes=verify)
         if native_fusions:
             from .native_regions import install
-            self.native_regions=install(self.pipeline.transformer,artifacts/"bf16-regions")
+            companions={name:artifacts/name for name in ("attention","normfuse") if (artifacts/name/"manifest.json").is_file()}
+            self.native_regions=install(self.pipeline.transformer,artifacts/"bf16-regions",
+                                        companions.get("attention"),companions.get("normfuse"))
             self.native_fusion_status="active" if self.native_regions is not None else "unsupported configuration; original regions retained"
+            if self.native_regions is not None:
+                active=["bf16-regions"]+[name for name,library in (("attention",self.native_regions.attention_library),
+                                                                ("normfuse",self.native_regions.normfuse_library)) if library is not None]
+                self.native_fusion_status="active ("+", ".join(active)+")"
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
         self.stream=torch.cuda.Stream()
@@ -140,6 +146,10 @@ class ImageEngine:
             row["allocator_config"]=self.allocator_config
             if self.native_regions is not None:
                 row["native_fusions_sha256"]=self.native_regions.manifest["sha256"]
+                for name,manifest in (("attention",self.native_regions.attention_manifest),("normfuse",self.native_regions.normfuse_manifest)):
+                    if manifest is not None:
+                        row[f"native_{name}_sha256"]=manifest["sha256"]
+                row["native_counts"]=dict(self.native_regions.counts)
             self.request_count+=1
             return result,buffer.getvalue(),row
         finally:

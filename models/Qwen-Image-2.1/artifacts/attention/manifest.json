@@ -1,0 +1,20 @@
+{
+  "file": "qwen_image21_attention_gfx1201.so",
+  "sha256": "314670dff171fe40184cbd14970a2b016bc223f43ca7dd1299a8dab1818dec30",
+  "architecture": "gfx1201",
+  "abi_version": 2,
+  "framework_dependencies": [],
+  "scope": "Exact dense BF16 attention (32 heads x 128, optional cached key/value prefix, strided token-major or head-major layouts) reproducing the pinned reference arithmetic; caller-owned workspace; no allocation or synchronization",
+  "limits": {
+    "batch": 1,
+    "heads": 32,
+    "head_dim": 128,
+    "max_query_tokens": 65536,
+    "prefix_plus_key_tokens_multiple": null,
+    "stride_multiple": 8
+  },
+  "arithmetic": "FP32 accumulation through wave32 WMMA, base-2 online softmax with the reference block structure and row-sum association, software RNE BF16 rounding, correctly rounded reciprocal",
+  "graph_contract": "Fixed shapes; caller-owned buffers, workspace and stream; initialize before capture; changed inputs supported",
+  "qualification": "BUILT_NOT_GPU_QUALIFIED",
+  "abi": "PaitonImage21AttentionPackV / PaitonImage21Attention (see attention.hip); caller-owned buffers and HIP stream"
+}

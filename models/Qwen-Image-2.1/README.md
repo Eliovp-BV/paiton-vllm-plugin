@@ -69,7 +69,7 @@ overwritten. For direct edits, place the input in that directory and use
 
 ## API
 
-`GET /health` reports readiness and `native_fusions: active`; `GET /v1/models`
+`GET /health` reports readiness and `native_fusions: active (bf16-regions, attention, normfuse)`; `GET /v1/models`
 lists the supported tasks. Generation returns a PNG in `data[0].b64_json`:
 
 ```sh
@@ -168,3 +168,14 @@ backend and must not be pooled with the incremental qualification above.
 
 The v1.0.1 container retains the qualified executable files and dependencies;
 release metadata is updated. The original v1.0.0 tag remains available.
+
+## Candidate: exact native attention (local, unreleased)
+
+This checkout carries a qualified local candidate that is not yet published as a container tag. In
+three matched fresh-process pairs against v1.0.1, warm complete HTTP median changed from
+**165.588 to 136.285 seconds** (17.70% lower latency) with unchanged
+checkpoint, BF16 arithmetic and 2048/40/guidance-1 settings; first-request median changed from
+**176.981 to 147.428 seconds**. Saved denoiser tensors are bit-exact, image,
+RGBA/editing and A-B-A checks passed, and whole-device use stayed below 26 GiB.
+[Matched samples, quality and limits](BENCHMARKS.md#candidate-exact-native-attention-and-fused-normalization-local-qualification).
+

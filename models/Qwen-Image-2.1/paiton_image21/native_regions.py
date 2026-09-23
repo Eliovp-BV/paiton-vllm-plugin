@@ -1,14 +1,18 @@
 """External framework adapter for qualified BF16 regions; no compiler dependency.
 
 Attention masks/cache sequence follows pinned Diffusers QwenImage21AttnProcessor
-(Apache-2.0). Attention itself, GEMMs, checkpoint arithmetic and scheduler remain
-the existing implementations. Every intermediate BF16 rounding is explicit in
-the independently built native library.
+(Apache-2.0). GEMMs, checkpoint arithmetic and scheduler remain the existing
+implementations. Every intermediate BF16 rounding is explicit in the independently
+built native libraries. Two optional companions extend the qualified region: an exact
+native attention (dense text-to-image and cached decode steps, no masks) and a fused
+LayerNorm(+gated residual)+modulation; when either artifact is absent, the original
+framework path is used unchanged.
 """
 import ctypes as C
 import hashlib
 import json
 import inspect
+import math
 from pathlib import Path
 import types
 
@@ -18,31 +22,46 @@ from diffusers.models.attention_dispatch import dispatch_attention_fn
 from diffusers.models.normalization import RMSNorm
 
 
+HEADS, HEAD_DIM, HIDDEN = 32, 128, 4096
+MAX_TOKENS = 40000
+SM_SCALE = 1.0 / math.sqrt(HEAD_DIM)   # framework default scale for head_dim 128 (rounded to float at the boundary)
+
+
 def _file_sha256(path):
     with Path(path).open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def _load_library(directory, abi_version, abi_symbol, arch_symbol, init_symbol):
+    """Validate an artifact directory (manifest identity, architecture, ABI) before dlopen."""
+    directory = Path(directory)
+    meta = json.loads((directory/'manifest.json').read_text())
+    binary = directory/meta['file']
+    if (meta['architecture'] != 'gfx1201' or meta['abi_version'] != abi_version
+            or _file_sha256(binary) != meta['sha256']):
+        raise RuntimeError('Image21 fusion artifact identity mismatch')
+    if not torch.cuda.get_device_properties(0).gcnArchName.startswith('gfx1201'):
+        raise RuntimeError('Image21 native fusions require gfx1201')
+    library = C.CDLL(str(binary.resolve()))
+    abi = getattr(library, abi_symbol)
+    abi.restype = C.c_uint
+    if abi() != abi_version:
+        raise RuntimeError('Image21 fusion ABI mismatch')
+    arch = getattr(library, arch_symbol)
+    arch.restype = C.c_char_p
+    if arch() != b"gfx1201":
+        raise RuntimeError("Image21 fusion target mismatch")
+    init = getattr(library, init_symbol)
+    init.restype = C.c_int
+    if init():
+        raise RuntimeError('Image21 fusion initialization failed')
+    return library, meta
+
+
 class NativeRegions:
-    def __init__(self, directory):
-        directory = Path(directory)
-        meta = json.loads((directory/'manifest.json').read_text())
-        binary = directory/meta['file']
-        if (meta['architecture'] != 'gfx1201' or meta['abi_version'] != 1
-                or _file_sha256(binary) != meta['sha256']):
-            raise RuntimeError('Image21 fusion artifact identity mismatch')
-        if not torch.cuda.get_device_properties(0).gcnArchName.startswith('gfx1201'):
-            raise RuntimeError('Image21 native fusions require gfx1201')
-        self.library = C.CDLL(str(binary.resolve()))
-        self.library.PaitonImage21GetAbiVersion.restype = C.c_uint
-        if self.library.PaitonImage21GetAbiVersion() != 1:
-            raise RuntimeError('Image21 fusion ABI mismatch')
-        self.library.PaitonImage21GetTargetArch.restype = C.c_char_p
-        if self.library.PaitonImage21GetTargetArch() != b"gfx1201":
-            raise RuntimeError("Image21 fusion target mismatch")
-        self.library.PaitonImage21Initialize.restype = C.c_int
-        if self.library.PaitonImage21Initialize():
-            raise RuntimeError('Image21 fusion initialization failed')
+    def __init__(self, directory, attention_directory=None, normfuse_directory=None):
+        self.library, meta = _load_library(directory, 1, 'PaitonImage21GetAbiVersion',
+                                           'PaitonImage21GetTargetArch', 'PaitonImage21Initialize')
         self.norm = self.library.PaitonImage21NormRope
         self.norm.argtypes = [C.c_void_p]*4+[C.c_int,C.c_float,C.c_void_p]
         self.prepare = self.library.PaitonImage21PrepareModulation
@@ -55,8 +74,37 @@ class NativeRegions:
         self.pack.argtypes = [C.c_void_p,C.c_void_p,C.c_int,C.c_void_p]
         for function in (self.norm,self.prepare,self.modulate,self.silu,self.pack):
             function.restype = C.c_int
-        self.counts = dict(blocks=0,norm_rope=0,prepare=0,modulation=0,residual=0,silu=0,attention_pack=0,fallback=0)
+        self.counts = dict(blocks=0,norm_rope=0,prepare=0,modulation=0,residual=0,silu=0,attention_pack=0,fallback=0,
+                           attention_native=0,attention_mask_fallback=0,norm_modulate=0,residual_norm_modulate=0)
         self.manifest = meta
+        # optional exact attention companion
+        self.attention_library = None
+        self.attention_manifest = None
+        self._workspace = None
+        self._mask_checks = {}
+        if attention_directory is not None:
+            self.attention_library, self.attention_manifest = _load_library(
+                attention_directory, 2, 'PaitonImage21AttentionGetAbiVersion',
+                'PaitonImage21AttentionGetTargetArch', 'PaitonImage21AttentionInitialize')
+            self.attention_pack_v = self.attention_library.PaitonImage21AttentionPackV
+            self.attention_pack_v.argtypes = [C.c_void_p]*3+[C.c_int]*3+[C.c_long]*4+[C.c_void_p]
+            self.attention_pack_v.restype = C.c_int
+            self.attention_kernel = self.attention_library.PaitonImage21Attention
+            self.attention_kernel.argtypes = [C.c_void_p]*5+[C.c_int]*4+[C.c_long]*8+[C.c_float,C.c_void_p,C.c_int]
+            self.attention_kernel.restype = C.c_int
+            self.attention_workspace_elements = self.attention_library.PaitonImage21AttentionVtElements
+            self.attention_workspace_elements.argtypes = [C.c_int]*3
+            self.attention_workspace_elements.restype = C.c_size_t
+        # optional fused LayerNorm(+residual)+modulation companion
+        self.normfuse_library = None
+        self.normfuse_manifest = None
+        if normfuse_directory is not None:
+            self.normfuse_library, self.normfuse_manifest = _load_library(
+                normfuse_directory, 1, 'PaitonImage21NormFuseGetAbiVersion',
+                'PaitonImage21NormFuseGetTargetArch', 'PaitonImage21NormModulateInitialize')
+            self.norm_modulate_kernel = self.normfuse_library.PaitonImage21NormModulate
+            self.norm_modulate_kernel.argtypes = [C.c_void_p]*6+[C.c_int]*3+[C.c_float,C.c_void_p]
+            self.norm_modulate_kernel.restype = C.c_int
 
     def call(self, function, *args):
         rc = function(*args, torch.cuda.current_stream().cuda_stream)
@@ -73,7 +121,7 @@ class NativeRegions:
 
     def parameters(self, modulation):
         out = torch.empty_like(modulation)
-        self.call(self.prepare,modulation.data_ptr(),out.data_ptr(),4096)
+        self.call(self.prepare,modulation.data_ptr(),out.data_ptr(),HIDDEN)
         self.counts['prepare'] += 1
         return out
 
@@ -81,9 +129,27 @@ class NativeRegions:
         out = torch.empty_like(x)
         self.call(self.modulate,x.data_ptr(),0 if branch is None else branch.data_ptr(),
                   parameters.data_ptr(),0 if mask is None else mask.data_ptr(),out.data_ptr(),
-                  x.shape[1],4096,offset)
+                  x.shape[1],HIDDEN,offset)
         self.counts['modulation' if branch is None else 'residual'] += 1
         return out
+
+    def norm_modulate(self, x, parameters, mask, scale_offset, eps):
+        """modulated = bf16(LayerNorm(x)) * params[scale_offset] (fused, exact)."""
+        out = torch.empty_like(x)
+        self.call(self.norm_modulate_kernel,x.data_ptr(),0,parameters.data_ptr(),
+                  0 if mask is None else mask.data_ptr(),0,out.data_ptr(),x.shape[1],0,scale_offset,eps)
+        self.counts['norm_modulate'] += 1
+        return out
+
+    def residual_norm_modulate(self, x, branch, parameters, mask, gate_offset, scale_offset, eps):
+        """hidden = bf16(x + bf16(gate*branch)); modulated = bf16(LayerNorm(hidden)) * params[scale_offset]."""
+        hidden = torch.empty_like(x)
+        out = torch.empty_like(x)
+        self.call(self.norm_modulate_kernel,x.data_ptr(),branch.data_ptr(),parameters.data_ptr(),
+                  0 if mask is None else mask.data_ptr(),hidden.data_ptr(),out.data_ptr(),
+                  x.shape[1],gate_offset,scale_offset,eps)
+        self.counts['residual_norm_modulate'] += 1
+        return hidden, out
 
     def feed_forward(self, mlp, x):
         gate = mlp.gate_layer(x)
@@ -98,21 +164,88 @@ class NativeRegions:
         inputs=[]
         for x in (query,key,value):
             if (x.dtype!=torch.bfloat16 or not x.is_contiguous() or x.shape[0]!=1
-                    or tuple(x.shape[2:])!=(32,128) or not 0<x.shape[1]<=40000):
+                    or tuple(x.shape[2:])!=(HEADS,HEAD_DIM) or not 0<x.shape[1]<=MAX_TOKENS):
                 self.counts['fallback']+=1
                 return dispatch_attention_fn(query,key,value,**kwargs)
         for x in (query,key,value):
-            packed=torch.empty((1,32,x.shape[1],128),dtype=x.dtype,device=x.device)
+            packed=torch.empty((1,HEADS,x.shape[1],HEAD_DIM),dtype=x.dtype,device=x.device)
             self.call(self.pack,x.data_ptr(),packed.data_ptr(),x.shape[1])
             inputs.append(packed.permute(0,2,1,3))
             self.counts['attention_pack']+=1
         return dispatch_attention_fn(*inputs,**kwargs)
 
+    # ---- exact native attention ------------------------------------------------------------------
+    @staticmethod
+    def _dense_input(x, min_tokens=1):
+        return (x is not None and x.dtype == torch.bfloat16 and x.is_cuda and x.is_contiguous()
+                and x.ndim == 4 and x.shape[0] == 1 and tuple(x.shape[2:]) == (HEADS, HEAD_DIM)
+                and min_tokens <= x.shape[1] <= MAX_TOKENS)
+
+    def _mask_is_trivial(self, mask):
+        """A boolean key-validity mask that is entirely true does not change the reference result
+        (verified bitwise against the pinned framework); the check is cached per mask storage."""
+        if mask is None:
+            return True
+        if mask.dtype != torch.bool or mask.ndim != 4 or mask.shape[0] != 1 or mask.shape[1] != 1 or mask.shape[2] != 1:
+            return False
+        key = (mask.data_ptr(), tuple(mask.shape), mask._version)
+        result = self._mask_checks.get(key)
+        if result is None:
+            result = bool(mask.all().item())
+            if len(self._mask_checks) > 64:
+                self._mask_checks.clear()
+            self._mask_checks[key] = result
+        return result
+
+    def attention_native_usable(self, query, key, value, key_prefix, value_prefix, attn_mask):
+        if self.attention_library is None:
+            return False
+        if not (self._dense_input(query) and self._dense_input(key) and self._dense_input(value)):
+            return False
+        if key.shape[1] != value.shape[1]:
+            return False
+        if (key_prefix is None) != (value_prefix is None):
+            return False
+        if key_prefix is not None:
+            if not (self._dense_input(key_prefix) and self._dense_input(value_prefix)):
+                return False
+            if key_prefix.shape[1] != value_prefix.shape[1] or key_prefix.shape[1] + key.shape[1] > MAX_TOKENS:
+                return False
+        if not self._mask_is_trivial(attn_mask):
+            self.counts['attention_mask_fallback'] += 1
+            return False
+        return True
+
+    def attention_native(self, query, key, value, key_prefix=None, value_prefix=None):
+        """Dense BF16 attention over [prefix keys | keys] for token-major [1, S, 32, 128] inputs.
+
+        Reads the cached prefix and the new keys/values in place (no concatenation, no relayout),
+        packs the transposed values into a reusable caller-owned workspace and writes the
+        token-major output directly."""
+        tokens_q, tokens_k = query.shape[1], key.shape[1]
+        prefix = 0 if key_prefix is None else key_prefix.shape[1]
+        needed = self.attention_workspace_elements(tokens_k, prefix, HEADS)
+        if self._workspace is None or self._workspace.numel() < needed or self._workspace.device != query.device:
+            self._workspace = torch.empty(needed, dtype=torch.bfloat16, device=query.device)
+        out = torch.empty_like(query)
+        tok, head = HEADS*HEAD_DIM, HEAD_DIM
+        self.call(self.attention_pack_v, value.data_ptr(), 0 if value_prefix is None else value_prefix.data_ptr(),
+                  self._workspace.data_ptr(), tokens_k, prefix, HEADS, tok, head, tok, head)
+        # the attention entry point takes (…, sm_scale, stream, variant): the stream is not its last argument
+        rc = self.attention_kernel(query.data_ptr(), key.data_ptr(), 0 if key_prefix is None else key_prefix.data_ptr(),
+                                   self._workspace.data_ptr(), out.data_ptr(), tokens_q, tokens_k, prefix, HEADS,
+                                   tok, head, tok, head, tok, head, tok, head, SM_SCALE,
+                                   torch.cuda.current_stream().cuda_stream, 0)
+        if rc:
+            raise RuntimeError(f'Image21 native attention failed with HIP status {rc}')
+        self.counts['attention_native'] += 1
+        return out
+
 
 def valid_hidden(x):
     return (not torch.is_grad_enabled() and x.is_cuda and x.dtype == torch.bfloat16
-            and x.ndim == 3 and x.shape[0] == 1 and x.shape[2] == 4096
-            and 0 < x.shape[1] <= 40000 and x.is_contiguous())
+            and x.ndim == 3 and x.shape[0] == 1 and x.shape[2] == HIDDEN
+            and 0 < x.shape[1] <= MAX_TOKENS and x.is_contiguous())
 
 
 class NativeAttentionProcessor(QwenImage21AttnProcessor):
@@ -132,40 +265,45 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
             self.native.counts['fallback'] += 1
             return self.fallback(attn,hidden_states,attention_mask,rotary_emb,
                                  layer_cache,kv_cache_mode,cache_write_slice,segments,key_valid)
-        query = attn.to_q(hidden_states).unflatten(-1,(32,128))
-        key = attn.to_k(hidden_states).unflatten(-1,(32,128))
-        value = attn.to_v(hidden_states).unflatten(-1,(32,128))
+        query = attn.to_q(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
+        key = attn.to_k(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
+        value = attn.to_v(hidden_states).unflatten(-1,(HEADS,HEAD_DIM))
         query = self.native.norm_rope(query,attn.norm_q,rotary_emb)
         key = self.native.norm_rope(key,attn.norm_k,rotary_emb)
+        cached_k = cached_v = None
         if layer_cache is not None:
             if kv_cache_mode == 'extract' and cache_write_slice is not None:
                 layer_cache.store(key[:,cache_write_slice].clone(),value[:,cache_write_slice].clone())
             elif kv_cache_mode == 'cached':
                 cached_k,cached_v = layer_cache.get()
+        if segments is None and self.native.attention_native_usable(query,key,value,cached_k,cached_v,attention_mask):
+            result = self.native.attention_native(query,key,value,cached_k,cached_v)
+        else:
+            if cached_k is not None:
                 key = torch.cat([cached_k,key],dim=1)
                 value = torch.cat([cached_v,value],dim=1)
-        if segments is None:
-            result = self.native.attention(query,key,value,attn_mask=attention_mask,
-                                           dropout_p=0.0,backend=self._attention_backend,
-                                           parallel_config=self._parallel_config)
-        else:
-            outputs = []
-            for start,end,is_text in segments:
-                mask = None
-                if is_text:
-                    length = end-start
-                    mask = torch.cat([torch.ones(length,start,dtype=torch.bool,device=query.device),
-                                      torch.tril(torch.ones(length,length,dtype=torch.bool,device=query.device))],dim=1)[None,None]
-                if key_valid is not None:
-                    valid = key_valid[:,None,None,:end]
-                    mask = valid if mask is None else mask & valid
-                outputs.append(self.native.attention(query[:,start:end],key[:,:end],value[:,:end],
-                    attn_mask=mask,dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
-            prefix = segments[-1][1] if segments else 0
-            outputs.append(self.native.attention(query[:,prefix:],key,value,
-                attn_mask=None if key_valid is None else key_valid[:,None,None,:],
-                dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
-            result = torch.cat(outputs,dim=1)
+            if segments is None:
+                result = self.native.attention(query,key,value,attn_mask=attention_mask,
+                                               dropout_p=0.0,backend=self._attention_backend,
+                                               parallel_config=self._parallel_config)
+            else:
+                outputs = []
+                for start,end,is_text in segments:
+                    mask = None
+                    if is_text:
+                        length = end-start
+                        mask = torch.cat([torch.ones(length,start,dtype=torch.bool,device=query.device),
+                                          torch.tril(torch.ones(length,length,dtype=torch.bool,device=query.device))],dim=1)[None,None]
+                    if key_valid is not None:
+                        valid = key_valid[:,None,None,:end]
+                        mask = valid if mask is None else mask & valid
+                    outputs.append(self.native.attention(query[:,start:end],key[:,:end],value[:,:end],
+                        attn_mask=mask,dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
+                prefix = segments[-1][1] if segments else 0
+                outputs.append(self.native.attention(query[:,prefix:],key,value,
+                    attn_mask=None if key_valid is None else key_valid[:,None,None,:],
+                    dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
+                result = torch.cat(outputs,dim=1)
         result = result[:,:query.shape[1]].flatten(2,3).type_as(query)
         return attn.to_out[1](attn.to_out[0](result))
 
@@ -187,22 +325,32 @@ def qualified_upstream():
         return False
 
 
-def install(transformer, directory):
+def _plain_layer_norm(norm):
+    return (isinstance(norm, torch.nn.LayerNorm) and tuple(norm.normalized_shape) == (HIDDEN,)
+            and not norm.elementwise_affine and norm.weight is None and norm.bias is None
+            and isinstance(norm.eps, float) and 0.0 < norm.eps < 1e-3)
+
+
+def install(transformer, directory, attention_directory=None, normfuse_directory=None):
     """Validate the complete region before mutating this engine's model objects."""
     if not qualified_upstream():
         return None
     config = transformer.config
-    if (config.num_attention_heads,config.attention_head_dim,config.num_layers,config.mlp_ratio) != (32,128,32,3):
+    if (config.num_attention_heads,config.attention_head_dim,config.num_layers,config.mlp_ratio) != (HEADS,HEAD_DIM,32,3):
         return None
     for block in transformer.transformer_blocks:
         if type(block.attn.processor) is not QwenImage21AttnProcessor:
             return None
         for norm in (block.attn.norm_q,block.attn.norm_k):
-            if (norm.weight is None or tuple(norm.weight.shape) != (128,)
+            if (norm.weight is None or tuple(norm.weight.shape) != (HEAD_DIM,)
                     or norm.weight.dtype != torch.bfloat16 or not norm.weight.is_contiguous()
                     or norm.bias is not None):
                 return None
-    native = NativeRegions(directory)
+    if normfuse_directory is not None and not all(_plain_layer_norm(block.img_norm1) and _plain_layer_norm(block.img_norm2)
+                                                  for block in transformer.transformer_blocks):
+        normfuse_directory = None   # keep the framework LayerNorm path for an unexpected normalization configuration
+    native = NativeRegions(directory, attention_directory, normfuse_directory)
+    fused_norm = native.normfuse_library is not None
     for block in transformer.transformer_blocks:
         block.attn.set_processor(NativeAttentionProcessor(native,block.attn.processor))
         original = block.forward
@@ -218,15 +366,22 @@ def install(transformer, directory):
                 return _fallback(hidden_states,modulation,rotary_emb,attention_mask,
                     target_token_mask,layer_cache,kv_cache_mode,cache_write_slice,segments,key_valid)
             parameters = native.parameters(modulation)
-            first = native.pointwise(self.img_norm1(hidden_states),parameters,target_token_mask,0)
+            if fused_norm:
+                first = native.norm_modulate(hidden_states,parameters,target_token_mask,0,self.img_norm1.eps)
+            else:
+                first = native.pointwise(self.img_norm1(hidden_states),parameters,target_token_mask,0)
             branch = self.attn(hidden_states=first,attention_mask=attention_mask,rotary_emb=rotary_emb,
                 layer_cache=layer_cache,kv_cache_mode=kv_cache_mode,cache_write_slice=cache_write_slice,
                 segments=segments,key_valid=key_valid)
-            hidden_states = native.pointwise(hidden_states,parameters,target_token_mask,4096,branch)
+            if fused_norm:
+                hidden_states,second = native.residual_norm_modulate(hidden_states,branch,parameters,target_token_mask,
+                                                                     HIDDEN,2*HIDDEN,self.img_norm2.eps)
+            else:
+                hidden_states = native.pointwise(hidden_states,parameters,target_token_mask,HIDDEN,branch)
+                second = native.pointwise(self.img_norm2(hidden_states),parameters,target_token_mask,2*HIDDEN)
             del first, branch
-            second = native.pointwise(self.img_norm2(hidden_states),parameters,target_token_mask,8192)
             branch = native.feed_forward(self.img_mlp,second)
-            result = native.pointwise(hidden_states,parameters,target_token_mask,12288,branch)
+            result = native.pointwise(hidden_states,parameters,target_token_mask,3*HIDDEN,branch)
             native.counts['blocks'] += 1
             return result
         block.forward = types.MethodType(forward,block)

@@ -67,3 +67,124 @@ class Contract(unittest.TestCase):
             self.assertIsNone(adapter.install(object(), 'unused'))
 
 if __name__=='__main__':unittest.main()
+
+
+class Companions(unittest.TestCase):
+    """Exact attention and fused normalization companions: fallback rules without any GPU or library."""
+    def _regions(self,**kw):
+        fields=dict(attention_library=None,normfuse_library=None,_mask_checks={},counts={'attention_mask_fallback':0});fields.update(kw)
+        ns=NS(**fields)
+        ns._dense_input=adapter.NativeRegions._dense_input
+        ns._mask_is_trivial=lambda mask,_self=ns:adapter.NativeRegions._mask_is_trivial(_self,mask)
+        return ns
+
+    def test_missing_attention_companion_keeps_packed_framework_attention(self):
+        regions=self._regions()
+        q=torch.zeros((1,4,32,128),dtype=torch.bfloat16)
+        self.assertFalse(adapter.NativeRegions.attention_native_usable(regions,q,q,q,None,None,None))
+
+    def test_dense_input_rules(self):
+        good=torch.zeros((1,4,32,128),dtype=torch.bfloat16)
+        self.assertFalse(adapter.NativeRegions._dense_input(good))   # CPU tensor never qualifies
+        with mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True):
+            self.assertTrue(adapter.NativeRegions._dense_input(good))
+            self.assertFalse(adapter.NativeRegions._dense_input(good.float()))
+            self.assertFalse(adapter.NativeRegions._dense_input(good.transpose(1,2)))
+            self.assertFalse(adapter.NativeRegions._dense_input(torch.zeros((2,4,32,128),dtype=torch.bfloat16)))
+            self.assertFalse(adapter.NativeRegions._dense_input(torch.zeros((1,4,16,128),dtype=torch.bfloat16)))
+
+    def test_partial_key_validity_mask_falls_back_and_is_counted(self):
+        regions=self._regions(attention_library=object())
+        q=torch.zeros((1,4,32,128),dtype=torch.bfloat16)
+        mask=torch.ones((1,1,1,4),dtype=torch.bool);mask[0,0,0,2]=False
+        with mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True):
+            self.assertFalse(adapter.NativeRegions.attention_native_usable(regions,q,q,q,None,None,mask))
+            self.assertEqual(regions.counts['attention_mask_fallback'],1)
+            self.assertTrue(adapter.NativeRegions.attention_native_usable(regions,q,q,q,None,None,torch.ones((1,1,1,4),dtype=torch.bool)))
+            self.assertTrue(adapter.NativeRegions.attention_native_usable(regions,q,q,q,None,None,None))
+            self.assertFalse(adapter.NativeRegions.attention_native_usable(regions,q,q,q,None,None,torch.zeros((1,1,4,4),dtype=torch.float)))
+
+    def test_all_true_mask_check_is_cached_per_storage(self):
+        regions=self._regions(attention_library=object())
+        mask=torch.ones((1,1,1,8),dtype=torch.bool)
+        with mock.patch.object(torch.Tensor,'all',wraps=mask.all) as spy:
+            self.assertTrue(regions._mask_is_trivial(mask));self.assertTrue(regions._mask_is_trivial(mask))
+        self.assertEqual(spy.call_count,1)
+        mask[0,0,0,3]=False   # in-place change bumps the version counter: re-evaluated
+        self.assertFalse(regions._mask_is_trivial(mask))
+
+    def test_prefix_buffers_must_pair_and_fit(self):
+        regions=self._regions(attention_library=object())
+        q=torch.zeros((1,4,32,128),dtype=torch.bfloat16);pre=torch.zeros((1,2,32,128),dtype=torch.bfloat16)
+        with mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True):
+            self.assertTrue(adapter.NativeRegions.attention_native_usable(regions,q,q,q,pre,pre,None))
+            self.assertFalse(adapter.NativeRegions.attention_native_usable(regions,q,q,q,pre,None,None))
+            self.assertFalse(adapter.NativeRegions.attention_native_usable(regions,q,q,q,pre,torch.zeros((1,3,32,128),dtype=torch.bfloat16),None))
+
+    def test_cached_decode_passes_prefix_without_concatenation(self):
+        calls=[]
+        native=NS(counts={'fallback':0},norm_rope=lambda x,norm,freq:x,
+                  attention_native_usable=lambda *a:True,
+                  attention_native=lambda q,k,v,kp,vp:(calls.append((k.shape,kp.shape,vp.shape)) or q))
+        class Fallback:
+            _attention_backend=None
+            _parallel_config=None
+        linear=lambda x:x.reshape(x.shape[0],x.shape[1],4096)
+        attn=NS(to_q=linear,to_k=linear,to_v=linear,norm_q=None,norm_k=None,to_out=[lambda x:x,lambda x:x])
+        hidden=torch.zeros((1,3,4096),dtype=torch.bfloat16)
+        cached=torch.zeros((1,2,32,128),dtype=torch.bfloat16)
+        cache=NS(get=lambda:(cached,cached))
+        rope=torch.zeros((3,64),dtype=torch.complex64)
+        with torch.no_grad(), mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True), mock.patch.object(torch,'cat',side_effect=AssertionError('must not concatenate')):
+            out=adapter.NativeAttentionProcessor(native,Fallback())(attn,hidden,rotary_emb=rope,layer_cache=cache,kv_cache_mode='cached')
+        self.assertEqual(tuple(out.shape),(1,3,4096))
+        self.assertEqual(calls,[((1,3,32,128),(1,2,32,128),(1,2,32,128))])
+
+    def test_segmented_prefill_keeps_masked_framework_path(self):
+        seen=[]
+        native=NS(counts={'fallback':0},norm_rope=lambda x,norm,freq:x,
+                  attention_native_usable=lambda *a:(seen.append('asked') or True),
+                  attention_native=lambda *a:AssertionError('native attention must not run with segments'),
+                  attention=lambda q,k,v,**kw:q)
+        class Fallback:
+            _attention_backend=None
+            _parallel_config=None
+        linear=lambda x:x.reshape(x.shape[0],x.shape[1],4096)
+        attn=NS(to_q=linear,to_k=linear,to_v=linear,norm_q=None,norm_k=None,to_out=[lambda x:x,lambda x:x])
+        hidden=torch.zeros((1,3,4096),dtype=torch.bfloat16)
+        with torch.no_grad(), mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True):
+            out=adapter.NativeAttentionProcessor(native,Fallback())(attn,hidden,segments=[(0,1,True)])
+        self.assertEqual(tuple(out.shape),(1,3,4096))
+        self.assertEqual(seen,[])
+
+    def test_affine_layernorm_disables_fused_normalization_only(self):
+        captured=[]
+        class Regions:
+            def __init__(self,directory,attention_directory=None,normfuse_directory=None):
+                captured.append((directory,attention_directory,normfuse_directory));self.normfuse_library=None;self.counts={}
+        weight=torch.ones(128,dtype=torch.bfloat16)
+        norm=NS(weight=weight,bias=None)
+        block=NS(attn=NS(processor=adapter.QwenImage21AttnProcessor(),norm_q=norm,norm_k=norm,set_processor=lambda p:None),
+                 img_norm1=torch.nn.LayerNorm(4096,elementwise_affine=True),img_norm2=torch.nn.LayerNorm(4096,elementwise_affine=False),forward=lambda *a,**k:None)
+        model=NS(config=NS(num_attention_heads=32,attention_head_dim=128,num_layers=32,mlp_ratio=3),transformer_blocks=[block])
+        with mock.patch.object(adapter,'qualified_upstream',return_value=True), mock.patch.object(adapter,'NativeRegions',Regions):
+            self.assertIsNotNone(adapter.install(model,'regions','attention','normfuse'))
+        self.assertEqual(captured,[('regions','attention',None)])
+
+
+class AttentionCallShape(unittest.TestCase):
+    def test_attention_entry_point_receives_stream_before_variant(self):
+        seen=[]
+        regions=NS(attention_workspace_elements=lambda k,p,h:64,_workspace=None,counts={'attention_native':0},
+                   attention_pack_v=lambda *a:(seen.append(('pack',a)) or 0),
+                   attention_kernel=lambda *a:(seen.append(('attn',a)) or 0))
+        regions.call=lambda fn,*a:adapter.NativeRegions.call(regions,fn,*a)
+        q=torch.zeros((1,3,32,128),dtype=torch.bfloat16);pre=torch.zeros((1,2,32,128),dtype=torch.bfloat16)
+        with mock.patch.object(adapter.torch.cuda,'current_stream',return_value=NS(cuda_stream=777)):
+            out=adapter.NativeRegions.attention_native(regions,q,q,q,pre,pre)
+        self.assertEqual(tuple(out.shape),(1,3,32,128))
+        pack=[a for kind,a in seen if kind=='pack'][0];attn=[a for kind,a in seen if kind=='attn'][0]
+        self.assertEqual(len(pack),11);self.assertEqual(pack[-1],777)
+        self.assertEqual(len(attn),20);self.assertEqual(attn[-2],777);self.assertEqual(attn[-1],0)   # (..., sm_scale, stream, variant)
+        self.assertEqual((attn[5],attn[6],attn[7],attn[8]),(3,3,2,32))
+        self.assertAlmostEqual(attn[17],1/128**0.5)
