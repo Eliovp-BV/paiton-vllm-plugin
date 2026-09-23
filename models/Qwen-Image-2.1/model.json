@@ -72,7 +72,7 @@
   "repository_revision": "b52373faeac233fb27c8bba2d334729208ee7b22",
   "native_fusions_option": "Enabled by the managed launchers; --no-native-fusions selects the unpack-only fallback",
   "native_fusions_measurements": "measurements/bf16-regions-r9700.json",
-  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2",
+  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3",
   "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
   "container_repeat_measurements": "measurements/container-followup-r9700.json",
   "native_attention_measurements": "measurements/native-attention-r9700.json",
@@ -88,5 +88,22 @@
   },
   "native_attention_scope": "Released in v1.0.2 as the exact profile: warm complete-request median 136.285 s versus 165.588 s for v1.0.1 (17.70% lower), first request 147.428 s versus 176.981 s, three alternating fresh-process pairs; denoiser tensors bit-exact.",
   "precision_schedule_scope": "Default profile: 103.637 s warm (24.2% below the bit-exact profile) with 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images; mode suite 50.2 / 35.0 / 52.0 / 50.2 / 48.9 dB, A-B-A repeat identical: True. Bounded graded checks on the documented prompts; no arbitrary-prompt equivalence claim. Checkpoint bytes unchanged.",
-  "container_digest": "sha256:c7ab0c5f900bf16c2b56fa5aa0f9dd7b8c32a0ea6106db954b43556c4cc07d97"
+  "checkpoint_variants": {
+    "original": {
+      "default": true,
+      "api_id": "paiton-image-2.1",
+      "repository": "EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4",
+      "lock": "checkpoint.lock.json",
+      "default_precision_profile": "schedule-int8",
+      "qualification": "Existing R9700 release; recorded performance belongs to this original checkpoint."
+    },
+    "uncensored": {
+      "api_id": "paiton-image-2.1-uncensored",
+      "repository": "EliovpAI/Qwen_Image-2.1-Uncensored-MXFP4-Paiton",
+      "lock": "checkpoint.uncensored.lock.json",
+      "default_precision_profile": "exact",
+      "qualification": "MI355 conversion correctness, eight-prompt quality screen, RGBA, editing and A-B-A; R9700 execution and low-precision profile quality not tested on this checkpoint."
+    }
+  },
+  "selector": "--model {original,uncensored}; one checkpoint per worker; shared native artifacts, separate pinned model hashes"
 }

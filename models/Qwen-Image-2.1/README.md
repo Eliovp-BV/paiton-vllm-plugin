@@ -10,6 +10,29 @@ For compatible framework runtimes beyond RDNA4, see the separate
 This container uses the RDNA4 package; portable setup and hardware measurements
 are documented in that model's card.
 
+The same container also supports
+[the abenzerps fine-tune converted to MXFP4 by Paiton](https://huggingface.co/EliovpAI/Qwen_Image-2.1-Uncensored-MXFP4-Paiton).
+Select the checkpoint at launch; only one model is loaded at a time:
+
+```sh
+./models/Qwen-Image-2.1/serve-docker.sh --model original
+./models/Qwen-Image-2.1/serve-docker.sh --model uncensored
+```
+
+Version **v1.0.3** adds this selector to the existing runtime and native libraries.
+`original` remains the default and retains its `schedule-int8` precision profile.
+`uncensored` defaults to `exact`, preserving BF16 activation arithmetic. An
+explicit `--precision-profile` still overrides the default; the low-precision
+profiles have not been graded on the new fine-tune. Restart the worker to switch
+models. Downloads are independently pinned and verified, and caches are separated
+by HF repository and revision.
+
+The uncensored conversion passed MI355 correctness, image-quality screening,
+RGBA, editing and A–B–A checks. It has **not** been run on R9700 in this release's
+qualification. The R9700 timings and VRAM figures below describe the original
+model. The source author's “uncensored” label is not a guarantee of behavior.
+See [the conversion measurements](measurements/uncensored-mi355.json).
+
 At **2048 × 2048, 40 steps, guidance 1.0**, v1.0.2 measured **103.64 seconds** median warm
 complete-request latency against **136.65 seconds** for its bit-exact profile in matched fresh-process
 pairs (24.2% lower latency), and the bit-exact profile itself is 17.7% faster than v1.0.1
@@ -40,7 +63,7 @@ Use an absolute path for a host cache directory. The default API binds to localh
 Without a repository checkout, the same container starts with:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.2
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3
 ```
 
 ## Generate an image
@@ -83,6 +106,11 @@ The image endpoints use JSON. `/v1/images/edits` accepts the same fields with
 multipart uploads or remote image URLs. The included client handles encoding
 and saving. This image engine uses Diffusers and its own API, separate from the
 repository's `paiton serve` vLLM language-model presets.
+
+For the uncensored selection, the API model ID is `paiton-image-2.1-uncensored`.
+Omit `model` to use the loaded checkpoint, or specify that exact ID. `/health`,
+`/v1/models` and generation metrics identify the loaded model. The included
+`request.py` client follows the server's loaded model unless `--model` is given.
 
 | Setting | Qualified scope |
 | --- | --- |
@@ -127,6 +155,13 @@ are in [checkpoint.lock.json](checkpoint.lock.json). To reuse a local published
 snapshot, mount it read-only and pass `--model-dir /path/in/container`; it must
 pass the same verification. Weights are never requantized at startup.
 
+The uncensored selection uses its own
+[checkpoint.uncensored.lock.json](checkpoint.uncensored.lock.json). Passing an
+original checkpoint directory with `--model uncensored`, or vice versa, fails
+verification. Both use the Paiton packed format and the same native artifacts;
+the portable HF package has a different format label and loader and is not a
+drop-in replacement for either pinned directory.
+
 ## Existing environments and container build
 
 The container is the reproducible entry point. A native launch requires CPython
@@ -142,12 +177,19 @@ PAITON_PYTHON=/path/to/qualified/python ./models/Qwen-Image-2.1/launch.sh serve 
 Build from the public runtime package only:
 
 ```sh
+paiton_artifact_container=$(docker create ghcr.io/eliovp/paiton-vllm-plugin@sha256:c7ab0c5f900bf16c2b56fa5aa0f9dd7b8c32a0ea6106db954b43556c4cc07d97)
+docker cp "$paiton_artifact_container:/app/artifacts/." models/Qwen-Image-2.1/artifacts/
+docker rm "$paiton_artifact_container"
+python3 models/Qwen-Image-2.1/verify_artifacts.py
 docker build -t paiton-qwen-image21:local models/Qwen-Image-2.1
 PAITON_IMAGE=paiton-qwen-image21:local ./models/Qwen-Image-2.1/serve-docker.sh
 ```
 
-The native libraries are already compiled and shipped under `artifacts/`; the
-proprietary compiler and generated implementation source are not needed or included.
+The native libraries are compiled and distributed in the published container.
+The commands above copy only those existing artifacts from the pinned v1.0.2
+image; they do not start a GPU process. v1.0.3 reuses the same 12 libraries, and
+the build verifies all their hashes. The Git checkout tracks their manifests;
+the proprietary compiler and generated implementation source are not needed or included.
 The complete model still uses its pinned external framework runtime.
 
 ## License and attribution

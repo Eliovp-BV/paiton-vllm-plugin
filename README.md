@@ -276,12 +276,23 @@ Qwen-Image v1.0.2 runs an int8 precision schedule after seven bit-exact steps by
 (136.65 → 103.64 s warm in matched pairs against its bit-exact profile, which itself measured
 165.588 → 136.285 s against v1.0.1); `--precision-profile exact` restores the bit-exact path.
 
-Qwen-Image checkpoints are available in two packages:
+The original Qwen-Image checkpoint is available in two packages:
 [the optimized RDNA4 package](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4)
 used by this container, and
 [the portable MXFP4 package](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4)
 for compatible framework runtimes beyond RDNA4. Follow the portable model card
 for its setup and hardware measurements; those are separate from the R9700 results here.
+
+The same image container also offers
+[Qwen_Image-2.1-Uncensored-MXFP4-Paiton](https://huggingface.co/EliovpAI/Qwen_Image-2.1-Uncensored-MXFP4-Paiton),
+Paiton's MXFP4 conversion of the abenzerps fine-tune. Use
+`./models/Qwen-Image-2.1/serve-docker.sh --model uncensored` to select it.
+Without a selector, the **original model remains the default**.
+The uncensored selection uses the exact BF16 arithmetic profile by default and
+has passed MI355 correctness checks; its R9700 performance and low-precision
+quality have not been measured. The R9700 figures above refer to the original
+model. Both selections share the native runtime and download separate pinned
+weights; one model is loaded per worker.
 
 Start the optimized Qwen-Image API with one command; model files download from
 the pinned [RDNA4 Hugging Face checkpoint](https://huggingface.co/EliovpAI/Qwen_Image-2.1-MXFP4-Paiton-RDNA4)

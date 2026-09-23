@@ -13,6 +13,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--server", default="http://127.0.0.1:8191")
     p.add_argument("--prompt", required=True)
+    p.add_argument("--model", help="Optional API model ID; by default use the server's loaded model")
     p.add_argument("--mode", choices=("text-to-image", "rgba", "edit"), default="text-to-image")
     p.add_argument("--size", type=int, choices=(1024, 2048), default=2048)
     p.add_argument("--seed", type=int, default=42)
@@ -25,8 +26,10 @@ def main():
         p.error("Editing requires --image and --size 1024")
     if args.mode != "edit" and args.image is not None:
         p.error("--image requires --mode edit")
-    body = dict(model="paiton-image-2.1", prompt=args.prompt, mode=args.mode,
+    body = dict(prompt=args.prompt, mode=args.mode,
                 size=f"{args.size}x{args.size}", seed=args.seed, n=1)
+    if args.model is not None:
+        body["model"] = args.model
     endpoint = "generations"
     if args.image is not None:
         body["image_b64"] = base64.b64encode(args.image.read_bytes()).decode()

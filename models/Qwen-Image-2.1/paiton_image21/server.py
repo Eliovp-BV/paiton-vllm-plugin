@@ -8,6 +8,7 @@ import time
 from PIL import Image,UnidentifiedImageError
 
 def serve(engine,host,port):
+    model_id=getattr(engine,"model_id","paiton-image-2.1")
     class Handler(BaseHTTPRequestHandler):
         def send_json(self,status,value):
             payload=json.dumps(value).encode()
@@ -21,9 +22,10 @@ def serve(engine,host,port):
             if self.path=="/health":
                 self.send_json(200,dict(status="ready",busy=engine.busy.locked(),backend=engine.backend,native_fusions=engine.native_fusion_status,
                     allocator_budget_gib=engine.allocator_budget_gib,allocator_config=engine.allocator_config,
-                    checkpoint_sha256=engine.checkpoint_sha256,load_seconds=engine.load_seconds))
+                    checkpoint_sha256=engine.checkpoint_sha256,load_seconds=engine.load_seconds,
+                    model=model_id,model_variant=getattr(engine,"model_variant","original")))
             elif self.path=="/v1/models":
-                self.send_json(200,dict(object="list",data=[dict(id="paiton-image-2.1",object="model",
+                self.send_json(200,dict(object="list",data=[dict(id=model_id,object="model",
                     owned_by="EliovpAI",tasks=["text-to-image","rgba","edit"],batch_size=1,
                     generation_sizes=["1024x1024","2048x2048"],rgba_sizes=["1024x1024","2048x2048"],
                     edit_sizes=["1024x1024"],steps=40,guidance=1.0)]))
@@ -43,8 +45,8 @@ def serve(engine,host,port):
                 allowed={"prompt","size","seed","mode","image_b64","n","model","steps","guidance","response_format"}
                 if set(body)-allowed:
                     raise ValueError("Unsupported fields: "+", ".join(sorted(set(body)-allowed)))
-                if type(body.get("n",1)) is not int or body.get("n",1)!=1 or body.get("model","paiton-image-2.1")!="paiton-image-2.1":
-                    raise ValueError("Use model paiton-image-2.1 and n=1")
+                if type(body.get("n",1)) is not int or body.get("n",1)!=1 or body.get("model",model_id)!=model_id:
+                    raise ValueError(f"Use model {model_id} and n=1")
                 if body.get("response_format","b64_json")!="b64_json":
                     raise ValueError("response_format must be b64_json")
                 size=body.get("size","2048x2048")

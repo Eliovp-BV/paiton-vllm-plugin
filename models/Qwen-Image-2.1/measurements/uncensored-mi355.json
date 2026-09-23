@@ -1,0 +1,1543 @@
+{
+  "status": "completed_mi355_correctness_screen",
+  "source_sha256": "f151c683a8aed4b310777017ebbbe3f2180f1180f7867115171adb7d50b0762a",
+  "quality": {
+    "status": "completed_descriptive_quality_screen",
+    "count": 8,
+    "rows": [
+      {
+        "id": "neon-first",
+        "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+        "seed": 42,
+        "reference_png_sha256": "2729b3620d097c45c5b13db252df0f3e9fd4d4f93faf20b71c4839e2a4d719e2",
+        "candidate_png_sha256": "82a23b56fe9e8e80f2616be0189e9aaa47fe1b54532c6d422dd8082ece33dcdf",
+        "clipscore_bf16": 1.1144796013832092,
+        "clipscore_candidate": 0.8718983083963394,
+        "lpips_vs_bf16": 0.36456334590911865,
+        "clipscore_delta": -0.2425812929868698
+      },
+      {
+        "id": "portrait-first",
+        "prompt": "A natural light editorial portrait of an elderly woman with silver hair and freckles, wearing a blue linen shirt, relaxed expression, soft window light, photographic detail",
+        "seed": 43,
+        "reference_png_sha256": "14a8cceb24ed63bbd29306013089dcd5ed9f7e68a2efc045397cc3403be44880",
+        "candidate_png_sha256": "dc1205eff76d557996d9186f13a41838d134e829c79cf2e7f08e19d82d28d74b",
+        "clipscore_bf16": 0.8257061243057251,
+        "clipscore_candidate": 0.8091752231121063,
+        "lpips_vs_bf16": 0.057727862149477005,
+        "clipscore_delta": -0.016530901193618774
+      },
+      {
+        "id": "product-first",
+        "prompt": "A studio product photograph of a green ceramic teapot and a white porcelain cup on a pale wooden table, soft shadows, clean white background",
+        "seed": 44,
+        "reference_png_sha256": "be6aca86e3a1ee27f41dcb4045c5f279e68cd513f9333c052fb9041a86f739d1",
+        "candidate_png_sha256": "20397f382e84a3a940e3348894b26ed466afd86ce444cc4abb3369a6558539b8",
+        "clipscore_bf16": 0.9173409640789032,
+        "clipscore_candidate": 0.9037841111421585,
+        "lpips_vs_bf16": 0.05581988766789436,
+        "clipscore_delta": -0.01355685293674469
+      },
+      {
+        "id": "animals-first",
+        "prompt": "Two red foxes sitting beside a mossy log in a misty pine forest, early morning sunlight, realistic wildlife photography",
+        "seed": 45,
+        "reference_png_sha256": "ba4e3b9c939faae49b5d985698f34748cabb6bad47eeaaba7bd9e3f72c2eadbe",
+        "candidate_png_sha256": "21790e0480350ccbb9af2c10886c348be8cb76e48050e7c655484846c04d073c",
+        "clipscore_bf16": 0.8416342735290527,
+        "clipscore_candidate": 0.8407427370548248,
+        "lpips_vs_bf16": 0.1324639618396759,
+        "clipscore_delta": -0.0008915364742279053
+      },
+      {
+        "id": "spatial-first",
+        "prompt": "A red cube to the left of a blue sphere, with a small yellow cone behind them, on a white tabletop, clean three dimensional rendering",
+        "seed": 46,
+        "reference_png_sha256": "d99605f0368a7bf4d843166ef05df8fca7badaaf771b5a1c9079d7c09c5dba33",
+        "candidate_png_sha256": "633e7baa29d6dea36cfd9342587604f9f938ecddcab5a9252205f73d2fd505bb",
+        "clipscore_bf16": 0.9053816646337509,
+        "clipscore_candidate": 0.9046095609664917,
+        "lpips_vs_bf16": 0.013449719175696373,
+        "clipscore_delta": -0.0007721036672592163
+      },
+      {
+        "id": "illustration-first",
+        "prompt": "A watercolor illustration of a small bookshop on a quiet European street, flower boxes under the windows, a bicycle by the door, warm spring sunshine",
+        "seed": 47,
+        "reference_png_sha256": "82194261767681ff42704aebf80cfdcea70e2224dea1fa3b2fafc1a7610eae35",
+        "candidate_png_sha256": "09cc3b43361915a4671e29570a7912fe7a4e5dd4e2bcd3ab9edb61e9e5d30843",
+        "clipscore_bf16": 0.8999834954738617,
+        "clipscore_candidate": 0.8866769075393677,
+        "lpips_vs_bf16": 0.4686177372932434,
+        "clipscore_delta": -0.013306587934494019
+      },
+      {
+        "id": "landscape-first",
+        "prompt": "A wide landscape photograph of snowy mountains reflected in a calm alpine lake at sunrise, pink clouds, sharp rocks and wildflowers in the foreground",
+        "seed": 48,
+        "reference_png_sha256": "3c3abcfc552c6ce2d154937f9351c197b6c6dab916e5f30fc9bd9d405e30d5bd",
+        "candidate_png_sha256": "a699176e93685c9412ae43cbb8dbcbc9fa43f6996995134c5002af4a490bd63e",
+        "clipscore_bf16": 0.889352485537529,
+        "clipscore_candidate": 0.8648373186588287,
+        "lpips_vs_bf16": 0.31182053685188293,
+        "clipscore_delta": -0.024515166878700256
+      },
+      {
+        "id": "poster-first",
+        "prompt": "A clean graphic poster with the exact headline \"FRESH COFFEE\" in large readable letters, a simple illustration of a coffee cup, cream and dark brown colors",
+        "seed": 49,
+        "reference_png_sha256": "4b419904f93122cdb9e610e8f77d0028d76f1e419af29abcd820a353d74c017a",
+        "candidate_png_sha256": "1c49b297c04624fbe839303c1c29f71791d81633fcdfcc7d5c1002c2b84cc107",
+        "clipscore_bf16": 0.8254755288362503,
+        "clipscore_candidate": 0.868946835398674,
+        "lpips_vs_bf16": 0.13691122829914093,
+        "clipscore_delta": 0.043471306562423706
+      }
+    ],
+    "metric_manifest": {
+      "clip_repository": "openai/clip-vit-base-patch32",
+      "clip_revision": "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+      "clip_weight_file": "pytorch_model.bin",
+      "versions": {
+        "torch": "2.10.0+rocm7.1",
+        "torchvision": "0.25.0+rocm7.1",
+        "transformers": "5.17.0",
+        "lpips": "0.1.4",
+        "numpy": "2.5.2"
+      },
+      "files": [
+        {
+          "file": "config.json",
+          "sha256": "b575ef3c36f2a057fa19e221650105052d61cc9c1a972ec15019c6261ec98770",
+          "bytes": 4186
+        },
+        {
+          "file": "merges.txt",
+          "sha256": "f526393189112391ce6f9795d4695f704121ce452c3aad1f5335cc41337eba85",
+          "bytes": 524657
+        },
+        {
+          "file": "preprocessor_config.json",
+          "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+          "bytes": 316
+        },
+        {
+          "file": "pytorch_model.bin",
+          "sha256": "a63082132ba4f97a80bea76823f544493bffa8082296d62d71581a4feff1576f",
+          "bytes": 605247071
+        },
+        {
+          "file": "special_tokens_map.json",
+          "sha256": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf",
+          "bytes": 389
+        },
+        {
+          "file": "tokenizer.json",
+          "sha256": "b556ac8c99757ffb677208af34bc8c6721572114111a6e0aaf5fa69ff0b8d842",
+          "bytes": 2224041
+        },
+        {
+          "file": "tokenizer_config.json",
+          "sha256": "34b7336e4bee12e0a9730eaf5189f582ef3c3eea5027f65730e5717256755aad",
+          "bytes": 592
+        },
+        {
+          "file": "vocab.json",
+          "sha256": "5047b556ce86ccaf6aa22b3ffccfc52d391ea4accdab9c2f2407da5b742d4363",
+          "bytes": 862328
+        }
+      ],
+      "alexnet": {
+        "file": "alexnet-owt-7be5be79.pth",
+        "sha256": "7be5be791159472b1fbf3c69796f7cb30dca7ad8466c2df70058c37116cdee02",
+        "bytes": 244408911
+      },
+      "lpips_calibration_sha256": "df73285e35b22355a2df87cdb6b70b343713b667eddbda73e1977e0c860835c0"
+    },
+    "reference_variant": "bf16",
+    "candidate_variant": "all",
+    "clipscore": "2.5 * max(cosine(image,text),0); CLIP ViT-B/32; 'A photo depicts ' prefix; float32 CPU via Transformers; original 224-pixel bicubic center crop",
+    "lpips": "lpips 0.1.4, AlexNet v0.1, RGB resized to 512 square with bicubic; inputs [-1,1]; lower means closer to paired BF16, not necessarily better image quality",
+    "limitations": "Eight custom prompts and one seed per prompt. Descriptive smoke test, no statistical quality equivalence claim. CLIPScore is not a correctness, typography or human-preference guarantee. LPIPS measures changes in composition as well as degradation. No FID/KID computed on this small sample.",
+    "means": {
+      "clipscore_bf16": 0.9024192672222853,
+      "clipscore_candidate": 0.8688338752835989,
+      "clipscore_delta": -0.03358539193868637,
+      "lpips_vs_bf16": 0.1926717848982662
+    }
+  },
+  "latency_and_memory": {
+    "bf16": {
+      "gpu": "_CudaDeviceProperties(name='AMD Radeon Graphics', major=9, minor=5, gcnArchName='gfx950:sramecc+:xnack-', total_memory=294896MB, multi_processor_count=256, uuid=31303338-3666-6265-3937-343836316534, pci_bus_id=117, pci_device_id=0, pci_domain_id=0, L2_cache_size=4MB)",
+      "hip": "7.1.25424",
+      "versions": {
+        "torch": "2.10.0+rocm7.1",
+        "diffusers": "0.41.0.dev0",
+        "transformers": "5.17.0",
+        "accelerate": "1.15.0",
+        "safetensors": "0.8.0"
+      },
+      "allocator_cap_bytes": 68719476736.0,
+      "load_seconds": 10.025620744097978,
+      "sampled_peak_device_bytes": 57963184128,
+      "requests": [
+        {
+          "id": "neon-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+          "seed": 42,
+          "complete_request_to_pil_seconds": 19.358816489111632,
+          "complete_request_to_png_seconds": 20.572639046935365,
+          "process_start_to_png_seconds": 31.459394913865253,
+          "peak_allocated_bytes": 50683621376,
+          "peak_reserved_bytes": 56476303360,
+          "sampled_peak_device_bytes": 57963184128,
+          "png_sha256": "2729b3620d097c45c5b13db252df0f3e9fd4d4f93faf20b71c4839e2a4d719e2",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 249,
+          "alpha_max": 255
+        },
+        {
+          "id": "portrait-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A natural light editorial portrait of an elderly woman with silver hair and freckles, wearing a blue linen shirt, relaxed expression, soft window light, photographic detail",
+          "seed": 43,
+          "complete_request_to_pil_seconds": 17.891500659054145,
+          "complete_request_to_png_seconds": 19.060148459859192,
+          "process_start_to_png_seconds": 50.533550190972164,
+          "peak_allocated_bytes": 50682871296,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "14a8cceb24ed63bbd29306013089dcd5ed9f7e68a2efc045397cc3403be44880",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 249,
+          "alpha_max": 255
+        },
+        {
+          "id": "product-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A studio product photograph of a green ceramic teapot and a white porcelain cup on a pale wooden table, soft shadows, clean white background",
+          "seed": 44,
+          "complete_request_to_pil_seconds": 17.918784850044176,
+          "complete_request_to_png_seconds": 18.98277305904776,
+          "process_start_to_png_seconds": 69.52774427877739,
+          "peak_allocated_bytes": 50682830336,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "be6aca86e3a1ee27f41dcb4045c5f279e68cd513f9333c052fb9041a86f739d1",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 251,
+          "alpha_max": 255
+        },
+        {
+          "id": "animals-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "Two red foxes sitting beside a mossy log in a misty pine forest, early morning sunlight, realistic wildlife photography",
+          "seed": 45,
+          "complete_request_to_pil_seconds": 17.878359139198437,
+          "complete_request_to_png_seconds": 18.891418333165348,
+          "process_start_to_png_seconds": 88.43161778780632,
+          "peak_allocated_bytes": 50682805760,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "ba4e3b9c939faae49b5d985698f34748cabb6bad47eeaaba7bd9e3f72c2eadbe",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 251,
+          "alpha_max": 255
+        },
+        {
+          "id": "spatial-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A red cube to the left of a blue sphere, with a small yellow cone behind them, on a white tabletop, clean three dimensional rendering",
+          "seed": 46,
+          "complete_request_to_pil_seconds": 17.876462967135012,
+          "complete_request_to_png_seconds": 18.9773146440275,
+          "process_start_to_png_seconds": 107.42291535879485,
+          "peak_allocated_bytes": 50682838528,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "d99605f0368a7bf4d843166ef05df8fca7badaaf771b5a1c9079d7c09c5dba33",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 253,
+          "alpha_max": 255
+        },
+        {
+          "id": "illustration-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A watercolor illustration of a small bookshop on a quiet European street, flower boxes under the windows, a bicycle by the door, warm spring sunshine",
+          "seed": 47,
+          "complete_request_to_pil_seconds": 17.89926350908354,
+          "complete_request_to_png_seconds": 19.175433417083696,
+          "process_start_to_png_seconds": 126.6106223037932,
+          "peak_allocated_bytes": 50682854912,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "82194261767681ff42704aebf80cfdcea70e2224dea1fa3b2fafc1a7610eae35",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 240,
+          "alpha_max": 255
+        },
+        {
+          "id": "landscape-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A wide landscape photograph of snowy mountains reflected in a calm alpine lake at sunrise, pink clouds, sharp rocks and wildflowers in the foreground",
+          "seed": 48,
+          "complete_request_to_pil_seconds": 17.80886067217216,
+          "complete_request_to_png_seconds": 18.868385752197355,
+          "process_start_to_png_seconds": 145.49356518592685,
+          "peak_allocated_bytes": 50682838528,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "3c3abcfc552c6ce2d154937f9351c197b6c6dab916e5f30fc9bd9d405e30d5bd",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 249,
+          "alpha_max": 255
+        },
+        {
+          "id": "poster-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A clean graphic poster with the exact headline \"FRESH COFFEE\" in large readable letters, a simple illustration of a coffee cup, cream and dark brown colors",
+          "seed": 49,
+          "complete_request_to_pil_seconds": 17.880304048070684,
+          "complete_request_to_png_seconds": 18.966885151108727,
+          "process_start_to_png_seconds": 164.47362234489992,
+          "peak_allocated_bytes": 50682879488,
+          "peak_reserved_bytes": 56088330240,
+          "sampled_peak_device_bytes": 57589891072,
+          "png_sha256": "4b419904f93122cdb9e610e8f77d0028d76f1e419af29abcd820a353d74c017a",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 241,
+          "alpha_max": 255
+        }
+      ]
+    },
+    "mxfp4": {
+      "gpu": "_CudaDeviceProperties(name='AMD Radeon Graphics', major=9, minor=5, gcnArchName='gfx950:sramecc+:xnack-', total_memory=294896MB, multi_processor_count=256, uuid=31303338-3666-6265-3937-343836316534, pci_bus_id=117, pci_device_id=0, pci_domain_id=0, L2_cache_size=4MB)",
+      "hip": "7.1.25424",
+      "versions": {
+        "torch": "2.10.0+rocm7.1",
+        "diffusers": "0.41.0.dev0",
+        "transformers": "5.17.0",
+        "accelerate": "1.15.0",
+        "safetensors": "0.8.0"
+      },
+      "allocator_cap_bytes": 68719476736.0,
+      "load_seconds": 10.885476334951818,
+      "sampled_peak_device_bytes": 34695282688,
+      "requests": [
+        {
+          "id": "neon-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A neon shop sign that reads \"QWEN IMAGE 2.1\", rainy night, reflections on wet pavement",
+          "seed": 42,
+          "complete_request_to_pil_seconds": 22.25142955291085,
+          "complete_request_to_png_seconds": 23.60134919709526,
+          "process_start_to_png_seconds": 35.76223963499069,
+          "peak_allocated_bytes": 27614016512,
+          "peak_reserved_bytes": 33197916160,
+          "sampled_peak_device_bytes": 34695282688,
+          "png_sha256": "82a23b56fe9e8e80f2616be0189e9aaa47fe1b54532c6d422dd8082ece33dcdf",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 251,
+          "alpha_max": 255
+        },
+        {
+          "id": "portrait-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A natural light editorial portrait of an elderly woman with silver hair and freckles, wearing a blue linen shirt, relaxed expression, soft window light, photographic detail",
+          "seed": 43,
+          "complete_request_to_pil_seconds": 20.325860454002395,
+          "complete_request_to_png_seconds": 21.515132426982746,
+          "process_start_to_png_seconds": 57.30159537517466,
+          "peak_allocated_bytes": 27614090240,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "dc1205eff76d557996d9186f13a41838d134e829c79cf2e7f08e19d82d28d74b",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 249,
+          "alpha_max": 255
+        },
+        {
+          "id": "product-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A studio product photograph of a green ceramic teapot and a white porcelain cup on a pale wooden table, soft shadows, clean white background",
+          "seed": 44,
+          "complete_request_to_pil_seconds": 20.175694259116426,
+          "complete_request_to_png_seconds": 21.2572456211783,
+          "process_start_to_png_seconds": 78.57344847614877,
+          "peak_allocated_bytes": 27614049280,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "20397f382e84a3a940e3348894b26ed466afd86ce444cc4abb3369a6558539b8",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 252,
+          "alpha_max": 255
+        },
+        {
+          "id": "animals-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "Two red foxes sitting beside a mossy log in a misty pine forest, early morning sunlight, realistic wildlife photography",
+          "seed": 45,
+          "complete_request_to_pil_seconds": 20.112985134823248,
+          "complete_request_to_png_seconds": 21.128877939889207,
+          "process_start_to_png_seconds": 99.71564355213195,
+          "peak_allocated_bytes": 27614024704,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "21790e0480350ccbb9af2c10886c348be8cb76e48050e7c655484846c04d073c",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 251,
+          "alpha_max": 255
+        },
+        {
+          "id": "spatial-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A red cube to the left of a blue sphere, with a small yellow cone behind them, on a white tabletop, clean three dimensional rendering",
+          "seed": 46,
+          "complete_request_to_pil_seconds": 20.26443701982498,
+          "complete_request_to_png_seconds": 21.339326082961634,
+          "process_start_to_png_seconds": 121.07087312918156,
+          "peak_allocated_bytes": 27614057472,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "633e7baa29d6dea36cfd9342587604f9f938ecddcab5a9252205f73d2fd505bb",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 250,
+          "alpha_max": 255
+        },
+        {
+          "id": "illustration-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A watercolor illustration of a small bookshop on a quiet European street, flower boxes under the windows, a bicycle by the door, warm spring sunshine",
+          "seed": 47,
+          "complete_request_to_pil_seconds": 20.258340385043994,
+          "complete_request_to_png_seconds": 21.49400136200711,
+          "process_start_to_png_seconds": 142.58138910704292,
+          "peak_allocated_bytes": 27614073856,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "09cc3b43361915a4671e29570a7912fe7a4e5dd4e2bcd3ab9edb61e9e5d30843",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 251,
+          "alpha_max": 255
+        },
+        {
+          "id": "landscape-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A wide landscape photograph of snowy mountains reflected in a calm alpine lake at sunrise, pink clouds, sharp rocks and wildflowers in the foreground",
+          "seed": 48,
+          "complete_request_to_pil_seconds": 20.11598986410536,
+          "complete_request_to_png_seconds": 21.223621543031186,
+          "process_start_to_png_seconds": 163.8212643500883,
+          "peak_allocated_bytes": 27614057472,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "a699176e93685c9412ae43cbb8dbcbc9fa43f6996995134c5002af4a490bd63e",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 220,
+          "alpha_max": 255
+        },
+        {
+          "id": "poster-first",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "prompt": "A clean graphic poster with the exact headline \"FRESH COFFEE\" in large readable letters, a simple illustration of a coffee cup, cream and dark brown colors",
+          "seed": 49,
+          "complete_request_to_pil_seconds": 20.2616195990704,
+          "complete_request_to_png_seconds": 21.38441264606081,
+          "process_start_to_png_seconds": 185.22238744003698,
+          "peak_allocated_bytes": 27614098432,
+          "peak_reserved_bytes": 33000783872,
+          "sampled_peak_device_bytes": 34512830464,
+          "png_sha256": "1c49b297c04624fbe839303c1c29f71791d81633fcdfcc7d5c1002c2b84cc107",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "stream": "dedicated non-default HIP stream",
+          "alpha_min": 248,
+          "alpha_max": 255
+        }
+      ]
+    }
+  },
+  "modes": {
+    "bf16": {
+      "status": "passed_modes_and_aba",
+      "variant": "bf16",
+      "hardware": {
+        "name": "AMD Radeon Graphics",
+        "architecture": "gfx950:sramecc+:xnack-",
+        "total_memory_bytes": 309220868096,
+        "free_before_load_bytes": 308606402560,
+        "torch": "2.10.0+rocm7.1",
+        "hip": "7.1.25424",
+        "memory_budget_gib": 64,
+        "packages": {
+          "diffusers": "0.41.0.dev0",
+          "transformers": "5.17.0",
+          "accelerate": "1.15.0",
+          "safetensors": "0.8.0",
+          "Pillow": "12.3.0",
+          "numpy": "2.5.2"
+        }
+      },
+      "backend": "framework",
+      "decoder_selection": "Framework decoder selected for gfx950:sramecc+:xnack-",
+      "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+      "load_seconds": 13.907202264061198,
+      "measurement_scope": "Instrumented correctness run; includes tensor capture overhead; not RDNA4 performance.",
+      "requests": [
+        {
+          "id": "a0",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 0,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 4.693666683975607,
+            "complete_request_to_png_seconds": 4.97829480515793,
+            "peak_allocated_bytes": 37080601088,
+            "peak_reserved_bytes": 39113981952,
+            "sampled_peak_device_bytes": 40108032000,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "454ad65bd3ff5b1ebf64746f08fcc3cbdeabbd6b4eff3a9fb68ea7d71a7a663e",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            }
+          }
+        },
+        {
+          "id": "a1",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 1,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 3.2533539209980518,
+            "complete_request_to_png_seconds": 3.5339247649535537,
+            "peak_allocated_bytes": 37080601088,
+            "peak_reserved_bytes": 38558236672,
+            "sampled_peak_device_bytes": 39982202880,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "985d7b12cb7e803f16e4cfc33182799cd1835384fe649107ab220a85ec6effc9",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.00032036026823334396,
+              "max_abs": 0.03759765625
+            }
+          }
+        },
+        {
+          "id": "b_rgba",
+          "prompt": "A cute cartoon dragon sticker.",
+          "seed": 52,
+          "mode": "rgba",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "rgba",
+            "seed": 52,
+            "settings": {
+              "width": 2048,
+              "height": 2048,
+              "output_resolution": 2048,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 2,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 17.811263096053153,
+            "complete_request_to_png_seconds": 18.627668023109436,
+            "peak_allocated_bytes": 50683703296,
+            "peak_reserved_bytes": 58787364864,
+            "sampled_peak_device_bytes": 60284731392,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "alpha_below_128_fraction": 0.5432534217834473
+          },
+          "png_sha256": "5aa06df1783abcda6cc84ea196937dbe32978626fd356f8b6fd1b97252545727",
+          "finite": true,
+          "remaining_prefix_objects": 0
+        },
+        {
+          "id": "a2",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 3,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 3.250392859103158,
+            "complete_request_to_png_seconds": 3.529084383044392,
+            "peak_allocated_bytes": 37080601088,
+            "peak_reserved_bytes": 40758149120,
+            "sampled_peak_device_bytes": 42255515648,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "8d523c042a727f408d78ade2ba41d941ba49b8f787b56288eaa4cb578917148d",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.00031989446142688394,
+              "max_abs": 0.0255126953125
+            }
+          }
+        },
+        {
+          "id": "b_edit",
+          "prompt": "Change the green teapot to bright red. Keep the table and composition.",
+          "seed": 53,
+          "mode": "edit",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "edit",
+            "seed": 53,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 4,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 4.31180297001265,
+            "complete_request_to_png_seconds": 4.585201286943629,
+            "peak_allocated_bytes": 37090899968,
+            "peak_reserved_bytes": 42129686528,
+            "sampled_peak_device_bytes": 43675287552,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "07451384028488629b3f5fe9acede39a7e849e64b7e2f82246774c7e3263ca18",
+          "finite": true,
+          "remaining_prefix_objects": 0
+        },
+        {
+          "id": "a3",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 5,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 3.2640902339480817,
+            "complete_request_to_png_seconds": 3.5425091159995645,
+            "peak_allocated_bytes": 37080601600,
+            "peak_reserved_bytes": 42144366592,
+            "sampled_peak_device_bytes": 43689967616,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "d87d03359999a20df26a710c93dcbef9330a884cf8796654b063337c7350ef87",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.00031883540214039385,
+              "max_abs": 0.0281982421875
+            }
+          }
+        }
+      ]
+    },
+    "mxfp4": {
+      "status": "passed_modes_and_aba",
+      "variant": "mxfp4",
+      "hardware": {
+        "name": "AMD Radeon Graphics",
+        "architecture": "gfx950:sramecc+:xnack-",
+        "total_memory_bytes": 309220868096,
+        "free_before_load_bytes": 308606402560,
+        "torch": "2.10.0+rocm7.1",
+        "hip": "7.1.25424",
+        "memory_budget_gib": 64,
+        "packages": {
+          "diffusers": "0.41.0.dev0",
+          "transformers": "5.17.0",
+          "accelerate": "1.15.0",
+          "safetensors": "0.8.0",
+          "Pillow": "12.3.0",
+          "numpy": "2.5.2"
+        }
+      },
+      "backend": "framework",
+      "decoder_selection": "Framework decoder selected for gfx950:sramecc+:xnack-",
+      "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+      "load_seconds": 9.338267172919586,
+      "measurement_scope": "Instrumented correctness run; includes tensor capture overhead; not RDNA4 performance.",
+      "requests": [
+        {
+          "id": "a0",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 0,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 7.320612062932923,
+            "complete_request_to_png_seconds": 7.599831799045205,
+            "peak_allocated_bytes": 17576388096,
+            "peak_reserved_bytes": 18832424960,
+            "sampled_peak_device_bytes": 20371734528,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "ae287fd92d587cc28b0394e2ed434b0f3d8685da082dd5398dfadeedd9506b7a",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            }
+          }
+        },
+        {
+          "id": "a1",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 1,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 5.889198625925928,
+            "complete_request_to_png_seconds": 6.165526184020564,
+            "peak_allocated_bytes": 17581107712,
+            "peak_reserved_bytes": 19235078144,
+            "sampled_peak_device_bytes": 20669530112,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              250,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "d457f60daf90fdb1fa2dc5d39f8dfaf44556c1ba3c24689bc0567440ab6c7dc7",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.0003149415133520961,
+              "max_abs": 0.0205078125
+            }
+          }
+        },
+        {
+          "id": "b_rgba",
+          "prompt": "A cute cartoon dragon sticker.",
+          "seed": 52,
+          "mode": "rgba",
+          "settings": {
+            "width": 2048,
+            "height": 2048,
+            "output_resolution": 2048,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "rgba",
+            "seed": 52,
+            "settings": {
+              "width": 2048,
+              "height": 2048,
+              "output_resolution": 2048,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 2,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 20.248595360899344,
+            "complete_request_to_png_seconds": 21.18608776293695,
+            "peak_allocated_bytes": 27614791168,
+            "peak_reserved_bytes": 35632709632,
+            "sampled_peak_device_bytes": 37140561920,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              0,
+              255
+            ],
+            "alpha_below_128_fraction": 0.5232586860656738
+          },
+          "png_sha256": "995ad9e69d803bd5fe56a21ed33627e1aab28ef3653c7f6ec4bb3dbb14379804",
+          "finite": true,
+          "remaining_prefix_objects": 0
+        },
+        {
+          "id": "a2",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 3,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 5.926888470072299,
+            "complete_request_to_png_seconds": 6.2028056990820915,
+            "peak_allocated_bytes": 17580583424,
+            "peak_reserved_bytes": 22655533056,
+            "sampled_peak_device_bytes": 24163385344,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              250,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "1a757e0d0c82a2dd9d1e5dc16c1b70dc400d33b3f9e0167778682fe10f54a8c8",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.0003153072320856154,
+              "max_abs": 0.02734375
+            }
+          }
+        },
+        {
+          "id": "b_edit",
+          "prompt": "Change the green teapot to bright red. Keep the table and composition.",
+          "seed": 53,
+          "mode": "edit",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "edit",
+            "seed": 53,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 4,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 7.006421661935747,
+            "complete_request_to_png_seconds": 7.279804246034473,
+            "peak_allocated_bytes": 18072499712,
+            "peak_reserved_bytes": 22655533056,
+            "sampled_peak_device_bytes": 24192745472,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "3f41257d712dc31042f7d4b97c8973e05e5eb58802e83654d021ac16ccd11551",
+          "finite": true,
+          "remaining_prefix_objects": 0
+        },
+        {
+          "id": "a3",
+          "prompt": "A blue ceramic teapot on a wooden table, soft daylight, studio photograph",
+          "seed": 51,
+          "mode": "text-to-image",
+          "settings": {
+            "width": 1024,
+            "height": 1024,
+            "output_resolution": 1024,
+            "num_inference_steps": 40,
+            "true_cfg_scale": 1.0,
+            "use_kv_cache": true
+          },
+          "metrics": {
+            "mode": "text-to-image",
+            "seed": 51,
+            "settings": {
+              "width": 1024,
+              "height": 1024,
+              "output_resolution": 1024,
+              "num_inference_steps": 40,
+              "true_cfg_scale": 1.0,
+              "use_kv_cache": true
+            },
+            "backend": "framework",
+            "decoder_selection_reason": "Framework decoder selected for gfx950:sramecc+:xnack-",
+            "checkpoint_sha256": "7d0ccb072548700c0e8f8989eb1d9999a4995c0a71a7734de3be081abe3e4f89",
+            "request_index": 5,
+            "hardware": {
+              "name": "AMD Radeon Graphics",
+              "architecture": "gfx950:sramecc+:xnack-",
+              "total_memory_bytes": 309220868096,
+              "free_before_load_bytes": 308606402560,
+              "torch": "2.10.0+rocm7.1",
+              "hip": "7.1.25424",
+              "memory_budget_gib": 64,
+              "packages": {
+                "diffusers": "0.41.0.dev0",
+                "transformers": "5.17.0",
+                "accelerate": "1.15.0",
+                "safetensors": "0.8.0",
+                "Pillow": "12.3.0",
+                "numpy": "2.5.2"
+              }
+            },
+            "complete_request_to_pil_seconds": 5.92270573717542,
+            "complete_request_to_png_seconds": 6.197468650061637,
+            "peak_allocated_bytes": 17580583936,
+            "peak_reserved_bytes": 26256343040,
+            "sampled_peak_device_bytes": 27812429824,
+            "sampling_interval_seconds": 0.02,
+            "stream": "dedicated non-default HIP stream",
+            "alpha_extrema": [
+              251,
+              255
+            ],
+            "alpha_below_128_fraction": 0.0
+          },
+          "png_sha256": "85024c2a155d1dfcaa6c26a1102c0a35ce77e953ad5f22c922c6b4ab45d822a5",
+          "finite": true,
+          "remaining_prefix_objects": 0,
+          "repeat_stages": {
+            "prompt": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_input": {
+              "exact": true,
+              "mae": 0.0,
+              "max_abs": 0.0
+            },
+            "vae_output": {
+              "exact": false,
+              "mae": 0.0003153429424855858,
+              "max_abs": 0.0263671875
+            }
+          }
+        }
+      ]
+    }
+  },
+  "r9700_tested": false,
+  "memory_note": "Two 30 GiB capped framework attempts failed in VAE decoding. Successful paired correctness runs used a 64 GiB framework allocator cap; no offload or tiling. MI355 results do not establish R9700 performance or memory use."
+}

@@ -8,8 +8,13 @@ import sys
 PACKAGE = Path(__file__).resolve().parent.parent
 
 
-def checkpoint_lock():
-    return json.loads((PACKAGE / "checkpoint.lock.json").read_text())
+MODEL_LOCKS = {"original": "checkpoint.lock.json", "uncensored": "checkpoint.uncensored.lock.json"}
+
+
+def checkpoint_lock(model="original"):
+    if model not in MODEL_LOCKS:
+        raise ValueError(f"Unknown model variant: {model}")
+    return json.loads((PACKAGE / MODEL_LOCKS[model]).read_text())
 
 
 def verify(directory, lock=None):
@@ -29,9 +34,12 @@ def verify(directory, lock=None):
     return directory.resolve()
 
 
-def prepare(model_dir=None, cache_dir=None, offline=False):
-    lock = checkpoint_lock()
+def prepare(model_dir=None, cache_dir=None, offline=False, model="original"):
+    lock = checkpoint_lock(model)
     if model_dir is None:
+        revision = lock.get("revision", "")
+        if len(revision) != 40 or any(c not in "0123456789abcdef" for c in revision):
+            raise ValueError("This model's publication revision has not been pinned yet")
         from huggingface_hub import snapshot_download
 
         print(f"Preparing {lock['repository']} at {lock['revision']} "

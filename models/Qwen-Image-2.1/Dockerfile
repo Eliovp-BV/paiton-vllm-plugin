@@ -15,9 +15,11 @@ RUN python -m pip install --no-cache-dir --no-deps -r requirements-python.txt \
 
 COPY paiton_image21/ ./paiton_image21/
 COPY artifacts/ ./artifacts/
-COPY run.py checkpoint.lock.json model.json LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
+COPY verify_artifacts.py ./
+COPY run.py checkpoint.lock.json checkpoint.uncensored.lock.json model.json LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
 COPY LICENSES/ ./LICENSES/
-RUN PYTHONDONTWRITEBYTECODE=1 python -c 'from paiton_image21.native_regions import qualified_upstream; assert qualified_upstream(), "Unqualified framework/source build"'
+RUN python verify_artifacts.py \
+    && PYTHONDONTWRITEBYTECODE=1 python -c 'from paiton_image21.native_regions import qualified_upstream; assert qualified_upstream(), "Unqualified framework/source build"'
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -32,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=1800s \
   CMD python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8191/health", timeout=3).read()'
 ENTRYPOINT ["python", "/app/run.py"]
 
-LABEL org.opencontainers.image.version="qwen-image21-mxfp4-rdna4-v1.0.2"
+LABEL org.opencontainers.image.version="qwen-image21-mxfp4-rdna4-v1.0.3"

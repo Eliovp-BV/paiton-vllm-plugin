@@ -9,10 +9,13 @@ import sys
 
 PRECISION_PROFILES = ("exact", "exact-w32", "schedule-int8", "schedule-int8-11", "schedule-fp8")
 DEFAULT_PROFILE = "schedule-int8"
+MODEL_DEFAULT_PROFILES = {"original": DEFAULT_PROFILE, "uncensored": "exact"}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
+    parser.add_argument("--model", choices=tuple(MODEL_DEFAULT_PROFILES), default="original",
+                        help="Select the original checkpoint or the abenzerps fine-tune converted to MXFP4")
     parser.add_argument("--model-dir", type=Path, help="Verify and reuse an existing published checkpoint")
     parser.add_argument("--cache-dir", type=Path, default=os.environ.get("HF_HUB_CACHE"))
     parser.add_argument("--offline", action="store_true", help="Require already cached files")
@@ -32,6 +35,7 @@ def main(argv=None):
     # Accept preparation options after the command too, including through the
     # generate-docker helper. Suppressed defaults preserve options before it.
     for command_parser in (serve, generate):
+        command_parser.add_argument("--model", choices=tuple(MODEL_DEFAULT_PROFILES), default=argparse.SUPPRESS)
         for flag in ("--offline", "--download-only", "--no-native-fusions"):
             command_parser.add_argument(flag, action="store_true", default=argparse.SUPPRESS)
         command_parser.add_argument("--model-dir", type=Path, default=argparse.SUPPRESS)
@@ -50,14 +54,14 @@ def main(argv=None):
             parser.error("Input image does not exist")
     from paiton_image21.checkpoint import prepare
 
-    checkpoint = prepare(args.model_dir, args.cache_dir, args.offline)
+    checkpoint = prepare(args.model_dir, args.cache_dir, args.offline, model=args.model)
     if args.download_only:
         print(f"Verified checkpoint ready: {checkpoint}")
         return 0
     command = [sys.executable, "-u", "-m", "paiton_image21", "--model-dir", str(checkpoint)]
     if not args.no_native_fusions:
         command.append("--native-fusions")
-        profile = getattr(args, "precision_profile", os.environ.get("PAITON_IMAGE21_PROFILE", DEFAULT_PROFILE))
+        profile = getattr(args, "precision_profile", os.environ.get("PAITON_IMAGE21_PROFILE", MODEL_DEFAULT_PROFILES[args.model]))
         command += ["--precision-profile", profile]
     if args.command in (None, "serve"):
         command += ["serve", "--host", getattr(args, "host", "0.0.0.0"),

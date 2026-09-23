@@ -83,6 +83,9 @@ class ImageEngine:
         self.model_dir=Path(model_dir).resolve()
         manifest=self.model_dir/"result.json"
         self.checkpoint_sha256=sha256(manifest)
+        checkpoint_metadata=json.loads(manifest.read_text())
+        self.model_id=checkpoint_metadata.get("model_id","paiton-image-2.1")
+        self.model_variant=checkpoint_metadata.get("model_variant","original")
         self.backend=backend
         self.allocator_budget_gib=26
         self.allocator_config="expandable_segments:True"
@@ -191,6 +194,8 @@ class ImageEngine:
                      stream="dedicated non-default HIP stream",alpha_extrema=list(result.getextrema()[3]))
             row["native_fusions"]=self.native_fusion_status
             row["precision_profile"]=self.precision_profile
+            row["model"]=self.model_id
+            row["model_variant"]=self.model_variant
             row["allocator_budget_gib"]=self.allocator_budget_gib
             row["allocator_config"]=self.allocator_config
             if self.native_regions is not None:
