@@ -11,7 +11,7 @@ import sys
 
 
 IMAGES = {
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2@sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260924-r3@sha256:c2511888b76abf463c7f5c51f0c70bf66c593f3c2fca8d910765d85318d399ce',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 SYS_DRM = Path('/sys/class/drm')
@@ -265,6 +265,11 @@ def docker_command(args, environment):
         # environment. Explicit values, including empty strings, stay unchanged.
         setting = variable + '=' + environment[variable] if variable in environment else variable
         command += ['-e', setting]
+    for variable in ('PAITON_NGRAM_CODRAFT', 'PAITON_NGRAM_CODRAFT_HOT_MATCH'):
+        # Opt-in n-gram co-drafting. Forwarded only when set on the host, so the
+        # image default (off) applies otherwise.
+        if variable in environment:
+            command += ['-e', variable + '=' + environment[variable]]
     if prefix_caching_enabled(args):
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
     if args.profile == 'chat':

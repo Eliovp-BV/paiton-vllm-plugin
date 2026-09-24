@@ -1,0 +1,1342 @@
+{
+ "hardware": "Radeon AI PRO R9700 (gfx1201), 300 W",
+ "runtime": "vLLM 0.29 / ROCm 10",
+ "model": "Qwen3.8-MXFP4-DFlash2",
+ "benchmark": "BetterBench 0.6.0 quick (schema 2, corpus 1.0)",
+ "context": 65536,
+ "maximum_sequences": 8,
+ "prefix_caching": false,
+ "sampling": {
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "top_k": 20,
+  "seed": 42,
+  "thinking": false
+ },
+ "profile": {
+  "decode_scored_per_category": 5,
+  "decode_warmup_per_category": 1,
+  "concurrency_requests_per_level": 48,
+  "prefill_scored_per_depth": 8,
+  "prefill_warmup_per_depth": 2,
+  "greedy_gate_prompts": 12,
+  "fresh_process_per_arm": true,
+  "runs_per_arm": 2
+ },
+ "images": {
+  "control": {
+   "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2",
+   "digest": "sha256:791c09ec96626fcd33fa873d3e92dca208bb43b513317a00d7584ec730b4dabd"
+  },
+  "measured_candidate": {
+   "tag": "paiton-qwen38-local:65k-20260924-fu-r1",
+   "id": "sha256:4376d86f14e3922d431e19ff6c21d0b6a9e7900f3da4c3290310cb6330c87311"
+  },
+  "published": {
+   "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260924-r3",
+   "digest": "sha256:c2511888b76abf463c7f5c51f0c70bf66c593f3c2fca8d910765d85318d399ce",
+   "identical_measured_filesystem_and_configuration": false,
+   "difference_from_measured": "Two n-gram co-drafting adapter files (final gated version) replace the earlier adapter version; both are inactive unless PAITON_NGRAM_CODRAFT=1. The gated n-gram measurements below used the published adapter version."
+  }
+ },
+ "final": {
+  "sequence": [
+   "r2",
+   "finalng",
+   "final",
+   "r2",
+   "finalng",
+   "final"
+  ],
+  "runs": {
+   "control": [
+    {
+     "arm": "r2",
+     "sequence_index": 0,
+     "benchmark_started": "2026-09-24T09:41:21+0000",
+     "metrics": {
+      "weighted_decode": 153.5494358235493,
+      "C1": 122.42050518186052,
+      "C2": 206.1494401905872,
+      "C4": 313.85128676747127,
+      "C8": 423.6135997744759,
+      "prefill_2000": 3498.085437470917,
+      "prefill_8000": 3698.1302030639636,
+      "prefill_16000": 3704.631354847349,
+      "prefill_32000": 3592.4911909536804,
+      "prefill_64000": 3291.542204455751
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.31338503630832,
+       "ttft_p50": 91.84352500597015,
+       "decode_med": 121.31104505616042
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.5181740229018,
+       "ttft_p50": 89.34625098481774,
+       "decode_med": 179.96750469620233
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.4605080424808,
+       "ttft_p50": 91.98850096436217,
+       "decode_med": 180.03286746982388
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.51667401148006,
+       "ttft_p50": 89.5694550126791,
+       "decode_med": 217.7255929593797
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.54443103307858,
+       "ttft_p50": 89.00779101531953,
+       "decode_med": 183.897040872879
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.442808024119586,
+       "ttft_p50": 53.23795700678602,
+       "decode_med": 76.44453116896682
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.478450030088425,
+       "ttft_p50": 89.59185797721148,
+       "decode_med": 117.88428627385689
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.41520199319348,
+       "ttft_p50": 92.82880002865568,
+       "decode_med": 138.53521793682856
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11862
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 206.1,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    },
+    {
+     "arm": "r2",
+     "sequence_index": 3,
+     "benchmark_started": "2026-09-24T10:27:37+0000",
+     "metrics": {
+      "weighted_decode": 153.72955385140838,
+      "C1": 121.75920455157124,
+      "C2": 205.1574188282366,
+      "C4": 308.0537837772945,
+      "C8": 419.6506411971492,
+      "prefill_2000": 3500.110102343617,
+      "prefill_8000": 3700.1592018401293,
+      "prefill_16000": 3703.683539068409,
+      "prefill_32000": 3589.052608834326,
+      "prefill_64000": 3290.6602821324354
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.309419988654554,
+       "ttft_p50": 91.9734769850038,
+       "decode_med": 121.30278258269367
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.50638900883496,
+       "ttft_p50": 89.5854759728536,
+       "decode_med": 180.06848877409791
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.43329601921141,
+       "ttft_p50": 92.04191697062925,
+       "decode_med": 180.06990829305929
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.49318105028942,
+       "ttft_p50": 89.74024700000882,
+       "decode_med": 217.50554392049588
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.53643900481984,
+       "ttft_p50": 89.60650104563683,
+       "decode_med": 183.84811683764815
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.42193801654503,
+       "ttft_p50": 53.506793978158385,
+       "decode_med": 77.46314488541682
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.450336020905524,
+       "ttft_p50": 89.16199498344213,
+       "decode_med": 117.99129065730183
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.383103989763185,
+       "ttft_p50": 92.43403602158651,
+       "decode_med": 138.58454937525806
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11807
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 206.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    }
+   ],
+   "candidate": [
+    {
+     "arm": "final",
+     "sequence_index": 2,
+     "benchmark_started": "2026-09-24T10:12:29+0000",
+     "metrics": {
+      "weighted_decode": 154.80649466913243,
+      "C1": 123.11323308149402,
+      "C2": 207.32134663643205,
+      "C4": 308.1820451190902,
+      "C8": 420.9894321955999,
+      "prefill_2000": 3685.1449441075133,
+      "prefill_8000": 3833.815669091052,
+      "prefill_16000": 3872.9402967295846,
+      "prefill_32000": 3753.27338884848,
+      "prefill_64000": 3458.1462476681427
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.13979599624872,
+       "ttft_p50": 91.69410698814318,
+       "decode_med": 121.86976665716323
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.34969701245427,
+       "ttft_p50": 88.60600501066074,
+       "decode_med": 180.96168375233836
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.2862320356071,
+       "ttft_p50": 91.48854197701439,
+       "decode_med": 180.93314346906328
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.355863008182496,
+       "ttft_p50": 88.96298997569829,
+       "decode_med": 218.51551824117556
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.38145901216194,
+       "ttft_p50": 88.41450198087841,
+       "decode_med": 184.83762274932445
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.269517472945154,
+       "ttft_p50": 53.40863601304591,
+       "decode_med": 80.09170536238335
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.29841248341836,
+       "ttft_p50": 88.71814998565242,
+       "decode_med": 118.5217869966361
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.22984598344192,
+       "ttft_p50": 92.43194502778351,
+       "decode_med": 139.2923425666353
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11826
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.3,
+     "startup_s": 210.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    },
+    {
+     "arm": "final",
+     "sequence_index": 5,
+     "benchmark_started": "2026-09-24T10:58:39+0000",
+     "metrics": {
+      "weighted_decode": 154.7629497785225,
+      "C1": 122.47115390155302,
+      "C2": 206.6725966207728,
+      "C4": 305.9850670063446,
+      "C8": 424.83743253563574,
+      "prefill_2000": 3689.4961950661536,
+      "prefill_8000": 3823.996887467708,
+      "prefill_16000": 3869.750972733131,
+      "prefill_32000": 3753.110970865774,
+      "prefill_64000": 3455.228445125257
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.122373977676034,
+       "ttft_p50": 91.64672094630077,
+       "decode_med": 121.99416956706324
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.32020598463714,
+       "ttft_p50": 89.25435005221516,
+       "decode_med": 181.13925915052286
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.26157800620422,
+       "ttft_p50": 91.75018797395751,
+       "decode_med": 181.04219116117093
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.29041798133403,
+       "ttft_p50": 89.08174996031448,
+       "decode_med": 219.06519025638488
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.35526946466416,
+       "ttft_p50": 89.01077404152602,
+       "decode_med": 184.80365041483046
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.24973947019316,
+       "ttft_p50": 53.3327900338918,
+       "decode_med": 78.72074990923036
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.26186997583136,
+       "ttft_p50": 89.28332303185016,
+       "decode_med": 118.55621286271234
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.21962550398894,
+       "ttft_p50": 92.43988402886316,
+       "decode_med": 139.3781931986381
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11824
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.3,
+     "startup_s": 208.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    }
+   ],
+   "candidate_ngram_always_on": [
+    {
+     "arm": "finalng",
+     "sequence_index": 1,
+     "benchmark_started": "2026-09-24T09:56:52+0000",
+     "metrics": {
+      "weighted_decode": 144.65416877812393,
+      "C1": 115.73336585971512,
+      "C2": 198.65146940023516,
+      "C4": 289.8354731515969,
+      "C8": 402.68523536714025,
+      "prefill_2000": 3692.481806418195,
+      "prefill_8000": 3835.6975995287976,
+      "prefill_16000": 3871.5468507618016,
+      "prefill_32000": 3753.4241958243547,
+      "prefill_64000": 3457.291267643522
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.13794900896028,
+       "ttft_p50": 91.92452399292961,
+       "decode_med": 121.76751309952712
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.26448952429928,
+       "ttft_p50": 88.55090197175741,
+       "decode_med": 173.79354981875562
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.19442650536075,
+       "ttft_p50": 92.31379302218556,
+       "decode_med": 167.35485457337938
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.223383477889,
+       "ttft_p50": 89.06188898254186,
+       "decode_med": 192.75196816760933
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.2861109636724,
+       "ttft_p50": 88.96628196816891,
+       "decode_med": 163.08954800476556
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.269481966272,
+       "ttft_p50": 53.59551100991666,
+       "decode_med": 78.70805379323293
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.29287702217698,
+       "ttft_p50": 88.68216798873618,
+       "decode_med": 109.61340996064897
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.24009501375258,
+       "ttft_p50": 92.84299600403756,
+       "decode_med": 131.38933088903167
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11961
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.3,
+     "startup_s": 212.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    },
+    {
+     "arm": "finalng",
+     "sequence_index": 4,
+     "benchmark_started": "2026-09-24T10:43:07+0000",
+     "metrics": {
+      "weighted_decode": 145.0147167222034,
+      "C1": 116.0026933805489,
+      "C2": 196.75283118517757,
+      "C4": 300.0448875181643,
+      "C8": 399.99472627066297,
+      "prefill_2000": 3687.49213003534,
+      "prefill_8000": 3835.83178793771,
+      "prefill_16000": 3872.4642411918107,
+      "prefill_32000": 3752.606368404653,
+      "prefill_64000": 3457.1237395247826
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.12784095760435,
+       "ttft_p50": 92.16375602409244,
+       "decode_med": 121.84373570130025
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.26442601974122,
+       "ttft_p50": 88.7156089884229,
+       "decode_med": 173.75557530833834
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.13467002590187,
+       "ttft_p50": 92.64351899037138,
+       "decode_med": 167.3345580628524
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.22214449872263,
+       "ttft_p50": 89.60254699923098,
+       "decode_med": 192.58247381062168
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.2674469682388,
+       "ttft_p50": 88.72562303440645,
+       "decode_med": 163.19774584868375
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.24857400730252,
+       "ttft_p50": 53.77138400217518,
+       "decode_med": 81.35391797940774
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.2495600450784,
+       "ttft_p50": 89.10096698673442,
+       "decode_med": 109.56195965368988
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.2305200281553,
+       "ttft_p50": 92.93920500203967,
+       "decode_med": 131.51737624174248
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "40/40"
+     },
+     "generated_tokens": {
+      "decode": 11928
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.3,
+     "startup_s": 212.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    }
+   ]
+  },
+  "means": {
+   "control": {
+    "metrics": {
+     "weighted_decode": 153.63949483747882,
+     "C1": 122.08985486671588,
+     "C2": 205.6534295094119,
+     "C4": 310.9525352723829,
+     "C8": 421.63212048581255,
+     "prefill_2000": 3499.0977699072673,
+     "prefill_8000": 3699.1447024520467,
+     "prefill_16000": 3704.157446957879,
+     "prefill_32000": 3590.771899894003,
+     "prefill_64000": 3291.1012432940934
+    },
+    "decode_categories": [
+     {
+      "category": "chat",
+      "update_p50": 33.311402512481436,
+      "ttft_p50": 91.90850099548697,
+      "decode_med": 121.30691381942705
+     },
+     {
+      "category": "code",
+      "update_p50": 33.51228151586838,
+      "ttft_p50": 89.46586347883567,
+      "decode_med": 180.01799673515012
+     },
+     {
+      "category": "file_edit",
+      "update_p50": 33.446902030846104,
+      "ttft_p50": 92.01520896749571,
+      "decode_med": 180.0513878814416
+     },
+     {
+      "category": "json",
+      "update_p50": 33.50492753088474,
+      "ttft_p50": 89.65485100634396,
+      "decode_med": 217.6155684399378
+     },
+     {
+      "category": "math",
+      "update_p50": 33.54043501894921,
+      "ttft_p50": 89.30714603047818,
+      "decode_med": 183.87257885526355
+     },
+     {
+      "category": "prose",
+      "update_p50": 33.43237302033231,
+      "ttft_p50": 53.3723754924722,
+      "decode_med": 76.95383802719182
+     },
+     {
+      "category": "reasoning",
+      "update_p50": 33.464393025496975,
+      "ttft_p50": 89.3769264803268,
+      "decode_med": 117.93778846557936
+     },
+     {
+      "category": "summarization",
+      "update_p50": 33.39915299147833,
+      "ttft_p50": 92.63141802512109,
+      "decode_med": 138.55988365604333
+     }
+    ]
+   },
+   "candidate": {
+    "metrics": {
+     "weighted_decode": 154.7847222238275,
+     "C1": 122.79219349152352,
+     "C2": 206.9969716286024,
+     "C4": 307.08355606271743,
+     "C8": 422.91343236561784,
+     "prefill_2000": 3687.3205695868337,
+     "prefill_8000": 3828.90627827938,
+     "prefill_16000": 3871.3456347313577,
+     "prefill_32000": 3753.192179857127,
+     "prefill_64000": 3456.6873463967
+    },
+    "decode_categories": [
+     {
+      "category": "chat",
+      "update_p50": 33.13108498696238,
+      "ttft_p50": 91.67041396722198,
+      "decode_med": 121.93196811211322
+     },
+     {
+      "category": "code",
+      "update_p50": 33.334951498545706,
+      "ttft_p50": 88.93017753143795,
+      "decode_med": 181.0504714514306
+     },
+     {
+      "category": "file_edit",
+      "update_p50": 33.27390502090566,
+      "ttft_p50": 91.61936497548595,
+      "decode_med": 180.9876673151171
+     },
+     {
+      "category": "json",
+      "update_p50": 33.32314049475826,
+      "ttft_p50": 89.02236996800639,
+      "decode_med": 218.7903542487802
+     },
+     {
+      "category": "math",
+      "update_p50": 33.36836423841305,
+      "ttft_p50": 88.71263801120222,
+      "decode_med": 184.82063658207744
+     },
+     {
+      "category": "prose",
+      "update_p50": 33.25962847156916,
+      "ttft_p50": 53.37071302346885,
+      "decode_med": 79.40622763580686
+     },
+     {
+      "category": "reasoning",
+      "update_p50": 33.28014122962486,
+      "ttft_p50": 89.00073650875129,
+      "decode_med": 118.53899992967422
+     },
+     {
+      "category": "summarization",
+      "update_p50": 33.22473574371543,
+      "ttft_p50": 92.43591452832334,
+      "decode_med": 139.33526788263669
+     }
+    ]
+   },
+   "candidate_ngram_always_on": {
+    "metrics": {
+     "weighted_decode": 144.83444275016365,
+     "C1": 115.868029620132,
+     "C2": 197.70215029270636,
+     "C4": 294.94018033488055,
+     "C8": 401.3399808189016,
+     "prefill_2000": 3689.986968226767,
+     "prefill_8000": 3835.764693733254,
+     "prefill_16000": 3872.0055459768064,
+     "prefill_32000": 3753.015282114504,
+     "prefill_64000": 3457.2075035841526
+    },
+    "decode_categories": [
+     {
+      "category": "chat",
+      "update_p50": 33.13289498328231,
+      "ttft_p50": 92.04414000851102,
+      "decode_med": 121.80562440041368
+     },
+     {
+      "category": "code",
+      "update_p50": 33.26445777202025,
+      "ttft_p50": 88.63325548009016,
+      "decode_med": 173.77456256354697
+     },
+     {
+      "category": "file_edit",
+      "update_p50": 33.16454826563131,
+      "ttft_p50": 92.47865600627847,
+      "decode_med": 167.3447063181159
+     },
+     {
+      "category": "json",
+      "update_p50": 33.222763988305815,
+      "ttft_p50": 89.33221799088642,
+      "decode_med": 192.6672209891155
+     },
+     {
+      "category": "math",
+      "update_p50": 33.2767789659556,
+      "ttft_p50": 88.84595250128768,
+      "decode_med": 163.14364692672467
+     },
+     {
+      "category": "prose",
+      "update_p50": 33.25902798678726,
+      "ttft_p50": 53.68344750604592,
+      "decode_med": 80.03098588632034
+     },
+     {
+      "category": "reasoning",
+      "update_p50": 33.27121853362769,
+      "ttft_p50": 88.8915674877353,
+      "decode_med": 109.58768480716942
+     },
+     {
+      "category": "summarization",
+      "update_p50": 33.23530752095394,
+      "ttft_p50": 92.89110050303861,
+      "decode_med": 131.4533535653871
+     }
+    ]
+   }
+  },
+  "change_percent_vs_control": {
+   "candidate": {
+    "weighted_decode": 0.7453990834583868,
+    "C1": 0.5752637068611177,
+    "C2": 0.653304018510914,
+    "C4": -1.2442346566740037,
+    "C8": 0.30389332727518426,
+    "prefill_2000": 5.379180921959614,
+    "prefill_8000": 3.5078805038721184,
+    "prefill_16000": 4.513528114491616,
+    "prefill_32000": 4.52326921595656,
+    "prefill_64000": 5.031328144036973
+   },
+   "candidate_ngram_always_on": {
+    "weighted_decode": -5.73098219089384,
+    "C1": -5.096103401364649,
+    "C2": -3.866348952056564,
+    "C4": -5.149453090477651,
+    "C8": -4.812759436717007,
+    "prefill_2000": 5.45538338371605,
+    "prefill_8000": 3.6932859423056907,
+    "prefill_16000": 4.531343535539412,
+    "prefill_32000": 4.518342761490635,
+    "prefill_64000": 5.047133102590373
+   }
+  }
+ },
+ "ngram_codraft_gated": {
+  "sequence": [
+   "r2",
+   "ng",
+   "r2",
+   "ng"
+  ],
+  "runs": {
+   "control": [
+    {
+     "arm": "r2",
+     "sequence_index": 0,
+     "benchmark_started": "2026-09-24T13:31:22+0000",
+     "metrics": {
+      "weighted_decode": 153.79775431380816,
+      "C1": 121.7304631914941,
+      "C2": 205.80004834105995,
+      "C4": 318.81885660781325,
+      "C8": 424.3184342062051
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.31194003112614,
+       "ttft_p50": 91.86992602190003,
+       "decode_med": 121.24557663647582
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.53681502630934,
+       "ttft_p50": 89.41743499599397,
+       "decode_med": 180.00293536549705
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.456301025580615,
+       "ttft_p50": 92.32504299143329,
+       "decode_med": 180.02214038805033
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.52750599151477,
+       "ttft_p50": 89.6866109687835,
+       "decode_med": 217.57527420971562
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.557924994966015,
+       "ttft_p50": 89.21038603875786,
+       "decode_med": 183.6620644284103
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.43422900070436,
+       "ttft_p50": 53.555405989754945,
+       "decode_med": 78.29507240758555
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.47435902105644,
+       "ttft_p50": 89.24721402581781,
+       "decode_med": 117.80017043240649
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.39245749521069,
+       "ttft_p50": 92.75163599522784,
+       "decode_med": 138.54073586277545
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "phase not run"
+     },
+     "generated_tokens": {
+      "decode": 11824
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 206.1,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    },
+    {
+     "arm": "r2",
+     "sequence_index": 2,
+     "benchmark_started": "2026-09-24T13:53:19+0000",
+     "metrics": {
+      "weighted_decode": 153.91823902887825,
+      "C1": 121.82174017617008,
+      "C2": 206.43407094111228,
+      "C4": 319.2172952940212,
+      "C8": 425.1767019762918
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.29699201276526,
+       "ttft_p50": 92.05585502786562,
+       "decode_med": 121.32633607827226
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.501307014375925,
+       "ttft_p50": 89.30077403783798,
+       "decode_med": 180.08699548962454
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.47582998685539,
+       "ttft_p50": 92.50878798775375,
+       "decode_med": 180.1185124098683
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.46543200314045,
+       "ttft_p50": 89.44990899180993,
+       "decode_med": 217.88055304329347
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.52385151083581,
+       "ttft_p50": 89.20774597208947,
+       "decode_med": 183.81403189510772
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.42886400059797,
+       "ttft_p50": 53.89214097522199,
+       "decode_med": 78.33045289823379
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.44324097270146,
+       "ttft_p50": 89.28811398800462,
+       "decode_med": 117.89487205884149
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.391425997251645,
+       "ttft_p50": 93.27877900796011,
+       "decode_med": 138.69663838006653
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "phase not run"
+     },
+     "generated_tokens": {
+      "decode": 11824
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 204.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    }
+   ],
+   "ngram_codraft_gated": [
+    {
+     "arm": "ng",
+     "sequence_index": 1,
+     "benchmark_started": "2026-09-24T13:42:20+0000",
+     "metrics": {
+      "weighted_decode": 153.40783071333493,
+      "C1": 121.63455744747075,
+      "C2": 206.10131224568156,
+      "C4": 305.4420978469119,
+      "C8": 425.35399362103345
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.328102028463036,
+       "ttft_p50": 92.22488396335393,
+       "decode_med": 121.23679096661165
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.50784600479528,
+       "ttft_p50": 89.47254595113918,
+       "decode_med": 180.01341535285312
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.44748151721433,
+       "ttft_p50": 92.5782400299795,
+       "decode_med": 176.13907396289068
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.48333900794387,
+       "ttft_p50": 89.74729402689263,
+       "decode_med": 217.38067254492748
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.559454983333126,
+       "ttft_p50": 89.1906670294702,
+       "decode_med": 183.672571014519
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.4303890413139,
+       "ttft_p50": 53.40203101513907,
+       "decode_med": 78.30224313452031
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.456092001870275,
+       "ttft_p50": 89.07662896672264,
+       "decode_med": 117.91797737988617
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.3979215065483,
+       "ttft_p50": 92.7259839954786,
+       "decode_med": 138.5386588329554
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "phase not run"
+     },
+     "generated_tokens": {
+      "decode": 11898
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 204.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    },
+    {
+     "arm": "ng",
+     "sequence_index": 3,
+     "benchmark_started": "2026-09-24T14:04:14+0000",
+     "metrics": {
+      "weighted_decode": 153.21635255270755,
+      "C1": 122.336160187702,
+      "C2": 206.01241677899569,
+      "C4": 310.12626937474,
+      "C8": 417.93477996003594
+     },
+     "decode_categories": [
+      {
+       "category": "chat",
+       "runs": 5,
+       "update_p50": 33.322129980660975,
+       "ttft_p50": 92.09402202395722,
+       "decode_med": 121.28774217907754
+      },
+      {
+       "category": "code",
+       "runs": 5,
+       "update_p50": 33.51072198711336,
+       "ttft_p50": 89.2658059601672,
+       "decode_med": 180.06769431906443
+      },
+      {
+       "category": "file_edit",
+       "runs": 5,
+       "update_p50": 33.439680497394875,
+       "ttft_p50": 92.38574700430036,
+       "decode_med": 176.16274882890212
+      },
+      {
+       "category": "json",
+       "runs": 5,
+       "update_p50": 33.47803698852658,
+       "ttft_p50": 89.57603800809011,
+       "decode_med": 217.6339857658013
+      },
+      {
+       "category": "math",
+       "runs": 5,
+       "update_p50": 33.542107965331525,
+       "ttft_p50": 89.43166001699865,
+       "decode_med": 183.72404732362875
+      },
+      {
+       "category": "prose",
+       "runs": 5,
+       "update_p50": 33.430487965233624,
+       "ttft_p50": 53.66591800702736,
+       "decode_med": 76.51937303309299
+      },
+      {
+       "category": "reasoning",
+       "runs": 5,
+       "update_p50": 33.46452448749915,
+       "ttft_p50": 89.2880930332467,
+       "decode_med": 117.94842457519191
+      },
+      {
+       "category": "summarization",
+       "runs": 5,
+       "update_p50": 33.38956000516191,
+       "ttft_p50": 92.44267299072817,
+       "decode_med": 138.67080639225478
+      }
+     ],
+     "scored_requests_ok": {
+      "decode": "40/40",
+      "concurrency": "192/192",
+      "prefill": "phase not run"
+     },
+     "generated_tokens": {
+      "decode": 11936
+     },
+     "post_benchmark_greedy_matches": 12,
+     "c1_decode_forward_ms_median": 28.5,
+     "startup_s": 204.0,
+     "betterbench_rc": 0,
+     "greedy_matches_vs_first_control": 12
+    }
+   ]
+  },
+  "means": {
+   "control": {
+    "metrics": {
+     "weighted_decode": 153.8579966713432,
+     "C1": 121.77610168383208,
+     "C2": 206.11705964108612,
+     "C4": 319.01807595091725,
+     "C8": 424.74756809124847
+    },
+    "decode_categories": [
+     {
+      "category": "chat",
+      "update_p50": 33.3044660219457,
+      "ttft_p50": 91.96289052488282,
+      "decode_med": 121.28595635737403
+     },
+     {
+      "category": "code",
+      "update_p50": 33.51906102034263,
+      "ttft_p50": 89.35910451691598,
+      "decode_med": 180.04496542756078
+     },
+     {
+      "category": "file_edit",
+      "update_p50": 33.466065506218,
+      "ttft_p50": 92.41691548959352,
+      "decode_med": 180.0703263989593
+     },
+     {
+      "category": "json",
+      "update_p50": 33.49646899732761,
+      "ttft_p50": 89.56825998029672,
+      "decode_med": 217.72791362650455
+     },
+     {
+      "category": "math",
+      "update_p50": 33.54088825290091,
+      "ttft_p50": 89.20906600542367,
+      "decode_med": 183.73804816175902
+     },
+     {
+      "category": "prose",
+      "update_p50": 33.431546500651166,
+      "ttft_p50": 53.72377348248847,
+      "decode_med": 78.31276265290967
+     },
+     {
+      "category": "reasoning",
+      "update_p50": 33.45879999687895,
+      "ttft_p50": 89.26766400691122,
+      "decode_med": 117.847521245624
+     },
+     {
+      "category": "summarization",
+      "update_p50": 33.39194174623117,
+      "ttft_p50": 93.01520750159398,
+      "decode_med": 138.61868712142098
+     }
+    ]
+   },
+   "ngram_codraft_gated": {
+    "metrics": {
+     "weighted_decode": 153.31209163302123,
+     "C1": 121.98535881758639,
+     "C2": 206.05686451233862,
+     "C4": 307.78418361082595,
+     "C8": 421.64438679053467
+    },
+    "decode_categories": [
+     {
+      "category": "chat",
+      "update_p50": 33.325116004562005,
+      "ttft_p50": 92.15945299365558,
+      "decode_med": 121.2622665728446
+     },
+     {
+      "category": "code",
+      "update_p50": 33.50928399595432,
+      "ttft_p50": 89.36917595565319,
+      "decode_med": 180.04055483595877
+     },
+     {
+      "category": "file_edit",
+      "update_p50": 33.4435810073046,
+      "ttft_p50": 92.48199351713993,
+      "decode_med": 176.1509113958964
+     },
+     {
+      "category": "json",
+      "update_p50": 33.480687998235226,
+      "ttft_p50": 89.66166601749137,
+      "decode_med": 217.5073291553644
+     },
+     {
+      "category": "math",
+      "update_p50": 33.550781474332325,
+      "ttft_p50": 89.31116352323443,
+      "decode_med": 183.69830916907387
+     },
+     {
+      "category": "prose",
+      "update_p50": 33.43043850327376,
+      "ttft_p50": 53.533974511083215,
+      "decode_med": 77.41080808380664
+     },
+     {
+      "category": "reasoning",
+      "update_p50": 33.46030824468471,
+      "ttft_p50": 89.18236099998467,
+      "decode_med": 117.93320097753903
+     },
+     {
+      "category": "summarization",
+      "update_p50": 33.393740755855106,
+      "ttft_p50": 92.58432849310338,
+      "decode_med": 138.6047326126051
+     }
+    ]
+   }
+  },
+  "change_percent_vs_control": {
+   "ngram_codraft_gated": {
+    "weighted_decode": -0.3548109621419715,
+    "C1": 0.1718376026665691,
+    "C2": -0.029204340898469905,
+    "C4": -3.521396806938204,
+    "C8": -0.7305942479339023
+   }
+  }
+ },
+ "real_use_chat_profile": {
+  "workload": "35-turn agentic coding session, 32.7K to 197.2K tokens plus a 123.6K-token cache miss; 200K chat profile with prefix caching; A/B/A/B fresh processes",
+  "session_ttft_s": {
+   "control": [
+    211.6,
+    211.7
+   ],
+   "candidate": [
+    190.8,
+    188.5
+   ]
+  },
+  "session_ttft_change_percent": [
+   -9.8,
+   -11.0
+  ],
+  "per_request_ttft_ratio": {
+   "median": 0.897,
+   "interval": [
+    0.896,
+    0.901
+   ]
+  },
+  "peak_vram_gib": {
+   "control": 31.77,
+   "candidate": 31.77
+  },
+  "greedy_gate_matches": 12,
+  "ngram_codraft_on_in_this_run": true,
+  "ngram_codraft_session_decode_tok_s": {
+   "control": 90.8,
+   "gated_final": [
+    115.4,
+    115.7
+   ]
+  },
+  "ngram_codraft_tokens_per_step": {
+   "control": 3.0,
+   "gated_final": 3.6
+  },
+  "ngram_codraft_long_file_rewrite_tok_s": {
+   "64K": {
+    "control": 129,
+    "gated": 167
+   },
+   "128K": {
+    "control": 125,
+    "gated": 158
+   }
+  }
+ },
+ "notes": [
+  "Update p50 is the median streamed-update gap, not per-token latency or TTFT.",
+  "Sampled output content and accepted-token work can differ; these are serving-throughput measurements, not identical-output timing.",
+  "Nominal prefill depths correspond to median actual prompt lengths 1516.5, 5894.5, 11802, 23549.5 and 47016.5.",
+  "Two complete runs per arm; tables report the mean of the two runs. Every run is in the same decode timing mode (C1 forward-time median per run is recorded), so the arms are comparable.",
+  "The control image is itself not bit-identical across fresh processes (per-process Triton autotune of one GDN kernel); the greedy gate compares content hashes of 12 greedy prompts and matched 12/12 in every arm.",
+  "The 4000 tok/s prefill target was not reached: the prefill GEMM runs at the 300 W board limit, so the gains come from the non-GEMM share."
+ ]
+}
