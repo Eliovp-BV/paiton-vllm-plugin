@@ -47,9 +47,9 @@ Measured on one Radeon AI PRO R9700. Three examples from the model library:
       <a href="models/Qwen3-Coder-30B/BENCHMARKS.md">See the benchmark →</a>
     </td>
     <td align="center" valign="top" width="34%">
-      <h3>154.42 tok/s</h3>
-      <strong>Weighted decode</strong>
-      <p>Qwen3.8 27B MXFP4 + DFlash2<br>65K profile</p>
+      <h3>3,871 tok/s</h3>
+      <strong>Prefill at 16K input</strong>
+      <p>Qwen3.8 27B MXFP4 + DFlash2<br>65K profile · 154.8 tok/s weighted decode</p>
       <a href="models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results">See the benchmark →</a>
     </td>
     <td align="center" valign="top" width="33%">
@@ -231,15 +231,15 @@ one active request; the reported throughput figures below come from the
 | --- | --- | --- |
 | MiniCPM5-2B | [**+54.4% output tok/s**](models/MiniCPM5-2B/BENCHMARKS.md#sustained-generation-and-prefill) | vs stock · C1 |
 | Qwen3.8 Qronos | [**+54.3% output tok/s**](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) | vs stock · coding workload · C1 |
-| Qwen3.8 MXFP4 + DFlash2 | [**154.42 tok/s weighted decode**<br>**421.20 tok/s aggregate at C8**](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) | 65K profile · one R9700 at 300 W |
+| Qwen3.8 MXFP4 + DFlash2 | [**3,871 input tok/s prefill at 16K**<br>**154.8 tok/s weighted decode · 422.9 tok/s aggregate at C8**](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) | 65K profile · one R9700 at 300 W · opt-in n-gram co-drafting: +27% decode on an agentic coding session |
 | Qwen3.8 NEO CODER MAX | [**6.4% lower request latency**](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md#matched-text-comparison) | vs llama.cpp · 128 input / 128 output · C1 |
 | Ornith 1.5 | [**+27.0% output tok/s**](models/Ornith-1.5/BENCHMARKS.md) | vs stock · includes DFlash · C1 |
 | GPT-OSS-20B | [**54.0% lower request latency**](models/GPT-OSS-20B/BENCHMARKS.md) | vs fastest qualified stock reference · 512 input / 256 output · C1 |
 | Qwen3-Coder | [**+70.1% output tok/s at C2**<br>**+21.3% at C1**](models/Qwen3-Coder-30B/BENCHMARKS.md) | vs stock |
 
-The Qwen3.8 65K profile also measured **218.1 tok/s median JSON decode**.
-Its weighted decode, median JSON decode and aggregate throughput are distinct
-metrics; consult the [full report](models/Qwen3.8-MXFP4-DFlash2/benchmarks/2026-09-20-combined/README.md)
+The Qwen3.8 65K profile also measured **218.8 tok/s median JSON decode**.
+Its prefill, weighted decode, median JSON decode and aggregate throughput are distinct
+metrics; consult the [full report](models/Qwen3.8-MXFP4-DFlash2/benchmarks/2026-09-24-prefill-ngram/README.md)
 for their workloads and settings.
 
 </details>

@@ -349,6 +349,16 @@ class Rocm10LauncherTests(unittest.TestCase):
             self.assertEqual(json.loads(self.record.read_text()),
                              [str(SCRIPT), '--release', release, *options])
 
+    def test_ngram_codraft_forwarded_only_when_set_on_host(self):
+        command = self.command()
+        self.assertFalse(any(item.startswith('PAITON_NGRAM_CODRAFT') for item in command))
+        self.environment.update(PAITON_NGRAM_CODRAFT='1', PAITON_NGRAM_CODRAFT_HOT_MATCH='32')
+        command = self.command()
+        image_index = command.index(launcher.IMAGES['65k'])
+        self.assertIn('PAITON_NGRAM_CODRAFT=1', command[:image_index])
+        self.assertIn('PAITON_NGRAM_CODRAFT_HOT_MATCH=32', command[:image_index])
+        self.assertEqual(command[command.index('PAITON_NGRAM_CODRAFT=1') - 1], '-e')
+
 
 if __name__ == '__main__':
     unittest.main()
