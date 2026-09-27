@@ -53,9 +53,9 @@ Measured on one Radeon AI PRO R9700. Three examples from the model library:
       <a href="models/Qwen3-Coder-30B/BENCHMARKS.md">See the benchmark →</a>
     </td>
     <td align="center" valign="top" width="34%">
-      <h3>3,871 tok/s</h3>
-      <strong>Prefill at 16K input</strong>
-      <p>Qwen3.8 27B MXFP4 + DFlash2<br>65K profile · 154.8 tok/s weighted decode</p>
+      <h3>184.4 tok/s</h3>
+      <strong>Weighted decode</strong>
+      <p>Qwen3.8 27B 3-bit W3A4 + DFlash2<br>65K profile · +19.9% vs the MXFP4 release</p>
       <a href="models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results">See the benchmark →</a>
     </td>
     <td align="center" valign="top" width="33%">
@@ -135,7 +135,7 @@ All language models expose an OpenAI-compatible API through vLLM.
 | Model | Best for · input | Context | GPU memory | Measured result |
 | --- | --- | ---: | ---: | --- |
 | [**MiniCPM5-2B**](models/MiniCPM5-2B/README.md) · W4A16 | Lightweight chat, coding and tools · text | 8K | ~4.75 GiB | [+54.4% output tok/s](models/MiniCPM5-2B/BENCHMARKS.md#sustained-generation-and-prefill) vs stock · C1 |
-| [**Qwen3.8 27B MXFP4 + DFlash2**](models/Qwen3.8-MXFP4-DFlash2/README.md) | Long-context chat, coding and tools · text | 65K / 200K | — | [3,871 tok/s prefill at 16K · 154.8 tok/s weighted decode · 422.9 tok/s at C8](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
+| [**Qwen3.8 27B MXFP4 + DFlash2**](models/Qwen3.8-MXFP4-DFlash2/README.md) · optional 3-bit W3A4 weights | Long-context chat, coding and tools · text | 65K / 200K | — | [184.4 tok/s weighted decode · 492.1 tok/s at C8 · 4,165 tok/s prefill at 8K](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) with the 3-bit weights · 65K |
 | [**Qwen3.8 27B Qronos**](models/Qwen3.8/README.md) | General chat, coding and optional reasoning · text | 8K | — | [+54.3% output tok/s](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) vs stock · coding · C1 |
 | [**Qwen3.8 NEO CODER MAX 27B**](models/Qwen3.8-NEO-CODER-MAX/README.md) · Q4_K_M GGUF | Coding and visual chat · text + one image | 8K | ~23.74 GiB | [6.4% lower request latency](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md#matched-text-comparison) vs llama.cpp · C1 |
 | [**Qwen3-Coder 30B A3B**](models/Qwen3-Coder-30B/README.md) | Code writing, review, testing and tools · text | 4K | ~20.1 GiB | [+70.1% output tok/s at C2 · +21.3% at C1](models/Qwen3-Coder-30B/BENCHMARKS.md) vs stock |
@@ -145,7 +145,9 @@ All language models expose an OpenAI-compatible API through vLLM.
 > [!NOTE]
 > **Which Qwen3.8?** **MXFP4 + DFlash2** is the current release: 65K or 200K context
 > with DFlash2 speculative decoding (the 200K profile is qualified for one active
-> request); its opt-in n-gram co-drafting measured +27% decode on an agentic coding session.
+> request). On the 65K profile, optional 3-bit W3A4 weights add +19.9% weighted decode
+> for about 3 points of MMLU-Pro knowledge recall; the opt-in n-gram co-drafting
+> measured +27% decode on an agentic coding session.
 > **Qronos** is an 8K package with optional reasoning; **NEO CODER MAX**
 > adds single-image input. The native `qwen38-nvfp4` preset runs the MXFP4 model in
 > your own vLLM without DFlash2, so the DFlash2 benchmark does not apply to it.
@@ -221,6 +223,7 @@ single-GPU setup (several language models use port 8000).
 
 ¹ Prepare the target and draft weights first
 ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#model-weights-and-existing-downloads));
+set `PAITON_W3ROT_DIR` to add the [optional 3-bit weights](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-3-bit-w3a4-weights);
 use `run-rocm10-200k.sh` for the 200K profile.
 ² Text-only, 65K, without speculative decoding; see [native presets](#use-your-own-vllm-environment).
 
@@ -374,7 +377,8 @@ prefill-only cases favor llama.cpp. GPT-OSS uses the fastest qualified
 4.819-second stock reference because stock timing varied between runs.
 
 **Optimization scope matters.** Ornith's highlighted result includes DFlash
-speculative decoding. Quantization, activation arithmetic and quality differences
+speculative decoding; Qwen3.8's includes lossy 3-bit weights that score about
+3 MMLU-Pro points lower. Quantization, activation arithmetic and quality differences
 are documented per model. MiniCPM5's repeated timings show unresolved variability;
 meeting results also vary substantially.
 
