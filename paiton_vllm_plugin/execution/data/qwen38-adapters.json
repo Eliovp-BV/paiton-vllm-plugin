@@ -8,7 +8,7 @@
     },
     "compat/compat_manifest.json": {
       "size_bytes": 17586,
-      "sha256": "d2b674c59d0e89bb4617b62d8a4f5849c239b0bcf19221d459cebafac2b77619"
+      "sha256": "fcbcde9104ff2fe4c3a378f8eee5fbf386665481219aaa3e0102e01ce422f5d9"
     },
     "compat/overlays/aiter/ops/triton/_triton_kernels/attention/unified_attention.py": {
       "size_bytes": 32602,
