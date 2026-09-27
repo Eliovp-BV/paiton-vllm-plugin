@@ -377,8 +377,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         image_index = command.index(launcher.IMAGES['65k'])
         self.assertIn(f'{w3rot}:/models/w3rot:ro', command[:image_index])
         self.assertFalse(any(flag in command for flag in flags))
+        # The memory the 3-bit weights free goes to the KV cache unless a budget is given,
+        # with the allocator setting that budget was measured with.
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
+        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command[:image_index])
+        command = self.command('--kv-cache-memory-bytes', '7000000000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '7000000000')
+        command = self.command('--profile', 'desktop')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(2 * 1024**3))
         command = self.command('--weights', 'mxfp4')
         self.assertFalse(any(item.endswith(':/models/w3rot:ro') for item in command))
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '6535819798')
         for flag in flags:
             self.assertIn(flag, command)
 

@@ -19,6 +19,9 @@ IMAGES = {
 # the image and read the rotated weights from /models/w3rot.
 W3_RELEASES = frozenset(('65k',))
 W3_FLAGS = ('PAITON_W3_DECODE', 'PAITON_W3_PREFILL', 'PAITON_W3_A4')
+# Release KV budget plus 2.65 GiB of the 3.29 GiB the 3-bit weights free: four
+# 61K-token requests fit and peak at the MXFP4 release VRAM (31.39 vs 31.37 GiB).
+W3_KV_CACHE_BYTES = 9381235631
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -176,7 +179,7 @@ def prefix_caching_enabled(args):
     return args.prefix_caching == 'on' or (args.prefix_caching is None and args.profile == 'chat')
 
 
-def engine_command(args):
+def engine_command(args, weights='mxfp4'):
     if args.context is not None and args.context > 262144:
         raise ValueError('--context exceeds this checkpoint\'s 262144-token model limit')
     if args.max_num_seqs is not None and args.max_num_seqs > 8:
@@ -201,6 +204,8 @@ def engine_command(args):
             cache = 8 * 1024**3
         elif desktop:
             cache = 2 * 1024**3
+        elif weights == 'w3a4':
+            cache = W3_KV_CACHE_BYTES
     for flag, value in (('--max-model-len', context), ('--max-num-seqs', sequences),
                         ('--gpu-memory-utilization', budget), ('--port', args.port),
                         ('--max-num-batched-tokens', batched_tokens)):
@@ -271,7 +276,8 @@ def docker_command(args, environment):
     image = args.image or IMAGES[args.release]
     if image.startswith('-') or any(c.isspace() for c in image):
         raise ValueError('--image must be a Docker image reference')
-    engine = engine_command(args)
+    weights = weights_mode(args, environment)
+    engine = engine_command(args, weights)
     command = ['docker', 'run', '--rm', '--name', name, '--network', 'host',
                '--device', '/dev/kfd', '--device', '/dev/dri',
                '--group-add', 'video', '--ipc', 'host']
@@ -289,9 +295,9 @@ def docker_command(args, environment):
             command += ['-e', variable + '=' + environment[variable]]
     if prefix_caching_enabled(args):
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
-    if args.profile == 'chat':
+    if args.profile == 'chat' or weights == 'w3a4':
+        # The allocator setting the chat profile and the W3A4 KV budget were measured with.
         command += ['-e', 'PYTORCH_ALLOC_CONF=max_split_size_mb:64']
-    weights = weights_mode(args, environment)
     if weights == 'mxfp4' and args.release in W3_RELEASES:
         # All three flags: the runtime rejects W3A4 prefill without W3 decode.
         for variable in W3_FLAGS:
