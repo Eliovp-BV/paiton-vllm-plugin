@@ -84,7 +84,7 @@ the draft; the 3-bit weights are optional:
 | --- | --- | --- |
 | Target | `unsloth/Qwen3.8-27B-NVFP4` | `f0b7c9e722f5565102fff8481c99e4d86ae099c7` |
 | DFlash2 draft | `tcclaviger/Qwen3.8-27B-DFlash2-FP8` | `ee0cb26a8279b7910cc28d82a8a3e15e4728d56f` |
-| 3-bit W3A4 weights (optional, 65K image) | `EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4` | `<REVISION>` |
+| 3-bit W3A4 weights (optional, 65K image) | `EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4` | `278486debe64e21e5e9d45ac8d02798d72fbdf83` |
 
 The native `paiton serve qwen38-nvfp4` preset above is non-speculative and does
 not use the 3-bit weights. The instructions here preserve the Docker release's
@@ -124,7 +124,7 @@ export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision <REVISION> \
+  --revision 278486debe64e21e5e9d45ac8d02798d72fbdf83 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -177,7 +177,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   --mount "type=bind,src=$PAITON_CACHE_DIR,dst=/cache" \
   -e HF_HUB_OFFLINE=1 \
   -e PAITON_W3_DECODE=0 -e PAITON_W3_PREFILL=0 -e PAITON_W3_A4=0 \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1@sha256:<DIGEST> \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1@sha256:c4134aba665f6dd3b89354a43be2b5b814f7078db456351647a3f1b106a0da49 \
   serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --served-model-name Qwen3.8 \

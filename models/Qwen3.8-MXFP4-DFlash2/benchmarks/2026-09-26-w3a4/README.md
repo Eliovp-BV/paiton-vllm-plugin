@@ -6,7 +6,7 @@ R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC 
 |---|---|---|
 | 24 Sept release | `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260924-r3` (`sha256:c2511888b76a…`) | MXFP4 |
 | 26 Sept, MXFP4 | This round's runtime, measured on an MXFP4-only build | MXFP4 |
-| 26 Sept, W3A4 | **`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1`** (`sha256:<DIGEST>`) | [3-bit W3A4](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4) |
+| 26 Sept, W3A4 | **`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1`** (`sha256:c4134aba665f6dd3b89354a43be2b5b814f7078db456351647a3f1b106a0da49`) | [3-bit W3A4](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4) |
 
 All arms ran with `GPU_MAX_HW_QUEUES=1` (now set in the image), so every process was in the same decode timing mode and the tables do not include the gain from that setting. The W3A4 timing runs used an earlier calibration of the same 3-bit format; the tensor layout and runtime are identical, so the timing applies to the published weights. The accuracy results and the four-request run at the launcher's default KV budget used the published weights.
 

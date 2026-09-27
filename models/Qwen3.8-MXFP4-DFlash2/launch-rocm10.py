@@ -11,8 +11,7 @@ import sys
 
 
 IMAGES = {
-    # Digest appended when the image is published.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1@sha256:c4134aba665f6dd3b89354a43be2b5b814f7078db456351647a3f1b106a0da49',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 # Images that carry the native 3-bit (W3A4) runtime. Its flags default on inside

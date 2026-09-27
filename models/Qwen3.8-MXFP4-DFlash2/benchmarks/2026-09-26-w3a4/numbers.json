@@ -58,7 +58,7 @@
    "description": "26 September release image with the 3-bit W3A4 weights",
    "image": {
     "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260926-w3a4-r1",
-    "digest": "sha256:<DIGEST>"
+    "digest": "sha256:c4134aba665f6dd3b89354a43be2b5b814f7078db456351647a3f1b106a0da49"
    },
    "weights": "w3a4",
    "w3a4_weights": "EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4",
