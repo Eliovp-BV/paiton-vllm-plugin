@@ -49,8 +49,7 @@
   "mxfp4_20260926": {
    "description": "This round's runtime changes (fused GDN verify, GPU_MAX_HW_QUEUES=1) with MXFP4 weights, measured on an MXFP4-only build",
    "image": {
-    "tag": "paiton-qwen38-local:65k-20260926-gv-r2",
-    "id": "sha256:ff14e85d16bd6beb71a8856fa24271f6e543750f24d5784ac6c017deb8581d9d"
+    "build": "unpublished MXFP4-only build of this round's runtime (equivalent to the 26 September image with --weights mxfp4)"
    },
    "weights": "mxfp4"
   },

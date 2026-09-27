@@ -145,7 +145,8 @@ All language models expose an OpenAI-compatible API through vLLM.
 > [!NOTE]
 > **Which Qwen3.8?** **MXFP4 + DFlash2** is the current release: 65K or 200K context
 > with DFlash2 speculative decoding (the 200K profile is qualified for one active
-> request). On the 65K profile, optional 3-bit W3A4 weights add +19.9% weighted decode
+> request). On the 65K profile, optional [3-bit W3A4 weights](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4)
+> add +19.9% weighted decode
 > for about 3 points of MMLU-Pro knowledge recall; the opt-in n-gram co-drafting
 > measured +27% decode on an agentic coding session.
 > **Qronos** is an 8K package with optional reasoning; **NEO CODER MAX**
