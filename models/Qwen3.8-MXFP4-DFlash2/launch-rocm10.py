@@ -35,6 +35,12 @@ KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
 # --kv-cache kv4, the launcher selects it only up to the 65K preset's own context, where it was measured end to end.
 KV4_MAX_CONTEXT = 200000
 KV4_AUTO_MAX_CONTEXT = 65536
+# Image input (--vision) also serves the checkpoint's vision encoder, which the release command leaves out with
+# --language-model-only. The encoder's weights, cache and working memory come out of the KV budget (the MXFP4 release
+# budget runs out of memory at KV allocation), so each weights / KV cache combination has its own budget.
+# PROVISIONAL until measured on the R9700.
+VISION_RELEASES = frozenset(('65k',))
+VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 7300000000, ('w3a4', 'kv4'): 6809600000}
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -119,6 +125,8 @@ def parser():
                         help='fixed KV budget in bytes, or automatic sizing from GPU memory utilization')
     result.add_argument('--kv-cache', choices=('auto', 'kv4', 'fp8'), default='auto',
                         help='auto: the 4-bit KV cache with the 3-bit weights (without prefix caching), fp8 otherwise')
+    result.add_argument('--vision', action='store_true',
+                        help='accept image input; the vision encoder takes its memory from the KV cache')
     result.add_argument('--prefix-caching', choices=('on', 'off'),
                         help='experimental prefix reuse with materialized recurrent state; off in both releases')
     result.add_argument('--thinking', choices=('on', 'off'),
@@ -226,6 +234,10 @@ def engine_command(args, weights='mxfp4'):
         raise ValueError('--max-num-seqs must be between 1 and 8 for this release')
     if args.port is not None and args.port > 65535:
         raise ValueError('--port must be between 1 and 65535')
+    if args.vision and args.release not in VISION_RELEASES:
+        raise ValueError(f'--vision is not available for the {args.release} release')
+    if args.vision and prefix_caching_enabled(args):
+        raise ValueError('--vision is qualified without prefix caching (not with --profile chat or --prefix-caching on)')
     command = release_command(args.release)
     desktop = args.profile == 'desktop'
     chat = args.profile == 'chat'
@@ -244,6 +256,8 @@ def engine_command(args, weights='mxfp4'):
             cache = 8 * 1024**3
         elif desktop:
             cache = 2 * 1024**3
+        elif args.vision:
+            cache = VISION_KV_CACHE_BYTES[weights, kv_cache_mode(args, weights)]
         elif weights == 'w3a4':
             cache = W3_KV4_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4' else W3_KV_CACHE_BYTES
     for flag, value in (('--max-model-len', context), ('--max-num-seqs', sequences),
@@ -266,6 +280,8 @@ def engine_command(args, weights='mxfp4'):
         del command[index:index + 2]
     elif cache is not None:
         replace_value(command, '--kv-cache-memory-bytes', cache)
+    if args.vision:
+        command.remove('--language-model-only')
     if prefix_caching_enabled(args):
         command[command.index('--no-enable-prefix-caching')] = '--enable-prefix-caching'
         replace_value(command, '--mamba-cache-mode', 'align')

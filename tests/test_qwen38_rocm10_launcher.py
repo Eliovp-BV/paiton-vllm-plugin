@@ -524,5 +524,51 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertFalse(self.record.exists())
 
 
+    def test_vision_loads_the_encoder_with_a_smaller_kv_budget(self):
+        image = launcher.IMAGES['65k']
+        self.assertIn('--language-model-only', self.engine(self.command()))
+        # MXFP4 weights: image input on, KV budget reduced for the vision encoder
+        engine = self.engine(self.command('--vision'))
+        self.assertNotIn('--language-model-only', engine)
+        self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.VISION_KV_CACHE_BYTES['mxfp4', 'fp8']))
+        self.assertLess(launcher.VISION_KV_CACHE_BYTES['mxfp4', 'fp8'], 6535819798)
+        # 3-bit weights: the 4-bit KV cache stays the default, the FP8 cache on request, each with its own budget
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        command = self.command('--vision')
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.VISION_KV_CACHE_BYTES['w3a4', 'kv4']))
+        self.assertLess(launcher.VISION_KV_CACHE_BYTES['w3a4', 'kv4'], launcher.W3_KV4_CACHE_BYTES)
+        command = self.command('--vision', '--kv-cache', 'fp8')
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.VISION_KV_CACHE_BYTES['w3a4', 'fp8']))
+        self.assertLess(launcher.VISION_KV_CACHE_BYTES['w3a4', 'fp8'], launcher.W3_KV_CACHE_BYTES)
+        # explicit budgets still win
+        command = self.command('--vision', '--kv-cache-memory-bytes', '3000000000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '3000000000')
+        engine = self.engine(self.command('--vision', '--gpu-memory-utilization', '0.9'))
+        self.assertNotIn('--kv-cache-memory-bytes', engine)
+        self.assertNotIn('--language-model-only', engine)
+
+    def test_vision_with_the_desktop_profile_keeps_its_budget(self):
+        engine = self.engine(self.command('--profile', 'desktop', '--vision'))
+        self.assertNotIn('--language-model-only', engine)
+        self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(2 * 1024**3))
+        self.assertEqual(value(engine, '--max-model-len'), '32768')
+
+    def test_vision_is_refused_where_it_was_not_qualified(self):
+        for options, reason in ((('--profile', 'chat'), 'without prefix caching'),
+                                (('--prefix-caching', 'on'), 'without prefix caching'),
+                                (('--release', '200k'), 'not available for the 200k release')):
+            with self.subTest(options=options):
+                self.record.unlink(missing_ok=True)
+                result = self.run_launcher('--vision', *options)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn('--vision', result.stderr)
+                self.assertIn(reason, result.stderr)
+                self.assertFalse(self.record.exists())
+
+
 if __name__ == '__main__':
     unittest.main()
