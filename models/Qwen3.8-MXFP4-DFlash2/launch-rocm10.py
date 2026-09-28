@@ -104,9 +104,10 @@ def parser():
     result.add_argument('--image', help='compatible runtime image override; preserves the selected release settings')
     result.add_argument('--weights', choices=('auto', 'w3a4', 'mxfp4'), default='auto',
                         help='auto: the 3-bit W3A4 weights when PAITON_W3ROT_DIR is set, MXFP4 otherwise')
-    result.add_argument('--profile', choices=('release', 'desktop', 'chat'), default='release',
+    result.add_argument('--profile', choices=('release', 'desktop', 'chat'),
                         help='chat: 200000 context, APC on, thinking off, 8 GiB KV; '
-                             'desktop: 32768 context, 2 GiB KV; both use one request and 1024 prefill chunks')
+                             'desktop: 32768 context, 2 GiB KV; both use one request and 1024 prefill chunks. '
+                             'Default: release, or chat when --context exceeds 65536 on the 65k image')
     result.add_argument('--list-gpus', action='store_true', help='list physical render devices without starting Docker')
     result.add_argument('--context', type=positive_integer, metavar='TOKENS', help='set both target and draft context limits')
     result.add_argument('--max-num-seqs', type=positive_integer, metavar='COUNT', help='maximum concurrent requests (1 to 8)')
@@ -186,6 +187,15 @@ def describe_gpu(gpu):
 
 def replace_value(command, flag, value):
     command[command.index(flag) + 1] = str(value)
+
+
+def selected_profile(args):
+    """--profile as given; without one, a context above the 65k preset selects the long-context chat profile."""
+    if args.profile is not None:
+        return args.profile
+    if args.release == '65k' and args.context is not None and args.context > 65536:
+        return 'chat'
+    return 'release'
 
 
 def prefix_caching_enabled(args):
@@ -296,6 +306,7 @@ def model_mounts(environment, weights):
 
 
 def docker_command(args, environment):
+    args = argparse.Namespace(**{**vars(args), 'profile': selected_profile(args)})
     name = args.name or f'paiton-qwen38-{args.release}'
     if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', name):
         raise ValueError('--name must be a valid Docker container name')

@@ -342,12 +342,50 @@ class Rocm10LauncherTests(unittest.TestCase):
                           'open(os.environ["DOCKER_ARGV_RECORD"],"w").write(json.dumps(sys.argv[1:]))\n')
         python.chmod(0o755)
         options = ['--profile', 'desktop', '--context', '16384', '--name', 'literal $value']
-        for release in ('65k', '200k'):
-            result = subprocess.run(['bash', str(MODEL_DIR / f'run-rocm10-{release}.sh'), *options],
+        # Both wrappers start the current image; the 200K one selects its long-context profile and container
+        # name first, so every option the user passes still overrides them.
+        for script, preset in (('run-rocm10-65k.sh', []),
+                               ('run-rocm10-200k.sh', ['--profile', 'chat', '--name', 'paiton-qwen38-200k'])):
+            result = subprocess.run(['bash', str(MODEL_DIR / script), *options],
                                     env=self.environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(self.record.read_text()),
-                             [str(SCRIPT), '--release', release, *options])
+                             [str(SCRIPT), '--release', '65k', *preset, *options])
+
+    def test_long_context_selects_the_chat_profile_on_the_current_image(self):
+        image = launcher.IMAGES['65k']
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        for weights in ('mxfp4', 'w3a4'):
+            if weights == 'w3a4':
+                self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+            for context in ('200000', '220000'):
+                with self.subTest(weights=weights, context=context):
+                    command = self.command('--context', context)
+                    self.assertIn(image, command)
+                    self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                    # prefix caching is not qualified with the 4-bit cache: FP8 cache, the chat profile's budget
+                    self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+                    engine = self.engine(command)
+                    self.assertEqual(value(engine, '--max-model-len'), context)
+                    self.assertEqual(json.loads(value(engine, '--speculative-config'))['max_model_len'], int(context))
+                    self.assertEqual(value(engine, '--max-num-seqs'), '1')
+                    self.assertEqual(value(engine, '--max-num-batched-tokens'), '1024')
+                    self.assertEqual(value(engine, '--kv-cache-memory-bytes'), '8589934592')
+                    self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
+                    self.assertIn('--enable-prefix-caching', engine)
+                    self.assertEqual(json.loads(value(engine, '--default-chat-template-kwargs')),
+                                     {'enable_thinking': False})
+        # up to the 65K preset's own limit, and with an explicit profile, nothing changes
+        engine = self.engine(self.command('--context', '65536'))
+        self.assertEqual(value(engine, '--max-num-seqs'), '8')
+        self.assertIn('--no-enable-prefix-caching', engine)
+        engine = self.engine(self.command('--profile', 'release', '--context', '200000'))
+        self.assertEqual(value(engine, '--max-num-seqs'), '8')
+        self.assertIn('--no-enable-prefix-caching', engine)
+        engine = self.engine(self.command('--profile', 'desktop', '--context', '100000'))
+        self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(2 * 1024**3))
+        self.assertEqual(value(engine, '--max-model-len'), '100000')
 
     def test_ngram_codraft_forwarded_only_when_set_on_host(self):
         command = self.command()
@@ -463,13 +501,15 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         image = launcher.IMAGES['65k']
-        command = self.command('--context', str(launcher.KV4_MAX_CONTEXT))
+        # the release preset kept explicitly at long context (without a profile, long context selects chat)
+        command = self.command('--profile', 'release', '--context', str(launcher.KV4_MAX_CONTEXT))
         self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
-        command = self.command('--context', str(launcher.KV4_MAX_CONTEXT + 1))
+        command = self.command('--profile', 'release', '--context', str(launcher.KV4_MAX_CONTEXT + 1))
         self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
         self.record.unlink(missing_ok=True)
-        result = self.run_launcher('--kv-cache', 'kv4', '--context', str(launcher.KV4_MAX_CONTEXT + 1))
+        result = self.run_launcher('--profile', 'release', '--kv-cache', 'kv4',
+                                   '--context', str(launcher.KV4_MAX_CONTEXT + 1))
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertIn('--kv-cache kv4', result.stderr)
         self.assertFalse(self.record.exists())
