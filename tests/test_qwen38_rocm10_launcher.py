@@ -344,7 +344,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         options = ['--profile', 'desktop', '--context', '16384', '--name', 'literal $value']
         # Both wrappers start the current image; the 200K one selects its long-context profile and container
         # name first, so every option the user passes still overrides them.
-        for script, preset in (('run-rocm10-65k.sh', []),
+        for script, preset in (('run-rocm10.sh', []), ('run-rocm10-65k.sh', []),
                                ('run-rocm10-200k.sh', ['--profile', 'chat', '--name', 'paiton-qwen38-200k'])):
             result = subprocess.run(['bash', str(MODEL_DIR / script), *options],
                                     env=self.environment, capture_output=True, text=True)
