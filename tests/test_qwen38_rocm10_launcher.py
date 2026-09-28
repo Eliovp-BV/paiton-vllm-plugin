@@ -527,8 +527,11 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_vision_loads_the_encoder_with_a_smaller_kv_budget(self):
         image = launcher.IMAGES['65k']
         self.assertIn('--language-model-only', self.engine(self.command()))
-        # MXFP4 weights: image input on, KV budget reduced for the vision encoder
-        engine = self.engine(self.command('--vision'))
+        # MXFP4 weights: image input on, KV budget reduced for the vision encoder, and the allocator setting the
+        # vision budgets were measured with (without it the encoder's startup profile fragments the cache)
+        command = self.command('--vision')
+        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command[:command.index(image)])
+        engine = self.engine(command)
         self.assertNotIn('--language-model-only', engine)
         self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.VISION_KV_CACHE_BYTES['mxfp4', 'fp8']))
         self.assertLess(launcher.VISION_KV_CACHE_BYTES['mxfp4', 'fp8'], 6535819798)
@@ -558,8 +561,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(engine, '--max-model-len'), '32768')
 
     def test_vision_is_refused_where_it_was_not_qualified(self):
-        for options, reason in ((('--profile', 'chat'), 'without prefix caching'),
-                                (('--prefix-caching', 'on'), 'without prefix caching'),
+        for options, reason in ((('--context', '200000'), 'long-context mode'),
+                                (('--profile', 'chat'), 'long-context mode'),
+                                (('--prefix-caching', 'on'), 'long-context mode'),
                                 (('--release', '200k'), 'not available for the 200k release')):
             with self.subTest(options=options):
                 self.record.unlink(missing_ok=True)

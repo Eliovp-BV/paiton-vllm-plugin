@@ -35,12 +35,14 @@ KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
 # --kv-cache kv4, the launcher selects it only up to the 65K preset's own context, where it was measured end to end.
 KV4_MAX_CONTEXT = 200000
 KV4_AUTO_MAX_CONTEXT = 65536
-# Image input (--vision) also serves the checkpoint's vision encoder, which the release command leaves out with
-# --language-model-only. The encoder's weights, cache and working memory come out of the KV budget (the MXFP4 release
-# budget runs out of memory at KV allocation), so each weights / KV cache combination has its own budget.
-# PROVISIONAL until measured on the R9700.
+# Image input (--vision) also serves the checkpoint's vision encoder (0.88 GiB), which the release command leaves out
+# with --language-model-only. Its weights, its encoder cache (one 16,384-token image) and its startup profiling come
+# out of the KV budget (the MXFP4 release budget runs out of memory at KV allocation). Each weights / KV cache pair has
+# a budget measured on one R9700 with a 4096 x 4096 image, a ~32K prompt plus an image and eight concurrent image
+# requests, then lowered by 0.5 GiB where the peak came within 0.1 GiB of the card (3-bit weights: 437 pool blocks
+# with the 4-bit cache).
 VISION_RELEASES = frozenset(('65k',))
-VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 7300000000, ('w3a4', 'kv4'): 6809600000}
+VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 6760000000, ('w3a4', 'kv4'): 6264832000}
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -237,7 +239,8 @@ def engine_command(args, weights='mxfp4'):
     if args.vision and args.release not in VISION_RELEASES:
         raise ValueError(f'--vision is not available for the {args.release} release')
     if args.vision and prefix_caching_enabled(args):
-        raise ValueError('--vision is qualified without prefix caching (not with --profile chat or --prefix-caching on)')
+        raise ValueError('--vision is not yet qualified in the long-context mode (prefix caching: --context above '
+                         '65536, --profile chat or --prefix-caching on); use it in the 65K mode')
     command = release_command(args.release)
     desktop = args.profile == 'desktop'
     chat = args.profile == 'chat'
@@ -352,8 +355,8 @@ def docker_command(args, environment):
             command += ['-e', variable + '=' + environment[variable]]
     if prefix_caching_enabled(args):
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
-    if args.profile == 'chat' or weights == 'w3a4':
-        # The allocator setting the chat profile and the W3A4 KV budget were measured with.
+    if args.profile == 'chat' or weights == 'w3a4' or args.vision:
+        # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         command += ['-e', 'PYTORCH_ALLOC_CONF=max_split_size_mb:64']
     if weights == 'mxfp4' and args.release in W3_RELEASES:
         # All three flags: the runtime rejects W3A4 prefill without W3 decode.
