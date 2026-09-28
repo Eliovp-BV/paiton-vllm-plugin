@@ -217,7 +217,7 @@ single-GPU setup (several language models use port 8000).
 | Model | Container | Your own vLLM | API port · model name |
 | --- | --- | --- | --- |
 | MiniCPM5-2B | `./models/MiniCPM5-2B/serve-docker.sh` | `paiton serve minicpm5` | 8036 · `minicpm5-2b` |
-| Qwen3.8 MXFP4 + DFlash2 | `bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10-65k.sh` ¹ | `paiton serve qwen38-nvfp4` ² | 18982 · `Qwen3.8` |
+| Qwen3.8 MXFP4 + DFlash2 | `bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10.sh` ¹ | `paiton serve qwen38-nvfp4` ² | 18982 · `Qwen3.8` |
 | Qwen3.8 Qronos | `./models/Qwen3.8/serve-docker.sh` | `paiton serve qwen38-qronos` | 8000 · `qwen38` |
 | Qwen3.8 NEO CODER MAX | `./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh` | `paiton serve qwen38-neo` | 8000 · `qwen38-neo` |
 | Qwen3-Coder 30B | `./models/Qwen3-Coder-30B/serve-docker.sh --chat` | `paiton serve qwen3-coder` | 8010 · `qwen3-coder` |
@@ -227,7 +227,7 @@ single-GPU setup (several language models use port 8000).
 ¹ Prepare the target and draft weights first
 ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#model-weights-and-existing-downloads));
 set `PAITON_W3ROT_DIR` to add the [optional 3-bit weights](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-3-bit-w3a4-weights);
-use `run-rocm10-200k.sh` for the 200K profile.
+add `--context 200000` for long context (one conversation of up to 200K tokens).
 ² Text-only, 65K, without speculative decoding; see [native presets](#use-your-own-vllm-environment).
 
 `--chat` opens a terminal chat once the server is ready. Each model guide shows its
@@ -340,7 +340,8 @@ identities, profiles, preparation, offline use and lockfiles.
 - **GPU:** tested on one Radeon AI PRO R9700 (32 GB, RDNA4). Smaller GPUs have not
   been qualified.
 - **Containers:** Linux, Docker and access to the AMD GPU devices (`/dev/kfd`,
-  `/dev/dri`). The ComfyUI launchers also need Docker Compose.
+  `/dev/dri`). Your user must be able to run `docker` without `sudo` (for example,
+  as a member of the `docker` group). The ComfyUI launchers also need Docker Compose.
 - **Your own vLLM:** the preset's supported environment, listed [above](#use-your-own-vllm-environment).
 - **First launch:** downloads the weights and may build or compile runtime
   components; later launches reuse persistent caches. Host RAM, disk space and

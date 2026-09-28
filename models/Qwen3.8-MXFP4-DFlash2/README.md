@@ -95,10 +95,17 @@ other serving settings are unchanged. Update this repository to get the launcher
 
 ## Run the current release
 
-Use Linux x86-64, Python 3, Docker, and one Radeon AI PRO R9700 with 32 GB VRAM and working AMD GPU device
-access. Run the following commands from the repository root. The image contains the runtime; download the
-target and draft weights separately with the Hugging Face CLI (`hf`), or point the variables at existing
-copies of these exact snapshots.
+You need:
+
+- Linux x86-64 with Python 3 and Docker. Your user must be able to run `docker` without `sudo`, for example
+  as a member of the `docker` group; `sudo` would drop the exported `PAITON_*` variables.
+- One Radeon AI PRO R9700 with 32 GB VRAM and working AMD GPU device access.
+- About 75 GB of free disk: about 40 GB for the image (a 9.6 GB download), 23.4 GB for the target, 2.1 GB
+  for the draft and 9.55 GB for the optional 3-bit weights.
+
+Run the following commands from the repository root. The image contains the runtime; download the target
+and draft weights separately with the Hugging Face CLI (`hf`), or point the variables at existing copies of
+these exact snapshots.
 
 The commands below start the **65K mode**, the benchmark configuration. Add `--context 200000` for the
 **long-context mode**; see [Long context](#long-context-200k-and-220k).
@@ -116,7 +123,7 @@ the draft; the 3-bit weights are optional:
 | --- | --- | --- |
 | Target | `unsloth/Qwen3.8-27B-NVFP4` | `f0b7c9e722f5565102fff8481c99e4d86ae099c7` |
 | DFlash2 draft | `tcclaviger/Qwen3.8-27B-DFlash2-FP8` | `ee0cb26a8279b7910cc28d82a8a3e15e4728d56f` |
-| 3-bit W3A4 weights (optional) | `EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4` | `278486debe64e21e5e9d45ac8d02798d72fbdf83` |
+| 3-bit W3A4 weights (optional) | `EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4` | `d74ae7d5f5f1b4b45dd12fb1271e3664283a2ec1` |
 
 The native `paiton serve qwen38-nvfp4` preset above is non-speculative and does
 not use the 3-bit weights. The instructions here preserve the Docker release's
@@ -156,7 +163,7 @@ export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision 278486debe64e21e5e9d45ac8d02798d72fbdf83 \
+  --revision d74ae7d5f5f1b4b45dd12fb1271e3664283a2ec1 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -193,8 +200,11 @@ links to `blobs/`. It starts the 65K mode with MXFP4 weights and
 the same settings as the launcher; only the weight paths differ. The three
 `PAITON_W3_*=0` variables switch off the image's 3-bit path and the two
 `PAITON_KV4*=0` variables its 4-bit KV cache, as the launcher does without
-`PAITON_W3ROT_DIR`. For the 3-bit weights, download them to a standalone
-folder as [shown above](#optional-3-bit-w3a4-weights) and use the launcher.
+`PAITON_W3ROT_DIR`. For the 3-bit weights, the long-context mode or `--vision`, use
+the launcher instead. It cannot use Hub-cache snapshots: it needs standalone target
+and draft folders ([First download](#first-download) or
+[Already in a local folder](#already-in-a-local-folder)), plus the
+[3-bit folder](#optional-3-bit-w3a4-weights) for the 3-bit weights.
 
 For a cache on another drive, replace the first export with
 `export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`.
@@ -211,6 +221,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   -e HF_HUB_OFFLINE=1 \
   -e PAITON_W3_DECODE=0 -e PAITON_W3_PREFILL=0 -e PAITON_W3_A4=0 \
   -e PAITON_KV4=0 -e PAITON_KV4_CAPACITY=0 \
+  -e ROCR_VISIBLE_DEVICES -e HIP_VISIBLE_DEVICES -e CUDA_VISIBLE_DEVICES \
   ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260928-r1@sha256:487c97d51e5b4a3fcd0a206e53d842a52dd56a199d8ee3e884f48815093a80d4 \
   serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
@@ -280,9 +291,14 @@ Check the selected host directory and both downloads before retrying. The Hub
 cache option above launches Docker directly and does not need this extra step.
 
 The server runs in the foreground at `http://127.0.0.1:18982/v1`, with API model
-name **`Qwen3.8`**. First startup loads/converts weights and compiles runtime
-components; wait for readiness before sending requests or measuring throughput.
-The persistent cache is reused on subsequent starts. The first image pull is
+name **`Qwen3.8`**. Add `--detach` to run it in the background instead; follow its
+log with `docker logs -f paiton-qwen38` and stop it with `docker stop paiton-qwen38`
+(the stopped container and its log are removed). First startup loads/converts
+weights and compiles runtime components: about 7 minutes with the 3-bit weights and
+an empty `PAITON_CACHE_DIR`. Wait for readiness before sending requests or measuring
+throughput.
+The persistent cache is reused on subsequent starts. The container writes it as root,
+so removing `runtime-cache/` later needs `sudo`. The first image pull is
 approximately 9.6 GB, excluding model weights.
 
 From another terminal:
@@ -497,7 +513,7 @@ tokens each, FP8 cache (26 September measurement):
 | W3A4, launcher default with `--kv-cache fp8` | 250,578 tokens | **86.2 s** | **4**, at 199 tok/s combined |
 
 At the same KV budget, two 61K-token requests decode at 117 instead of 69 tok/s
-combined. Startup takes about 230 s instead of about 210 s.
+combined. With a warm runtime cache, startup takes about 230 s instead of about 210 s.
 
 **What it costs.** Served model, greedy decoding, thinking off, paired with
 MXFP4 on identical items; Δ in points with a 95% interval:
