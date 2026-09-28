@@ -38,9 +38,9 @@ KV4_AUTO_MAX_CONTEXT = 65536
 # Image input (--vision) also serves the checkpoint's vision encoder (0.88 GiB), which the release command leaves out
 # with --language-model-only. Its weights, its encoder cache (one 16,384-token image) and its startup profiling come
 # out of the KV budget (the MXFP4 release budget runs out of memory at KV allocation). Each weights / KV cache pair has
-# a budget measured on one R9700 with a 4096 x 4096 image, a ~32K prompt plus an image and eight concurrent image
-# requests, then lowered by 0.5 GiB where the peak came within 0.1 GiB of the card (3-bit weights: 437 pool blocks
-# with the 4-bit cache).
+# a budget measured on one R9700 with a 4096 x 4096 image, a ~58K-token prompt plus an image and eight concurrent
+# image requests, then lowered by 0.5 GiB where the peak came within 0.1 GiB of the card (3-bit weights: 437 pool
+# blocks with the 4-bit cache). The startup self-check (a one-time 2.37 GiB allocation) passes with every budget.
 VISION_RELEASES = frozenset(('65k',))
 VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 6760000000, ('w3a4', 'kv4'): 6264832000}
 SYS_DRM = Path('/sys/class/drm')
