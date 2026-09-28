@@ -458,5 +458,22 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(self.kv4_flags(command, launcher.IMAGES['200k']), [])
 
 
+    def test_kv4_stays_within_its_context_limit(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        image = launcher.IMAGES['65k']
+        command = self.command('--context', str(launcher.KV4_MAX_CONTEXT))
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+        command = self.command('--context', str(launcher.KV4_MAX_CONTEXT + 1))
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
+        self.record.unlink(missing_ok=True)
+        result = self.run_launcher('--kv-cache', 'kv4', '--context', str(launcher.KV4_MAX_CONTEXT + 1))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('--kv-cache kv4', result.stderr)
+        self.assertFalse(self.record.exists())
+
+
 if __name__ == '__main__':
     unittest.main()

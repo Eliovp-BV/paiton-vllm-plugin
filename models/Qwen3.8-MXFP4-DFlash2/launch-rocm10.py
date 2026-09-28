@@ -29,6 +29,8 @@ W3_KV4_CACHE_BYTES = 9146368000
 # weights and without prefix caching; every other configuration keeps the fp8 KV cache.
 KV4_RELEASES = frozenset(('65k',))
 KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
+# The released 4-bit decode path is qualified up to this context (prompt + generated tokens).
+KV4_MAX_CONTEXT = 200000
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -190,10 +192,12 @@ def prefix_caching_enabled(args):
 
 def kv_cache_mode(args, weights):
     """'kv4' or 'fp8'; an explicit kv4 request outside the qualified configuration is refused."""
-    qualified = args.release in KV4_RELEASES and weights == 'w3a4' and not prefix_caching_enabled(args)
+    context = args.context if args.context is not None else 0
+    qualified = (args.release in KV4_RELEASES and weights == 'w3a4' and not prefix_caching_enabled(args)
+                 and context <= KV4_MAX_CONTEXT)
     if args.kv_cache == 'kv4' and not qualified:
-        raise ValueError('--kv-cache kv4 is qualified only for the 65k release with the 3-bit W3A4 weights and '
-                         'without prefix caching')
+        raise ValueError('--kv-cache kv4 is qualified only for the 65k release with the 3-bit W3A4 weights, '
+                         f'without prefix caching and up to --context {KV4_MAX_CONTEXT}')
     if args.kv_cache == 'fp8':
         return 'fp8'
     return 'kv4' if qualified else 'fp8'
