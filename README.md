@@ -143,12 +143,14 @@ All language models expose an OpenAI-compatible API through vLLM.
 | [**Ornith 1.5 35B A3B**](models/Ornith-1.5/README.md) | Chat and optional reasoning · text | 8K | — | [+27.0% output tok/s](models/Ornith-1.5/BENCHMARKS.md) vs stock, including DFlash · C1 |
 
 > [!NOTE]
-> **Which Qwen3.8?** **MXFP4 + DFlash2** is the current release: 65K or 200K context
-> with DFlash2 speculative decoding (the 200K profile is qualified for one active
-> request). On the 65K profile, optional [3-bit W3A4 weights](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4)
-> add +19.9% weighted decode
-> for about 3 points of MMLU-Pro knowledge recall; the opt-in n-gram co-drafting
-> measured +27% decode on an agentic coding session.
+> **Which Qwen3.8?** **MXFP4 + DFlash2** is the current release. One image runs two
+> modes: 65K context with up to eight requests at once (default), or long context
+> up to 200K for one conversation (`--context 200000`), both with DFlash2
+> speculative decoding; `--vision` adds image input. Optional
+> [3-bit W3A4 weights](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4)
+> add +19.9% weighted decode for about 3 points of MMLU-Pro knowledge recall, and
+> with them a 4-bit KV cache holds 1.7× the attention tokens in the 65K mode; the
+> opt-in n-gram co-drafting measured +27% decode on an agentic coding session.
 > **Qronos** is an 8K package with optional reasoning; **NEO CODER MAX**
 > adds single-image input. The native `qwen38-nvfp4` preset runs the MXFP4 model in
 > your own vLLM without DFlash2, so the DFlash2 benchmark does not apply to it.
