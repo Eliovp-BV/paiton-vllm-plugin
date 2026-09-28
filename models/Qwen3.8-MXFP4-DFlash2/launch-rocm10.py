@@ -21,6 +21,14 @@ W3_FLAGS = ('PAITON_W3_DECODE', 'PAITON_W3_PREFILL', 'PAITON_W3_A4')
 # Release KV budget plus 2.65 GiB of the 3.29 GiB the 3-bit weights free: four
 # 61K-token requests fit and peak at the MXFP4 release VRAM (31.39 vs 31.37 GiB).
 W3_KV_CACHE_BYTES = 9381235631
+# With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens; its prefill workspace and
+# larger decode scratch cost ~0.2 GiB of VRAM, so the pool is 16 blocks (0.22 GiB) smaller to keep the release's peak
+# VRAM margin: 638 pool blocks, 1.76x the 8-sequence attention capacity of the fp8 release budget.
+W3_KV4_CACHE_BYTES = 9146368000
+# Images that carry the 4-bit KV cache (dense KV4 pages published to the allocator). It is qualified with the 3-bit
+# weights and without prefix caching; every other configuration keeps the fp8 KV cache.
+KV4_RELEASES = frozenset(('65k',))
+KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -102,6 +110,8 @@ def parser():
                         help='automatic memory budget; implies automatic KV sizing unless explicit bytes are supplied')
     result.add_argument('--kv-cache-memory-bytes', type=cache_bytes, metavar='BYTES|auto',
                         help='fixed KV budget in bytes, or automatic sizing from GPU memory utilization')
+    result.add_argument('--kv-cache', choices=('auto', 'kv4', 'fp8'), default='auto',
+                        help='auto: the 4-bit KV cache with the 3-bit weights (without prefix caching), fp8 otherwise')
     result.add_argument('--prefix-caching', choices=('on', 'off'),
                         help='experimental prefix reuse with materialized recurrent state; off in both releases')
     result.add_argument('--thinking', choices=('on', 'off'),
@@ -178,6 +188,17 @@ def prefix_caching_enabled(args):
     return args.prefix_caching == 'on' or (args.prefix_caching is None and args.profile == 'chat')
 
 
+def kv_cache_mode(args, weights):
+    """'kv4' or 'fp8'; an explicit kv4 request outside the qualified configuration is refused."""
+    qualified = args.release in KV4_RELEASES and weights == 'w3a4' and not prefix_caching_enabled(args)
+    if args.kv_cache == 'kv4' and not qualified:
+        raise ValueError('--kv-cache kv4 is qualified only for the 65k release with the 3-bit W3A4 weights and '
+                         'without prefix caching')
+    if args.kv_cache == 'fp8':
+        return 'fp8'
+    return 'kv4' if qualified else 'fp8'
+
+
 def engine_command(args, weights='mxfp4'):
     if args.context is not None and args.context > 262144:
         raise ValueError('--context exceeds this checkpoint\'s 262144-token model limit')
@@ -204,7 +225,7 @@ def engine_command(args, weights='mxfp4'):
         elif desktop:
             cache = 2 * 1024**3
         elif weights == 'w3a4':
-            cache = W3_KV_CACHE_BYTES
+            cache = W3_KV4_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4' else W3_KV_CACHE_BYTES
     for flag, value in (('--max-model-len', context), ('--max-num-seqs', sequences),
                         ('--gpu-memory-utilization', budget), ('--port', args.port),
                         ('--max-num-batched-tokens', batched_tokens)):
@@ -301,6 +322,11 @@ def docker_command(args, environment):
         # All three flags: the runtime rejects W3A4 prefill without W3 decode.
         for variable in W3_FLAGS:
             command += ['-e', variable + '=0']
+    kv_mode = kv_cache_mode(args, weights)   # validates an explicit --kv-cache kv4 for every release
+    if args.release in KV4_RELEASES:
+        state = '1' if kv_mode == 'kv4' else '0'
+        for variable in KV4_FLAGS:
+            command += ['-e', variable + '=' + state]
     if args.detach:
         command.append('--detach')
     return command + model_mounts(environment, weights) + [image] + engine

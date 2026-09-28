@@ -378,8 +378,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn(f'{w3rot}:/models/w3rot:ro', command[:image_index])
         self.assertFalse(any(flag in command for flag in flags))
         # The memory the 3-bit weights free goes to the KV cache unless a budget is given,
-        # with the allocator setting that budget was measured with.
-        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
+        # with the allocator setting that budget was measured with (4-bit KV cache budget by default).
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
         self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command[:image_index])
         command = self.command('--kv-cache-memory-bytes', '7000000000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '7000000000')
@@ -406,6 +406,56 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.command('--release', '200k')
         self.assertFalse(any(item.startswith('PAITON_W3_') for item in command))
         self.assertFalse(any(item.endswith(':/models/w3rot:ro') for item in command))
+
+
+    def kv4_flags(self, command, image):
+        index = command.index(image)
+        return [item for item in command[:index] if item.startswith('PAITON_KV4')]
+
+    def test_w3a4_serves_the_capacity_kv4_cache_with_its_budget(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        image = launcher.IMAGES['65k']
+        command = self.command()
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
+        self.assertLess(launcher.W3_KV4_CACHE_BYTES, launcher.W3_KV_CACHE_BYTES)
+        # explicit fp8 keeps the previous release budget and cache
+        command = self.command('--kv-cache', 'fp8')
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
+        # a user budget is respected either way
+        command = self.command('--kv-cache-memory-bytes', '7000000000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '7000000000')
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+
+    def test_kv4_stays_off_where_it_was_not_qualified(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        image = launcher.IMAGES['65k']
+        # MXFP4 weights (no rotated weights mounted): fp8 KV as before
+        command = self.command()
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '6535819798')
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        # prefix caching (and the chat profile that uses it): fp8 KV
+        for options in (('--prefix-caching', 'on'), ('--profile', 'chat')):
+            with self.subTest(options=options):
+                command = self.command(*options)
+                self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        # an explicit kv4 request where it is not qualified is refused before Docker runs
+        for options in (('--kv-cache', 'kv4', '--weights', 'mxfp4'), ('--kv-cache', 'kv4', '--prefix-caching', 'on'),
+                        ('--kv-cache', 'kv4', '--release', '200k')):
+            with self.subTest(options=options):
+                self.record.unlink(missing_ok=True)
+                result = self.run_launcher(*options)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn('--kv-cache kv4', result.stderr)
+                self.assertFalse(self.record.exists())
+        # the 200k release is not a KV4 image: no KV4 flags at all
+        command = self.command('--release', '200k')
+        self.assertEqual(self.kv4_flags(command, launcher.IMAGES['200k']), [])
 
 
 if __name__ == '__main__':
