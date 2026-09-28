@@ -31,8 +31,10 @@ W3_KV4_CACHE_BYTES = 8859648000
 # weights and without prefix caching; every other configuration keeps the fp8 KV cache.
 KV4_RELEASES = frozenset(('65k',))
 KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
-# The released 4-bit decode path is qualified up to this context (prompt + generated tokens).
+# The released 4-bit decode path is qualified up to this context (prompt + generated tokens); without an explicit
+# --kv-cache kv4, the launcher selects it only up to the 65K preset's own context, where it was measured end to end.
 KV4_MAX_CONTEXT = 200000
+KV4_AUTO_MAX_CONTEXT = 65536
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 
@@ -203,16 +205,18 @@ def prefix_caching_enabled(args):
 
 
 def kv_cache_mode(args, weights):
-    """'kv4' or 'fp8'; an explicit kv4 request outside the qualified configuration is refused."""
+    """'kv4' or 'fp8'. auto picks kv4 only where it was measured end to end: the 65K release preset with the 3-bit
+    weights. An explicit kv4 request is allowed up to the kernels' context limit and refused outside it."""
     context = args.context if args.context is not None else 0
     qualified = (args.release in KV4_RELEASES and weights == 'w3a4' and not prefix_caching_enabled(args)
                  and context <= KV4_MAX_CONTEXT)
     if args.kv_cache == 'kv4' and not qualified:
         raise ValueError('--kv-cache kv4 is qualified only for the 65k release with the 3-bit W3A4 weights, '
                          f'without prefix caching and up to --context {KV4_MAX_CONTEXT}')
-    if args.kv_cache == 'fp8':
-        return 'fp8'
-    return 'kv4' if qualified else 'fp8'
+    if args.kv_cache in ('kv4', 'fp8'):
+        return args.kv_cache
+    measured = qualified and args.profile == 'release' and context <= KV4_AUTO_MAX_CONTEXT
+    return 'kv4' if measured else 'fp8'
 
 
 def engine_command(args, weights='mxfp4'):

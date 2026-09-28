@@ -344,7 +344,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         options = ['--profile', 'desktop', '--context', '16384', '--name', 'literal $value']
         # Both wrappers start the current image; the 200K one selects its long-context profile and container
         # name first, so every option the user passes still overrides them.
-        for script, preset in (('run-rocm10.sh', []), ('run-rocm10-65k.sh', []),
+        for script, preset in (('run-rocm10.sh', ['--name', 'paiton-qwen38']), ('run-rocm10-65k.sh', []),
                                ('run-rocm10-200k.sh', ['--profile', 'chat', '--name', 'paiton-qwen38-200k'])):
             result = subprocess.run(['bash', str(MODEL_DIR / script), *options],
                                     env=self.environment, capture_output=True, text=True)
@@ -501,12 +501,21 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         image = launcher.IMAGES['65k']
-        # the release preset kept explicitly at long context (without a profile, long context selects chat)
+        on, off = ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'], ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0']
+        # automatic selection only in the measured configuration: the 65K preset at up to 65,536 tokens
+        self.assertEqual(self.kv4_flags(self.command('--context', '65536'), image), on)
+        for options in (('--profile', 'release', '--context', '65537'), ('--profile', 'desktop')):
+            with self.subTest(options=options):
+                self.assertEqual(self.kv4_flags(self.command(*options), image), off)
         command = self.command('--profile', 'release', '--context', str(launcher.KV4_MAX_CONTEXT))
-        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
-        command = self.command('--profile', 'release', '--context', str(launcher.KV4_MAX_CONTEXT + 1))
-        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
+        # an explicit request covers the kernels' range, with that mode's own budget
+        command = self.command('--profile', 'release', '--kv-cache', 'kv4', '--context', str(launcher.KV4_MAX_CONTEXT))
+        self.assertEqual(self.kv4_flags(command, image), on)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
+        command = self.command('--profile', 'desktop', '--kv-cache', 'kv4')
+        self.assertEqual(self.kv4_flags(command, image), on)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(2 * 1024**3))
         self.record.unlink(missing_ok=True)
         result = self.run_launcher('--profile', 'release', '--kv-cache', 'kv4',
                                    '--context', str(launcher.KV4_MAX_CONTEXT + 1))
