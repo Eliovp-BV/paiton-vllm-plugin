@@ -21,10 +21,11 @@ W3_FLAGS = ('PAITON_W3_DECODE', 'PAITON_W3_PREFILL', 'PAITON_W3_A4')
 # Release KV budget plus 2.65 GiB of the 3.29 GiB the 3-bit weights free: four
 # 61K-token requests fit and peak at the MXFP4 release VRAM (31.39 vs 31.37 GiB).
 W3_KV_CACHE_BYTES = 9381235631
-# With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens; its prefill workspace and
-# larger decode scratch cost ~0.2 GiB of VRAM, so the pool is 16 blocks (0.22 GiB) smaller to keep the release's peak
-# VRAM margin: 638 pool blocks, 1.76x the 8-sequence attention capacity of the fp8 release budget.
-W3_KV4_CACHE_BYTES = 9146368000
+# With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens. Its prefill workspace and
+# decode scratch, and the extra concurrency it admits, raise peak VRAM (31.80 GiB at 8 x 61K vs the release's 31.63 GiB
+# at 8 x 32K), so the pool is 21 blocks (0.29 GiB) smaller: 633 pool blocks, the fewest that keep 8 sequences at
+# 29 attention blocks each, i.e. 1.76x the 8-sequence attention capacity of the fp8 release budget.
+W3_KV4_CACHE_BYTES = 9074688000
 # Images that carry the 4-bit KV cache (dense KV4 pages published to the allocator). It is qualified with the 3-bit
 # weights and without prefix caching; every other configuration keeps the fp8 KV cache.
 KV4_RELEASES = frozenset(('65k',))
