@@ -80,9 +80,10 @@ other serving settings are unchanged. Update this repository to get the launcher
   target is untouched), but DFlash2 then accepted 0% of its draft tokens and decode ran at
   about a fifth of the published speed. Our test machines always received zeroed memory and
   never showed it; a user on Unraid did, and reported it with the diagnosis. The draft head is
-  now always built on first use from the real head. On the 26 September and 28 September r1
-  images, run the container with `-e RADIANCE_FAST_DRAFT=0` (the stock bf16 draft head, about
-  10% slower decode than the int2 head) or update.
+  now always built on first use from the real head. The 20, 24, 26 and 28 September (r1)
+  images all carry the affected file; on them, run the container with
+  `-e RADIANCE_FAST_DRAFT=0` (the stock bf16 draft head, about 10% slower decode than the int2
+  head) or update.
 - **New: one image for both modes.** `run-rocm10.sh` starts the 65K mode. A `--context` above 65,536, for
   example `--context 200000`, starts the long-context mode on the same image: one request, prefix caching
   and an 8 GiB FP8 KV cache (the settings of the earlier 200K `chat` profile). `run-rocm10-65k.sh` and
