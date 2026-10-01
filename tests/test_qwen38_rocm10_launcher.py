@@ -342,10 +342,11 @@ class Rocm10LauncherTests(unittest.TestCase):
                           'open(os.environ["DOCKER_ARGV_RECORD"],"w").write(json.dumps(sys.argv[1:]))\n')
         python.chmod(0o755)
         options = ['--profile', 'desktop', '--context', '16384', '--name', 'literal $value']
-        # Both wrappers start the current image; the 200K one selects its long-context profile and container
-        # name first, so every option the user passes still overrides them.
+        # Wrappers select the current image and their defaults first; user options still override them.
         for script, preset in (('run-rocm10.sh', ['--name', 'paiton-qwen38']), ('run-rocm10-65k.sh', []),
-                               ('run-rocm10-200k.sh', ['--profile', 'chat', '--name', 'paiton-qwen38-200k'])):
+                               ('run-rocm10-200k.sh', ['--profile', 'chat', '--name', 'paiton-qwen38-200k']),
+                               ('run-mxfp4.sh', ['--name', 'paiton-qwen38', '--weights', 'mxfp4']),
+                               ('run-3bit.sh', ['--name', 'paiton-qwen38', '--weights', 'w3a4'])):
             result = subprocess.run(['bash', str(MODEL_DIR / script), *options],
                                     env=self.environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
