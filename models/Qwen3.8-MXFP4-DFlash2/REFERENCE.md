@@ -235,8 +235,10 @@ Measured on one R9700 with the 3-bit weights, 1 October (fresh processes, `--con
 All planted facts were found in every prompt (near 5%, 45% and 90% of the 199K
 prompts; 4%, 38% and 73% of the 258K ones). Plain and streamed tool calls, an
 over-limit request (258,000 input plus 6,000 output, rejected with HTTP 400) and a
-normal request after it all passed. The 28 September image needed 94 s for the
-199K prompt with its 1,024-token chunks; the 4,096 budget is what shortens it.
+normal request after it all passed. The 4,096-token prefill budget is what shortens
+the first token: on the same image, alternating fresh processes with the previous
+1,024 budget measured 50.7 / 94.2 / 139.2 s against 45.8 / 85.8 / 126.3 s at 128K /
+199K / 258K input tokens (−9 to −10 %), with every planted fact found in both.
 
 Concurrency in this mode: eight 32K-token requests and four 61K-token requests
 submitted at once all completed without errors or preemptions. Requests are
