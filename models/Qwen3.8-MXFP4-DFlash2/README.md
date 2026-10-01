@@ -142,6 +142,23 @@ for GPU selection, custom memory budgets and measured capacity.
 Measured on **one 300 W R9700**. Speed depends on prompt length, workload and
 concurrency; use these as reference measurements for each choice.
 
+**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, cold prefix cache).** The same tool
+and settings as the September tables, run for 20 passes per category on `run-3bit.sh --context 262144` and on the
+65K default in fresh processes:
+
+| BetterBench row | 262K mode | 65K default |
+|---|---:|---:|
+| Weighted single-stream decode | 174.3 tok/s | 159.3 tok/s |
+| Gap between stream updates, p99 | 29.3 ms | 27.9 ms |
+| Time to first token, p50 (short prompts) | 85 ms | 89 ms |
+| Eight concurrent requests, aggregate output | 458.9 tok/s | 485.8 tok/s |
+| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,623 tok/s |
+| Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
+
+The 65K default's decode is below the 26 September quick run (184.4) only because of BetterBench's fixed-seed
+replay through the 4-bit cache; the 262K mode uses the FP8 cache with prefix caching and reads higher on the same
+seed. [Reports and numbers](benchmarks/2026-10-01-262k/README.md).
+
 **65K serving: speed comparison with FP8 KV in both arms, 26 September.**
 
 | Measurement | MXFP4 | 3-bit |
@@ -155,27 +172,19 @@ These runs predate the current image. `run-mxfp4.sh` still uses FP8 KV;
 two default commands**. Add `--kv-cache fp8` to select the 3-bit FP8 path.
 [Full settings, results and subsequent KV4 checks](REFERENCE.md#current-benchmark-results).
 
-**Long-context text: add `--context 200000` to either script.** Both use FP8 KV.
-Measured with a 198,989-token prompt:
+**Long-context text, 3-bit weights: `run-3bit.sh --context 262144`.** FP8 KV with prefix caching; the pool holds
+281,665 tokens (one full conversation plus short requests). Measured on 1 October:
 
-| Measurement | MXFP4 | 3-bit |
+| | 198,989-token prompt | 257,992-token prompt |
 | --- | ---: | ---: |
-| New prompt, time to first token | 102 s | 94 s |
-| Follow-up reusing the cached prompt | 1.2 s | 1.2 s |
-| Decode at this length | 63–68 tok/s | 73–78 tok/s |
+| New prompt, time to first token | 85 s | 126 s |
+| Identical prompt reused | 1.2 s | 1.7 s |
+| Decode at this depth | 73–78 tok/s | 72–76 tok/s |
 
-[Long-context test details](REFERENCE.md#long-context-200k-and-220k).
-
-**65K default cache capacity:** MXFP4 uses FP8 KV; 3-bit uses KV4.
-
-| Pooled cache tokens | `run-mxfp4.sh` | `run-3bit.sh` |
-| --- | ---: | ---: |
-| Text only | 174,634 | 393,216 |
-| With `--vision` | 120,277 | 278,050 |
-
-These are shared pool totals, not context per request. Vision takes memory from
-that pool; neither the capacity figures nor the text benchmarks establish
-200K vision support. [Vision checks](REFERENCE.md#images-and-vision).
+With `--vision` the same mode serves images up to `--context 245000` (a 200K-token prompt with a chart: 87 s cold,
+1.3 s reused). MXFP4 keeps the one-request long mode up to 220K (199K prompt: 102 s cold, 1.2 s reused, 63–68 tok/s).
+[Long-context details](REFERENCE.md#long-context-up-to-262k-on-the-3-bit-weights-200k-and-220k-with-mxfp4) ·
+[Vision checks](REFERENCE.md#images-and-vision).
 
 In the paired FP8 KV comparison, the 3-bit weights traded some accuracy for
 speed and memory: the MMLU-Pro subset fell **2.86 points** versus MXFP4.

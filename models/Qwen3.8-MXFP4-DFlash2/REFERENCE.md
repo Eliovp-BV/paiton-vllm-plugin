@@ -514,6 +514,23 @@ path, and the time per decoding step is identical. Over 232 requests with eight
 seeds per prompt, both images decode equally fast (within 1%). For long-context
 capacity, see [4-bit KV cache](#more-context-capacity-4-bit-kv-cache).
 
+**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, cold prefix cache).** The same tool
+and settings as the September tables, run for 20 passes per category on `run-3bit.sh --context 262144` and on the
+65K default in fresh processes:
+
+| BetterBench row | 262K mode | 65K default |
+|---|---:|---:|
+| Weighted single-stream decode | 174.3 tok/s | 159.3 tok/s |
+| Gap between stream updates, p99 | 29.3 ms | 27.9 ms |
+| Time to first token, p50 (short prompts) | 85 ms | 89 ms |
+| Eight concurrent requests, aggregate output | 458.9 tok/s | 485.8 tok/s |
+| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,623 tok/s |
+| Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
+
+The 65K default's decode is below the 26 September quick run (184.4) only because of BetterBench's fixed-seed
+replay through the 4-bit cache; the 262K mode uses the FP8 cache with prefix caching and reads higher on the same
+seed. [Reports and numbers](benchmarks/2026-10-01-262k/README.md).
+
 R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC off; thinking off; n-gram co-drafting off. Temperature 0.7, top-p 0.95, top-k 20, seed 42. BetterBench 0.6.0 quick. Three arms, each run twice in fresh processes, interleaved: the published 24 September image; this round's runtime with MXFP4 weights; and the 26 September image with the 3-bit W3A4 weights. The tables show the mean of the two runs; changes compare W3A4 with the 24 September release. All arms set `GPU_MAX_HW_QUEUES=1`, so the gains exclude that setting.
 
 **Decode, single stream, tok/s.** The headline of the 26 September release.
