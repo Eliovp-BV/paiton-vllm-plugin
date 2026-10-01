@@ -241,6 +241,11 @@ the first token: on the same image, alternating fresh processes with the previou
 1,024 budget measured 50.7 / 94.2 / 139.2 s against 45.8 / 85.8 / 126.3 s at 128K /
 199K / 258K input tokens (−9 to −10 %), with every planted fact found in both.
 
+Repetition: five distinct full-context prompts in a row (each evicting the previous one's
+cache), each followed by its cached repeat and seven concurrent short requests, measured
+125.7 to 126.1 s cold, 1.67 to 1.69 s cached and no errors or preemptions in any cycle,
+with idle VRAM flat after the first cycle.
+
 Concurrency in this mode: eight 32K-token requests and four 61K-token requests
 submitted at once all completed without errors or preemptions. Requests are
 prefilled one after another, so their first tokens arrive staggered (9 to 76 s
@@ -306,7 +311,9 @@ answered correctly cold and when repeated from the cache, the same text followed
 a different image was answered about the new image, images placed just before,
 on and after a cache-block boundary read correctly, a 200,819-token prompt with a
 planted codename and a chart answered both after 87 s (1.3 s when reused), and
-eight concurrent image requests all answered within 9 s. With MXFP4 the
+eight concurrent image requests all answered within 9 s; four repetitions of the
+200K-plus-chart prompt with fresh text each time stayed within 0.2% on the cold first
+token (86.8 to 87.0 s) and reused the cache in about 1.3 s. With MXFP4 the
 long-context mode refuses `--vision`. Video input is not tested. An explicit
 `--kv-cache-memory-bytes` or `--gpu-memory-utilization` replaces the vision budget.
 
