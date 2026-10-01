@@ -200,41 +200,52 @@ out-of-memory errors. An explicit `--kv-cache-memory-bytes` or
 `--gpu-memory-utilization`, `--vision`, the `desktop` profile and the long-context
 mode use their own budgets.
 
-### Long context: 200K and 220K
+### Long context: up to 262K on the 3-bit weights, 200K and 220K with MXFP4
 
 Any `--context` above 65,536 starts the long-context mode on the **same image**:
 
 ```bash
-# 200K total context, including generated tokens
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10.sh --context 200000
+# 3-bit weights: the checkpoint's full 262,144-token context, eight requests, image input allowed
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 262144
 
-# Stop the running server before selecting 220K instead
-docker stop paiton-qwen38
-bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10.sh --context 220000
+# MXFP4 weights: one conversation of up to 200,000 tokens (220,000 is the largest tested)
+bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh --context 200000
 ```
 
-The long-context mode uses one scheduled request, an 8 GiB FP8 KV pool, 1,024-token
-prefill chunks, prefix caching, and thinking disabled; these are the settings of
-the `chat` profile, and `run-rocm10-200k.sh` or `--profile chat` start the same
-mode. It also applies the memory-allocation setting needed by this configuration.
-It leaves little spare VRAM with MXFP4 weights (3.3 GiB more with the 3-bit
-weights): select a dedicated R9700 rather than a card driving a busy desktop.
-The checkpoint's limit is 262,144 tokens; 220,000 is the largest tested here.
+With the **3-bit weights** the long-context mode runs the release engine shape: up to
+eight scheduled requests, a 4,096-token prefill budget, the release graph set, an
+FP8 KV pool of 10.2 GB (281,665 cached tokens, so one full-context conversation
+plus short concurrent requests), prefix caching, and thinking disabled. With
+**MXFP4** it keeps the one-request configuration measured on 28 September (8 GiB FP8
+pool, 1,024-token prefill chunks); its pool holds 231,067 tokens, so the launcher
+refuses `--context` above 220,000 with MXFP4 and names the 3-bit weights. Both
+apply the memory-allocation setting this configuration needs and leave little spare
+VRAM: select a dedicated R9700 rather than a card driving a busy desktop.
+`run-rocm10-200k.sh` and `--profile chat` start the same mode.
 
-Measured on one R9700 with a 198,989-token prompt:
+Measured on one R9700 with the 3-bit weights, 1 October (fresh processes, `--context 262144`):
 
-| | 3-bit weights | MXFP4 |
+| | 198,989-token prompt | 257,992-token prompt |
 |---|---:|---:|
-| New prompt, time to first token | 94 s | 102 s |
-| Follow-up turn that reuses the prompt | 1.2 s | 1.2 s |
-| Decode at this length | 73–78 tok/s | 63–68 tok/s |
-| Peak VRAM | 31.0 GiB | 31.8 GiB |
+| New prompt, time to first token | 85 s | 126 s |
+| Identical prompt reused (cached tokens) | 1.2 s (198,000) | 1.7 s (256,960) |
+| Follow-up turn on the cached prompt | 1.4 s to first token, 78 tok/s | 1.7 s, 76 tok/s |
+| Long answer at this depth (650–700 tokens) | 73 tok/s | 72 tok/s |
 
-The earlier 200K image needed 115 s for the same prompt. All planted facts (near 5%,
-50% and 95% of each prompt) were found. A multi-turn follow-up, a second 199K-token
-prompt, plain and streamed tool calls, and an over-limit request (rejected with
-HTTP 400) followed by a normal one all passed. With `--context 220000`, a
-215,000-token prompt answered after 105 s, and after 1.5 s when reused.
+All planted facts were found in every prompt (near 5%, 45% and 90% of the 199K
+prompts; 4%, 38% and 73% of the 258K ones). Plain and streamed tool calls, an
+over-limit request (258,000 input plus 6,000 output, rejected with HTTP 400) and a
+normal request after it all passed. The 28 September image needed 94 s for the
+199K prompt with its 1,024-token chunks; the 4,096 budget is what shortens it.
+
+Concurrency in this mode: eight 32K-token requests and four 61K-token requests
+submitted at once all completed without errors or preemptions. Requests are
+prefilled one after another, so their first tokens arrive staggered (12 to 77 s
+for eight 32K prompts). While a cold full-context prompt is being processed, other
+requests wait for it by default (126 s in the measurement). Add
+`--long-prefill-threshold 2048` to serve short requests within seconds beside a
+long prompt; the long prompt then takes about 16% longer to its first token
+(146 s instead of 126 s at 258K).
 
 The 65K mode does not use prefix caching (APC), so zero cache hits there are
 expected. The persistent disk cache used during startup is separate from the
@@ -284,10 +295,17 @@ and the centre text and corner labels of a 4096 × 4096 image (16,425 prompt tok
 both, eight concurrent requests with an image each completed, DFlash2 stayed active,
 and text answers and decode speed were unchanged.
 
-`--vision` works in the 65K mode, including `--profile desktop`. It is not tested
-with prefix caching yet, so the long-context mode refuses it for now. Video input
-is not tested. An explicit `--kv-cache-memory-bytes` or `--gpu-memory-utilization`
-replaces the vision budget.
+`--vision` works in the 65K mode, including `--profile desktop`, and in the
+long-context mode with the 3-bit weights up to `--context 245000` (the encoder
+takes 0.88 GiB out of the KV pool, which then holds 253,298 tokens). In that mode
+the prefix cache keys include the image content: on one R9700 the five test images
+answered correctly cold and when repeated from the cache, the same text followed by
+a different image was answered about the new image, images placed just before,
+on and after a cache-block boundary read correctly, a 200,819-token prompt with a
+planted codename and a chart answered both after 87 s (1.3 s when reused), and
+eight concurrent image requests all answered within 9 s. With MXFP4 the
+long-context mode refuses `--vision`. Video input is not tested. An explicit
+`--kv-cache-memory-bytes` or `--gpu-memory-utilization` replaces the vision budget.
 
 ## Faster decode and prefill: 3-bit W3A4 weights (optional)
 

@@ -104,9 +104,9 @@ Add these to **either** script:
 
 | Option | What it changes |
 | --- | --- |
-| `--vision` | Enables image input in the 65K mode and automatically reduces the KV allocation to make room. |
-| `--context 200000` | One long conversation: 200K total context, prefix caching on, FP8 KV, thinking off. |
-| `--context 220000` | Same long-context mode at the largest context tested here. |
+| `--vision` | Enables image input and reduces the KV allocation to make room: in the 65K mode, and in the long-context mode with the 3-bit weights up to `--context 245000`. |
+| `--context 262144` | Long-context mode (prefix caching on, FP8 KV, thinking off). 3-bit weights: the full 262,144-token context, up to eight requests. MXFP4: one conversation, up to 220,000. |
+| `--long-prefill-threshold 2048` | Long-context mode: answer short requests within seconds while a long prompt is being processed (the long prompt takes about 16% longer). |
 | `--profile desktop` | Smaller starting preset for a shared GPU: 32K context, one request, 2 GiB KV. |
 | `--thinking off` | Disables thinking by default; clients can override it. |
 | `--kv-cache fp8` | Uses FP8 instead of the 3-bit preset's default 4-bit KV cache. |
@@ -117,24 +117,24 @@ For example:
 
 ```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --vision
-# After stopping that server, run a long text conversation:
-bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh --context 200000
+# After stopping that server, run the full 262K context with image input on the 3-bit weights:
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 245000 --vision
 ```
 
 <a id="images-and-vision"></a><a id="long-context-200k-and-220k"></a>
 
-**Vision at 200K is not supported by the current launcher.** Use `--vision`
-in the 65K mode (or desktop preset). The vision encoder and image processing
-need extra VRAM, leaving less memory for context. Combining very long prompts
-with images can cause out-of-memory errors, even when the text-only run fits.
-The launcher reduces the default KV budget for vision; custom memory settings
-replace that budget. Vision with prefix caching is also not yet qualified,
-which is why the standard 200K mode refuses `--vision`.
+**Vision at long context needs the 3-bit weights.** `run-3bit.sh --context 245000 --vision`
+serves images in the long-context mode (measured: a 200K-token prompt with a chart,
+eight concurrent image requests, cached repeats). With MXFP4, use `--vision` in the
+65K mode or the desktop preset: the vision encoder needs memory that the MXFP4
+long-context pool does not have, so that mode refuses it. The launcher reduces the
+KV budget for vision; custom memory settings replace that budget.
 
 Context includes **input plus output**. The default 65K mode has prefix caching
 off; long context turns it on and uses FP8 KV because KV4 with prefix caching
-is not qualified. Up to eight scheduled requests does not mean eight full 65K
-prompts will fit. See the [reference](REFERENCE.md#gpu-context-and-memory-controls)
+is not qualified. Up to eight scheduled requests does not mean eight full-length
+prompts will fit: the 262K mode's pool holds 281,665 tokens, one full conversation
+plus short requests. See the [reference](REFERENCE.md#gpu-context-and-memory-controls)
 for GPU selection, custom memory budgets and measured capacity.
 
 ## Current benchmark results
