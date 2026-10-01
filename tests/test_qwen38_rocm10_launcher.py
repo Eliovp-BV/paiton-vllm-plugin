@@ -613,17 +613,44 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(engine, '--max-model-len'), '32768')
 
     def test_vision_is_refused_where_it_was_not_qualified(self):
-        for options, reason in ((('--context', '200000'), 'long-context mode'),
-                                (('--profile', 'chat'), 'long-context mode'),
-                                (('--prefix-caching', 'on'), 'long-context mode'),
-                                (('--release', '200k'), 'not available for the 200k release')):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        for options, reason, w3 in ((('--context', '200000'), '3-bit', False),
+                                    (('--profile', 'chat'), '3-bit', False),
+                                    (('--prefix-caching', 'on'), 'experimental', True),
+                                    (('--release', '200k'), 'not available for the 200k release', False)):
             with self.subTest(options=options):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
                 self.record.unlink(missing_ok=True)
                 result = self.run_launcher('--vision', *options)
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertIn('--vision', result.stderr)
                 self.assertIn(reason, result.stderr)
                 self.assertFalse(self.record.exists())
+
+    def test_vision_in_the_3bit_long_mode_uses_its_budget_and_capacity_limit(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        limit = launcher.W3_LONG_VISION_MAX_CONTEXT
+        for options in (('--context', str(limit), '--vision'), ('--profile', 'chat', '--vision')):
+            with self.subTest(options=options):
+                command = self.command(*options)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                engine = self.engine(command)
+                self.assertNotIn('--language-model-only', engine)
+                self.assertIn('--enable-prefix-caching', engine)
+                self.assertEqual(value(engine, '--max-num-seqs'), '8')
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_VISION_KV_CACHE_BYTES))
+        self.assertLess(launcher.W3_LONG_VISION_KV_CACHE_BYTES, launcher.W3_LONG_KV_CACHE_BYTES)
+        self.record.unlink(missing_ok=True)
+        result = self.run_launcher('--vision', '--context', str(limit + 1))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('--vision', result.stderr)
+        self.assertIn(str(limit), result.stderr)
+        self.assertFalse(self.record.exists())
 
 
 if __name__ == '__main__':

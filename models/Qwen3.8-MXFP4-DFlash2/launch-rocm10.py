@@ -27,6 +27,10 @@ W3_KV_CACHE_BYTES = 9381235631
 W3_LONG_KV_CACHE_BYTES = 10200000000
 # MXFP4 keeps the one-request chat profile: its 8 GiB fp8 cache holds 231,067 tokens, so 262,144 cannot start.
 MXFP4_LONG_MAX_CONTEXT = 220000
+# Vision in the long-context mode (3-bit weights): the 0.88 GiB vision encoder comes out of the KV budget, and the
+# largest --context is the measured cache capacity minus 8,192 tokens (probe of 1 Oct 2026, runs/vision-probe).
+W3_LONG_VISION_KV_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES - 944000000
+W3_LONG_VISION_MAX_CONTEXT = 250000  # provisional until the probe
 # With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens. The mode needs about 0.16 GiB
 # more working memory (prefill workspace, decode scratch) and admits more concurrent requests, so the pool has 618
 # blocks of 14,336,000 B: 0.44 GiB more free VRAM at idle than the fp8 release budget, for 1.70x its 8-sequence
@@ -244,11 +248,6 @@ def engine_command(args, weights='mxfp4'):
         raise ValueError('--max-num-seqs must be between 1 and 8 for this release')
     if args.port is not None and args.port > 65535:
         raise ValueError('--port must be between 1 and 65535')
-    if args.vision and args.release not in VISION_RELEASES:
-        raise ValueError(f'--vision is not available for the {args.release} release')
-    if args.vision and prefix_caching_enabled(args):
-        raise ValueError('--vision is not yet qualified in the long-context mode (prefix caching: --context above '
-                         '65536, --profile chat or --prefix-caching on); use it in the 65K mode')
     command = release_command(args.release)
     desktop = args.profile == 'desktop'
     chat = args.profile == 'chat'
@@ -256,6 +255,16 @@ def engine_command(args, weights='mxfp4'):
     compact_graphs = desktop or (chat and not long_w3)
     default_context = 200000 if chat else (32768 if desktop else None)
     context = args.context if args.context is not None else default_context
+    if args.vision and args.release not in VISION_RELEASES:
+        raise ValueError(f'--vision is not available for the {args.release} release')
+    if args.vision and prefix_caching_enabled(args) and not chat:
+        raise ValueError('--vision is not qualified with the experimental --prefix-caching on outside the long-context mode')
+    if args.vision and chat and not long_w3:
+        raise ValueError('--vision in the long-context mode needs the 3-bit W3A4 weights (set PAITON_W3ROT_DIR or '
+                         '--weights w3a4); with MXFP4 use it in the 65K mode')
+    if args.vision and long_w3 and context > W3_LONG_VISION_MAX_CONTEXT:
+        raise ValueError(f'--vision in the long-context mode holds up to --context {W3_LONG_VISION_MAX_CONTEXT} '
+                         f'(measured cache capacity with the vision encoder loaded)')
     if chat and not long_w3 and context > MXFP4_LONG_MAX_CONTEXT:
         raise ValueError(f'--context {context} needs the 3-bit W3A4 weights: the MXFP4 long-context mode keeps an '
                          f'8 GiB fp8 cache of 231,067 tokens and is tested up to --context {MXFP4_LONG_MAX_CONTEXT}')
@@ -267,10 +276,12 @@ def engine_command(args, weights='mxfp4'):
     if cache is None:
         if args.gpu_memory_utilization is not None:
             cache = 'auto'
+        elif args.vision and long_w3:
+            cache = W3_LONG_VISION_KV_CACHE_BYTES
+        elif desktop:
+            cache = 2 * 1024**3          # the desktop profile keeps its 2 GiB budget, with or without --vision
         elif chat:
             cache = W3_LONG_KV_CACHE_BYTES if long_w3 else 8 * 1024**3
-        elif desktop:
-            cache = 2 * 1024**3
         elif args.vision:
             cache = VISION_KV_CACHE_BYTES[weights, kv_cache_mode(args, weights)]
         elif weights == 'w3a4':
