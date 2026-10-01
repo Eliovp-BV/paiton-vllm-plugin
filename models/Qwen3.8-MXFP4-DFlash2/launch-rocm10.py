@@ -23,7 +23,9 @@ W3_FLAGS = ('PAITON_W3_DECODE', 'PAITON_W3_PREFILL', 'PAITON_W3_A4')
 W3_KV_CACHE_BYTES = 9381235631
 # Long-context mode with the 3-bit weights (fp8 cache, prefix caching): eight sequences, the release prefill budget
 # and graph set, and a KV budget sized for the 262,144-token model limit plus short concurrent requests.
-# Provisional until the memory probe of 1 October 2026 (qwen38-262k-20261001/STATUS.md) replaces it.
+# Measured 1 Oct 2026 (qwen38-262k-20261001/runs/probe-1, 262,144 context, 8 sequences, 4096 budget): 281,665 fp8
+# tokens, startup zero-check OK, 1.29 GiB idle headroom; 10.95 GB (302,381 tokens) left only 0.59 GiB and 11.6 GB
+# (320,309) 0.14 GiB, so the smaller budget keeps the margin for a full-context request plus short ones.
 W3_LONG_KV_CACHE_BYTES = 10200000000
 # MXFP4 keeps the one-request chat profile: its 8 GiB fp8 cache holds 231,067 tokens, so 262,144 cannot start.
 MXFP4_LONG_MAX_CONTEXT = 220000
