@@ -29,10 +29,11 @@ W3_KV_CACHE_BYTES = 9381235631
 W3_LONG_KV_CACHE_BYTES = 10200000000
 # MXFP4 keeps the one-request chat profile: its 8 GiB fp8 cache holds 231,067 tokens, so 262,144 cannot start.
 MXFP4_LONG_MAX_CONTEXT = 220000
-# Vision in the long-context mode (3-bit weights): the 0.88 GiB vision encoder comes out of the KV budget, and the
-# largest --context is the measured cache capacity minus 8,192 tokens (probe of 1 Oct 2026, runs/vision-probe).
+# Vision in the long-context mode (3-bit weights): the 0.88 GiB vision encoder comes out of the KV budget. Measured
+# 1 Oct 2026 (qwen38-262k-20261001/runs/vision-probe): 253,560 cache tokens with the encoder loaded, zero-check OK,
+# 1.08 GiB idle headroom; the largest --context is that capacity minus 8,192 tokens, rounded down to thousands.
 W3_LONG_VISION_KV_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES - 944000000
-W3_LONG_VISION_MAX_CONTEXT = 250000  # provisional until the probe
+W3_LONG_VISION_MAX_CONTEXT = 245000
 # With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens. The mode needs about 0.16 GiB
 # more working memory (prefill workspace, decode scratch) and admits more concurrent requests, so the pool has 618
 # blocks of 14,336,000 B: 0.44 GiB more free VRAM at idle than the fp8 release budget, for 1.70x its 8-sequence
