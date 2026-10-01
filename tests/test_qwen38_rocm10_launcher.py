@@ -559,22 +559,77 @@ class Rocm10LauncherTests(unittest.TestCase):
         for options in (('--profile', 'release', '--context', '65537'), ('--profile', 'desktop')):
             with self.subTest(options=options):
                 self.assertEqual(self.kv4_flags(self.command(*options), image), off)
-        command = self.command('--profile', 'release', '--context', str(launcher.KV4_MAX_CONTEXT))
+        command = self.command('--profile', 'release', '--context', str(launcher.KV4_V4_MAX_CONTEXT))
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
-        # an explicit request covers the kernels' range, with that mode's own budget
-        command = self.command('--profile', 'release', '--kv-cache', 'kv4', '--context', str(launcher.KV4_MAX_CONTEXT))
-        self.assertEqual(self.kv4_flags(command, image), on)
-        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
+        # an explicit request covers the kernels' range, with that mode's own budget: 200,000 on the released images
+        # (bundle kv4-v4), the model's native 262,144 on an image with bundle kv4-v5
+        self.assertEqual((launcher.KV4_V4_MAX_CONTEXT, launcher.KV4_MAX_CONTEXT), (200000, 262144))
+        for img, limit in ((image, launcher.KV4_V4_MAX_CONTEXT), (self.V5_IMAGE, launcher.KV4_MAX_CONTEXT)):
+            with self.subTest(image=img):
+                command = self.command('--image', img, '--profile', 'release', '--kv-cache', 'kv4', '--context', str(limit))
+                self.assertEqual(self.kv4_flags(command, img), on)
+                self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
         command = self.command('--profile', 'desktop', '--kv-cache', 'kv4')
         self.assertEqual(self.kv4_flags(command, image), on)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(2 * 1024**3))
         self.record.unlink(missing_ok=True)
         result = self.run_launcher('--profile', 'release', '--kv-cache', 'kv4',
-                                   '--context', str(launcher.KV4_MAX_CONTEXT + 1))
+                                   '--context', str(launcher.KV4_V4_MAX_CONTEXT + 1))
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertIn('--kv-cache kv4', result.stderr)
         self.assertFalse(self.record.exists())
 
+
+    V5_IMAGE = 'paiton-qwen38-local:kv4-v5-candidate'   # any image other than the kv4-v4 ones (bundle kv4-v5)
+
+    def test_kv4_in_the_3bit_long_mode_keeps_prefix_caching_with_its_own_budget(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        image = self.V5_IMAGE
+        on, off = ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'], ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0']
+        for options in (('--context', '262144'), ('--profile', 'chat'), ('--context', '200000')):
+            with self.subTest(options=options):
+                command = self.command('--image', image, '--kv-cache', 'kv4', *options)
+                self.assertEqual(self.kv4_flags(command, image), on)
+                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                engine = command[command.index(image) + 1:]
+                self.assertIn('--enable-prefix-caching', engine)
+                self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
+                self.assertEqual(value(engine, '--max-num-seqs'), '8')
+                self.assertEqual(value(engine, '--max-num-batched-tokens'), '4096')
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
+        # the 4-bit mode keeps room for its prefill workspace: a smaller pool than the fp8 long mode's
+        self.assertLess(launcher.W3_LONG_KV4_CACHE_BYTES, launcher.W3_LONG_KV_CACHE_BYTES)
+        # automatic selection keeps the fp8 cache in the long mode; an explicit budget wins
+        self.assertEqual(self.kv4_flags(self.command('--image', image, '--context', '262144'), image), off)
+        command = self.command('--image', image, '--kv-cache', 'kv4', '--context', '262144',
+                               '--kv-cache-memory-bytes', '9000000000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9000000000')
+
+    def test_kv4_long_mode_is_refused_where_it_was_not_qualified(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        # the released images carry KV4 bundle kv4-v4 (decode stops at 200,000, no prefix-caching check)
+        for image in launcher.KV4_V4_IMAGES:
+            self.assertIn(image, (launcher.IMAGES['65k'],) + tuple(launcher.KV4_V4_IMAGES))
+        cases = ((('--context', '262144'), True, 'kv4-v5'),
+                 (('--image', launcher.IMAGES['65k'], '--context', '200000'), True, 'kv4-v5'),
+                 (('--image', self.V5_IMAGE, '--context', '200000', '--weights', 'mxfp4'), False, '3-bit'),
+                 (('--image', self.V5_IMAGE, '--context', '200000', '--vision'), True, '--vision'),
+                 (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'long-context mode'))
+        for options, w3, reason in cases:
+            with self.subTest(options=options):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+                self.record.unlink(missing_ok=True)
+                result = self.run_launcher('--kv-cache', 'kv4', *options)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn('--kv-cache kv4', result.stderr)
+                self.assertIn(reason, result.stderr)
+                self.assertFalse(self.record.exists())
 
     def test_vision_loads_the_encoder_with_a_smaller_kv_budget(self):
         image = launcher.IMAGES['65k']
