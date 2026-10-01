@@ -200,6 +200,7 @@ out-of-memory errors. An explicit `--kv-cache-memory-bytes` or
 `--gpu-memory-utilization`, `--vision`, the `desktop` profile and the long-context
 mode use their own budgets.
 
+<a id="long-context-200k-and-220k"></a>
 ### Long context: up to 262K on the 3-bit weights, 200K and 220K with MXFP4
 
 Any `--context` above 65,536 starts the long-context mode on the **same image**:
@@ -232,7 +233,7 @@ Measured on one R9700 with the 3-bit weights, 1 October (fresh processes, `--con
 | Follow-up turn on the cached prompt | 1.4 s to first token, 78 tok/s | 1.7 s, 76 tok/s |
 | Long answer at this depth (650–700 tokens) | 73 tok/s | 72 tok/s |
 
-All planted facts were found in every prompt (near 5%, 45% and 90% of the 199K
+All planted facts were found in every prompt (near 5%, 50% and 94% of the 199K
 prompts; 4%, 38% and 73% of the 258K ones). Plain and streamed tool calls, an
 over-limit request (258,000 input plus 6,000 output, rejected with HTTP 400) and a
 normal request after it all passed. The 4,096-token prefill budget is what shortens
@@ -242,7 +243,7 @@ the first token: on the same image, alternating fresh processes with the previou
 
 Concurrency in this mode: eight 32K-token requests and four 61K-token requests
 submitted at once all completed without errors or preemptions. Requests are
-prefilled one after another, so their first tokens arrive staggered (12 to 77 s
+prefilled one after another, so their first tokens arrive staggered (9 to 76 s
 for eight 32K prompts). While a cold full-context prompt is being processed, other
 requests wait for it by default (126 s in the measurement). Add
 `--long-prefill-threshold 2048` to serve short requests within seconds beside a
@@ -516,22 +517,21 @@ path, and the time per decoding step is identical. Over 232 requests with eight
 seeds per prompt, both images decode equally fast (within 1%). For long-context
 capacity, see [4-bit KV cache](#more-context-capacity-4-bit-kv-cache).
 
-**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, cold prefix cache).** The same tool
-and settings as the September tables, run for 20 passes per category on `run-3bit.sh --context 262144` and on the
-65K default in fresh processes:
+**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, thinking off, cold prefix cache).**
+The same tool and settings as the September tables, run for 20 passes per category on
+`run-3bit.sh --context 262144` and on the 65K default (`run-3bit.sh --thinking off`) in fresh processes:
 
 | BetterBench row | 262K mode | 65K default |
 |---|---:|---:|
-| Weighted single-stream decode | 174.3 tok/s | 159.3 tok/s |
-| Gap between stream updates, p99 | 29.3 ms | 27.9 ms |
-| Time to first token, p50 (short prompts) | 85 ms | 89 ms |
-| Eight concurrent requests, aggregate output | 458.9 tok/s | 485.8 tok/s |
-| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,623 tok/s |
+| Weighted single-stream decode | 174.3 tok/s | 178.9 tok/s |
+| Gap between stream updates, p99 | 29.3 ms | 28.0 ms |
+| Time to first token, p50 (short prompts) | 85 ms | 86 ms |
+| Eight concurrent requests, aggregate output | 458.9 tok/s | 478.8 tok/s |
+| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,481 tok/s |
 | Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
 
-The 65K default's decode is below the 26 September quick run (184.4) only because of BetterBench's fixed-seed
-replay through the 4-bit cache; the 262K mode uses the FP8 cache with prefix caching and reads higher on the same
-seed. [Reports and numbers](benchmarks/2026-10-01-262k/README.md).
+The 262K mode keeps the FP8 cache with prefix caching; the 65K default uses the 4-bit cache without it.
+[Reports and numbers](benchmarks/2026-10-01-262k/README.md).
 
 R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC off; thinking off; n-gram co-drafting off. Temperature 0.7, top-p 0.95, top-k 20, seed 42. BetterBench 0.6.0 quick. Three arms, each run twice in fresh processes, interleaved: the published 24 September image; this round's runtime with MXFP4 weights; and the 26 September image with the 3-bit W3A4 weights. The tables show the mean of the two runs; changes compare W3A4 with the 24 September release. All arms set `GPU_MAX_HW_QUEUES=1`, so the gains exclude that setting.
 

@@ -10,46 +10,29 @@ This server packs several tokens into one stream update (speculative decoding), 
 
 | category | passes | TTFT p50 | TTFT p99 | update p50 (ms) | update p99 (ms) | tok/update | decode t/s (med) | ±IQR | CV |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| chat | 20 | 88.3 | 472.6† | 27.4 | 27.8 | 3.47 | 132.4 | 39.9 | 22.3% |
-| code | 20 | 88.3 | 464.8† | 27.5 | 27.9 | 3.85 | 164.2 | 48.3 | 21.2% |
-| file_edit | 20 | 89.8 | 90.0† | 27.6 | 27.9 | 5.08 | 198.1 | 40.8 | 15.8% |
-| json | 20 | 89.5 | 90.3† | 27.5 | 27.9 | 5.36 | 196.7 | 17.1 | 8.7% |
-| math | 20 | 89.6 | 90.3† | 27.6 | 28.0 | 5.42 | 208.7 | 23.6 | 10.0% |
-| prose | 20 | 87.5 | 88.4† | 27.5 | 27.9 | 3.07 | 110.3 | 51.7 | 20.4% |
-| reasoning | 20 | 88.5 | 90.1† | 27.5 | 27.9 | 3.15 | 125.4 | 44.4 | 24.4% |
-| summarization | 20 | 88.5 | 89.3† | 27.5 | 27.9 | 5.11 | 190.5 | 22.2 | 11.1% |
+| chat | 20 | 90.0 | 90.5† | 27.4 | 27.9 | 3.71 | 129.4 | 53.3 | 25.0% |
+| code | 20 | 90.0 | 474.8† | 27.5 | 28.0 | 4.80 | 203.5 | 59.6 | 18.2% |
+| file_edit | 20 | 90.4 | 91.5† | 27.4 | 28.3† | 5.53 | 228.1 | 43.5 | 11.2% |
+| json | 20 | 87.9 | 88.5† | 27.4 | 28.0† | 5.98 | 258.7 | 35.7 | 10.7% |
+| math | 20 | 68.5 | 90.1† | 27.5 | 28.0 | 5.93 | 220.1 | 16.9 | 6.3% |
+| prose | 20 | 67.7 | 90.3† | 27.5 | 27.9 | 2.56 | 93.7 | 6.3 | 6.8% |
+| reasoning | 20 | 87.5 | 89.7† | 27.5 | 27.9 | 3.30 | 134.1 | 76.3 | 29.1% |
+| summarization | 20 | 87.7 | 443.2† | 27.4 | 28.5† | 4.16 | 153.2 | 24.8 | 12.4% |
 
-**Combined (weighted code:0.3, reasoning:0.2, prose:0.15, json:0.15, file_edit:0.1, summarization:0.1)** — decode t/s median ≈ **159.3**, update p99 ≈ **27.9 ms**, TTFT p50 ≈ **89 ms**
+**Combined (weighted code:0.3, reasoning:0.2, prose:0.15, json:0.15, file_edit:0.1, summarization:0.1)** — decode t/s median ≈ **178.9**, update p99 ≈ **28.0 ms**, TTFT p50 ≈ **86 ms**
 
 *160 of 160 runs streamed several tokens per update (`chunk_token_mismatch`). Per-token ITL is not reported for them — see METHODOLOGY.md §chunk-token.*
 
-## Reasoning / answer split
-
-A per-token rate cannot see how much of a run was spent thinking. Two configs with identical decode t/s can take very different times to reach an answer. **TTFA** is time to the first *answer* token — the wait a reader actually feels.
-
-| category | runs w/ split | reasoning share (est) | TTFA p50 (ms) | never reached answer |
-|---|--:|--:|--:|--:|
-| chat | 20/20 | 73% | 797.9 | 11/20 |
-| code | 20/20 | 91% | 2149.8 | 13/20 |
-| file_edit | 20/20 | 97% | 911.2 | 12/20 |
-| json | 20/20 | 57% | 663.2 | 5/20 |
-| math | 20/20 | 71% | 1115.9 | 10/20 |
-| prose | 20/20 | 99% | 1100.7 | 15/20 |
-| reasoning | 20/20 | 99% | — | 17/20 |
-| summarization | 20/20 | 66% | 886.4 | 5/20 |
-
-*A `—` means too few runs reached an answer to say (fewer than 5, or under half the passes). Runs cut off before any answer began are counted, not folded in: crediting their output as an answer would flatter the result. Token counts are apportioned by character count, so the share is an estimate — punctuation-dense answers (json, code) are under-counted.*
-
-*Stopped at `max_tokens`: **117/160** runs (73%). On a thinking model a truncated run measures the thinking phase, not a complete answer.*
+*Stopped at `max_tokens`: **63/160** runs (39%). On a thinking model a truncated run measures the thinking phase, not a complete answer.*
 
 ## Concurrency sweep
 
 | level | ok/req | aggregate t/s | TTFT p50 | TTFT p99 | per-req decode t/s (med) |
 |--:|--:|--:|--:|--:|--:|
-| 1 | 48/48 | 146.6 | 88.8 | 91.8† | 179.5 |
-| 2 | 48/48 | 251.7 | 145.6 | 414.3† | 157.5 |
-| 4 | 48/48 | 371.0 | 152.7 | 724.2† | 135.3 |
-| 8 | 48/48 | 485.8 | 168.9 | 802.2† | 89.1 |
+| 1 | 48/48 | 151.3 | 93.9 | 140.7† | 207.6 |
+| 2 | 48/48 | 250.0 | 138.4 | 211.2† | 184.6 |
+| 4 | 48/48 | 366.4 | 146.8 | 714.4† | 139.2 |
+| 8 | 48/48 | 478.8 | 167.0 | 788.4† | 97.0 |
 
 ## Prompt processing (prefill) sweep
 
@@ -57,11 +40,11 @@ Prefill throughput = prompt tokens ÷ TTFT, at increasing input depth (tiny deco
 
 | target depth | prompt tokens (med) | TTFT p50 (ms) | PP t/s 1% low | PP t/s median | PP t/s 99% high |
 |--:|--:|--:|--:|--:|--:|
-| 2000 | 1556 | 401.9 | 2902.6† | 3886.3 | 4226.4† |
-| 8000 | 5934 | 1433.5 | 3967.8† | 4161.9 | 4191.8† |
-| 16000 | 11842 | 2894.6 | 4088.5† | 4094.8 | 4141.9† |
-| 32000 | 23590 | 5988.6 | 3920.5† | 3941.2 | 3966.5† |
-| 64000 | 47056 | 12999.3 | 3508.2† | 3623.3 | 3634.5† |
+| 2000 | 1516 | 362.3 | 2913.0† | 4176.7 | 4194.2† |
+| 8000 | 5894 | 1421.5 | 3932.3† | 4158.2 | 4175.9† |
+| 16000 | 11802 | 2884.1 | 4090.6† | 4094.2 | 4144.1† |
+| 32000 | 23550 | 5998.9 | 1843.0† | 3938.7 | 3969.4† |
+| 64000 | 47016 | 13494.2 | 1597.3† | 3481.4 | 3627.6† |
 
 ---
 *† this percentile rests on fewer samples than `n · tail ≥ 5` requires — a p99 needs 500 observations, and 20 passes give 20. Read it as "roughly the worst observed", not as a percentile. The full list is under `sample_gate` in `results.json`.*

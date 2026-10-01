@@ -117,7 +117,7 @@ For example:
 
 ```bash
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --vision
-# After stopping that server, run the full 262K context with image input on the 3-bit weights:
+# After stopping that server, run the long-context mode with image input on the 3-bit weights:
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 245000 --vision
 ```
 
@@ -142,22 +142,21 @@ for GPU selection, custom memory budgets and measured capacity.
 Measured on **one 300 W R9700**. Speed depends on prompt length, workload and
 concurrency; use these as reference measurements for each choice.
 
-**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, cold prefix cache).** The same tool
-and settings as the September tables, run for 20 passes per category on `run-3bit.sh --context 262144` and on the
-65K default in fresh processes:
+**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, thinking off, cold prefix cache).**
+The same tool and settings as the September tables, run for 20 passes per category on
+`run-3bit.sh --context 262144` and on the 65K default (`run-3bit.sh --thinking off`) in fresh processes:
 
 | BetterBench row | 262K mode | 65K default |
 |---|---:|---:|
-| Weighted single-stream decode | 174.3 tok/s | 159.3 tok/s |
-| Gap between stream updates, p99 | 29.3 ms | 27.9 ms |
-| Time to first token, p50 (short prompts) | 85 ms | 89 ms |
-| Eight concurrent requests, aggregate output | 458.9 tok/s | 485.8 tok/s |
-| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,623 tok/s |
+| Weighted single-stream decode | 174.3 tok/s | 178.9 tok/s |
+| Gap between stream updates, p99 | 29.3 ms | 28.0 ms |
+| Time to first token, p50 (short prompts) | 85 ms | 86 ms |
+| Eight concurrent requests, aggregate output | 458.9 tok/s | 478.8 tok/s |
+| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,481 tok/s |
 | Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
 
-The 65K default's decode is below the 26 September quick run (184.4) only because of BetterBench's fixed-seed
-replay through the 4-bit cache; the 262K mode uses the FP8 cache with prefix caching and reads higher on the same
-seed. [Reports and numbers](benchmarks/2026-10-01-262k/README.md).
+The 262K mode keeps the FP8 cache with prefix caching; the 65K default uses the 4-bit cache without it.
+[Reports and numbers](benchmarks/2026-10-01-262k/README.md).
 
 **65K serving: speed comparison with FP8 KV in both arms, 26 September.**
 
