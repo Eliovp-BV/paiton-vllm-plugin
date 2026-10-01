@@ -355,11 +355,7 @@ class Rocm10LauncherTests(unittest.TestCase):
 
     def test_long_context_selects_the_chat_profile_on_the_current_image(self):
         image = launcher.IMAGES['65k']
-        w3rot = self.root / 'w3rot directory'
-        w3rot.mkdir()
-        for weights in ('mxfp4', 'w3a4'):
-            if weights == 'w3a4':
-                self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for weights in ('mxfp4',):
             for context in ('200000', '220000'):
                 with self.subTest(weights=weights, context=context):
                     command = self.command('--context', context)
@@ -387,6 +383,61 @@ class Rocm10LauncherTests(unittest.TestCase):
         engine = self.engine(self.command('--profile', 'desktop', '--context', '100000'))
         self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(2 * 1024**3))
         self.assertEqual(value(engine, '--max-model-len'), '100000')
+
+    def test_long_context_on_the_3bit_weights_serves_262k_with_eight_sequences(self):
+        image = launcher.IMAGES['65k']
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for options in (('--context', '262144'), ('--context', '200000'), ('--profile', 'chat', '--context', '262144')):
+            with self.subTest(options=options):
+                command = self.command(*options)
+                self.assertIn(image, command)
+                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+                engine = self.engine(command)
+                context = options[options.index('--context') + 1]
+                self.assertEqual(value(engine, '--max-model-len'), context)
+                self.assertEqual(json.loads(value(engine, '--speculative-config'))['max_model_len'], int(context))
+                self.assertEqual(value(engine, '--max-num-seqs'), '8')
+                self.assertEqual(value(engine, '--max-num-batched-tokens'), '4096')
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV_CACHE_BYTES))
+                self.assertEqual(json.loads(value(engine, '--compilation-config'))['cudagraph_capture_sizes'],
+                                 [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64])
+                self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
+                self.assertIn('--enable-prefix-caching', engine)
+                self.assertEqual(json.loads(value(engine, '--default-chat-template-kwargs')),
+                                 {'enable_thinking': False})
+        # explicit overrides still win
+        engine = self.engine(self.command('--context', '262144', '--max-num-seqs', '2',
+                                          '--max-num-batched-tokens', '2048', '--kv-cache-memory-bytes', '9000000000'))
+        self.assertEqual(value(engine, '--max-num-seqs'), '2')
+        self.assertEqual(value(engine, '--max-num-batched-tokens'), '2048')
+        self.assertEqual(value(engine, '--kv-cache-memory-bytes'), '9000000000')
+        # the 65K preset itself is untouched
+        engine = self.engine(self.command('--context', '65536'))
+        self.assertEqual(value(engine, '--max-num-seqs'), '8')
+        self.assertIn('--no-enable-prefix-caching', engine)
+
+    def test_long_context_on_mxfp4_keeps_one_request_and_stops_at_220k(self):
+        for context in ('200000', '220000'):
+            with self.subTest(context=context):
+                engine = self.engine(self.command('--context', context))
+                self.assertEqual(value(engine, '--max-num-seqs'), '1')
+                self.assertEqual(value(engine, '--max-num-batched-tokens'), '1024')
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), '8589934592')
+                self.assertEqual(json.loads(value(engine, '--compilation-config'))['cudagraph_capture_sizes'],
+                                 [1, 2, 4, 8])
+        for options in (('--context', '220001'), ('--context', '262144'),
+                        ('--weights', 'mxfp4', '--context', '262144'), ('--profile', 'chat', '--context', '240000')):
+            with self.subTest(options=options):
+                self.record.unlink(missing_ok=True)
+                result = self.run_launcher(*options)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn('3-bit', result.stderr)
+                self.assertIn('220000', result.stderr)
+                self.assertFalse(self.record.exists())
 
     def test_ngram_codraft_forwarded_only_when_set_on_host(self):
         command = self.command()

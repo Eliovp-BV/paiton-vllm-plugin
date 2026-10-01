@@ -21,6 +21,12 @@ W3_FLAGS = ('PAITON_W3_DECODE', 'PAITON_W3_PREFILL', 'PAITON_W3_A4')
 # Release KV budget plus 2.65 GiB of the 3.29 GiB the 3-bit weights free: four
 # 61K-token requests fit and peak at the MXFP4 release VRAM (31.39 vs 31.37 GiB).
 W3_KV_CACHE_BYTES = 9381235631
+# Long-context mode with the 3-bit weights (fp8 cache, prefix caching): eight sequences, the release prefill budget
+# and graph set, and a KV budget sized for the 262,144-token model limit plus short concurrent requests.
+# Provisional until the memory probe of 1 October 2026 (qwen38-262k-20261001/STATUS.md) replaces it.
+W3_LONG_KV_CACHE_BYTES = 10200000000
+# MXFP4 keeps the one-request chat profile: its 8 GiB fp8 cache holds 231,067 tokens, so 262,144 cannot start.
+MXFP4_LONG_MAX_CONTEXT = 220000
 # With the 4-bit KV cache (capacity mode) the same pool holds 1.8x the attention tokens. The mode needs about 0.16 GiB
 # more working memory (prefill workspace, decode scratch) and admits more concurrent requests, so the pool has 618
 # blocks of 14,336,000 B: 0.44 GiB more free VRAM at idle than the fp8 release budget, for 1.70x its 8-sequence
@@ -115,12 +121,14 @@ def parser():
     result.add_argument('--weights', choices=('auto', 'w3a4', 'mxfp4'), default='auto',
                         help='auto: the 3-bit W3A4 weights when PAITON_W3ROT_DIR is set, MXFP4 otherwise')
     result.add_argument('--profile', choices=('release', 'desktop', 'chat'),
-                        help='chat: 200000 context, APC on, thinking off, 8 GiB KV; '
-                             'desktop: 32768 context, 2 GiB KV; both use one request and 1024 prefill chunks. '
+                        help='chat: long-context mode (prefix caching, thinking off). 3-bit weights: up to 262144 '
+                             'context, 8 requests, 4096-token prefill budget, measured fp8 KV budget; MXFP4: 200000 '
+                             'context (tested to 220000), one request, 1024 prefill chunks, 8 GiB KV. '
+                             'desktop: 32768 context, 2 GiB KV, one request, 1024 prefill chunks. '
                              'Default: release, or chat when --context exceeds 65536 on the 65k image')
     result.add_argument('--list-gpus', action='store_true', help='list physical render devices without starting Docker')
     result.add_argument('--context', type=positive_integer, metavar='TOKENS', help='set both target and draft context limits')
-    result.add_argument('--max-num-seqs', type=positive_integer, metavar='COUNT', help='maximum concurrent requests (1 to 8)')
+    result.add_argument('--max-num-seqs', type=positive_integer, metavar='COUNT', help='maximum concurrent requests (1 to 8; the long-context mode defaults to 8 with the 3-bit weights, 1 with MXFP4)')
     result.add_argument('--gpu-memory-utilization', type=utilization, metavar='FRACTION',
                         help='automatic memory budget; implies automatic KV sizing unless explicit bytes are supplied')
     result.add_argument('--kv-cache-memory-bytes', type=cache_bytes, metavar='BYTES|auto',
@@ -244,9 +252,13 @@ def engine_command(args, weights='mxfp4'):
     command = release_command(args.release)
     desktop = args.profile == 'desktop'
     chat = args.profile == 'chat'
-    compact_graphs = desktop or chat
+    long_w3 = chat and weights == 'w3a4'
+    compact_graphs = desktop or (chat and not long_w3)
     default_context = 200000 if chat else (32768 if desktop else None)
     context = args.context if args.context is not None else default_context
+    if chat and not long_w3 and context > MXFP4_LONG_MAX_CONTEXT:
+        raise ValueError(f'--context {context} needs the 3-bit W3A4 weights: the MXFP4 long-context mode keeps an '
+                         f'8 GiB fp8 cache of 231,067 tokens and is tested up to --context {MXFP4_LONG_MAX_CONTEXT}')
     sequences = args.max_num_seqs if args.max_num_seqs is not None else (1 if compact_graphs else None)
     batched_tokens = args.max_num_batched_tokens if args.max_num_batched_tokens is not None else (1024 if compact_graphs else None)
     default_budget = 0.98 if chat else (0.90 if desktop else None)
@@ -256,7 +268,7 @@ def engine_command(args, weights='mxfp4'):
         if args.gpu_memory_utilization is not None:
             cache = 'auto'
         elif chat:
-            cache = 8 * 1024**3
+            cache = W3_LONG_KV_CACHE_BYTES if long_w3 else 8 * 1024**3
         elif desktop:
             cache = 2 * 1024**3
         elif args.vision:
