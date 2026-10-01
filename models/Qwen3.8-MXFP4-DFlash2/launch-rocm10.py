@@ -148,6 +148,10 @@ def parser():
     result.add_argument('--thinking', choices=('on', 'off'),
                         help='server default for enable_thinking; individual requests may override it')
     result.add_argument('--max-num-batched-tokens', type=positive_integer, metavar='TOKENS')
+    result.add_argument('--long-prefill-threshold', type=positive_integer, metavar='TOKENS',
+                        help='cap the prefill tokens a long prompt takes per step so short requests answer within '
+                             'seconds while it is processed (measured: 3072 or 2048 cost the long prompt about 16%% '
+                             'more time to first token); off by default')
     result.add_argument('--port', type=positive_integer, help='localhost API port (default: 18982)')
     result.add_argument('--name', help='Docker container name')
     result.add_argument('--detach', action='store_true', help='run Docker in the background')
@@ -319,6 +323,8 @@ def engine_command(args, weights='mxfp4'):
                     json.dumps({'enable_thinking': thinking == 'on'})]
     if chat:
         command.append('--enable-prompt-tokens-details')
+    if args.long_prefill_threshold is not None:
+        command += ['--long-prefill-token-threshold', str(args.long_prefill_threshold)]
     return command
 
 

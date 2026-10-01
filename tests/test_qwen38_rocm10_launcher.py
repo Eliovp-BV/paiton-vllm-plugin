@@ -630,6 +630,17 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn(reason, result.stderr)
                 self.assertFalse(self.record.exists())
 
+    def test_long_prefill_threshold_is_an_opt_in_passthrough(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        engine = self.engine(self.command('--context', '262144', '--long-prefill-threshold', '3072'))
+        self.assertEqual(value(engine, '--long-prefill-token-threshold'), '3072')
+        engine = self.engine(self.command('--context', '262144'))
+        self.assertNotIn('--long-prefill-token-threshold', engine)
+        engine = self.engine(self.command('--long-prefill-threshold', '2048'))
+        self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
+
     def test_vision_in_the_3bit_long_mode_uses_its_budget_and_capacity_limit(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
