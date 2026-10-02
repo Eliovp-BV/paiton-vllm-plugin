@@ -64,20 +64,21 @@ KV4_AUTO_MAX_CONTEXT = 65536
 # repeats need the compat overlays that keep prefix-cache hits on the 1,600-token grid (cached 258K repeat: 256,000
 # tokens; without them 172,800).
 W3_LONG_KV4_CACHE_BYTES = 9662464000
-# The 3-bit long-context mode caps PyTorch's caching allocator at 95 % of the card. Uncapped, the allocator returns
+# The 3-bit profiles cap PyTorch's caching allocator at 95 % of the card (the 65K default since 2 Oct as well: on
+# the KV4T release candidate it reached the KFD eviction edge within seconds of BetterBench's concurrency phase). Uncapped, the allocator returns
 # memory only after a failed allocation and climbs to the VRAM edge during long prefills; the KFD admits allocations up
 # to ~31.79 GiB per process although they no longer fit, and the process's buffers are then evicted into system memory
 # (2 Oct 2026, 4-bit long mode, two ~199K documents: evict/restore loops, then the KV pool in GTT and the 16 GB host out
 # of memory). 95 % leaves ~1 GiB for memory outside PyTorch (runtime, code objects, scratch) plus ~0.5 GiB headroom;
 # hipMemGetInfo is no guide (it reported 327 MiB free with ~1.6 GiB of the card unused). Not yet measured with --vision
-# or the MXFP4 long mode, which keep the previous setting.
-W3_LONG_MEMORY_FRACTION = 0.95
+# or the MXFP4 weights, which keep the previous setting.
+W3_MEMORY_FRACTION = 0.95
 # With DFlash2 (EAGLE-style drafting) vLLM keeps a GDN state checkpoint at every 1,600-token block: six pool blocks
 # per block of text, so one ~199K prefill cycles through the whole pool and evicts every other cached document (two
 # ~199K documents in turn: every revisit was a full 90 s prefill). Checkpoints every 32,000 tokens let two such
 # documents stay cached; a revisit then resumes from the last 32,000-token boundary.
 W3_LONG_KV4_RETENTION_INTERVAL = 32000
-# VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit long mode (worker compat overlay; it
+# VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit profiles (worker compat overlay; it
 # only ever lowers the launcher's fraction above): the KFD admits allocations past the physically free VRAM and evicts
 # to system memory instead of failing. 1 GiB = ~0.5 GiB margin to the KFD admission limit plus the ~270 MiB that
 # memory outside PyTorch grew during the rc-t4 validation (with 512 MiB the card peaked 0.17 GiB below the limit).
@@ -452,8 +453,8 @@ def docker_command(args, environment):
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'
-        if args.profile == 'chat' and weights == 'w3a4' and not args.vision:
-            allocator += f',per_process_memory_fraction:{W3_LONG_MEMORY_FRACTION}'
+        if weights == 'w3a4' and not args.vision:
+            allocator += f',per_process_memory_fraction:{W3_MEMORY_FRACTION}'
         command += ['-e', 'PYTORCH_ALLOC_CONF=' + allocator]
     if weights == 'mxfp4' and args.release in W3_RELEASES:
         # All three flags: the runtime rejects W3A4 prefill without W3 decode.
@@ -464,7 +465,7 @@ def docker_command(args, environment):
         state = '1' if kv_mode == 'kv4' else '0'
         for variable in KV4_FLAGS:
             command += ['-e', variable + '=' + state]
-    if args.profile == 'chat' and weights == 'w3a4' and not args.vision:
+    if weights == 'w3a4' and not args.vision:
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
     if args.detach:
         command.append('--detach')

@@ -468,9 +468,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn(f'{w3rot}:/models/w3rot:ro', command[:image_index])
         self.assertFalse(any(flag in command for flag in flags))
         # The memory the 3-bit weights free goes to the KV cache unless a budget is given,
-        # with the allocator setting that budget was measured with (4-bit KV cache budget by default).
+        # with the allocator setting that budget was measured with (4-bit KV cache budget by default), capped below
+        # the VRAM edge.
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
-        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command[:image_index])
+        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command[:image_index])
         command = self.command('--kv-cache-memory-bytes', '7000000000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '7000000000')
         command = self.command('--profile', 'desktop')
@@ -609,10 +610,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('--prefix-cache-retention-interval', command)
         # the warm-up cap applies to the fp8 long mode too (after startup; ignored by images without the overlay)
         self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command[:command.index(image)])
-        for options in (('--context', '245000', '--vision'), ('--context', '65536')):
-            with self.subTest(options=options):
-                command = self.command('--image', image, *options)
-                self.assertFalse([item for item in command if item.startswith('PAITON_VRAM_HEADROOM_MIB')])
+        command = self.command('--image', image, '--context', '245000', '--vision')
+        self.assertFalse([item for item in command if item.startswith('PAITON_VRAM_HEADROOM_MIB')])
         # the 4-bit mode keeps room for its prefill workspace: a smaller pool than the fp8 long mode's
         self.assertLess(launcher.W3_LONG_KV4_CACHE_BYTES, launcher.W3_LONG_KV_CACHE_BYTES)
         # automatic selection keeps the fp8 cache in the long mode; an explicit budget wins
@@ -709,13 +708,18 @@ class Rocm10LauncherTests(unittest.TestCase):
         engine = self.engine(self.command('--long-prefill-threshold', '2048'))
         self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
 
-    def test_allocator_cap_only_in_the_measured_3bit_long_mode(self):
+    def test_allocator_cap_in_the_3bit_profiles_without_vision(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        capped = [item for item in self.command('--context', '262144') if item.startswith('PYTORCH_ALLOC_CONF=')]
-        self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95'])
-        for options in ((), ('--context', '245000', '--vision'), ('--vision',)):
+        # the 262K mode and the 65K default (which reached the KFD eviction edge under BetterBench uncapped, 2 Oct)
+        for options in (('--context', '262144'), ()):
+            with self.subTest(options=options):
+                command = self.command(*options)
+                capped = [item for item in command if item.startswith('PYTORCH_ALLOC_CONF=')]
+                self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95'])
+                self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command)
+        for options in (('--context', '245000', '--vision'), ('--vision',)):
             with self.subTest(options=options):
                 setting = [item for item in self.command(*options) if item.startswith('PYTORCH_ALLOC_CONF=')]
                 self.assertEqual(setting, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
