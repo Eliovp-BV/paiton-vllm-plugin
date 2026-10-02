@@ -281,6 +281,29 @@ setting; the long-context mode and our benchmarks disable it. Use `--thinking of
 set the server default, or send
 `"chat_template_kwargs":{"enable_thinking":false}` in each request.
 
+**Accuracy at a 257K-token context.** The same three suites we use for every
+quantisation decision, with each question placed after a 257,000-token
+background document (a 128K-section archive repeated and shuffled; the document
+is cached once, every question is a new request that reads all of it), served by
+the long-context mode on the 3-bit weights with the FP8 cache, greedy decoding,
+thinking off, one request at a time. Reference: the same model and weights at
+short context (September 3-bit run), paired per item; Δ in points with a 95%
+interval:
+
+| Benchmark | 3-bit, short context | 3-bit, after 257K tokens | Δ [95% CI] |
+|---|---:|---:|---:|
+| GSM8K 5-shot (1,319) | 95.30 | 95.83 | +0.53 [−0.30, +1.36] |
+| HumanEval pass@1 (164) | 93.90 | 91.46 | −2.44 [−6.20, +1.32] |
+| MMLU-Pro subset, 0-shot (14 × 100) | 59.71 | 60.29 | +0.57 [−1.30, +2.44] |
+
+With `--vision` (an image in the request after a 238,000-token document, the
+smaller 500-question GSM8K sample and a 14 × 50 MMLU-Pro subset): GSM8K 95.40,
+HumanEval 93.29, MMLU-Pro 62.00. We read all of this as no measurable loss from
+the context length itself: the differences are within the paired intervals, and
+the HumanEval change (4 problems) is not significant at this sample size. The
+MXFP4 weights score 95.68 / 95.12 / 62.57 on the same suites; the gap to them is
+the 3-bit weights' known cost, not the long context.
+
 ### Images and vision
 
 Add `--vision` to send images, such as screenshots, UI captures or charts, as OpenAI-style `image_url` content:
