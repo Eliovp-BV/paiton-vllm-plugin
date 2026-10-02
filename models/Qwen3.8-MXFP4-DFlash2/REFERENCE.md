@@ -271,7 +271,8 @@ Streaming clients must also request `"stream_options":{"include_usage":true}`
 to receive usage in the stream. Server-side cache counters are available at
 `http://127.0.0.1:18982/metrics`.
 
-These checks are not a full long-conversation quality evaluation. Repetition
+These retrieval checks are not a quality evaluation; accuracy at a 257K-token context
+is measured below. Repetition
 penalties and sampling settings belong in each client's API requests. Report the
 prompt, settings and server logs when diagnosing loops; a sampling workaround is
 not a general fix.

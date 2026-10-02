@@ -8,6 +8,9 @@ Choose **MXFP4** or **3-bit**. Both use vLLM with DFlash2 on a Radeon AI PRO R97
 | [run-mxfp4.sh](run-mxfp4.sh) | Higher weight precision and stronger measured knowledge recall; FP8 KV cache. |
 | [run-3bit.sh](run-3bit.sh) | Faster generation and more cache capacity; 3-bit W3A4 weights and a 4-bit KV cache. Requires the extra weights below. |
 
+**Need long context?** `run-3bit.sh --context 262144` serves the model's full
+262,144-token context to up to eight requests. [Run it like this](#want-longer-context-run-this).
+
 Both choices use the same NVFP4 target download: the MXFP4 path requantizes it
 at load time; the 3-bit path uses our additional weights. The scripts select the
 weight mode explicitly, even if you have downloaded both.
@@ -98,6 +101,37 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
 Stop with `docker stop paiton-qwen38` before switching variants or settings.
 Add `--detach` to launch in the background; `docker logs -f paiton-qwen38` follows its log.
 
+<a id="images-and-vision"></a><a id="long-context-200k-and-220k"></a>
+
+## Want longer context? Run this
+
+Download the [3-bit weights](#optional-3-bit-w3a4-weights), stop any running server, then:
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 262144
+```
+
+Same image, same API and model name. Measured on one R9700, 1 October:
+
+| | |
+| --- | --- |
+| Context per request | 262,144 tokens (input plus output), up to eight requests |
+| New 258K-token prompt, time to first token | 126 s |
+| Same document again (prefix cache) | 1.7 s |
+| Accuracy after a 257K-token document | GSM8K 95.8 %, HumanEval 91.5 %, MMLU-Pro 60.3 %: no measurable loss against short context |
+| Short-request speed | 174 tok/s single-stream, 459 tok/s with eight concurrent requests (65K default: 179 / 479) |
+
+[All long-context results](#current-benchmark-results) · [Details and options](REFERENCE.md#long-context-200k-and-220k)
+
+- **Images:** add `--vision` and use `--context 245000`.
+- **Short requests beside a long prompt:** add `--long-prefill-threshold 2048`. They are answered within
+  seconds; the long prompt takes about 16 % longer (146 s instead of 126 s at 258K).
+- **What stays cached:** the cache holds 281,665 tokens: one full-length conversation plus short requests, or
+  several shorter ones. A different long document replaces the previous one in the cache.
+- **MXFP4 weights:** `run-mxfp4.sh --context 200000` runs one conversation of up to 200,000 tokens (220,000 is the
+  largest tested), text only.
+- The long-context mode uses prefix caching with an FP8 KV cache and turns thinking off by default.
+
 ## Common options
 
 Add these to **either** script:
@@ -105,11 +139,11 @@ Add these to **either** script:
 | Option | What it changes |
 | --- | --- |
 | `--vision` | Enables image input and reduces the KV allocation to make room: in the 65K mode, and in the long-context mode with the 3-bit weights up to `--context 245000`. |
-| `--context 262144` | Long-context mode (prefix caching on, FP8 KV, thinking off). 3-bit weights: the full 262,144-token context, up to eight requests. MXFP4: one conversation, up to 220,000. |
+| `--context 262144` | [Long-context mode](#want-longer-context-run-this). 3-bit weights: the full 262,144-token context, up to eight requests. MXFP4: one conversation, up to 220,000. |
 | `--long-prefill-threshold 2048` | Long-context mode: answer short requests within seconds while a long prompt is being processed (the long prompt takes about 16% longer). |
 | `--profile desktop` | Smaller starting preset for a shared GPU: 32K context, one request, 2 GiB KV. |
 | `--thinking off` | Disables thinking by default; clients can override it. |
-| `--kv-cache fp8` | Uses FP8 instead of the 3-bit preset's default 4-bit KV cache. |
+| `--kv-cache fp8` | 65K mode: uses FP8 instead of the 3-bit preset's default 4-bit KV cache. |
 | `--port 18082` | Changes the API port. |
 | `--help` / `--dry-run` | Lists all options / prints the Docker command without starting it. |
 
@@ -121,28 +155,41 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --vision
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 245000 --vision
 ```
 
-<a id="images-and-vision"></a><a id="long-context-200k-and-220k"></a>
-
-**Vision at long context needs the 3-bit weights.** `run-3bit.sh --context 245000 --vision`
-serves images in the long-context mode (measured: a 200K-token prompt with a chart,
-eight concurrent image requests, cached repeats). With MXFP4, use `--vision` in the
-65K mode or the desktop preset: the vision encoder needs memory that the MXFP4
-long-context pool does not have, so that mode refuses it. The launcher reduces the
-KV budget for vision; custom memory settings replace that budget.
-
-Context includes **input plus output**. The default 65K mode has prefix caching
-off; long context turns it on and uses FP8 KV because KV4 with prefix caching
-is not qualified. Up to eight scheduled requests does not mean eight full-length
-prompts will fit: the 262K mode's pool holds 281,665 tokens, one full conversation
-plus short requests. See the [reference](REFERENCE.md#gpu-context-and-memory-controls)
-for GPU selection, custom memory budgets and measured capacity.
+Context includes **input plus output**. The 65K mode has prefix caching off. With MXFP4, use `--vision`
+in the 65K mode or the desktop preset: the vision encoder needs memory that the MXFP4 long-context pool does not
+have, so that mode refuses it. The launcher reduces the KV budget for vision; custom memory settings replace that
+budget. See the [reference](REFERENCE.md#gpu-context-and-memory-controls) for GPU selection, custom memory budgets
+and measured capacity.
 
 ## Current benchmark results
 
 Measured on **one 300 W R9700**. Speed depends on prompt length, workload and
 concurrency; use these as reference measurements for each choice.
 
-**262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, thinking off, cold prefix cache).**
+**Long context, 3-bit weights: `run-3bit.sh --context 262144`, 1 October.** FP8 KV with prefix caching; the
+cache holds 281,665 tokens (one full conversation plus short requests).
+
+| | 198,989-token prompt | 257,992-token prompt |
+| --- | ---: | ---: |
+| New prompt, time to first token | 85 s | 126 s |
+| Identical prompt reused | 1.2 s | 1.7 s |
+| Decode at this depth | 73–78 tok/s | 72–76 tok/s |
+
+Accuracy with every question placed after a 257K-token document, against the same weights at short context
+(paired per question; all differences are within the 95 % intervals):
+
+| Benchmark | Short context | After 257K tokens |
+| --- | ---: | ---: |
+| GSM8K 5-shot (1,319) | 95.30 | 95.83 |
+| HumanEval pass@1 (164) | 93.90 | 91.46 |
+| MMLU-Pro subset, 0-shot (14 × 100) | 59.71 | 60.29 |
+
+With `--vision` the same mode serves images up to `--context 245000` (a 200K-token prompt with a chart: 87 s cold,
+1.3 s reused). MXFP4 keeps the one-request long mode up to 220K (199K prompt: 102 s cold, 1.2 s reused, 63–68 tok/s).
+[Long-context details and accuracy](REFERENCE.md#long-context-200k-and-220k) ·
+[Vision checks](REFERENCE.md#images-and-vision).
+
+**Short-request speed in the 262K mode, 1 October (3-bit weights, full 20-pass BetterBench, thinking off, cold prefix cache).**
 The same tool and settings as the September tables, run for 20 passes per category on
 `run-3bit.sh --context 262144` and on the 65K default (`run-3bit.sh --thinking off`) in fresh processes:
 
@@ -170,20 +217,6 @@ These runs predate the current image. `run-mxfp4.sh` still uses FP8 KV;
 `run-3bit.sh` now defaults to KV4, so this is **not an exact benchmark of today's
 two default commands**. Add `--kv-cache fp8` to select the 3-bit FP8 path.
 [Full settings, results and subsequent KV4 checks](REFERENCE.md#current-benchmark-results).
-
-**Long-context text, 3-bit weights: `run-3bit.sh --context 262144`.** FP8 KV with prefix caching; the pool holds
-281,665 tokens (one full conversation plus short requests). Measured on 1 October:
-
-| | 198,989-token prompt | 257,992-token prompt |
-| --- | ---: | ---: |
-| New prompt, time to first token | 85 s | 126 s |
-| Identical prompt reused | 1.2 s | 1.7 s |
-| Decode at this depth | 73–78 tok/s | 72–76 tok/s |
-
-With `--vision` the same mode serves images up to `--context 245000` (a 200K-token prompt with a chart: 87 s cold,
-1.3 s reused). MXFP4 keeps the one-request long mode up to 220K (199K prompt: 102 s cold, 1.2 s reused, 63–68 tok/s).
-[Long-context details](REFERENCE.md#long-context-up-to-262k-on-the-3-bit-weights-200k-and-220k-with-mxfp4) ·
-[Vision checks](REFERENCE.md#images-and-vision).
 
 In the paired FP8 KV comparison, the 3-bit weights traded some accuracy for
 speed and memory: the MMLU-Pro subset fell **2.86 points** versus MXFP4.

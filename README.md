@@ -49,7 +49,7 @@ These models serve an OpenAI-compatible API through vLLM.
 | Model and setup | Use | Benchmark |
 | --- | --- | --- |
 | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools · 8K | [Results](models/MiniCPM5-2B/BENCHMARKS.md) |
-| [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding · 65K multi-request with optional images, or 200K text conversation | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
+| [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding · 65K multi-request, or the full 262K context with up to eight requests · optional images | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
 | [Qwen3.8 27B Qronos](models/Qwen3.8/README.md) | Chat, coding and optional reasoning · 8K · text | [Results](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) |
 | [Qwen3.8 NEO CODER MAX 27B](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat · 8K · text plus one image | [Results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [Qwen3-Coder 30B A3B](models/Qwen3-Coder-30B/README.md) | Code writing, review, testing and tools · 4K | [Results](models/Qwen3-Coder-30B/BENCHMARKS.md) |
