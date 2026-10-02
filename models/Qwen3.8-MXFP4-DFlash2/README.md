@@ -66,7 +66,7 @@ and drafter above; this is an add-on.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision d74ae7d5f5f1b4b45dd12fb1271e3664283a2ec1 \
+  --revision 7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
