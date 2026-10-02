@@ -58,7 +58,11 @@ KV4_V4_IMAGES = frozenset((
 KV4_AUTO_MAX_CONTEXT = 65536
 # Long-context mode with the 4-bit cache (3-bit weights, prefix caching, bundle kv4-v5): the fp8 mode's budget less
 # the 4-bit mode's prefill workspace (one fp8 page per 16 tokens of the context, 512 MiB at 262,144), rounded down to
-# whole pool blocks of 14,336,000 B.
+# whole pool blocks of 14,336,000 B. Measured 2 Oct 2026 (qwen38-kv4-longmode-20261001/runs/probe-kv4, val-kv4,
+# val-kv4b; 262,144 context, 8 sequences): 451,879 KV4 tokens (1.60x the fp8 mode), startup zero-check OK, 1.03 GiB
+# idle headroom once the workspace exists (fp8: 1.29 GiB); 700 blocks (469,311 tokens) would leave 0.91 GiB. Cached
+# repeats need the compat overlays that keep prefix-cache hits on the 1,600-token grid (cached 258K repeat: 256,000
+# tokens; without them 172,800).
 W3_LONG_KV4_CACHE_BYTES = 9662464000
 # Image input (--vision) also serves the checkpoint's vision encoder (0.88 GiB), which the release command leaves out
 # with --language-model-only. Its weights, its encoder cache (one 16,384-token image) and its startup profiling come
