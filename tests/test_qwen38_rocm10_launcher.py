@@ -603,11 +603,16 @@ class Rocm10LauncherTests(unittest.TestCase):
                 # sparse GDN/drafter checkpoints keep a second long document cached while another one prefills
                 self.assertEqual(value(engine, '--prefix-cache-retention-interval'), '32000')
                 # the allocator stops short of the VRAM edge where the driver would evict to system memory
-                self.assertIn('PAITON_VRAM_HEADROOM_MIB=512', command[:command.index(image)])
+                self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command[:command.index(image)])
         # the fp8 long mode (the automatic choice) keeps its released settings
         command = self.command('--image', image, '--context', '262144')
         self.assertNotIn('--prefix-cache-retention-interval', command)
-        self.assertFalse([item for item in command if item.startswith('PAITON_VRAM_HEADROOM_MIB')])
+        # the warm-up cap applies to the fp8 long mode too (after startup; ignored by images without the overlay)
+        self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command[:command.index(image)])
+        for options in (('--context', '245000', '--vision'), ('--context', '65536')):
+            with self.subTest(options=options):
+                command = self.command('--image', image, *options)
+                self.assertFalse([item for item in command if item.startswith('PAITON_VRAM_HEADROOM_MIB')])
         # the 4-bit mode keeps room for its prefill workspace: a smaller pool than the fp8 long mode's
         self.assertLess(launcher.W3_LONG_KV4_CACHE_BYTES, launcher.W3_LONG_KV_CACHE_BYTES)
         # automatic selection keeps the fp8 cache in the long mode; an explicit budget wins

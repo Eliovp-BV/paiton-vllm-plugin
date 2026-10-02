@@ -115,6 +115,26 @@ def _paiton_vram_cap_fraction(headroom: int, reserved: int, free: int, total: in
     return min(1.0, (reserved + free - headroom) / total)
 
 
+def _paiton_launcher_fraction() -> float | None:
+    """Paiton: the per_process_memory_fraction the launcher put into PYTORCH_ALLOC_CONF, if any."""
+    for item in os.environ.get("PYTORCH_ALLOC_CONF", "").split(","):
+        key, _, value = item.partition(":")
+        if key.strip() == "per_process_memory_fraction":
+            try:
+                return float(value)
+            except ValueError:
+                return None
+    return None
+
+
+def _paiton_lower_only(fraction: float | None, launcher: float | None) -> float | None:
+    """Paiton: the warm-up cap may only tighten the launcher's cap. On rc-t4 it raised 0.95 to 0.9565 and, once memory
+    outside PyTorch grew by ~270 MiB, the card peaked 0.17 GiB below the KFD admission limit."""
+    if fraction is None or launcher is None:
+        return fraction
+    return min(fraction, launcher)
+
+
 def _paiton_physical_free_bytes(domain: int, bus: int, dev: int, root: str = "/sys/bus/pci/devices") -> int | None:
     """Paiton: unused VRAM of the card at PCI <domain>:<bus>:<dev>.0 from its amdgpu sysfs node. hipMemGetInfo is not
     usable here: on the R9700 it reported 327 MiB free while ~1.6 GiB of the card was unused."""
@@ -134,6 +154,8 @@ def _paiton_apply_vram_cap(device: torch.device) -> None:
     free = _paiton_physical_free_bytes(props.pci_domain_id, props.pci_bus_id, props.pci_device_id)
     reserved = torch.cuda.memory_reserved(device)
     fraction = None if free is None else _paiton_vram_cap_fraction(headroom, reserved, free, props.total_memory)
+    launcher = _paiton_launcher_fraction()
+    fraction = _paiton_lower_only(fraction, launcher)
     if fraction is not None:
         torch.cuda.set_per_process_memory_fraction(fraction, device)
     logger.info(
@@ -141,7 +163,8 @@ def _paiton_apply_vram_cap(device: torch.device) -> None:
         {"headroom_mib": headroom >> 20, "reserved_mib": reserved >> 20,
          "physical_free_mib": None if free is None else free >> 20,
          "hip_free_mib": torch.cuda.mem_get_info(device)[0] >> 20, "total_mib": props.total_memory >> 20,
-         "fraction": fraction, "cap_mib": None if fraction is None else int(fraction * props.total_memory) >> 20},
+         "launcher_fraction": launcher, "fraction": fraction,
+         "cap_mib": None if fraction is None else int(fraction * props.total_memory) >> 20},
     )
 
 

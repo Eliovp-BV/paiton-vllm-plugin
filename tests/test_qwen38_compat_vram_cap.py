@@ -65,6 +65,23 @@ def test_physical_free_is_unknown_without_the_sysfs_node(tmp_path):
     assert worker._paiton_physical_free_bytes(0, 3, 0, root=tmp_path) is None
 
 
+def test_launcher_fraction_is_read_from_the_allocator_setting(monkeypatch):
+    monkeypatch.setenv("PYTORCH_ALLOC_CONF", "max_split_size_mb:64,per_process_memory_fraction:0.95")
+    assert worker._paiton_launcher_fraction() == 0.95
+    monkeypatch.setenv("PYTORCH_ALLOC_CONF", "max_split_size_mb:64")
+    assert worker._paiton_launcher_fraction() is None
+    monkeypatch.delenv("PYTORCH_ALLOC_CONF")
+    assert worker._paiton_launcher_fraction() is None
+
+
+def test_warm_up_cap_only_lowers_the_launcher_cap():
+    # rc-t4: the warm-up cap (0.9565) raised the launcher's 0.95 and the card peaked 0.17 GiB below the KFD limit
+    assert worker._paiton_lower_only(0.9565, 0.95) == 0.95
+    assert worker._paiton_lower_only(0.941, 0.95) == 0.941
+    assert worker._paiton_lower_only(0.941, None) == 0.941
+    assert worker._paiton_lower_only(None, 0.95) is None
+
+
 def test_headroom_comes_from_the_launcher_environment(monkeypatch):
     monkeypatch.delenv("PAITON_VRAM_HEADROOM_MIB", raising=False)
     assert worker._paiton_vram_headroom_bytes() == 0

@@ -77,10 +77,11 @@ W3_LONG_MEMORY_FRACTION = 0.95
 # ~199K documents in turn: every revisit was a full 90 s prefill). Checkpoints every 32,000 tokens let two such
 # documents stay cached; a revisit then resumes from the last 32,000-token boundary.
 W3_LONG_KV4_RETENTION_INTERVAL = 32000
-# VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 4-bit long mode (worker compat overlay): the
-# KFD admits allocations past the physically free VRAM and evicts to system memory instead of failing, which ran a
-# 15.5 GiB host out of memory twice in the two-document test.
-VRAM_HEADROOM_MIB = 512
+# VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit long mode (worker compat overlay; it
+# only ever lowers the launcher's fraction above): the KFD admits allocations past the physically free VRAM and evicts
+# to system memory instead of failing. 1 GiB = ~0.5 GiB margin to the KFD admission limit plus the ~270 MiB that
+# memory outside PyTorch grew during the rc-t4 validation (with 512 MiB the card peaked 0.17 GiB below the limit).
+VRAM_HEADROOM_MIB = 1024
 # Image input (--vision) also serves the checkpoint's vision encoder (0.88 GiB), which the release command leaves out
 # with --language-model-only. Its weights, its encoder cache (one 16,384-token image) and its startup profiling come
 # out of the KV budget (the MXFP4 release budget runs out of memory at KV allocation). Each weights / KV cache pair has
@@ -463,7 +464,7 @@ def docker_command(args, environment):
         state = '1' if kv_mode == 'kv4' else '0'
         for variable in KV4_FLAGS:
             command += ['-e', variable + '=' + state]
-    if kv_mode == 'kv4' and args.profile == 'chat' and weights == 'w3a4':
+    if args.profile == 'chat' and weights == 'w3a4' and not args.vision:
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
     if args.detach:
         command.append('--detach')
