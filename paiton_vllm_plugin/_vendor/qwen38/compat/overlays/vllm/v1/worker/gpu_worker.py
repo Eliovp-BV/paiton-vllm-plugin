@@ -115,20 +115,33 @@ def _paiton_vram_cap_fraction(headroom: int, reserved: int, free: int, total: in
     return min(1.0, (reserved + free - headroom) / total)
 
 
+def _paiton_physical_free_bytes(domain: int, bus: int, dev: int, root: str = "/sys/bus/pci/devices") -> int | None:
+    """Paiton: unused VRAM of the card at PCI <domain>:<bus>:<dev>.0 from its amdgpu sysfs node. hipMemGetInfo is not
+    usable here: on the R9700 it reported 327 MiB free while ~1.6 GiB of the card was unused."""
+    node = f"{root}/{domain:04x}:{bus:02x}:{dev:02x}.0/mem_info_vram_"
+    try:
+        with open(node + "total") as total, open(node + "used") as used:
+            return int(total.read()) - int(used.read())
+    except (OSError, ValueError):
+        return None
+
+
 def _paiton_apply_vram_cap(device: torch.device) -> None:
     headroom = _paiton_vram_headroom_bytes()
     if headroom <= 0:
         return
-    free, total = torch.cuda.mem_get_info(device)
+    props = torch.cuda.get_device_properties(device)
+    free = _paiton_physical_free_bytes(props.pci_domain_id, props.pci_bus_id, props.pci_device_id)
     reserved = torch.cuda.memory_reserved(device)
-    fraction = _paiton_vram_cap_fraction(headroom, reserved, free, total)
+    fraction = None if free is None else _paiton_vram_cap_fraction(headroom, reserved, free, props.total_memory)
     if fraction is not None:
         torch.cuda.set_per_process_memory_fraction(fraction, device)
     logger.info(
         "[paiton.vram_cap] %s",
-        {"headroom_mib": headroom >> 20, "reserved_mib": reserved >> 20, "free_mib": free >> 20,
-         "total_mib": total >> 20, "fraction": fraction,
-         "cap_mib": None if fraction is None else int(fraction * total) >> 20},
+        {"headroom_mib": headroom >> 20, "reserved_mib": reserved >> 20,
+         "physical_free_mib": None if free is None else free >> 20,
+         "hip_free_mib": torch.cuda.mem_get_info(device)[0] >> 20, "total_mib": props.total_memory >> 20,
+         "fraction": fraction, "cap_mib": None if fraction is None else int(fraction * props.total_memory) >> 20},
     )
 
 

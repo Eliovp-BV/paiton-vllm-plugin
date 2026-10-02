@@ -47,6 +47,24 @@ def test_no_cap_when_less_than_the_headroom_is_free():
     assert worker._paiton_vram_cap_fraction(512 * MIB, reserved=31 * GIB, free=256 * MIB, total=32 * GIB) is None
 
 
+def _fake_card(root, total, used, address="0000:03:00.0"):
+    node = root / address
+    node.mkdir(parents=True)
+    (node / "mem_info_vram_total").write_text(f"{total}\n")
+    (node / "mem_info_vram_used").write_text(f"{used}\n")
+
+
+def test_physical_free_comes_from_the_devices_own_amdgpu_sysfs_node(tmp_path):
+    # hipMemGetInfo reported 327 MiB free on the R9700 while the card had ~1.6 GiB unused (2 Oct, rc-t3 smoke)
+    _fake_card(tmp_path, total=32 * GIB, used=30 * GIB + 512 * MIB)
+    _fake_card(tmp_path, total=2 * GIB, used=GIB, address="0000:0c:00.0")   # a second (display) card
+    assert worker._paiton_physical_free_bytes(0, 3, 0, root=tmp_path) == GIB + 512 * MIB
+
+
+def test_physical_free_is_unknown_without_the_sysfs_node(tmp_path):
+    assert worker._paiton_physical_free_bytes(0, 3, 0, root=tmp_path) is None
+
+
 def test_headroom_comes_from_the_launcher_environment(monkeypatch):
     monkeypatch.delenv("PAITON_VRAM_HEADROOM_MIB", raising=False)
     assert worker._paiton_vram_headroom_bytes() == 0

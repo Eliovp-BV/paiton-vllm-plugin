@@ -220,7 +220,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu_worker.py": {
       "overlay": "overlays/vllm/v1/worker/gpu_worker.py",
       "original_sha256": "b0f39124f31ead3d2d20f1c6ac8696393c0ed6fed585ba8d31a4f7673e390407",
-      "overlay_sha256": "52965bcfeea4ca8b593a4c5756910ea74027f5d00da1d9a7433f40deba548507"
+      "overlay_sha256": "68c8f3d4820046c30c928a144d86de6752299989f8189a88c12b1243ff99eb7a"
     },
     "/usr/local/lib/python3.12/dist-packages/torch/_dynamo/utils.py": {
       "overlay": "overlays/torch/_dynamo/utils.py",
