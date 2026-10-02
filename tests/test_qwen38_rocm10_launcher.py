@@ -394,7 +394,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.command(*options)
                 self.assertIn(image, command)
                 self.assertIn('RADIANCE_GDN_LAZY=0', command)
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                 engine = self.engine(command)
                 context = options[options.index('--context') + 1]
@@ -593,7 +593,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.command('--image', image, '--kv-cache', 'kv4', *options)
                 self.assertEqual(self.kv4_flags(command, image), on)
                 self.assertIn('RADIANCE_GDN_LAZY=0', command)
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 engine = command[command.index(image) + 1:]
                 self.assertIn('--enable-prefix-caching', engine)
                 self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
@@ -695,6 +695,20 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('--long-prefill-token-threshold', engine)
         engine = self.engine(self.command('--long-prefill-threshold', '2048'))
         self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
+
+    def test_allocator_cap_only_in_the_measured_3bit_long_mode(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        capped = [item for item in self.command('--context', '262144') if item.startswith('PYTORCH_ALLOC_CONF=')]
+        self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95'])
+        for options in ((), ('--context', '245000', '--vision'), ('--vision',)):
+            with self.subTest(options=options):
+                setting = [item for item in self.command(*options) if item.startswith('PYTORCH_ALLOC_CONF=')]
+                self.assertEqual(setting, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
+        del self.environment['PAITON_W3ROT_DIR']
+        setting = [item for item in self.command('--context', '200000') if item.startswith('PYTORCH_ALLOC_CONF=')]
+        self.assertEqual(setting, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64'])   # MXFP4 long mode: not measured
 
     def test_vision_in_the_3bit_long_mode_uses_its_budget_and_capacity_limit(self):
         w3rot = self.root / 'w3rot directory'
