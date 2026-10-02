@@ -1,0 +1,54 @@
+"""VRAM headroom cap in the vendored vLLM worker overlay (run inside the serving image: needs vllm and torch).
+
+On the R9700 the KFD admits allocations up to tens of MiB past the physically free VRAM and then evicts the process's
+own buffers into system memory instead of failing (measured with a native hipMalloc probe: the last 64 MiB step with
+45 MiB free succeeded and evicted queues). PyTorch's caching allocator only gives memory back after a failed
+allocation, so a long-running server settles at that edge; the 4-bit long-context mode ran the 15.5 GiB host out of
+memory twice that way. After warm-up the worker caps the allocator at what it holds plus what is free, less a
+headroom, so PyTorch frees cached blocks before the driver has to evict.
+"""
+import importlib.util
+import sys
+from pathlib import Path
+
+import pytest
+
+torch = pytest.importorskip("torch")
+pytest.importorskip("vllm")
+
+OVERLAY = (Path(__file__).resolve().parents[1]
+           / "paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/worker/gpu_worker.py")
+GIB, MIB = 1 << 30, 1 << 20
+
+
+def _load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    module.__package__ = "vllm.v1.worker"   # the overlay's relative imports resolve against the installed package
+    sys.modules[name] = module   # dataclasses resolve their module through sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
+worker = _load("paiton_overlay_gpu_worker", OVERLAY)
+
+
+def test_cap_lets_the_allocator_grow_into_free_memory_less_the_headroom():
+    fraction = worker._paiton_vram_cap_fraction(512 * MIB, reserved=30 * GIB, free=1536 * MIB, total=32 * GIB)
+    assert round(fraction * 32 * GIB) == 30 * GIB + 1024 * MIB
+
+
+def test_no_cap_when_the_headroom_is_not_set():
+    assert worker._paiton_vram_cap_fraction(0, reserved=30 * GIB, free=GIB, total=32 * GIB) is None
+
+
+def test_no_cap_when_less_than_the_headroom_is_free():
+    # capping below what the allocator already holds would turn cached blocks into request-time OOMs
+    assert worker._paiton_vram_cap_fraction(512 * MIB, reserved=31 * GIB, free=256 * MIB, total=32 * GIB) is None
+
+
+def test_headroom_comes_from_the_launcher_environment(monkeypatch):
+    monkeypatch.delenv("PAITON_VRAM_HEADROOM_MIB", raising=False)
+    assert worker._paiton_vram_headroom_bytes() == 0
+    monkeypatch.setenv("PAITON_VRAM_HEADROOM_MIB", "512")
+    assert worker._paiton_vram_headroom_bytes() == 512 * MIB

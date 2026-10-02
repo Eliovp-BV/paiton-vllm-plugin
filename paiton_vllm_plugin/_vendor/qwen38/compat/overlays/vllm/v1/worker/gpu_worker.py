@@ -98,6 +98,40 @@ from .utils import request_memory
 logger = init_logger(__name__)
 
 
+def _paiton_vram_headroom_bytes() -> int:
+    """Paiton: VRAM headroom requested by the launcher (PAITON_VRAM_HEADROOM_MIB); 0 leaves the allocator uncapped."""
+    return int(os.environ.get("PAITON_VRAM_HEADROOM_MIB", "0") or 0) << 20
+
+
+def _paiton_vram_cap_fraction(headroom: int, reserved: int, free: int, total: int) -> float | None:
+    """Paiton: the per-process memory fraction that lets PyTorch's caching allocator grow only into the VRAM that is
+    free after warm-up, less ``headroom``. On ROCm the KFD admits allocations a few tens of MiB past the physically
+    free VRAM and then evicts the process's own buffers into system memory instead of failing, while the caching
+    allocator only gives memory back after a failed allocation; capped, it frees cached blocks first. None when no
+    headroom is requested or less than the headroom is free (a cap below what it already holds would turn cached
+    blocks into request-time OOMs)."""
+    if headroom <= 0 or total <= 0 or free <= headroom:
+        return None
+    return min(1.0, (reserved + free - headroom) / total)
+
+
+def _paiton_apply_vram_cap(device: torch.device) -> None:
+    headroom = _paiton_vram_headroom_bytes()
+    if headroom <= 0:
+        return
+    free, total = torch.cuda.mem_get_info(device)
+    reserved = torch.cuda.memory_reserved(device)
+    fraction = _paiton_vram_cap_fraction(headroom, reserved, free, total)
+    if fraction is not None:
+        torch.cuda.set_per_process_memory_fraction(fraction, device)
+    logger.info(
+        "[paiton.vram_cap] %s",
+        {"headroom_mib": headroom >> 20, "reserved_mib": reserved >> 20, "free_mib": free >> 20,
+         "total_mib": total >> 20, "fraction": fraction,
+         "cap_mib": None if fraction is None else int(fraction * total) >> 20},
+    )
+
+
 def _num_workspace_lanes(vllm_config: VllmConfig, use_v2_model_runner: bool) -> int:
     spec_config = vllm_config.speculative_config
     return (
@@ -921,6 +955,9 @@ class Worker(WorkerBase):
         # Startup is done; steady-state serving gets no benefit from torch
         # intra-op parallelism.
         set_torch_threads_for_runtime()
+
+        # Paiton: keep the caching allocator short of the VRAM edge from here on (opt-in, see the helper).
+        _paiton_apply_vram_cap(self.device)
 
         return CompilationTimes(
             language_model=self.compilation_config.compilation_time,

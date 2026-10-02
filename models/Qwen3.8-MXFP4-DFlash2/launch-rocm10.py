@@ -72,6 +72,15 @@ W3_LONG_KV4_CACHE_BYTES = 9662464000
 # hipMemGetInfo is no guide (it reported 327 MiB free with ~1.6 GiB of the card unused). Not yet measured with --vision
 # or the MXFP4 long mode, which keep the previous setting.
 W3_LONG_MEMORY_FRACTION = 0.95
+# With DFlash2 (EAGLE-style drafting) vLLM keeps a GDN state checkpoint at every 1,600-token block: six pool blocks
+# per block of text, so one ~199K prefill cycles through the whole pool and evicts every other cached document (two
+# ~199K documents in turn: every revisit was a full 90 s prefill). Checkpoints every 32,000 tokens let two such
+# documents stay cached; a revisit then resumes from the last 32,000-token boundary.
+W3_LONG_KV4_RETENTION_INTERVAL = 32000
+# VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 4-bit long mode (worker compat overlay): the
+# KFD admits allocations past the physically free VRAM and evicts to system memory instead of failing, which ran a
+# 15.5 GiB host out of memory twice in the two-document test.
+VRAM_HEADROOM_MIB = 512
 # Image input (--vision) also serves the checkpoint's vision encoder (0.88 GiB), which the release command leaves out
 # with --language-model-only. Its weights, its encoder cache (one 16,384-token image) and its startup profiling come
 # out of the KV budget (the MXFP4 release budget runs out of memory at KV allocation). Each weights / KV cache pair has
@@ -368,6 +377,8 @@ def engine_command(args, weights='mxfp4'):
     if prefix_caching_enabled(args):
         command[command.index('--no-enable-prefix-caching')] = '--enable-prefix-caching'
         replace_value(command, '--mamba-cache-mode', 'align')
+    if long_w3 and kv_cache_mode(args, weights) == 'kv4':
+        command += ['--prefix-cache-retention-interval', str(W3_LONG_KV4_RETENTION_INTERVAL)]
     thinking = args.thinking if args.thinking is not None else ('off' if chat else None)
     if thinking is not None:
         command += ['--default-chat-template-kwargs',
@@ -452,6 +463,8 @@ def docker_command(args, environment):
         state = '1' if kv_mode == 'kv4' else '0'
         for variable in KV4_FLAGS:
             command += ['-e', variable + '=' + state]
+    if kv_mode == 'kv4' and args.profile == 'chat' and weights == 'w3a4':
+        command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
     if args.detach:
         command.append('--detach')
     return command + model_mounts(environment, weights) + [image] + engine
