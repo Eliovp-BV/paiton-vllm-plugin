@@ -55,7 +55,7 @@ def _fake_card(root, total, used, address="0000:03:00.0"):
 
 
 def test_physical_free_comes_from_the_devices_own_amdgpu_sysfs_node(tmp_path):
-    # hipMemGetInfo reported 327 MiB free on the R9700 while the card had ~1.6 GiB unused (2 Oct, rc-t3 smoke)
+    # hipMemGetInfo reported 327 MiB free on the R9700 while the card had ~1.6 GiB unused (2 Oct smoke test)
     _fake_card(tmp_path, total=32 * GIB, used=30 * GIB + 512 * MIB)
     _fake_card(tmp_path, total=2 * GIB, used=GIB, address="0000:0c:00.0")   # a second (display) card
     assert worker._paiton_physical_free_bytes(0, 3, 0, root=tmp_path) == GIB + 512 * MIB
@@ -75,7 +75,8 @@ def test_launcher_fraction_is_read_from_the_allocator_setting(monkeypatch):
 
 
 def test_warm_up_cap_only_lowers_the_launcher_cap():
-    # rc-t4: the warm-up cap (0.9565) raised the launcher's 0.95 and the card peaked 0.17 GiB below the KFD limit
+    # 2 Oct validation: the warm-up cap (0.9565) raised the launcher's 0.95 and the card peaked 0.17 GiB below the
+    # KFD limit
     assert worker._paiton_lower_only(0.9565, 0.95) == 0.95
     assert worker._paiton_lower_only(0.941, 0.95) == 0.941
     assert worker._paiton_lower_only(0.941, None) == 0.941

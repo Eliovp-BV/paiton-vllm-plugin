@@ -562,10 +562,11 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(self.kv4_flags(self.command(*options), image), off)
         command = self.command('--profile', 'release', '--context', str(launcher.KV4_V4_MAX_CONTEXT))
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV_CACHE_BYTES))
-        # an explicit request covers the kernels' range, with that mode's own budget: 200,000 on the released images
-        # (bundle kv4-v4), the model's native 262,144 on an image with bundle kv4-v5
+        # an explicit request covers the kernels' range, with that mode's own budget: 200,000 on the 28 and 29 September
+        # images (bundle kv4-v4), the model's native 262,144 on the pinned 2 October image and others with bundle kv4-v5
         self.assertEqual((launcher.KV4_V4_MAX_CONTEXT, launcher.KV4_MAX_CONTEXT), (200000, 262144))
-        for img, limit in ((image, launcher.KV4_V4_MAX_CONTEXT), (self.V5_IMAGE, launcher.KV4_MAX_CONTEXT)):
+        for img, limit in ((self.R2_IMAGE, launcher.KV4_V4_MAX_CONTEXT), (self.V5_IMAGE, launcher.KV4_MAX_CONTEXT),
+                           (image, launcher.KV4_MAX_CONTEXT)):
             with self.subTest(image=img):
                 command = self.command('--image', img, '--profile', 'release', '--kv-cache', 'kv4', '--context', str(limit))
                 self.assertEqual(self.kv4_flags(command, img), on)
@@ -574,7 +575,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(self.kv4_flags(command, image), on)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(2 * 1024**3))
         self.record.unlink(missing_ok=True)
-        result = self.run_launcher('--profile', 'release', '--kv-cache', 'kv4',
+        result = self.run_launcher('--image', self.R2_IMAGE, '--profile', 'release', '--kv-cache', 'kv4',
                                    '--context', str(launcher.KV4_V4_MAX_CONTEXT + 1))
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertIn('--kv-cache kv4', result.stderr)
@@ -582,6 +583,7 @@ class Rocm10LauncherTests(unittest.TestCase):
 
 
     V5_IMAGE = 'paiton-qwen38-local:kv4-v5-candidate'   # any image other than the kv4-v4 ones (bundle kv4-v5)
+    R2_IMAGE = next(image for image in launcher.KV4_V4_IMAGES if '-20260929-r2@' in image)   # the previous pin
 
     def test_kv4_in_the_3bit_long_mode_runs_without_prefix_caching_with_its_own_budget(self):
         w3rot = self.root / 'w3rot directory'
@@ -630,14 +632,15 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_kv4_long_mode_is_refused_where_it_was_not_qualified(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
-        # the released images carry KV4 bundle kv4-v4 (decode stops at 200,000, no prefix-caching check)
-        for image in launcher.KV4_V4_IMAGES:
-            self.assertIn(image, (launcher.IMAGES['65k'],) + tuple(launcher.KV4_V4_IMAGES))
-        cases = ((('--context', '262144'), True, 'kv4-v5'),
-                 (('--image', launcher.IMAGES['65k'], '--context', '200000'), True, 'kv4-v5'),
+        # the 28 and 29 September images carry KV4 bundle kv4-v4 (decode stops at 200,000, no prefix-caching check);
+        # the pinned 2 October image does not
+        self.assertEqual(len(launcher.KV4_V4_IMAGES), 2)
+        self.assertNotIn(launcher.IMAGES['65k'], launcher.KV4_V4_IMAGES)
+        cases = ((('--image', self.R2_IMAGE, '--context', '262144'), True, 'kv4-v5'),
+                 (('--image', self.R2_IMAGE, '--context', '200000'), True, 'kv4-v5'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--weights', 'mxfp4'), False, '3-bit'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--vision'), True, '--vision'),
-                 (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'long-context mode'),
+                 (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'runs without prefix caching'),
                  (('--image', self.V5_IMAGE, '--context', '262144', '--prefix-caching', 'on'), True, 'prefix caching'))
         for options, w3, reason in cases:
             with self.subTest(options=options):
@@ -650,6 +653,45 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn('--kv-cache kv4', result.stderr)
                 self.assertIn(reason, result.stderr)
                 self.assertFalse(self.record.exists())
+
+    def test_legacy_kv4_long_flags_get_the_checks_of_mode_long_kv4(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        # every spelling of the 4-bit long-context mode, an explicit --prefix-caching off included, and the subject its
+        # refusal names; the reason itself is the one shared check (long_kv4_refusal)
+        legacy = '--kv-cache kv4: the 4-bit long-context mode (--mode long-kv4) '
+        spellings = ((('--mode', 'long-kv4'), '--mode long-kv4 '),
+                     (('--mode', 'long-kv4', '--prefix-caching', 'off'), '--mode long-kv4 '),
+                     (('--context', '262144', '--kv-cache', 'kv4'), legacy),
+                     (('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy),
+                     (('--context', '200000', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy),
+                     (('--context', '65537', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy),
+                     (('--profile', 'chat', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy))
+        refusals = ((('--image', self.R2_IMAGE), 'needs an image with KV4 bundle kv4-v5'),
+                    (('--image', next(iter(launcher.KV4_V4_IMAGES - {self.R2_IMAGE}))),
+                     'needs an image with KV4 bundle kv4-v5'),
+                    (('--vision',), 'is not qualified with --vision'),
+                    (('--weights', 'mxfp4'), 'needs the 3-bit W3A4 weights'),
+                    (('--prefix-caching', 'on'), 'runs without prefix caching'))
+        for spelling, subject in spellings:
+            for refusal, reason in refusals:
+                if '--prefix-caching' in spelling and '--prefix-caching' in refusal:
+                    continue
+                with self.subTest(spelling=spelling, refusal=refusal):
+                    stderr = self.refused(*spelling, *refusal)
+                    self.assertIn(subject + reason, stderr)
+        # MXFP4 without the 3-bit weights in the environment: the same refusal
+        self.environment.pop('PAITON_W3ROT_DIR')
+        for spelling, subject in spellings:
+            with self.subTest(spelling=spelling, weights='auto'):
+                self.assertIn(subject + 'needs the 3-bit W3A4 weights', self.refused(*spelling))
+        # the qualified configuration is served the same way by every spelling
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        expected = self.dry_run('--mode', 'long-kv4')
+        for spelling, _ in spellings[:4]:
+            with self.subTest(spelling=spelling, served=True):
+                self.assertEqual(self.dry_run(*spelling), expected)
 
     def test_kv4_long_mode_says_it_runs_without_prefix_caching(self):
         w3rot = self.root / 'w3rot directory'
@@ -770,6 +812,240 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn(str(limit), result.stderr)
         self.assertFalse(self.record.exists())
 
+    def dry_run(self, *args):
+        result = self.run_launcher('--dry-run', *args)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.record.exists())
+        return json.loads(result.stdout)
+
+    def refused(self, *args):
+        self.record.unlink(missing_ok=True)
+        result = self.run_launcher(*args)
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertFalse(self.record.exists())
+        return result.stderr
+
+    def test_mode_presets_expand_to_exactly_the_legacy_flags(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.assertIn('qwen38-rocm10-vllm029-20261002-r1@sha256:', launcher.IMAGES['65k'])
+        self.assertEqual(launcher.MODES, {'65k': 'no flags', 'long': '--context 262144',
+                                          'long-kv4': '--context 262144 --kv-cache kv4'})
+        legacy = ('--context', '262144', '--kv-cache', 'kv4')
+        cases = (
+            # the presets on the pinned image
+            (('--mode', '65k'), ()),
+            (('--mode', 'long'), ('--context', '262144')),
+            (('--mode', 'long-kv4'), legacy),
+            # flags that restate a preset
+            (('--mode', '65k', '--profile', 'release', '--prefix-caching', 'off'), ()),
+            (('--mode', 'long', '--profile', 'chat', '--kv-cache', 'fp8', '--prefix-caching', 'on'),
+             ('--context', '262144')),
+            (('--mode', 'long-kv4', '--profile', 'chat', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy),
+            # compatible refinements
+            (('--mode', '65k', '--context', '32768', '--kv-cache', 'fp8', '--vision'),
+             ('--context', '32768', '--kv-cache', 'fp8', '--vision')),
+            (('--mode', 'long', '--context', '245000', '--vision'), ('--context', '245000', '--vision')),
+            (('--mode', 'long', '--context', '32768'), ('--profile', 'chat', '--context', '32768')),
+            (('--mode', 'long-kv4', '--context', '131072', '--max-num-seqs', '4', '--thinking', 'on', '--port', '18100',
+              '--long-prefill-threshold', '2048', '--name', 'kv4-long', '--detach'),
+             ('--context', '131072', '--kv-cache', 'kv4', '--max-num-seqs', '4', '--thinking', 'on', '--port', '18100',
+              '--long-prefill-threshold', '2048', '--name', 'kv4-long', '--detach')),
+            (('--mode', 'long-kv4', '--image', self.V5_IMAGE, '--kv-cache-memory-bytes', '9000000000'),
+             ('--image', self.V5_IMAGE, *legacy, '--kv-cache-memory-bytes', '9000000000')),
+            (('--mode', 'long', '--image', self.R2_IMAGE), ('--image', self.R2_IMAGE, '--context', '262144')),
+        )
+        for preset, flags in cases:
+            with self.subTest(preset=preset):
+                self.assertEqual(self.dry_run(*preset), self.dry_run(*flags))
+        # what the two long presets stand for: one pinned image, eight requests, the capped allocator; fp8 with
+        # prefix caching and its budget, or the 4-bit cache without prefix caching and its own budget
+        image = launcher.IMAGES['65k']
+        for mode, kv4, prefix, budget in (('long', '0', '--enable-prefix-caching', launcher.W3_LONG_KV_CACHE_BYTES),
+                                          ('long-kv4', '1', '--no-enable-prefix-caching',
+                                           launcher.W3_LONG_KV4_CACHE_BYTES)):
+            with self.subTest(mode=mode):
+                command = self.dry_run('--mode', mode)
+                environment = command[:command.index(image)]
+                self.assertEqual(self.kv4_flags(command, image), [f'PAITON_KV4={kv4}', f'PAITON_KV4_CAPACITY={kv4}'])
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', environment)
+                self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', environment)
+                engine = command[command.index(image) + 1:]
+                self.assertIn(prefix, engine)
+                self.assertNotIn('--prefix-cache-retention-interval', engine)
+                self.assertEqual(value(engine, '--max-model-len'), '262144')
+                self.assertEqual(value(engine, '--max-num-seqs'), '8')
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(budget))
+        # the 4-bit preset prints what running without prefix caching costs; the fp8 preset does not
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        self.assertIn('without prefix caching', result.stderr)
+        self.assertIn('10.2 s', result.stderr)
+        self.assertNotIn('without prefix caching', self.run_launcher('--dry-run', '--mode', 'long').stderr)
+
+    def test_mode_refuses_flags_that_contradict_it(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        cases = (
+            (('--mode', 'long-kv4', '--prefix-caching', 'on'), 'without prefix caching'),
+            (('--mode', 'long-kv4', '--kv-cache', 'fp8'), 'use --mode long'),
+            (('--mode', 'long-kv4', '--vision'), '--vision'),
+            (('--mode', 'long-kv4', '--image', self.R2_IMAGE), 'kv4-v5'),
+            (('--mode', 'long-kv4', '--profile', 'release'), '--profile release'),
+            (('--mode', 'long', '--kv-cache', 'kv4'), 'use --mode long-kv4'),
+            (('--mode', 'long', '--prefix-caching', 'off'), 'prefix caching'),
+            (('--mode', 'long', '--profile', 'desktop'), '--profile desktop'),
+            (('--mode', 'long', '--vision', '--context', '245001'), '--context 245000'),
+            (('--mode', 'long', '--context', '262145'), '--context 262144'),
+            (('--mode', 'long-kv4', '--context', '262145'), '--context 262144'),
+            (('--mode', '65k', '--context', '200000'), '--context 65536'),
+            (('--mode', '65k', '--context', '65537'), '--context 65536'),
+            (('--mode', '65k', '--prefix-caching', 'on'), 'use --mode long'),
+            (('--mode', '65k', '--profile', 'chat'), '--profile chat'),
+            (('--mode', 'long', '--release', '200k'), '65k release'),
+        )
+        for options, reason in cases:
+            with self.subTest(options=options):
+                stderr = self.refused(*options)
+                self.assertIn('--mode ' + options[1], stderr)
+                self.assertIn(reason, stderr)
+        # the usual argument checks still apply
+        for options in (('--mode', 'long-fp8'), ('--mode',)):
+            with self.subTest(options=options):
+                self.refused(*options)
+
+    def test_mode_with_the_mxfp4_weights(self):
+        image = launcher.IMAGES['65k']
+        # 65k: the MXFP4 default, fp8 KV cache
+        command = self.dry_run('--mode', '65k')
+        self.assertEqual(command, self.dry_run())
+        self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
+        # long: MXFP4 serves one long request of 200,000 tokens by default, up to the tested 220,000
+        command = self.dry_run('--mode', 'long')
+        self.assertEqual(command, self.dry_run('--context', '200000'))
+        self.assertEqual(command, self.dry_run('--mode', 'long', '--context', '200000'))
+        self.assertEqual(value(command, '--max-model-len'), '200000')
+        self.assertEqual(value(command, '--max-num-seqs'), '1')
+        self.assertIn('--enable-prefix-caching', command)
+        stderr = self.refused('--mode', 'long', '--context', '220001')
+        for reason in ('--mode long with the MXFP4 weights', '--context 220000', '3-bit'):
+            self.assertIn(reason, stderr)
+        stderr = self.refused('--mode', 'long', '--vision')
+        for reason in ('--mode long --vision needs the 3-bit W3A4 weights', 'without --mode long'):
+            self.assertIn(reason, stderr)
+        # long-kv4: the 4-bit KV cache is qualified with the 3-bit weights only
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        for options, w3 in ((('--mode', 'long-kv4'), False), (('--mode', 'long-kv4', '--context', '200000'), False),
+                            (('--weights', 'mxfp4', '--mode', 'long-kv4'), True)):
+            with self.subTest(options=options):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+                stderr = self.refused(*options)
+                self.assertIn('--mode long-kv4 needs the 3-bit W3A4 weights', stderr)
+        # the quickstart scripts: run-mxfp4.sh refuses the 4-bit preset, run-3bit.sh serves it
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for script, code in (('run-mxfp4.sh', 2), ('run-3bit.sh', 0)):
+            with self.subTest(script=script):
+                result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', 'long-kv4', '--dry-run'],
+                                        env=self.environment, capture_output=True, text=True)
+                self.assertEqual(result.returncode, code, result.stderr)
+        self.assertEqual(self.kv4_flags(json.loads(result.stdout), image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+
+    def test_mode_long_picks_the_context_of_its_configuration(self):
+        # --mode long needs no --context: MXFP4 weights 200,000 (one request), 3-bit weights with --vision 245,000; each
+        # is the same Docker argv as the explicit --context spelling, through the launcher and the quickstart scripts
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.assertEqual((launcher.MXFP4_LONG_CONTEXT, launcher.MXFP4_LONG_MAX_CONTEXT,
+                          launcher.W3_LONG_VISION_MAX_CONTEXT), (200000, 220000, 245000))
+
+        def script(name, *options):
+            result = subprocess.run(['bash', str(MODEL_DIR / name), *options, '--dry-run'],
+                                    env=self.environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return json.loads(result.stdout), result.stderr
+
+        for w3, preset, flags, context in (
+                (False, ('--mode', 'long'), ('--context', '200000'), '200000'),
+                (False, ('--mode', 'long'), ('--profile', 'chat'), '200000'),
+                (True, ('--weights', 'mxfp4', '--mode', 'long'), ('--weights', 'mxfp4', '--context', '200000'), '200000'),
+                (True, ('--mode', 'long', '--vision'), ('--context', '245000', '--vision'), '245000'),
+                # an explicit smaller --context still works; MXFP4 up to the tested 220,000
+                (False, ('--mode', 'long', '--context', '150000'), ('--context', '150000'), '150000'),
+                (False, ('--mode', 'long', '--context', '220000'), ('--context', '220000'), '220000'),
+                (True, ('--mode', 'long', '--vision', '--context', '200000'), ('--context', '200000', '--vision'),
+                 '200000')):
+            with self.subTest(w3=w3, preset=preset):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+                command = self.dry_run(*preset)
+                self.assertEqual(command, self.dry_run(*flags))
+                self.assertEqual(value(command, '--max-model-len'), context)
+                self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], int(context))
+        for name, preset, flags in (('run-mxfp4.sh', ('--mode', 'long'), ('--context', '200000')),
+                                    ('run-3bit.sh', ('--mode', 'long', '--vision'), ('--context', '245000', '--vision'))):
+            with self.subTest(script=name):
+                command, stderr = script(name, *preset)
+                self.assertEqual(command, script(name, *flags)[0])
+                self.assertIn(f'--mode long: context {int(flags[1]):,} tokens', stderr)
+        # the 3-bit text mode keeps the model's full context and prints no such note
+        command, stderr = script('run-3bit.sh', '--mode', 'long')
+        self.assertEqual(value(command, '--max-model-len'), '262144')
+        self.assertNotIn('--mode long: context', stderr)
+        # a larger --context is refused with the mode's limit
+        self.environment.pop('PAITON_W3ROT_DIR', None)
+        self.assertIn('up to --context 220000', self.refused('--mode', 'long', '--context', '220001'))
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        stderr = self.refused('--mode', 'long', '--vision', '--context', '245001')
+        for reason in ('--mode long --vision serves up to --context 245000', 'vision encoder', 'Drop --context'):
+            self.assertIn(reason, stderr)
+
+    def test_help_puts_the_choices_first_in_groups(self):
+        result = self.run_launcher('--help')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sections, current = {}, None
+        for line in result.stdout.splitlines():
+            if line and not line.startswith(' ') and line.endswith(':'):
+                current = line[:-1]
+                sections[current] = []
+            elif current and line.startswith('  --'):
+                sections[current].append(line.split()[0])
+        self.assertEqual([name for name in sections if name not in ('options', 'optional arguments')],
+                         ['Choose how to run', 'Server', 'Advanced tuning'])
+        self.assertEqual(sections['Choose how to run'], ['--weights', '--mode', '--vision'])
+        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--list-gpus', '--image'])
+        self.assertEqual(sorted(sections['Advanced tuning']), sorted((
+            '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
+            '--profile', '--kv-cache-memory-bytes', '--gpu-memory-utilization', '--max-num-batched-tokens')))
+        self.assertNotIn('--release', result.stdout)        # hidden, still accepted
+        self.assertEqual(self.dry_run('--release', '65k'), self.dry_run())
+        # every option of the parser is in one of the groups
+        listed = {flag for flags in sections.values() for flag in flags}
+        options = {item for action in launcher.parser()._actions for item in action.option_strings
+                   if item.startswith('--') and action.help is not launcher.argparse.SUPPRESS}
+        self.assertEqual(options - {'--help'}, listed - {'--help'})
+
+    def test_help_describes_each_mode_on_its_own_line(self):
+        result = self.run_launcher('--help')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = [line.strip() for line in result.stdout.splitlines()]
+        for mode in launcher.MODES:
+            self.assertEqual(sum(line.startswith(mode + ': ') for line in lines), 1, mode)
+        text = ' '.join(result.stdout.split())
+        for phrase in ('65k: 65,536 context, up to 8 requests', 'the fast everyday default',
+                       'long: 262,144 context (MXFP4: 200,000, one request), fp8 KV cache with prefix caching',
+                       'one long document at a time, fast follow-ups',
+                       'long-kv4: 262,144 context per request, 4-bit KV cache',
+                       'a 1.63x larger shared pool (458,922 tokens): more long conversations at once',
+                       'no prefix caching, every request re-reads its prompt (3-bit weights only)',
+                       'mxfp4 gives you the most accurate weights', 'w3a4 the 3-bit weights, fastest with the most context',
+                       'gives you image input; works with --mode 65k and long (long: up to 245,000 context), not with '
+                       'long-kv4'):
+            self.assertIn(phrase, text)
 
 if __name__ == '__main__':
     unittest.main()
