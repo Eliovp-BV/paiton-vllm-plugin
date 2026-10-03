@@ -583,7 +583,7 @@ class Rocm10LauncherTests(unittest.TestCase):
 
     V5_IMAGE = 'paiton-qwen38-local:kv4-v5-candidate'   # any image other than the kv4-v4 ones (bundle kv4-v5)
 
-    def test_kv4_in_the_3bit_long_mode_keeps_prefix_caching_with_its_own_budget(self):
+    def test_kv4_in_the_3bit_long_mode_runs_without_prefix_caching_with_its_own_budget(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
@@ -596,13 +596,14 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn('RADIANCE_GDN_LAZY=0', command)
                 self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 engine = command[command.index(image) + 1:]
-                self.assertIn('--enable-prefix-caching', engine)
-                self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
+                # 3 Oct: a prefix-cache hit on a shared-prefix (junction) checkpoint of the 4-bit long mode ended in a
+                # GDN-norm nonfinite engine error, so the 4-bit long mode runs without prefix caching until fixed
+                self.assertIn('--no-enable-prefix-caching', engine)
+                self.assertNotIn('--enable-prefix-caching', engine)
                 self.assertEqual(value(engine, '--max-num-seqs'), '8')
                 self.assertEqual(value(engine, '--max-num-batched-tokens'), '4096')
                 self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
-                # sparse GDN/drafter checkpoints keep a second long document cached while another one prefills
-                self.assertEqual(value(engine, '--prefix-cache-retention-interval'), '32000')
+                self.assertNotIn('--prefix-cache-retention-interval', engine)
                 # the allocator stops short of the VRAM edge where the driver would evict to system memory
                 self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command[:command.index(image)])
         # without prefix caching there is nothing to retain: vLLM refuses a retention interval that is not a multiple
@@ -636,7 +637,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                  (('--image', launcher.IMAGES['65k'], '--context', '200000'), True, 'kv4-v5'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--weights', 'mxfp4'), False, '3-bit'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--vision'), True, '--vision'),
-                 (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'long-context mode'))
+                 (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'long-context mode'),
+                 (('--image', self.V5_IMAGE, '--context', '262144', '--prefix-caching', 'on'), True, 'prefix caching'))
         for options, w3, reason in cases:
             with self.subTest(options=options):
                 self.environment.pop('PAITON_W3ROT_DIR', None)
@@ -648,6 +650,19 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn('--kv-cache kv4', result.stderr)
                 self.assertIn(reason, result.stderr)
                 self.assertFalse(self.record.exists())
+
+    def test_kv4_long_mode_says_it_runs_without_prefix_caching(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        result = self.run_launcher('--image', self.V5_IMAGE, '--kv-cache', 'kv4', '--context', '262144')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('without prefix caching', result.stderr)
+        self.assertIn('10.2 s', result.stderr)
+        # the default fp8 long mode keeps prefix caching and prints no such notice
+        result = self.run_launcher('--image', self.V5_IMAGE, '--context', '262144')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('without prefix caching', result.stderr)
 
     def test_vision_loads_the_encoder_with_a_smaller_kv_budget(self):
         image = launcher.IMAGES['65k']

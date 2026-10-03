@@ -78,6 +78,13 @@ W3_MEMORY_FRACTION = 0.95
 # ~199K documents in turn: every revisit was a full 90 s prefill). Checkpoints every 32,000 tokens let two such
 # documents stay cached; a revisit then resumes from the last 32,000-token boundary.
 W3_LONG_KV4_RETENTION_INTERVAL = 32000
+# 3 Oct 2026: in the 4-bit long-context mode a prefix-cache hit on a shared-prefix (junction) checkpoint ended in a
+# GDN-norm nonfinite engine error (a repeated 32,758-token request after related requests). Until that is fixed the
+# 4-bit long mode runs without prefix caching; measured on one R9700 (repeat of that request):
+KV4_LONG_NO_PREFIX_CACHING = ('the 4-bit long-context mode runs without prefix caching until a prefix-cache-hit '
+                              'fault of that mode is fixed: a repeated 32K-token prompt prefills again in 10.2 s '
+                              'instead of 2.9 s from the fp8 cache (about 70-90 s instead of 2.5 s at 258K). The '
+                              'default fp8 long-context mode keeps prefix caching.')
 # VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit profiles (worker compat overlay; it
 # only ever lowers the launcher's fraction above): the KFD admits allocations past the physically free VRAM and evicts
 # to system memory instead of failing. 1 GiB = ~0.5 GiB margin to the KFD admission limit plus the ~270 MiB that
@@ -267,6 +274,8 @@ def selected_profile(args):
 
 
 def prefix_caching_enabled(args):
+    if args.kv_cache == 'kv4' and args.profile == 'chat':
+        return False                                    # KV4_LONG_NO_PREFIX_CACHING
     return args.prefix_caching == 'on' or (args.prefix_caching is None and args.profile == 'chat')
 
 
@@ -277,16 +286,18 @@ def kv4_refusal(args, weights):
     image = args.image or IMAGES[args.release]
     if args.release not in KV4_RELEASES or weights != 'w3a4':
         return 'the 4-bit KV cache needs the 65k release with the 3-bit W3A4 weights'
-    if prefix_caching_enabled(args):
-        if args.profile != 'chat':
-            return ('with prefix caching the 4-bit KV cache is qualified only in the long-context mode '
-                    '(--context above 65536)')
+    if args.profile == 'chat' and args.prefix_caching != 'off':   # the long-context mode (an explicit off: below)
+        if args.prefix_caching == 'on':
+            return 'no --prefix-caching on: ' + KV4_LONG_NO_PREFIX_CACHING
         if image in KV4_V4_IMAGES:
             return ('the long-context mode needs an image with KV4 bundle kv4-v5; this image carries kv4-v4 '
                     f'(decode up to {KV4_V4_MAX_CONTEXT} tokens, no prefix-caching check)')
         if args.vision:
             return 'the 4-bit KV cache is not qualified with --vision in the long-context mode'
         return None
+    if prefix_caching_enabled(args):
+        return ('with prefix caching the 4-bit KV cache is qualified only in the long-context mode '
+                '(--context above 65536)')
     limit = KV4_V4_MAX_CONTEXT if image in KV4_V4_IMAGES else KV4_MAX_CONTEXT
     if args.context is not None and args.context > limit:
         return f'the 4-bit decode path of this image is qualified up to --context {limit}'
@@ -448,7 +459,8 @@ def docker_command(args, environment):
         # image default (off) applies otherwise.
         if variable in environment:
             command += ['-e', variable + '=' + environment[variable]]
-    if prefix_caching_enabled(args):
+    if prefix_caching_enabled(args) or (args.kv_cache == 'kv4' and args.profile == 'chat'):
+        # the 4-bit long mode keeps its measured GDN path while it runs without prefix caching
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
@@ -487,6 +499,8 @@ def main(argv=None):
     if args.weights == 'auto' and args.release in W3_RELEASES and weights_mode(args, os.environ) == 'mxfp4':
         print('Serving MXFP4 weights; set PAITON_W3ROT_DIR to the downloaded 3-bit weights for faster decode and prefill.',
               file=sys.stderr)
+    if args.kv_cache == 'kv4' and selected_profile(args) == 'chat' and args.prefix_caching is None:
+        print('Note: ' + KV4_LONG_NO_PREFIX_CACHING, file=sys.stderr)
     if args.dry_run:
         print(json.dumps(command, indent=2))
         return 0
