@@ -1,9 +1,9 @@
 # Qwen3.8 release reference
 
-Start with the [quickstart](README.md) to choose MXFP4 or 3-bit and launch the current image.
+Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements, advanced setup and release history.
 
-- [Release notes](#release-notes-28-september-2026)
+- [Release notes](#release-notes-2-october-2026) (earlier: [28 September](#release-notes-28-september-2026))
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
 - [Long context and prefix caching](#long-context-200k-and-220k)
@@ -18,6 +18,38 @@ This page holds detailed measurements, advanced setup and release history.
 The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_DIR`
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
+
+<a id="release-notes-2-october-2026"></a>
+
+### Release notes: 2 October 2026 (image r1, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1`
+(`sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840`) is the 29 September r2 image with the
+changes below. Weights, drafter and the other serving settings are unchanged. Update this repository to get the
+launcher that selects it; `--dry-run` prints the full Docker command.
+
+- **New: `--mode 65k|long|long-kv4`.** One option per serving mode: `65k` (the default), `long` (the same as
+  `--context 262144`: FP8 cache with prefix caching) and `long-kv4` (the same as `--context 262144 --kv-cache kv4`).
+  Without `--context`, `--mode long` picks 200,000 tokens with the MXFP4 weights and 245,000 with `--vision`, the
+  same as those `--context` values. The launcher refuses flags that contradict the chosen mode; the old flag
+  spellings keep working and are checked the same way.
+- **New: a 4-bit KV page format with its own attention decode,** used by the 65K mode with the 3-bit weights and by
+  `--mode long-kv4`. One decode step of an attention layer takes 14 % less time than with the previous 4-bit kernel
+  at 200K tokens and 12 % less at the 65K mode's eight-request shape; in the 65K mode its accuracy equals the FP8
+  cache. See [4-bit KV cache](#more-context-capacity-4-bit-kv-cache).
+- **New: `--mode long-kv4`,** the long-context mode (still up to 262,144 tokens per request) with a shared 4-bit
+  cache of 458,922 tokens instead of 281,665 (1.63×), without prefix caching: every request re-reads its full
+  prompt. See
+  [the 4-bit cache in the long-context mode](#the-4-bit-cache-in-the-long-context-mode).
+- **Fixed: the 65K mode with the 3-bit weights under eight concurrent requests.** On the 29 September image the
+  memory allocator could grow past the card's free VRAM, and the driver then moved GPU memory to system RAM. The
+  launcher now caps the allocator and the image leaves 1 GiB of VRAM unclaimed after warm-up (BetterBench:
+  179.7 tok/s single-stream, 488.5 tok/s with eight requests, 48/48 requests completed at each concurrency level,
+  peak 30.85 GiB).
+- **On the 29 September r2 image** (`--image`), the 4-bit long-context mode is refused: `--mode long-kv4`, and
+  `--kv-cache kv4` with `--profile chat` or with a `--context` above 65,536 (with or without
+  `--prefix-caching off`). With an explicit `--profile release` or `desktop`, `--kv-cache kv4` stays limited to
+  200,000 tokens there.
 
 <a id="release-notes-28-september-2026"></a>
 
@@ -78,7 +110,7 @@ For a cache on another drive, replace the first export with
 
 ```bash
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20260928"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261002"
 mkdir -p "$PAITON_CACHE_DIR"
 
 docker run --rm --name paiton-qwen38-65k-cached --network host \
@@ -89,7 +121,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   -e PAITON_W3_DECODE=0 -e PAITON_W3_PREFILL=0 -e PAITON_W3_A4=0 \
   -e PAITON_KV4=0 -e PAITON_KV4_CAPACITY=0 \
   -e ROCR_VISIBLE_DEVICES -e HIP_VISIBLE_DEVICES -e CUDA_VISIBLE_DEVICES \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045 \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1@sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840 \
   serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --served-model-name Qwen3.8 \
@@ -135,8 +167,8 @@ DFlash draft limits at startup, and above 65,536 tokens it selects the long-cont
 mode. The limit includes input and generated tokens. A larger
 limit still requires sufficient cache and VRAM; it does not guarantee useful
 model quality at that length.
-The checkpoint's configured ceiling is 262,144 tokens; the largest serving
-limit tested here is **220,000**, not a claim that 262K fits this GPU.
+The checkpoint's configured ceiling is 262,144 tokens: the 3-bit weights serve it
+(`--mode long`); with the MXFP4 weights the largest serving limit tested here is **220,000**.
 
 The launcher exposes `/dev/kfd` and all of `/dev/dri`, adds the `video` group,
 and uses host IPC. Select the GPU with your usual ROCm environment variables.
@@ -207,16 +239,21 @@ Any `--context` above 65,536 starts the long-context mode on the **same image**:
 
 ```bash
 # 3-bit weights: the checkpoint's full 262,144-token context, eight requests, image input allowed
-bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --context 262144
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long        # the same as --context 262144
+
+# 3-bit weights: the same 262,144 tokens per request, a 1.6x larger shared 4-bit cache, no prefix caching (see below)
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4    # the same as --context 262144 --kv-cache kv4
 
 # MXFP4 weights: one conversation of up to 200,000 tokens (220,000 is the largest tested)
-bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh --context 200000
+bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh --mode long       # the same as --context 200000
 ```
 
-With the **3-bit weights** the long-context mode runs the release engine shape: up to
+With the **3-bit weights**, `--mode long` runs the release engine shape: up to
 eight scheduled requests, a 4,096-token prefill budget, the release graph set, an
 FP8 KV pool of 10.2 GB (281,665 cached tokens, so one full-context conversation
-plus short concurrent requests), prefix caching, and thinking disabled. With
+plus short concurrent requests), prefix caching, and thinking disabled
+(`--mode long-kv4`: a 4-bit pool without prefix caching, see
+[below](#the-4-bit-cache-in-the-long-context-mode)). With
 **MXFP4** it keeps the one-request configuration measured on 28 September (8 GiB FP8
 pool, 1,024-token prefill chunks); its pool holds 231,067 tokens, so the launcher
 refuses `--context` above 220,000 with MXFP4 and names the 3-bit weights. Both
@@ -224,7 +261,7 @@ apply the memory-allocation setting this configuration needs and leave little sp
 VRAM: select a dedicated R9700 rather than a card driving a busy desktop.
 `run-rocm10-200k.sh` and `--profile chat` start the same mode.
 
-Measured on one R9700 with the 3-bit weights, 1 October (fresh processes, `--context 262144`):
+Measured on one R9700 with the 3-bit weights, 1 October (fresh processes, `--mode long`, the same as `--context 262144`):
 
 | | 198,989-token prompt | 257,992-token prompt |
 |---|---:|---:|
@@ -253,7 +290,9 @@ for eight 32K prompts). While a cold full-context prompt is being processed, oth
 requests wait for it by default (126 s in the measurement). Add
 `--long-prefill-threshold 2048` to serve short requests within seconds beside a
 long prompt; the long prompt then takes about 16% longer to its first token
-(146 s instead of 126 s at 258K).
+(146 s instead of 126 s at 258K). The 281,665-token pool holds one full-length
+conversation, so concurrent questions about the same ~257K-token document are
+effectively handled one at a time: serve one long document at a time.
 
 The 65K mode does not use prefix caching (APC), so zero cache hits there are
 expected. The persistent disk cache used during startup is separate from the
@@ -261,12 +300,13 @@ in-memory conversation prefix cache.
 
 `--prefix-caching on` enables the experimental APC configuration and selects the
 compatible recurrent-state settings. This changes memory requirements; do not
-assume the 65K mode's fixed cache budget remains sufficient. Use the long-context
-mode for the complete configuration. Cache hits require an
+assume the 65K mode's fixed cache budget remains sufficient. Use `--mode long`
+for the complete configuration. Cache hits require an
 unchanged token prefix that is still resident. They reduce repeated prompt work,
 not the cost of generating each new token.
 
-The long-context mode reports cached tokens in `usage.prompt_tokens_details.cached_tokens`.
+`--mode long` reports cached tokens in `usage.prompt_tokens_details.cached_tokens`;
+`--mode long-kv4` has no prefix caching, so it reports no cached tokens.
 Streaming clients must also request `"stream_options":{"include_usage":true}`
 to receive usage in the stream. Server-side cache counters are available at
 `http://127.0.0.1:18982/metrics`.
@@ -305,6 +345,37 @@ the HumanEval change (4 problems) is not significant at this sample size. The
 MXFP4 weights score 95.68 / 95.12 / 62.57 on the same suites; the gap to them is
 the 3-bit weights' known cost, not the long context.
 
+#### The 4-bit cache in the long-context mode
+
+`run-3bit.sh --mode long-kv4` (the same as `--context 262144 --kv-cache kv4`) keeps the long-context mode's
+262,144-token limit per request, eight requests, 4,096-token prefill budget and allocator cap, and stores the
+attention cache in the [4-bit format](#more-context-capacity-4-bit-kv-cache) of the 2 October image. The shared
+pool holds 458,922 tokens instead of 281,665 (1.63×), so more long requests fit at once (each still up to 262,144
+tokens).
+
+It runs **without prefix caching**: every request re-reads its full prompt, including the earlier turns of its
+conversation and a document the previous request has just read. The cost grows with the prompt: a repeated
+32K-token prompt takes 10.2 s instead of 2.9 s from the FP8 cache (measured on a pre-release build of this
+configuration), and a 258K-token prompt takes about 2 minutes every time, where `--mode long` answers a repeat from
+its cache in 1.7 s. The launcher
+refuses `--prefix-caching on` and `--vision` in this mode, also when it is spelled `--context 262144 --kv-cache kv4`;
+use `--mode long` to re-read one long document quickly, or for images. MXFP4 weights are refused: the 4-bit cache is
+qualified with the 3-bit weights only.
+
+Log-likelihood over five 131K-token documents is within ±0.007 nats per token of the FP8 cache in every position
+range (measured on a pre-release build of this configuration).
+
+Measured on the 2 October r1 image, 3 October, through the launcher:
+
+- BetterBench (the full 20-pass run, same tool and settings as the tables above): weighted single-stream decode
+  174.3 tok/s; aggregate output 144.5 / 247.3 / 364.6 / 462.4 tok/s at one, two, four and eight concurrent
+  requests; time to first token p50 87 ms for one short request; prefill 4,167 / 4,165 / 4,102 / 3,954 / 3,633 tok/s
+  at 2K / 8K / 16K / 32K / 64K depth; peak 30.92 GiB.
+- Accuracy with standard-length questions, greedy, paired per question against MXFP4: GSM8K 5-shot 95.53 % (MXFP4
+  95.68 %), HumanEval pass@1 92.07 % (95.12 %), MMLU-Pro subset 60.57 % (62.57 %), needle at 61,440 tokens 80/80
+  (80/80). Only the MMLU-Pro difference (−2.00 points, 95 % interval −3.98 to −0.02) is beyond the uncertainty; it is
+  the 3-bit weights' gap, the same as in the 65,536-token mode.
+
 ### Images and vision
 
 Add `--vision` to send images, such as screenshots, UI captures or charts, as OpenAI-style `image_url` content:
@@ -328,7 +399,7 @@ both, eight concurrent requests with an image each completed, DFlash2 stayed act
 and text answers and decode speed were unchanged.
 
 `--vision` works in the 65K mode, including `--profile desktop`, and in the
-long-context mode with the 3-bit weights up to `--context 245000` (the encoder
+long-context mode with the 3-bit weights up to `--context 245000`, which `--mode long --vision` picks (the encoder
 takes 0.88 GiB out of the KV pool, which then holds 253,298 tokens). In that mode
 the prefix cache keys include the image content: on one R9700 the five test images
 answered correctly cold and when repeated from the cache, the same text followed by
@@ -418,14 +489,20 @@ from the same memory; our earlier 4-bit version only reduced the bytes read. The
 the DFlash2 drafter's cache are unchanged, and the scales take space, so the
 gain is about 1.8× as many attention tokens per byte rather than 2×.
 
+**2 October image.** The cache uses a new 4-bit page format with its own attention decode, in the 65K mode and in
+`--mode long-kv4`. Compared with the previous 4-bit kernel (the 29 September image's), one decode step of an
+attention layer takes 14 % less time at 200K tokens with one request (509 vs 590 µs) and 12 % less at the 65K
+mode's eight-request shape (1,353 vs 1,534 µs). Kernel timings of the released build on one R9700, 9 paired samples.
+
 **When it is on.** `--kv-cache auto` (the default) selects the 4-bit cache only
 where it was measured end to end: the 65K mode with the 3-bit weights, up to
-65,536 tokens. Everything else uses the FP8 cache: MXFP4 weights, the
-long-context mode (prefix caching), the `desktop` profile and other contexts.
+65,536 tokens. Everything else uses the FP8 cache: MXFP4 weights, `--mode long`
+(prefix caching), the `desktop` profile and other contexts.
 `--kv-cache fp8` keeps the FP8 cache and the 26 September budget in the 65K mode.
-`--kv-cache kv4` selects the 4-bit cache without prefix caching up to 200,000
-tokens, beyond what we measured end to end, and stops with an error outside that
-range.
+[`--mode long-kv4`](#the-4-bit-cache-in-the-long-context-mode) selects the 4-bit cache in the long-context mode,
+without prefix caching. Elsewhere (the 65K preset, or an explicit `--profile release` or `desktop` above 65,536
+tokens), `--kv-cache kv4` selects the 4-bit cache without prefix caching up to 262,144 tokens (200,000 on the 28
+and 29 September images), beyond what we measured end to end, and stops with an error outside that range.
 
 **What you gain.** Launcher defaults with the 3-bit weights, requests with 512
 output tokens each, greedy decoding:
@@ -468,7 +545,8 @@ thinking off, paired with the FP8 cache on identical items; Δ in points with a
 | Needle at 61,440 tokens (80) | 100 | 100 | 0 |
 
 We read this as no loss, not as a gain from the 4-bit cache. DFlash2 acceptance
-changes by −1.2% to +1.8%.
+changes by −1.2% to +1.8%. The 2 October format scores GSM8K 95.22, HumanEval 94.51 and MMLU-Pro 60.57 on the
+same suites: equal to the FP8 cache, and within the paired intervals of the 28 September 4-bit cache.
 
 **Long sessions.** A new test in our suite plants 11 facts in each of 24
 synthetic coding-agent sessions of 32K and 61K tokens, written in the model's own
@@ -550,7 +628,7 @@ capacity, see [4-bit KV cache](#more-context-capacity-4-bit-kv-cache).
 
 **262K long-context mode, 1 October (3-bit weights, full 20-pass BetterBench, thinking off, cold prefix cache).**
 The same tool and settings as the September tables, run for 20 passes per category on
-`run-3bit.sh --context 262144` and on the 65K default (`run-3bit.sh --thinking off`) in fresh processes:
+`run-3bit.sh --mode long` (the same as `--context 262144`) and on the 65K default (`run-3bit.sh --thinking off`) in fresh processes:
 
 | BetterBench row | 262K mode | 65K default |
 |---|---:|---:|
@@ -561,7 +639,8 @@ The same tool and settings as the September tables, run for 20 passes per catego
 | Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,481 tok/s |
 | Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
 
-The 262K mode keeps the FP8 cache with prefix caching; the 65K default uses the 4-bit cache without it.
+The 262K mode measured here (`--mode long`) keeps the FP8 cache with prefix caching; the 65K default uses the
+4-bit cache without it.
 [Reports and numbers](benchmarks/2026-10-01-262k/README.md).
 
 R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC off; thinking off; n-gram co-drafting off. Temperature 0.7, top-p 0.95, top-k 20, seed 42. BetterBench 0.6.0 quick. Three arms, each run twice in fresh processes, interleaved: the published 24 September image; this round's runtime with MXFP4 weights; and the 26 September image with the 3-bit W3A4 weights. The tables show the mean of the two runs; changes compare W3A4 with the 24 September release. All arms set `GPU_MAX_HW_QUEUES=1`, so the gains exclude that setting.
