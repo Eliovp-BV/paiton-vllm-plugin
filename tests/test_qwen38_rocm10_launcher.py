@@ -605,6 +605,12 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(value(engine, '--prefix-cache-retention-interval'), '32000')
                 # the allocator stops short of the VRAM edge where the driver would evict to system memory
                 self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command[:command.index(image)])
+        # without prefix caching there is nothing to retain: vLLM refuses a retention interval that is not a multiple
+        # of the (then unaligned, 176,947,200-token) scheduler block, so the server would not start (3 Oct repro arm)
+        command = self.command('--image', image, '--kv-cache', 'kv4', '--context', '262144', '--prefix-caching', 'off')
+        engine = command[command.index(image) + 1:]
+        self.assertIn('--no-enable-prefix-caching', engine)
+        self.assertNotIn('--prefix-cache-retention-interval', engine)
         # the fp8 long mode (the automatic choice) keeps its released settings
         command = self.command('--image', image, '--context', '262144')
         self.assertNotIn('--prefix-cache-retention-interval', command)

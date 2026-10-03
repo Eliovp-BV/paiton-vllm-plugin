@@ -379,7 +379,7 @@ def engine_command(args, weights='mxfp4'):
     if prefix_caching_enabled(args):
         command[command.index('--no-enable-prefix-caching')] = '--enable-prefix-caching'
         replace_value(command, '--mamba-cache-mode', 'align')
-    if long_w3 and kv_cache_mode(args, weights) == 'kv4':
+    if long_w3 and kv_cache_mode(args, weights) == 'kv4' and prefix_caching_enabled(args):
         command += ['--prefix-cache-retention-interval', str(W3_LONG_KV4_RETENTION_INTERVAL)]
     thinking = args.thinking if args.thinking is not None else ('off' if chat else None)
     if thinking is not None:
