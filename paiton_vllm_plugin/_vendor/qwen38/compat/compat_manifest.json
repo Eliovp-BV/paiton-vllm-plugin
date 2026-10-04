@@ -7,6 +7,11 @@
       "original_sha256": "3ea7b700fe3dba5eb4dfbe533d96651d64d5fe028b9a2dabf76d8360c0c7bf15",
       "overlay_sha256": "e3c56f45153653b9887e807a6374b221539a88a9519432ce62d661a9ffaa95a2"
     },
+    "/usr/local/lib/python3.12/dist-packages/vllm/compilation/caching.py": {
+      "overlay": "overlays/vllm/compilation/caching.py",
+      "original_sha256": "71d212452dde742fbf28b8a01ed29d3c08a7457ff7f8da2a20ce9d17e902c2cf",
+      "overlay_sha256": "04517963dcb3192607234d60881c4386fedfc53cb034a529e296af74ea4c6ed7"
+    },
     "/usr/local/lib/python3.12/dist-packages/vllm/compilation/passes/fusion/rocm_aiter_fusion.py": {
       "overlay": "overlays/vllm/compilation/passes/fusion/rocm_aiter_fusion.py",
       "original_sha256": "372e76c68c75209a085deec6dd22b3816be633613ca82f6f2925c1b3773d61a0",
@@ -70,7 +75,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/model_loader/default_loader.py": {
       "overlay": "overlays/vllm/model_executor/model_loader/default_loader.py",
       "original_sha256": "9c9d54b1b650bf5affc924ebb8b8c73711e187ae7486cadd9f737bb1279cc7b8",
-      "overlay_sha256": "9485ea01e8663892755ca757507faa28d1e98db9519e2e89d6d07b4352e0f4e9"
+      "overlay_sha256": "c763f7e15967f3d671d26ff549b21902680b9e70c0727b7e3cc113d23a42c4ea"
     },
     "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/models/qwen3_dflash.py": {
       "overlay": "overlays/vllm/model_executor/models/qwen3_dflash.py",

@@ -266,4 +266,25 @@ def launch(
         *plan.resolution.defaults,
         *arguments,
     ]
+    if env.get("PAITON_START_READAHEAD", "0") == "1":
+        _start_readahead(command, env)
     os.execve(sys.executable, command, env)
+
+
+def _start_readahead(command: list[str], env: dict) -> None:
+    """A6 (opt-in): a detached helper advises the kernel to read ahead the served bytes the engine streams first, while
+    the API server imports. Advisory only; failures never touch the start."""
+    import json
+    import subprocess
+
+    try:
+        model = command[command.index("serve") + 1]
+        draft = ""
+        if "--speculative-config" in command:
+            draft = json.loads(command[command.index("--speculative-config") + 1]).get("model", "") or ""
+        args = [sys.executable, "-m", "paiton_vllm_plugin.readahead", model, draft]
+        if "--language-model-only" in command:
+            args.append("--language-model-only")
+        subprocess.Popen(args, env=env, stdin=subprocess.DEVNULL, stdout=sys.stderr, stderr=sys.stderr, start_new_session=True)
+    except Exception:  # noqa: BLE001
+        pass

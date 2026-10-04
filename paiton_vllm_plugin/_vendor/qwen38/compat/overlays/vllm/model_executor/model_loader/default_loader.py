@@ -37,6 +37,129 @@ from vllm.model_executor.model_loader.weight_utils import (
 from vllm.tracing import instrument
 from vllm.transformers_utils.repo_utils import list_filtered_repo_files
 
+
+# --- paiton (start-time item A1): skip reading target tensors the W3 policy replaces. The W3 adapter (loaded by its
+# .pth hook when PAITON_W3_DECODE=1) exposes pre_read_skip(language_model_only) -> predicate on checkpoint tensor names,
+# or None when W3 is off. Skipped tensors are never materialised from the safetensors files; their parameters are
+# zero-filled after load and counted as loaded (the adapter's build replaces them from the calibration output). The
+# predicate refuses to start when the calibration output does not cover a module it would skip.
+def _paiton_pre_read_skip(model_config: ModelConfig):
+    import sys
+
+    adapter = sys.modules.get("paiton_w3_decode_adapter")
+    factory = getattr(adapter, "pre_read_skip", None)
+    if factory is None:
+        return None
+    # ModelConfig.language_model_only is an InitVar; the value lives on multimodal_config (None for text-only models).
+    mm = getattr(model_config, "multimodal_config", None)
+    language_model_only = bool(getattr(mm, "language_model_only", False)) or bool(getattr(model_config, "language_model_only", False))
+    return factory(language_model_only)
+
+
+def _paiton_filtered_safetensors_iterator(
+    hf_weights_files: list[str], use_tqdm_on_load: bool, skip, skipped: list[str]
+) -> Generator[tuple[str, torch.Tensor], None, None]:
+    """The lazy safetensors iterator with a name filter: skipped names are decided up front over the headers (so an
+    uncovered module fails before the first byte is read) and never fetched."""
+    from safetensors import safe_open
+    from tqdm.auto import tqdm
+
+    from vllm.model_executor.model_loader.weight_utils import _BAR_FORMAT, _natural_sort_key, enable_tqdm
+
+    import json
+    import struct
+
+    sorted_files = sorted(hf_weights_files, key=_natural_sort_key)
+    plan: dict[str, list[str]] = {}
+    ranges: dict[str, dict[str, tuple[int, int]]] = {}
+    for st_file in sorted_files:
+        with open(st_file, "rb") as fh:
+            header_len = struct.unpack("<Q", fh.read(8))[0]
+            header = json.loads(fh.read(header_len))
+        base = 8 + header_len
+        keep = []
+        for name, meta in header.items():
+            if name == "__metadata__":
+                continue
+            if skip(name):
+                skipped.append(name)
+            else:
+                keep.append(name)
+                a, b = meta["data_offsets"]
+                ranges.setdefault(st_file, {})[name] = (base + a, b - a)
+        plan[st_file] = keep
+    logger.info(
+        "[paiton.w3] pre-read skip: %d tensors not read (W3-replaced linears, MTP, vision); %d kept",
+        len(skipped), sum(len(v) for v in plan.values()),
+    )
+    # A6 (opt-in, PAITON_LOADER_DROP_PAGECACHE=1): once a tensor has been handed on (its copy to the device happens
+    # before the next one is requested), advise the kernel that its file range is not needed again, so the weight
+    # stream stops evicting the Python files the next start imports. Advisory; bytes are unchanged.
+    drop = os.environ.get("PAITON_LOADER_DROP_PAGECACHE", "0") == "1"
+    for st_file in tqdm(
+        sorted_files, desc="Loading safetensors checkpoint shards (W3 pre-read skip)",
+        disable=not enable_tqdm(use_tqdm_on_load), bar_format=_BAR_FORMAT,
+    ):
+        fd = os.open(st_file, os.O_RDONLY) if drop else None
+        previous = None
+        try:
+            with safe_open(st_file, framework="pt") as f:
+                for name in plan[st_file]:
+                    tensor = f.get_tensor(name)
+                    if fd is not None and previous is not None:
+                        off, length = ranges[st_file][previous]
+                        os.posix_fadvise(fd, off, length, os.POSIX_FADV_DONTNEED)
+                    previous = name
+                    yield name, tensor
+        finally:
+            if fd is not None:
+                if previous is not None:
+                    off, length = ranges[st_file][previous]
+                    os.posix_fadvise(fd, off, length, os.POSIX_FADV_DONTNEED)
+                os.close(fd)
+
+
+def _paiton_skipped_module_prefixes(skipped: list[str]) -> set[tuple[int, str]]:
+    """(layer, served module) pairs whose checkpoint tensors were skipped, from the adapter's policy."""
+    import re
+    import sys
+
+    policy = sys.modules.get("paiton_w3_decode_policy")
+    if policy is None:
+        return set()
+    part_to_module = {part: d["module"] for d in policy.SITES.values() for part, _ in d["parts"]}
+    out = set()
+    rx = re.compile(r"^model\.language_model\.layers\.(\d+)\.(.+?)\.(weight\w*|input_global_scale|bias)$")
+    for name in skipped:
+        m = rx.match(name)
+        if m and m.group(2) in part_to_module:
+            out.add((int(m.group(1)), part_to_module[m.group(2)]))
+    return out
+
+
+def _paiton_zero_fill_skipped(model: nn.Module, skipped: list[str], loaded_weights) -> int:
+    """Zero the parameters of every skipped (layer, module) and count them as loaded."""
+    import re
+
+    targets = _paiton_skipped_module_prefixes(skipped)
+    if not targets:
+        return 0
+    rx = re.compile(r"layers\.(\d+)\.(.+)$")
+    n = 0
+    with torch.no_grad():
+        for mod_name, module in model.named_modules():
+            m = rx.search(mod_name)
+            if not m or (int(m.group(1)), m.group(2)) not in targets:
+                continue
+            for pname, param in module.named_parameters(recurse=False):
+                param.data.zero_()
+                if loaded_weights is not None:
+                    loaded_weights.add(f"{mod_name}.{pname}")
+                n += 1
+    logger.info("[paiton.w3] pre-read skip: %d parameters of %d modules zero-filled until the W3 build replaces them",
+                n, len(targets))
+    return n
+
 logger = init_logger(__name__)
 
 
@@ -70,6 +193,9 @@ class DefaultModelLoader(BaseModelLoader):
 
     counter_before_loading_weights: float = 0.0
     counter_after_loading_weights: float = 0.0
+
+    _paiton_skip = None
+    _paiton_skipped: list[str] = []
 
     def __init__(self, load_config: LoadConfig):
         super().__init__(load_config)
@@ -283,6 +409,17 @@ class DefaultModelLoader(BaseModelLoader):
                             "num_threads", self.DEFAULT_NUM_THREADS
                         ),
                     )
+                elif (
+                    self._paiton_skip is not None
+                    and self.load_config.safetensors_load_strategy in (None, "lazy")
+                    and self.local_expert_ids is None
+                ):
+                    weights_iterator = _paiton_filtered_safetensors_iterator(
+                        hf_weights_files,
+                        self.load_config.use_tqdm_on_load,
+                        self._paiton_skip,
+                        self._paiton_skipped,
+                    )
                 else:
                     weights_iterator = safetensors_weights_iterator(
                         hf_weights_files,
@@ -423,6 +560,9 @@ class DefaultModelLoader(BaseModelLoader):
                 self.load_config.safetensors_load_strategy = "torchao"
 
         self._init_ep_weight_filter(model_config)
+        # --- paiton A1: decide before the first byte is read which target tensors the W3 build makes redundant
+        self._paiton_skip = _paiton_pre_read_skip(model_config)
+        self._paiton_skipped = []
 
         # --- radiance (patch_tp3_pad.py): pad checkpoint tensors with dummy heads before the
         # sharding weight loaders see them. Returns the iterator untouched unless this model's
@@ -436,6 +576,10 @@ class DefaultModelLoader(BaseModelLoader):
         else:
             _weights = _radiance_tp3pad.pad_weights(_weights, model_config)
         loaded_weights = model.load_weights(_weights)
+        if self._paiton_skipped:
+            if loaded_weights is None:
+                loaded_weights = set()
+            _paiton_zero_fill_skipped(model, self._paiton_skipped, loaded_weights)
 
         self.counter_after_loading_weights = time.perf_counter()
         logger.info_once(
