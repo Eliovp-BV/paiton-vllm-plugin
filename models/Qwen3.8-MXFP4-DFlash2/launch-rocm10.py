@@ -133,6 +133,14 @@ W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = W3_LONG_KV4_CACHE_BYTES
 # recurrent-state block (1,600 tokens); on older images a hit can end on a drafter block (800 tokens) and resume from
 # the wrong state, so there the tier stays with the fp8 cache. --mode long-512k keeps it off.
 KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
+# Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
+IMAGES_BY_RELEASE_DIGEST = {
+    '20261003-r1': 'sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
+    '20261002-r1s': 'sha256:a1c1025052f84a009428709bfe7e9431281ab5d5c0f723a49d79eecafe519dad',
+    '20261002-r1': 'sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840',
+    '20260929-r2': 'sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045',
+    '20260928-r1': 'sha256:487c97d51e5b4a3fcd0a206e53d842a52dd56a199d8ee3e884f48815093a80d4',
+}
 KV4_HOST_CACHE_REFUSAL = ('--host-cache-gib with the 4-bit KV cache needs an image with the host-tier alignment fix; '
                           'this image predates it (the host tier works with --mode long)')
 KV4_512K_HOST_CACHE_REFUSAL = ('--host-cache-gib is not qualified with --mode long-512k; it works with --mode long-kv4 '
@@ -269,22 +277,35 @@ def host_cache_gib(value):
     return result
 
 
+def _image_parts(args):
+    """(name without digest, digest or '') of the selected image."""
+    image = args.image or IMAGES[args.release]
+    name, _, digest = image.partition('@')
+    return name, digest
+
+
+def _released_digests(*keys):
+    return {IMAGES_BY_RELEASE_DIGEST[key] for key in keys}
+
+
 def image_is_kv4_v4(args):
     """The 28 and 29 September images: KV4 bundle kv4-v4 (decode up to 200,000 tokens, no prefix-caching check)."""
-    image = args.image or IMAGES[args.release]
-    return image in KV4_V4_IMAGES or image.split('@')[0].endswith(KV4_V4_SUFFIXES)
+    name, digest = _image_parts(args)
+    return name.endswith(KV4_V4_SUFFIXES) or digest in _released_digests('20260929-r2', '20260928-r1')
 
 
 def image_predates_kv4_host_fix(args):
     """Images whose connector overlay can end a 4-bit host-tier hit between two recurrent states."""
-    image = args.image or IMAGES[args.release]
-    return image_predates_prefix_fix(args) or image.split('@')[0].endswith(KV4_HOST_CACHE_UNFIXED_SUFFIXES)
+    name, digest = _image_parts(args)
+    return (image_predates_prefix_fix(args) or name.endswith(KV4_HOST_CACHE_UNFIXED_SUFFIXES)
+            or digest in _released_digests('20261003-r1'))
 
 
 def image_predates_prefix_fix(args):
     """The 2 October release image and older: no seed-column overlay and no KV4 bundle kv4-v6."""
-    image = args.image or IMAGES[args.release]
-    return image_is_kv4_v4(args) or image.split('@')[0].endswith(KV4_PREFIX_CACHE_UNFIXED_SUFFIXES)
+    name, digest = _image_parts(args)
+    return (image_is_kv4_v4(args) or name.endswith(KV4_PREFIX_CACHE_UNFIXED_SUFFIXES)
+            or digest in _released_digests('20261002-r1', '20261002-r1s'))
 
 
 def system_memory_weights_bytes(args):

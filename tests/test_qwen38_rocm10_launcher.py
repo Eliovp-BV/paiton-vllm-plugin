@@ -1319,6 +1319,28 @@ class Rocm10LauncherTests(unittest.TestCase):
                               self.refused('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', tag))
                 self.assertIn('--no-enable-prefix-caching', self.dry_run('--mode', 'long-kv4', '--image', tag))
 
+    def test_published_images_are_recognised_by_digest_alone(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        repo = 'ghcr.io/eliovp/paiton-vllm-plugin@'
+        digests = launcher.IMAGES_BY_RELEASE_DIGEST
+        # the digests match the pinned references
+        for key, digest in digests.items():
+            refs = [launcher.IMAGES['65k']] + list(launcher.PREVIOUS_IMAGES.values()) + list(launcher.KV4_V4_IMAGES)
+            self.assertIn(digest, [r.partition('@')[2] for r in refs], key)
+        for key in ('20261002-r1', '20261002-r1s'):
+            with self.subTest(key=key):
+                self.assertIn('predates the prefix-cache-hit fix',
+                              self.refused('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', repo + digests[key]))
+        for key in ('20260929-r2', '20260928-r1'):
+            with self.subTest(key=key):
+                self.assertIn('kv4-v5', self.refused('--mode', 'long-kv4', '--image', repo + digests[key]))
+        for key in ('20261003-r1', '20261002-r1s'):
+            with self.subTest(key=key, tier=True):
+                self.assertIn('needs an image with the host-tier alignment fix',
+                              self.refused('--mode', 'long-kv4', '--host-cache-gib', '2', '--image', repo + digests[key]))
+
     def test_help_and_refusals_match_the_behaviour(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
