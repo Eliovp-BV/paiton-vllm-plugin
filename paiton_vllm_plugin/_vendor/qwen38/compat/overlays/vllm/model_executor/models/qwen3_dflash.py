@@ -1,7 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
+import contextlib
 import io
+import os
 from collections.abc import Iterable
 
 import torch
@@ -53,6 +55,28 @@ logger = init_logger(__name__)
 
 
 _SLIDING_ATTENTION = "sliding_attention"
+
+# PAITON (P2): the drafter's full-vocab embed_tokens and lm_head (2 x 248,320 x 5,120 bf16 = 4.74 GiB for Qwen3.8) are
+# replaced by the target model's modules right after loading (dflash/utils.py), so building them on the GPU only raised
+# the load-phase VRAM peak. They are built on the meta device and materialised only when the checkpoint ships them;
+# dflash/utils.py refuses a drafter that still holds a meta tensor after sharing. PAITON_DFLASH_META_VOCAB=0 builds them
+# on the GPU as before (A/B only).
+_PAITON_META_VOCAB = os.environ.get("PAITON_DFLASH_META_VOCAB", "1") != "0"
+
+
+def _paiton_vocab_context(shared: bool):
+    """Where a vocab-sized drafter module is built: meta when the target's module replaces it."""
+    return torch.device("meta") if _PAITON_META_VOCAB and shared else contextlib.nullcontext()
+
+
+def _paiton_materialize(module: nn.Module, device: torch.device) -> None:
+    """Give a meta-built module real (uninitialised) storage before the checkpoint loads into it. Keeps the parameter
+    class and its attributes (weight_loader, input_dim, ...), unlike nn.Module.to_empty()."""
+    from vllm.model_executor.model_loader.reload.meta import materialize_meta_tensor
+    with torch.device(device):
+        for name, param in list(module.named_parameters(recurse=False)):
+            if param.is_meta:
+                setattr(module, name, materialize_meta_tensor(param))
 
 
 def _dflash_layer_causal(config: Qwen3Config, layer_idx: int) -> bool:
@@ -417,11 +441,15 @@ class DFlashQwen3Model(nn.Module):
 
         current_vllm_config = get_current_vllm_config()
 
-        self.embed_tokens = VocabParallelEmbedding(
-            self.config.vocab_size,
-            self.config.hidden_size,
-            prefix=maybe_prefix(prefix, "embed_tokens"),
-        )
+        # PAITON (P2): shared with the target unless pipeline-parallel (dflash/utils.py skips sharing then)
+        from vllm.distributed.parallel_state import get_pp_group
+        self._paiton_vocab_device = torch.get_default_device()
+        with _paiton_vocab_context(get_pp_group().world_size == 1):
+            self.embed_tokens = VocabParallelEmbedding(
+                self.config.vocab_size,
+                self.config.hidden_size,
+                prefix=maybe_prefix(prefix, "embed_tokens"),
+            )
 
         # Masked query slots are fed to the draft as `mask_token_id`. Most DFlash
         # checkpoints will have the mask embedding in the vocabulary embedding table
@@ -811,11 +839,13 @@ class DFlashQwen3ForCausalLM(Qwen3ForCausalLM):
         )
 
         logit_scale = getattr(self.config, "logit_scale", 1.0)
-        self.lm_head = ParallelLMHead(
-            self.config.draft_vocab_size,
-            self.config.hidden_size,
-            prefix=maybe_prefix(prefix, "lm_head"),
-        )
+        # PAITON (P2): a full-vocab head is shared with the target's
+        with _paiton_vocab_context(self.config.draft_vocab_size == vllm_config.model_config.get_vocab_size()):
+            self.lm_head = ParallelLMHead(
+                self.config.draft_vocab_size,
+                self.config.hidden_size,
+                prefix=maybe_prefix(prefix, "lm_head"),
+            )
         self.logits_processor = LogitsProcessor(
             self.config.draft_vocab_size, scale=logit_scale
         )
@@ -906,6 +936,7 @@ class DFlashQwen3ForCausalLM(Qwen3ForCausalLM):
         model_weights = {}
         includes_draft_id_mapping = False
         includes_embed_tokens = False
+        includes_lm_head = False
         for name, loaded_weight in weights:
             assert "mask_hidden" not in name, (
                 "DFlash embeds masked slots via mask_token_id (optionally "
@@ -919,6 +950,8 @@ class DFlashQwen3ForCausalLM(Qwen3ForCausalLM):
                 includes_draft_id_mapping = True
             elif "lm_head" not in name:
                 name = "model." + name
+            else:
+                includes_lm_head = True
             if "embed_tokens" in name:
                 includes_embed_tokens = True
             model_weights[name] = loaded_weight
@@ -941,6 +974,11 @@ class DFlashQwen3ForCausalLM(Qwen3ForCausalLM):
         if not self.model.has_separate_mask_embedding:
             orig_to_new_substr["mask_embedding"] = None
         mapper = WeightsMapper(orig_to_new_substr=orig_to_new_substr)
+        # PAITON (P2): a checkpoint with its own vocab modules loads into real storage
+        if includes_embed_tokens:
+            _paiton_materialize(self.model.embed_tokens, self.model._paiton_vocab_device)
+        if includes_lm_head:
+            _paiton_materialize(self.lm_head, self.model._paiton_vocab_device)
         loader = AutoWeightsLoader(self)
         loader.load_weights(model_weights.items(), mapper=mapper)
         self.model._build_fused_kv_buffers()

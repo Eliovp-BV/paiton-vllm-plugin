@@ -87,4 +87,14 @@ def load_dflash_model(target_model: nn.Module, vllm_config: VllmConfig) -> nn.Mo
             del dflash_model.lm_head
         dflash_model.lm_head = target_lm_head
 
+    # PAITON (P2): vocab modules built on the meta device must have been replaced by the target's (or loaded from the
+    # checkpoint); a meta tensor reads as nothing, so fail at load instead of drafting from it
+    paiton_refuse_meta(dflash_model)
     return dflash_model
+
+
+def paiton_refuse_meta(dflash_model: nn.Module) -> None:
+    meta = [name for name, tensor in (*dflash_model.named_parameters(), *dflash_model.named_buffers()) if tensor.is_meta]
+    if meta:
+        raise RuntimeError(f"DFlash drafter holds unmaterialised meta tensors after sharing the target's vocabulary "
+                           f"modules: {meta}; set PAITON_DFLASH_META_VOCAB=0 to build them on the GPU")
