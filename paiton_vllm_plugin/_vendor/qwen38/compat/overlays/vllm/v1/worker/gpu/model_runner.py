@@ -855,6 +855,48 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         # during actual execution.
         assert self.sampler is not None
         self.sampler(logits, dummy_input_batch)
+        # --- paiton A11: the rejection sampler's Triton kernels (_compute_local_logits_stats_kernel, _rejection_kernel,
+        # _resample_kernel) are otherwise compiled by the first speculative request. Run them here at the shapes the
+        # scheduler produces: every request carries num_speculative_tokens + 1 logits; 1, 2 and max_num_seqs requests
+        # cover Triton's integer specialisation classes of the logit count. Same kernels, same arguments as serving.
+        try:
+            self._paiton_dummy_rejection_sampler_run(logits, num_reqs)
+        except Exception as exc:  # noqa: BLE001  (a warm-up must never stop a start)
+            logger.warning("[paiton.warmup] rejection sampler warm-up skipped: %r", exc)
+
+    def _paiton_dummy_rejection_sampler_run(self, logits: torch.Tensor, num_reqs: int) -> None:
+        from dataclasses import replace as _replace
+
+        if self.rejection_sampler is None or self.speculator is None:
+            return
+        k = int(self.rejection_sampler.num_speculative_steps)
+        if k <= 0:
+            return
+        device = logits.device
+        draft_logits = getattr(self.speculator, "draft_logits", None)
+        done = []
+        for n in sorted({1, 2, num_reqs}):
+            if n > num_reqs:
+                continue
+            num_logits = n * (k + 1)
+            base = InputBatch.make_dummy(n, num_logits, self.input_buffers)
+            cu = torch.arange(0, num_logits + 1, k + 1, device=device, dtype=torch.int32)
+            batch = _replace(
+                base,
+                logits_indices=torch.arange(num_logits, device=device, dtype=base.logits_indices.dtype),
+                cu_num_logits=cu,
+                cu_num_logits_np=np.arange(0, num_logits + 1, k + 1, dtype=np.int32),
+                expanded_idx_mapping=base.idx_mapping.repeat_interleave(k + 1),
+                expanded_local_pos=torch.arange(k + 1, device=device, dtype=torch.int32).repeat(n),
+                num_draft_tokens=n * k,
+                num_draft_tokens_per_req=np.full(n, k, dtype=np.int32),
+            )
+            spec_logits = logits[:n].repeat_interleave(k + 1, 0).contiguous()
+            self.rejection_sampler(spec_logits, batch, draft_logits)
+            done.append(n)
+        torch.accelerator.synchronize()
+        logger.info("[paiton.warmup] rejection sampler warm-up: %d speculative tokens, requests %s, draft logits %s",
+                    k, done, draft_logits is not None)
 
     @torch.inference_mode()
     def _dummy_pooler_run(self, hidden_states: torch.Tensor) -> None:

@@ -33,6 +33,8 @@ def configure(root, manifest):
         for base in (root.parent, Path('/opt/paiton')):
             if base.is_dir():
                 for f in sorted(base.rglob('*') if base.name == 'paiton' else base.glob('*')):
+                    if 'cache-seed' in f.parts:   # the shipped compile-cache seed is not a runtime piece
+                        continue
                     if f.is_file() and (base.name == 'paiton' or f.name.startswith(('paiton', 'radiance', 'r4d',
                                                                                         'libr4d', 'zzz'))):
                         st = f.stat()
@@ -60,11 +62,11 @@ def seed_caches(xdg_cache):
     A first start with an empty runtime cache spends minutes compiling Triton and inductor kernels and comgr code objects
     that are the same on every host with this image: their cache entries are keyed by content hashes (kernel source,
     constants, target), not by paths or times, and this namespace only partitions them. The image may ship those entries
-    under PAITON_CACHE_SEED (default /usr/share/paiton/cache-seed/{triton,inductor,comgr}); when a target directory does
+    under PAITON_CACHE_SEED (default /opt/paiton/cache-seed/{triton,inductor,comgr}, a Paiton path the release scan covers); when a target directory does
     not exist yet, it is created from the seed with a copy-and-rename, so a concurrent process sees either nothing or the
     complete seed. A directory that exists (a warm cache) is never touched. PAITON_CACHE_SEED=off disables it.
     """
-    seed = os.environ.get('PAITON_CACHE_SEED', '/usr/share/paiton/cache-seed')
+    seed = os.environ.get('PAITON_CACHE_SEED', '/opt/paiton/cache-seed')
     if seed == 'off' or not Path(seed).is_dir():
         return {}
     targets = {'triton': Path(os.environ['TRITON_CACHE_DIR']), 'inductor': Path(os.environ['TORCHINDUCTOR_CACHE_DIR']),

@@ -39,6 +39,19 @@ class Test(unittest.TestCase):
         self.assertEqual(cn.configure(self.tmp / 'compat', {'files': {}}), ns)
         self.assertEqual((triton / 'abc123' / 'k.hsaco').read_text(), 'triton'); self.assertTrue((triton / 'warm.txt').exists())
 
+    def test_seed_does_not_enter_the_compile_cache_listing(self):
+        # with the opt-in compile cache the namespace hashes the runtime file listing; the seed must not be part of it
+        os.environ['PAITON_COMPILE_CACHE'] = '1'
+        root = self.tmp / 'site' / 'compat'; root.mkdir(parents=True); (root / 'bootstrap.py').write_text('# b\n')
+        (self.tmp / 'site' / 'paiton_x.py').write_text('x')
+        ns1 = cn.configure(root, {'files': {}})
+        del os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES']
+        seeded = pathlib.Path('/opt/paiton/cache-seed')   # cannot write there in a test: use the walker's filter directly
+        self.assertTrue(any('cache-seed' in pathlib.Path(p).parts for p in [str(seeded / 'triton' / 'a')]))
+        (self.tmp / 'site' / 'paiton_y.py').write_text('y')
+        ns2 = cn.configure(root, {'files': {}}); self.assertNotEqual(ns1, ns2)   # a runtime file changes it ...
+        del os.environ['PAITON_COMPILE_CACHE']
+
     def test_seed_off_and_missing(self):
         os.environ['PAITON_CACHE_SEED'] = 'off'; cn.configure(self.tmp / 'compat', {'files': {}})
         self.assertFalse(pathlib.Path(os.environ['TRITON_CACHE_DIR']).exists())
