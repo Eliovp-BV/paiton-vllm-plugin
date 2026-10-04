@@ -865,8 +865,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             logger.warning("[paiton.warmup] rejection sampler warm-up skipped: %r", exc)
 
     def _paiton_dummy_rejection_sampler_run(self, logits: torch.Tensor, num_reqs: int) -> None:
-        from dataclasses import replace as _replace
-
         if self.rejection_sampler is None or self.speculator is None:
             return
         k = int(self.rejection_sampler.num_speculative_steps)
@@ -875,6 +873,17 @@ class GPUModelRunner(LoRAModelRunnerMixin):
         device = logits.device
         draft_logits = getattr(self.speculator, "draft_logits", None)
         done = []
+        # the kernels draw from per-request seeds, not from torch's generators; fork_rng restores the CPU and device
+        # generator state anyway, so the warm-up cannot shift a later unseeded sample
+        with torch.random.fork_rng(devices=[device.index] if device.index is not None else None, device_type=device.type):
+            self._paiton_dummy_rejection_sampler_batches(logits, num_reqs, k, device, draft_logits, done)
+        torch.accelerator.synchronize()
+        logger.info("[paiton.warmup] rejection sampler warm-up: %d speculative tokens, requests %s, draft logits %s",
+                    k, done, draft_logits is not None)
+
+    def _paiton_dummy_rejection_sampler_batches(self, logits, num_reqs, k, device, draft_logits, done):
+        from dataclasses import replace as _replace
+
         for n in sorted({1, 2, num_reqs}):
             if n > num_reqs:
                 continue
@@ -894,9 +903,6 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             spec_logits = logits[:n].repeat_interleave(k + 1, 0).contiguous()
             self.rejection_sampler(spec_logits, batch, draft_logits)
             done.append(n)
-        torch.accelerator.synchronize()
-        logger.info("[paiton.warmup] rejection sampler warm-up: %d speculative tokens, requests %s, draft logits %s",
-                    k, done, draft_logits is not None)
 
     @torch.inference_mode()
     def _dummy_pooler_run(self, hidden_states: torch.Tensor) -> None:

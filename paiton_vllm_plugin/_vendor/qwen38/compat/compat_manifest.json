@@ -190,7 +190,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu/model_runner.py": {
       "overlay": "overlays/vllm/v1/worker/gpu/model_runner.py",
       "original_sha256": "d7bae5b05a2a9f02c1ba29f0b4b32434cee43c3b369d3985505d3f8ed89b461b",
-      "overlay_sha256": "53f35c6f2dd830bc6e44c6c3edf15069728a2e92844070a804c5cc91eebf3d56"
+      "overlay_sha256": "1a4cef827e591d93d32a3186ad9bfa79b775b31ed5baec81943e975e759adaee"
     },
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/worker/gpu/sample/sampler.py": {
       "overlay": "overlays/vllm/v1/worker/gpu/sample/sampler.py",
