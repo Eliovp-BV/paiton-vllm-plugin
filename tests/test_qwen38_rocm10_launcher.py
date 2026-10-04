@@ -31,7 +31,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.kfd = self.root / 'kfd'
         self.drm.mkdir()
         self.kfd.mkdir()
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
+        (self.root / 'ttm_pages_limit').write_text('2034369\n')
         self.record = self.root / 'docker-argv.json'
+        self.overrides = {}           # launcher module constants replaced in run_launcher's process
         binary = self.root / 'bin'
         binary.mkdir()
         # A real exec into a harmless Docker stand-in catches quoting, argument
@@ -69,7 +72,11 @@ class Rocm10LauncherTests(unittest.TestCase):
                    'm = importlib.util.module_from_spec(s); s.loader.exec_module(m)\n'
                    f'm.SYS_DRM = pathlib.Path({str(self.drm)!r})\n'
                    f'm.SYS_KFD = pathlib.Path({str(self.kfd)!r})\n'
-                   'sys.exit(m.main(sys.argv[1:]))\n')
+                   f'm.PROC_MEMINFO = pathlib.Path({str(self.root / "meminfo")!r})\n'
+                   f'm.DEV_SHM = {str(self.root)!r}\n'
+                   f'm.TTM_PAGES_LIMIT = pathlib.Path({str(self.root / "ttm_pages_limit")!r})\n'
+                   + ''.join(f'm.{name} = {setting!r}\n' for name, setting in self.overrides.items())
+                   + 'sys.exit(m.main(sys.argv[1:]))\n')
         return subprocess.run([sys.executable, '-c', harness, *args],
                               env=self.environment, capture_output=True, text=True)
 
@@ -583,7 +590,9 @@ class Rocm10LauncherTests(unittest.TestCase):
 
 
     V5_IMAGE = 'paiton-qwen38-local:kv4-v5-candidate'   # any image other than the kv4-v4 ones (bundle kv4-v5)
-    R2_IMAGE = next(image for image in launcher.KV4_V4_IMAGES if '-20260929-r2@' in image)   # the previous pin
+    R2_IMAGE = next(image for image in launcher.KV4_V4_IMAGES if '-20260929-r2@' in image)   # the 29 Sept release
+    R1_IMAGE = launcher.PREVIOUS_IMAGES['20261002-r1']        # the 2 October release, before the prefix-cache fix
+    R1S_IMAGE = launcher.PREVIOUS_IMAGES['20261002-r1s']      # a rebuild of r1 with the same runtime (rollback image)
 
     def test_kv4_in_the_3bit_long_mode_runs_without_prefix_caching_with_its_own_budget(self):
         w3rot = self.root / 'w3rot directory'
@@ -636,12 +645,14 @@ class Rocm10LauncherTests(unittest.TestCase):
         # the pinned 2 October image does not
         self.assertEqual(len(launcher.KV4_V4_IMAGES), 2)
         self.assertNotIn(launcher.IMAGES['65k'], launcher.KV4_V4_IMAGES)
+        self.assertIn(self.R2_IMAGE, launcher.PREVIOUS_IMAGES.values())
         cases = ((('--image', self.R2_IMAGE, '--context', '262144'), True, 'kv4-v5'),
                  (('--image', self.R2_IMAGE, '--context', '200000'), True, 'kv4-v5'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--weights', 'mxfp4'), False, '3-bit'),
                  (('--image', self.V5_IMAGE, '--context', '200000', '--vision'), True, '--vision'),
                  (('--image', self.V5_IMAGE, '--prefix-caching', 'on'), True, 'runs without prefix caching'),
-                 (('--image', self.V5_IMAGE, '--context', '262144', '--prefix-caching', 'on'), True, 'prefix caching'))
+                 # the 2 October release image predates the prefix-hit fix; images with it allow --prefix-caching on
+                 (('--image', self.R1_IMAGE, '--context', '262144', '--prefix-caching', 'on'), True, 'prefix caching'))
         for options, w3, reason in cases:
             with self.subTest(options=options):
                 self.environment.pop('PAITON_W3ROT_DIR', None)
@@ -673,7 +684,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                      'needs an image with KV4 bundle kv4-v5'),
                     (('--vision',), 'is not qualified with --vision'),
                     (('--weights', 'mxfp4'), 'needs the 3-bit W3A4 weights'),
-                    (('--prefix-caching', 'on'), 'runs without prefix caching'))
+                    (('--image', self.R1_IMAGE, '--prefix-caching', 'on'), 'runs without prefix caching'))
         for spelling, subject in spellings:
             for refusal, reason in refusals:
                 if '--prefix-caching' in spelling and '--prefix-caching' in refusal:
@@ -686,21 +697,38 @@ class Rocm10LauncherTests(unittest.TestCase):
         for spelling, subject in spellings:
             with self.subTest(spelling=spelling, weights='auto'):
                 self.assertIn(subject + 'needs the 3-bit W3A4 weights', self.refused(*spelling))
-        # the qualified configuration is served the same way by every spelling
+        # on the 2 October image every spelling serves the previous form of the mode: no prefix caching, the
+        # embedding on the GPU
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        expected = self.dry_run('--mode', 'long-kv4')
+        old = ('--image', self.R1_IMAGE)
+        expected = self.dry_run('--mode', 'long-kv4', *old)
         for spelling, _ in spellings[:4]:
             with self.subTest(spelling=spelling, served=True):
-                self.assertEqual(self.dry_run(*spelling), expected)
+                self.assertEqual(self.dry_run(*spelling, *old), expected)
+        # on the pinned image --mode long-kv4 is the coding mode: the legacy flags plus prefix caching and the
+        # embedding in system memory
+        self.assertEqual(self.dry_run('--mode', 'long-kv4'),
+                         self.dry_run('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on',
+                                      '--system-memory-weights'))
+        self.assertEqual(self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off'),
+                         self.dry_run('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'off',
+                                      '--system-memory-weights'))
 
     def test_kv4_long_mode_says_it_runs_without_prefix_caching(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        result = self.run_launcher('--image', self.V5_IMAGE, '--kv-cache', 'kv4', '--context', '262144')
+        result = self.run_launcher('--image', self.R1_IMAGE, '--kv-cache', 'kv4', '--context', '262144')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('without prefix caching', result.stderr)
+        self.assertIn('predates the fix', result.stderr)
         self.assertIn('10.2 s', result.stderr)
+        # an image with the fix: the legacy spelling runs without prefix caching, and says where to get it
+        result = self.run_launcher('--image', self.V5_IMAGE, '--kv-cache', 'kv4', '--context', '262144')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('without prefix caching in this spelling', result.stderr)
+        self.assertIn('--mode long-kv4 serves it with prefix caching', result.stderr)
+        self.assertNotIn('without prefix caching', self.run_launcher('--dry-run', '--mode', 'long-kv4').stderr)
         # the default fp8 long mode keeps prefix caching and prints no such notice
         result = self.run_launcher('--image', self.V5_IMAGE, '--context', '262144')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -829,10 +857,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        self.assertIn('qwen38-rocm10-vllm029-20261002-r1@sha256:', launcher.IMAGES['65k'])
-        self.assertEqual(launcher.MODES, {'65k': 'no flags', 'long': '--context 262144',
-                                          'long-kv4': '--context 262144 --kv-cache kv4'})
-        legacy = ('--context', '262144', '--kv-cache', 'kv4')
+        self.assertTrue(launcher.IMAGES['65k'].startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-'))
+        self.assertEqual(launcher.MODES, {
+            '65k': 'no flags', 'long': '--context 262144',
+            'long-kv4': '--context 262144 --kv-cache kv4 --prefix-caching on --system-memory-weights',
+            'long-512k': '--context 524288 --kv-cache kv4 --prefix-caching on --system-memory-weights'})
+        legacy = ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on', '--system-memory-weights')
         cases = (
             # the presets on the pinned image
             (('--mode', '65k'), ()),
@@ -842,7 +872,8 @@ class Rocm10LauncherTests(unittest.TestCase):
             (('--mode', '65k', '--profile', 'release', '--prefix-caching', 'off'), ()),
             (('--mode', 'long', '--profile', 'chat', '--kv-cache', 'fp8', '--prefix-caching', 'on'),
              ('--context', '262144')),
-            (('--mode', 'long-kv4', '--profile', 'chat', '--kv-cache', 'kv4', '--prefix-caching', 'off'), legacy),
+            (('--mode', 'long-kv4', '--profile', 'chat', '--kv-cache', 'kv4', '--prefix-caching', 'on',
+              '--system-memory-weights'), legacy),
             # compatible refinements
             (('--mode', '65k', '--context', '32768', '--kv-cache', 'fp8', '--vision'),
              ('--context', '32768', '--kv-cache', 'fp8', '--vision')),
@@ -850,8 +881,9 @@ class Rocm10LauncherTests(unittest.TestCase):
             (('--mode', 'long', '--context', '32768'), ('--profile', 'chat', '--context', '32768')),
             (('--mode', 'long-kv4', '--context', '131072', '--max-num-seqs', '4', '--thinking', 'on', '--port', '18100',
               '--long-prefill-threshold', '2048', '--name', 'kv4-long', '--detach'),
-             ('--context', '131072', '--kv-cache', 'kv4', '--max-num-seqs', '4', '--thinking', 'on', '--port', '18100',
-              '--long-prefill-threshold', '2048', '--name', 'kv4-long', '--detach')),
+             ('--context', '131072', '--kv-cache', 'kv4', '--prefix-caching', 'on', '--system-memory-weights',
+              '--max-num-seqs', '4', '--thinking', 'on', '--port', '18100', '--long-prefill-threshold', '2048',
+              '--name', 'kv4-long', '--detach')),
             (('--mode', 'long-kv4', '--image', self.V5_IMAGE, '--kv-cache-memory-bytes', '9000000000'),
              ('--image', self.V5_IMAGE, *legacy, '--kv-cache-memory-bytes', '9000000000')),
             (('--mode', 'long', '--image', self.R2_IMAGE), ('--image', self.R2_IMAGE, '--context', '262144')),
@@ -859,12 +891,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         for preset, flags in cases:
             with self.subTest(preset=preset):
                 self.assertEqual(self.dry_run(*preset), self.dry_run(*flags))
-        # what the two long presets stand for: one pinned image, eight requests, the capped allocator; fp8 with
-        # prefix caching and its budget, or the 4-bit cache without prefix caching and its own budget
+        # what the two long presets stand for: one pinned image, eight requests, the capped allocator, prefix caching;
+        # fp8 with its budget, or the 4-bit cache with the embedding in system memory and its own budget
         image = launcher.IMAGES['65k']
         for mode, kv4, prefix, budget in (('long', '0', '--enable-prefix-caching', launcher.W3_LONG_KV_CACHE_BYTES),
-                                          ('long-kv4', '1', '--no-enable-prefix-caching',
-                                           launcher.W3_LONG_KV4_CACHE_BYTES)):
+                                          ('long-kv4', '1', '--enable-prefix-caching', 850 * 14336000)):
             with self.subTest(mode=mode):
                 command = self.dry_run('--mode', mode)
                 environment = command[:command.index(image)]
@@ -873,22 +904,25 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', environment)
                 engine = command[command.index(image) + 1:]
                 self.assertIn(prefix, engine)
-                self.assertNotIn('--prefix-cache-retention-interval', engine)
+                self.assertEqual('--prefix-cache-retention-interval' in engine, mode == 'long-kv4')
+                self.assertEqual('PAITON_HOST_EMBED=1' in environment, mode == 'long-kv4')
                 self.assertEqual(value(engine, '--max-model-len'), '262144')
                 self.assertEqual(value(engine, '--max-num-seqs'), '8')
                 self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(budget))
-        # the 4-bit preset prints what running without prefix caching costs; the fp8 preset does not
-        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        # no notes on a host that can pin the embedding; the 2 October image prints what running without prefix
+        # caching costs
+        for mode in ('long-kv4', 'long', 'long-512k'):
+            self.assertNotIn('Note:', self.run_launcher('--dry-run', '--mode', mode).stderr)
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--image', self.R1_IMAGE)
         self.assertIn('without prefix caching', result.stderr)
         self.assertIn('10.2 s', result.stderr)
-        self.assertNotIn('without prefix caching', self.run_launcher('--dry-run', '--mode', 'long').stderr)
 
     def test_mode_refuses_flags_that_contradict_it(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         cases = (
-            (('--mode', 'long-kv4', '--prefix-caching', 'on'), 'without prefix caching'),
+            (('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', self.R1_IMAGE), 'without prefix caching'),
             (('--mode', 'long-kv4', '--kv-cache', 'fp8'), 'use --mode long'),
             (('--mode', 'long-kv4', '--vision'), '--vision'),
             (('--mode', 'long-kv4', '--image', self.R2_IMAGE), 'kv4-v5'),
@@ -899,6 +933,10 @@ class Rocm10LauncherTests(unittest.TestCase):
             (('--mode', 'long', '--vision', '--context', '245001'), '--context 245000'),
             (('--mode', 'long', '--context', '262145'), '--context 262144'),
             (('--mode', 'long-kv4', '--context', '262145'), '--context 262144'),
+            (('--mode', 'long-kv4', '--context', '262145'), 'use --mode long-512k'),
+            (('--mode', 'long-kv4', '--system-memory-weights', '--no-system-memory-weights'), 'contradict'),
+            (('--mode', 'long-512k', '--kv-cache', 'fp8'), 'use --mode long'),
+            (('--mode', 'long-512k', '--profile', 'release'), '--profile release'),
             (('--mode', '65k', '--context', '200000'), '--context 65536'),
             (('--mode', '65k', '--context', '65537'), '--context 65536'),
             (('--mode', '65k', '--prefix-caching', 'on'), 'use --mode long'),
@@ -914,6 +952,403 @@ class Rocm10LauncherTests(unittest.TestCase):
         for options in (('--mode', 'long-fp8'), ('--mode',)):
             with self.subTest(options=options):
                 self.refused(*options)
+
+    def test_gdn_state_is_opt_in(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        # default: the presets keep their GDN path (lazy from the image in 65k, eager in the long modes)
+        self.assertNotIn('RADIANCE_GDN_LAZY=1', self.dry_run('--mode', 'long-kv4'))
+        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', 'long-kv4'))
+        self.assertEqual(self.dry_run('--mode', 'long-kv4', '--gdn-state', 'auto'), self.dry_run('--mode', 'long-kv4'))
+        self.assertNotIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k'))
+        # lazy in the 4-bit long mode: one stash block per request, no eager override
+        command = self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off', '--gdn-state', 'lazy')
+        self.assertIn('RADIANCE_GDN_LAZY=1', command)
+        self.assertNotIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('--no-enable-prefix-caching', command)
+        # eager can be forced in the 65k mode
+        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k', '--gdn-state', 'eager'))
+        # lazy is refused wherever prefix caching is on
+        for options in (('--mode', 'long', '--gdn-state', 'lazy'), ('--mode', 'long-kv4', '--gdn-state', 'lazy'),
+                        ('--context', '262144', '--prefix-caching', 'on', '--gdn-state', 'lazy')):
+            with self.subTest(options=options):
+                self.assertIn('--gdn-state lazy runs without prefix caching', self.refused(*options))
+
+    def test_host_cache_is_opt_in_and_bounded(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for options in (('--mode', 'long'), ('--mode', 'long-kv4'), ('--mode', '65k'), ('--mode', 'long-512k')):
+            command = self.dry_run(*options)
+            self.assertNotIn('--kv-offloading-size', command)
+            self.assertFalse(any(item.startswith('memlock=') for item in command))
+        command = self.dry_run('--mode', 'long', '--host-cache-gib', '2')
+        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        self.assertEqual(value(command, '--kv-offloading-backend'), 'native')
+        self.assertIn('memlock=3221225472:3221225472', command)
+        self.assertIn('PAITON_HOST_KV_PRIVATE=1', command)
+        self.assertLess(command.index('--ulimit'), command.index('serve'))
+        self.assertIn('--enable-prefix-caching', command)
+        limit = launcher.host_cache_limit_gib()
+        command = self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', 'paiton-qwen38-local:dev',
+                               '--host-cache-gib', '2')
+        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        self.environment['PAITON_HOST_PIN_LIMIT_GIB'] = '6'
+        self.dry_run('--mode', 'long', '--host-cache-gib', '5.5')
+        del self.environment['PAITON_HOST_PIN_LIMIT_GIB']
+        cases = ((('--mode', 'long-kv4', '--prefix-caching', 'off', '--host-cache-gib', '1'), 'needs prefix caching'),
+                 (('--mode', '65k', '--host-cache-gib', '1'), 'needs prefix caching'),
+                 # the previous release images have neither the host tier's fixes nor its private pinned memory
+                 (('--mode', 'long', '--image', self.R1_IMAGE, '--host-cache-gib', '1'), 'predates them'),
+                 (('--mode', 'long', '--host-cache-gib', '4.6'), 'exceeds what this host can pin safely'))
+        for options, reason in cases:
+            with self.subTest(options=options):
+                self.assertIn(reason, self.refused(*options))
+        for bad in ('0', '-1', 'x', 'nan'):
+            with self.subTest(bad=bad):
+                self.refused('--mode', 'long', '--host-cache-gib', bad)
+        self.assertIsNotNone(limit)
+
+    def test_system_memory_weights_is_opt_in_outside_the_4bit_long_modes(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for options in (('--mode', 'long-kv4', '--no-system-memory-weights'), ('--mode', 'long'),
+                        ('--mode', 'long', '--vision'), ('--mode', '65k')):
+            command = self.dry_run(*options)
+            self.assertFalse(any(item.startswith('PAITON_HOST_') for item in command))
+        command = self.dry_run('--mode', 'long-kv4', '--system-memory-weights')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        self.assertNotIn('PAITON_HOST_VISION=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * 14336000))
+        self.assertEqual(value(self.dry_run('--mode', 'long', '--system-memory-weights'), '--kv-cache-memory-bytes'),
+                         str(launcher.W3_LONG_SYSMEM_CACHE_BYTES))
+        # --vision: the vision encoder stays on the GPU (its streamed form is not qualified), so not with system memory
+        self.assertIn('not qualified with --vision in --mode long',
+                      self.refused('--mode', 'long', '--vision', '--system-memory-weights'))
+        self.assertFalse([item for item in self.dry_run('--mode', 'long', '--vision') if 'PAITON_HOST' in item])
+        # an explicit budget still wins
+        command = self.dry_run('--mode', 'long-kv4', '--system-memory-weights', '--kv-cache-memory-bytes', '9662464000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9662464000')
+        # pinned memory is shared with the host KV tier: 2.4 GiB + 2 GiB fit the 4.5 GiB of a 15.5 GiB host, + 3 GiB not
+        self.dry_run('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '2')
+        self.assertIn('pins 2.4 GiB', self.refused('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '3'))
+        self.assertIn('3-bit long-context modes only', self.refused('--mode', '65k', '--system-memory-weights'))
+        # the previous release images do not carry the host-memory modules
+        for options in (('--mode', 'long', '--system-memory-weights'), ('--mode', 'long-kv4', '--system-memory-weights')):
+            with self.subTest(options=options):
+                self.assertIn('predates them', self.refused(*options, '--image', self.R1_IMAGE))
+
+    def test_disk_cache_is_opt_in_fingerprinted_and_bounded(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        disk = self.root / 'kvdisk'
+        self.assertIn('needs --host-cache-gib', self.refused('--mode', 'long', '--disk-cache-dir', str(disk)))
+        command = self.dry_run('--mode', 'long', '--host-cache-gib', '2', '--disk-cache-dir', str(disk))
+        mount = next(item for item in command if item.endswith(':/kvdisk:rw'))
+        self.assertRegex(mount, r'/kvdisk/qwen38-[0-9a-f]{16}:/kvdisk:rw$')
+        config = json.loads(value(command, '--kv-transfer-config'))
+        self.assertEqual(config['kv_connector_extra_config']['spec_name'], 'TieringOffloadingSpec')
+        self.assertEqual(config['kv_connector_extra_config']['secondary_tiers'], [{'type': 'fs', 'root_dir': '/kvdisk'}])
+        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        self.assertEqual(value(command, '--prefix-caching-hash-algo'), 'sha256')
+        self.assertFalse(disk.exists())                  # a dry run creates nothing
+        # another KV format or weight set gets another folder
+        other = self.dry_run('--mode', 'long', '--host-cache-gib', '2', '--disk-cache-dir', str(disk),
+                             '--gdn-state', 'eager')
+        self.assertNotEqual(mount, next(item for item in other if item.endswith(':/kvdisk:rw')))
+        # an over-full folder refuses to start
+        folder = Path(mount.split(':')[0])
+        folder.mkdir(parents=True)
+        (folder / 'blob.bin').write_bytes(b'x' * 2048)
+        result = self.run_launcher('--dry-run', '--mode', 'long', '--host-cache-gib', '2', '--disk-cache-dir', str(disk),
+                                   '--disk-cache-gib', '0.000001')
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--wipe-disk-cache', result.stderr)
+        wipe = self.dry_run('--wipe-disk-cache', '--disk-cache-dir', str(disk))
+        self.assertEqual(wipe[:3], ['docker', 'run', '--rm'])
+        self.assertIn(f'/kvdisk/{folder.name}', wipe)
+
+    def test_long_kv4_prefix_caching_needs_an_image_with_the_fix(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for image in (self.R1_IMAGE, 'paiton-qwen38-local:qwen38-rocm10-vllm029-20261002-r1'):
+            options = ('--mode', 'long-kv4', '--prefix-caching', 'on') + (('--image', image) if image else ())
+            with self.subTest(image=image):
+                self.assertIn('predates the prefix-cache-hit fix', self.refused(*options))
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--prefix-caching', 'on',
+                                   '--no-system-memory-weights', '--image', 'paiton-qwen38-local:offload-dev-r6')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = json.loads(result.stdout)
+        self.assertIn('--enable-prefix-caching', command)
+        self.assertNotIn('--no-enable-prefix-caching', command)
+        self.assertEqual(value(command, '--mamba-cache-mode'), 'align')
+        self.assertIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('PAITON_KV4=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
+        self.assertNotIn('without prefix caching', result.stderr)
+        self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
+        self.assertIn('PAITON_PC_EAGLE_TAIL=1', command[:command.index('serve')])
+        # the fp8 long mode keeps vLLM's default retention and no tail flag
+        command = self.dry_run('--mode', 'long')
+        self.assertNotIn('--prefix-cache-retention-interval', command)
+        self.assertNotIn('PAITON_PC_EAGLE_TAIL=1', command)
+        # the lazy GDN state stays refused with prefix caching
+        self.assertIn('--gdn-state lazy runs without prefix caching',
+                      self.refused('--mode', 'long-kv4', '--prefix-caching', 'on', '--image',
+                                   'paiton-qwen38-local:offload-dev-r6', '--gdn-state', 'lazy'))
+
+    def test_experimental_524288_context(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        image = launcher.IMAGES['65k']
+        command = self.dry_run('--mode', 'long-512k')
+        self.assertEqual(command, self.dry_run('--context', '524288', '--kv-cache', 'kv4', '--prefix-caching', 'on',
+                                               '--system-memory-weights'))
+        self.assertEqual(value(command, '--max-model-len'), '524288')
+        self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], 524288)
+        self.assertEqual(json.loads(value(command, '--hf-overrides')),
+                         {'text_config': {'rope_parameters': {'rope_type': 'yarn', 'factor': 2.0,
+                                                              'original_max_position_embeddings': 262144}}})
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(815 * 14336000))
+        self.assertIn('--enable-prefix-caching', command)
+        self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        mount = next(item for item in command if item.endswith(':/models/draft/config.json:ro'))
+        self.assertFalse(Path(mount.split(':')[0]).exists())          # written only when the launcher runs
+        self.assertLess(command.index(mount), command.index(image))
+        # a shorter --context within the native limit keeps the stock rope and draft config
+        command = self.dry_run('--mode', 'long-512k', '--context', '300000')
+        self.assertEqual(value(command, '--max-model-len'), '300000')
+        self.assertIn('--hf-overrides', command)
+        command = self.dry_run('--mode', 'long-512k', '--context', '262144')
+        self.assertNotIn('--hf-overrides', command)
+        self.assertFalse(any(item.endswith(':/models/draft/config.json:ro') for item in command))
+        self.assertEqual(command, self.dry_run('--mode', 'long-kv4'))
+        # --mode long-kv4 stays at the native limit and names the opt-in mode
+        self.assertIn('use --mode long-512k', self.refused('--mode', 'long-kv4', '--context', '524288'))
+        refusals = ((('--context', '524289'), '--context 524288'),
+                    (('--weights', 'mxfp4'), 'needs the 3-bit W3A4 weights'),
+                    (('--vision',), 'is not qualified with --vision'),
+                    (('--prefix-caching', 'off'), 'drop --prefix-caching off'),
+                    (('--no-system-memory-weights',), 'drop --no-system-memory-weights'),
+                    (('--image', self.R1_IMAGE), 'kv4-v6'),
+                    (('--image', self.R2_IMAGE), 'kv4-v6'),
+                    (('--host-cache-gib', '3'), 'plus --host-cache-gib 3'))
+        for options, reason in refusals:
+            with self.subTest(options=options):
+                stderr = self.refused('--mode', 'long-512k', *options)
+                self.assertIn('--mode long-512k', stderr)
+                self.assertIn(reason, stderr)
+        # a host that cannot pin the embedding: refused with the reason (12 GiB of RAM leaves 1 GiB to pin)
+        (self.root / 'meminfo').write_text('MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n')
+        stderr = self.refused('--mode', 'long-512k')
+        self.assertIn('needs 2.4 GiB of pinned system memory', stderr)
+        self.assertIn('this host can pin 1.0 GiB', stderr)
+        # the experimental spelling of the 512K context outside the preset still needs prefix caching and system memory
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
+        self.assertIn('--context exceeds', self.refused('--context', '524288', '--kv-cache', 'kv4'))
+
+    def test_long_kv4_falls_back_when_the_host_cannot_pin_the_embedding(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        small = 'MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n'       # 12 GiB: 1 GiB to pin
+        (self.root / 'meminfo').write_text(small)
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = json.loads(result.stdout)
+        self.assertFalse(any(item.startswith('PAITON_HOST_') for item in command))
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
+        self.assertIn('--enable-prefix-caching', command)
+        self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
+        self.assertIn('PAITON_PC_EAGLE_TAIL=1', command)
+        self.assertEqual(sum(line.startswith('Note: ') for line in result.stderr.splitlines()), 1, result.stderr)
+        self.assertIn('this host can pin 1.0 GiB of system memory, not the 2.4 GiB the embedding needs; the embedding '
+                      'stays on the GPU and the KV cache is smaller (about 452,000 tokens)', result.stderr)
+        self.assertEqual(command, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights'))
+        # an explicit --system-memory-weights is refused rather than dropped
+        self.assertIn('pins 2.4 GiB', self.refused('--mode', 'long-kv4', '--system-memory-weights'))
+        # --no-system-memory-weights on a host that could pin it: the same smaller cache, prefix caching kept, no note
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--no-system-memory-weights')
+        self.assertEqual(json.loads(result.stdout), command)
+        self.assertNotIn('Note:', result.stderr)
+        # pinned memory is shared with the host KV tier: the tier wins, the embedding stays on the GPU
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--host-cache-gib', '3')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('PAITON_HOST_EMBED=1', json.loads(result.stdout))
+        self.assertIn('this host can pin 4.5 GiB of system memory, not the 2.4 GiB embedding plus the 3 GiB host cache '
+                      'together; the embedding stays on the GPU', result.stderr)
+
+    def test_low_available_memory_warns_without_refusing(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:    4194304 kB\n')   # 4 GiB
+        for options in (('--mode', 'long-kv4'), ('--mode', 'long-512k'), ('--mode', 'long', '--host-cache-gib', '1')):
+            with self.subTest(options=options):
+                result = self.run_launcher('--dry-run', *options)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn('Warning: only 4.0 GiB of system memory is available', result.stderr)
+        for options in (('--mode', 'long-kv4', '--no-system-memory-weights'), ('--mode', 'long'), ('--mode', '65k')):
+            with self.subTest(options=options):
+                self.assertNotIn('Warning:', self.run_launcher('--dry-run', *options).stderr)
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:    6815744 kB\n')   # 6.5 GiB
+        self.assertNotIn('Warning:', self.run_launcher('--dry-run', '--mode', 'long-kv4').stderr)
+
+    def test_previous_release_images_keep_their_behaviour(self):
+        image = launcher.IMAGES['65k']
+
+        def on(old, options):
+            command = self.dry_run(*options)
+            return [old if item == image else item for item in command]
+
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        # MXFP4 and the 3-bit weights outside --mode long-kv4: the same serving command on every image
+        for w3, options in ((False, ()), (False, ('--mode', 'long')), (False, ('--vision',)),
+                            (False, ('--mode', '65k', '--vision')), (True, ()), (True, ('--mode', 'long')),
+                            (True, ('--mode', 'long', '--vision')), (True, ('--vision',))):
+            self.environment.pop('PAITON_W3ROT_DIR', None)
+            if w3:
+                self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+            for old in (self.R1_IMAGE, self.R2_IMAGE):
+                with self.subTest(w3=w3, options=options, old=old):
+                    self.assertEqual(self.dry_run(*options, '--image', old), on(old, options))
+        # --mode long-kv4 on the 2 October image: as released, without prefix caching and with the embedding on the GPU
+        command = self.dry_run('--mode', 'long-kv4', '--image', self.R1_IMAGE)
+        self.assertIn('--no-enable-prefix-caching', command)
+        self.assertNotIn('--prefix-cache-retention-interval', command)
+        self.assertFalse(any(item.startswith(('PAITON_HOST_', 'PAITON_PC_')) for item in command))
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
+        self.assertEqual(value(command, '--max-model-len'), '262144')
+        for options, reason in ((('--mode', 'long-kv4', '--prefix-caching', 'on'), 'predates the prefix-cache-hit fix'),
+                                (('--mode', 'long-kv4', '--system-memory-weights'), 'predates them'),
+                                (('--mode', 'long-512k'), 'kv4-v6')):
+            with self.subTest(options=options):
+                self.assertIn(reason, self.refused(*options, '--image', self.R1_IMAGE))
+        # the 29 September image: --mode long-kv4 as released (refused: bundle kv4-v4)
+        self.assertIn('kv4-v5', self.refused('--mode', 'long-kv4', '--image', self.R2_IMAGE))
+
+    def test_r1s_rebuild_behaves_exactly_like_r1(self):
+        self.assertTrue(self.R1S_IMAGE.startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1s@'))
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        local = 'paiton-qwen38-local:qwen38-rocm10-vllm029-20261002-r1s'
+        served = ((), ('--mode', 'long'), ('--vision',), ('--mode', 'long', '--vision'), ('--mode', 'long-kv4'),
+                  ('--mode', 'long-kv4', '--prefix-caching', 'off'), ('--mode', 'long-kv4', '--gdn-state', 'lazy'),
+                  ('--context', '262144', '--kv-cache', 'kv4'), ('--mode', 'long', '--context', '131072'))
+        refused = (('--mode', 'long-kv4', '--prefix-caching', 'on'), ('--mode', 'long-kv4', '--system-memory-weights'),
+                   ('--mode', 'long', '--system-memory-weights'), ('--mode', 'long', '--host-cache-gib', '1'),
+                   ('--mode', 'long-512k'), ('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--context', '524288'))
+        for w3 in (False, True):
+            self.environment.pop('PAITON_W3ROT_DIR', None)
+            if w3:
+                self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+            for options in served:
+                if not w3 and ('long-kv4' in options or '--kv-cache' in options or options == ('--mode', 'long', '--vision')):
+                    continue                      # 3-bit only
+                for image in (self.R1S_IMAGE, local):
+                    with self.subTest(w3=w3, options=options, image=image):
+                        r1 = self.run_launcher('--dry-run', *options, '--image', self.R1_IMAGE)
+                        r1s = self.run_launcher('--dry-run', *options, '--image', image)
+                        self.assertEqual(r1.returncode, 0, r1.stderr)
+                        self.assertEqual(json.loads(r1s.stdout),
+                                         [image if item == self.R1_IMAGE else item for item in json.loads(r1.stdout)])
+                        self.assertEqual(r1s.stderr, r1.stderr)
+            for options in refused:
+                with self.subTest(w3=w3, options=options):
+                    self.assertEqual(self.refused(*options, '--image', self.R1S_IMAGE),
+                                     self.refused(*options, '--image', self.R1_IMAGE))
+
+    def test_older_images_are_recognised_by_tag_with_or_without_a_digest(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for tag in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2',
+                    'paiton-qwen38-local:qwen38-rocm10-vllm029-20260929-r2',
+                    'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260928-r1'):
+            with self.subTest(tag=tag):
+                self.assertIn('kv4-v5', self.refused('--mode', 'long-kv4', '--image', tag))
+                self.assertIn('kv4-v5', self.refused('--kv-cache', 'kv4', '--context', '200000', '--image', tag))
+                self.assertIn('kv4-v6', self.refused('--mode', 'long-512k', '--image', tag))
+        for tag in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1',
+                    'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1s'):
+            with self.subTest(tag=tag):
+                self.assertIn('predates the prefix-cache-hit fix',
+                              self.refused('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', tag))
+                self.assertIn('--no-enable-prefix-caching', self.dry_run('--mode', 'long-kv4', '--image', tag))
+
+    def test_help_and_refusals_match_the_behaviour(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        text = ' '.join(self.run_launcher('--help').stdout.split())
+        for phrase in ('on in --mode long, long-kv4 and long-512k; off in 65k', 'off in the long modes',
+                       'kv4 with a context above 65536 without --mode: the 2 October form of long-kv4 (no prefix '
+                       'caching)', 'eager in the long modes', 'chat: the long-context mode (--mode long);'):
+            self.assertIn(phrase, text)
+        self.assertNotIn('both long modes', text)
+        # the suggested alternatives are themselves accepted
+        stderr = self.refused('--mode', 'long', '--prefix-caching', 'off')
+        self.assertIn('--mode long-kv4 --prefix-caching off', stderr)
+        self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off')
+        stderr = self.refused('--mode', 'long', '--gdn-state', 'lazy')
+        self.assertIn('drop --gdn-state lazy, or use --mode long-kv4 --prefix-caching off', stderr)
+        self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off', '--gdn-state', 'lazy')
+        # --vision in long-kv4 is refused as not qualified, whatever the host can pin
+        (self.root / 'meminfo').write_text('MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n')
+        stderr = self.refused('--mode', 'long-kv4', '--vision')
+        self.assertIn('is not qualified with --vision', stderr)
+        self.assertNotIn('pinned', stderr)
+        # the low-memory warning offers the fallback only where it exists
+        (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:    4194304 kB\n')
+        self.assertIn('or with --mode long-kv4 add --no-system-memory-weights',
+                      self.run_launcher('--dry-run', '--mode', 'long-kv4').stderr)
+        stderr = self.run_launcher('--dry-run', '--mode', 'long-512k').stderr
+        self.assertIn('--mode long-512k needs the embedding in system memory', stderr)
+        self.assertNotIn('add --no-system-memory-weights', stderr)
+
+    def test_vision_in_long_kv4_stays_behind_its_switch(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.assertIn('is not qualified with --vision', self.refused('--mode', 'long-kv4', '--vision'))
+        self.overrides['KV4_LONG_VISION'] = True
+        command = self.dry_run('--mode', 'long-kv4', '--vision')
+        self.assertIn('PAITON_HOST_EMBED=1', command)          # the embedding in system memory, the encoder on the GPU
+        self.assertFalse([item for item in command if 'PAITON_HOST_VISION' in item])
+        self.assertNotIn('--language-model-only', command)
+        self.assertIn('--enable-prefix-caching', command)
+        self.assertEqual(value(command, '--max-model-len'), '262144')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'),
+                         str(launcher.W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES))
+        self.assertIn('memory', self.refused('--mode', 'long-kv4', '--vision', '--no-system-memory-weights'))
+        self.assertIn('is not qualified with --vision', self.refused('--mode', 'long-512k', '--vision'))
+        self.assertIn('is not qualified with --vision',
+                      self.refused('--mode', 'long-kv4', '--vision', '--image', self.R1_IMAGE))
+        (self.root / 'meminfo').write_text('MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n')
+        self.assertIn('needs 2.4 GiB of pinned system memory', self.refused('--mode', 'long-kv4', '--vision'))
+
+    def test_sparse_align_follows_its_switch(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        modes = (('--mode', 'long-kv4'), ('--mode', 'long-512k'), ('--mode', 'long-kv4', '--no-system-memory-weights'),
+                 ('--mode', 'long'), ('--mode', 'long-kv4', '--prefix-caching', 'off'),
+                 ('--mode', 'long-kv4', '--image', self.R1_IMAGE))
+        # on wherever the 4-bit long modes serve prefix caching
+        for options, expected in zip(modes, (True, True, True, False, False, False)):
+            with self.subTest(options=options):
+                self.assertEqual('PAITON_PC_SPARSE_ALIGN=1' in self.dry_run(*options), expected)
+        self.overrides['KV4_SPARSE_ALIGN'] = False
+        for options in modes:
+            self.assertNotIn('PAITON_PC_SPARSE_ALIGN=1', self.dry_run(*options))
 
     def test_mode_with_the_mxfp4_weights(self):
         image = launcher.IMAGES['65k']
@@ -938,20 +1373,22 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         for options, w3 in ((('--mode', 'long-kv4'), False), (('--mode', 'long-kv4', '--context', '200000'), False),
-                            (('--weights', 'mxfp4', '--mode', 'long-kv4'), True)):
+                            (('--weights', 'mxfp4', '--mode', 'long-kv4'), True),
+                            (('--weights', 'mxfp4', '--mode', 'long-512k'), True)):
             with self.subTest(options=options):
                 self.environment.pop('PAITON_W3ROT_DIR', None)
                 if w3:
                     self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
                 stderr = self.refused(*options)
-                self.assertIn('--mode long-kv4 needs the 3-bit W3A4 weights', stderr)
+                self.assertIn(f'--mode {options[options.index("--mode") + 1]} needs the 3-bit W3A4 weights', stderr)
         # the quickstart scripts: run-mxfp4.sh refuses the 4-bit preset, run-3bit.sh serves it
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        for script, code in (('run-mxfp4.sh', 2), ('run-3bit.sh', 0)):
-            with self.subTest(script=script):
-                result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', 'long-kv4', '--dry-run'],
-                                        env=self.environment, capture_output=True, text=True)
-                self.assertEqual(result.returncode, code, result.stderr)
+        for mode in ('long-512k', 'long-kv4'):
+            for script, code in (('run-mxfp4.sh', 2), ('run-3bit.sh', 0)):
+                with self.subTest(script=script, mode=mode):
+                    result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', mode, '--dry-run'],
+                                            env=self.environment, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, code, result.stderr)
         self.assertEqual(self.kv4_flags(json.loads(result.stdout), image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
 
     def test_mode_long_picks_the_context_of_its_configuration(self):
@@ -1020,7 +1457,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--list-gpus', '--image'])
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
-            '--profile', '--kv-cache-memory-bytes', '--gpu-memory-utilization', '--max-num-batched-tokens')))
+            '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
+            '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
+            '--gpu-memory-utilization',
+            '--max-num-batched-tokens')))
         self.assertNotIn('--release', result.stdout)        # hidden, still accepted
         self.assertEqual(self.dry_run('--release', '65k'), self.dry_run())
         # every option of the parser is in one of the groups
@@ -1039,12 +1479,14 @@ class Rocm10LauncherTests(unittest.TestCase):
         for phrase in ('65k: 65,536 context, up to 8 requests', 'the fast everyday default',
                        'long: 262,144 context (MXFP4: 200,000, one request), fp8 KV cache with prefix caching',
                        'one long document at a time, fast follow-ups',
-                       'long-kv4: 262,144 context per request, 4-bit KV cache',
-                       'a 1.63x larger shared pool (458,922 tokens): more long conversations at once',
-                       'no prefix caching, every request re-reads its prompt (3-bit weights only)',
+                       'long-kv4: 262,144 context per request, 4-bit KV cache with prefix caching',
+                       'about 570,000 tokens of reusable cache, for coding agents and many long conversations '
+                       '(3-bit weights only)',
+                       'long-512k: experimental, up to 524,288 context per request (long-context position scaling)',
+                       'needs 2.4 GiB of free system memory and an image with KV4 bundle kv4-v6',
                        'mxfp4 gives you the most accurate weights', 'w3a4 the 3-bit weights, fastest with the most context',
                        'gives you image input; works with --mode 65k and long (long: up to 245,000 context), not with '
-                       'long-kv4'):
+                       'long-kv4 or long-512k'):
             self.assertIn(phrase, text)
 
 if __name__ == '__main__':
