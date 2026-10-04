@@ -223,7 +223,10 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 # stored token takes in the tier (4-bit cache: ~32 KB on the 20261004 images, measured 31.4-33.1 KB) and the bytes a
 # restored token loads (~19 KB), per image (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets
 # the larger capacities without other changes. The disk tier lives under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir)
-# on NVMe/SSD, at most 64 GiB or half the free space there.
+# on NVMe/SSD, at most 64 GiB or a quarter of the free space there (with what the folder already holds). The tier has no
+# size limit while it runs (~32 KB per newly prefilled token: a 64 GiB cap holds ~2.1M new tokens; continuous prefill
+# fills it in minutes, a coding session in hours), so a run can overshoot the cap: the next start removes an over-full
+# folder of its configuration. A full disk is safe for the tier: a failed store is logged and skipped (atomic files).
 EXTEND_CACHE_RAM_FACTOR = 1.25
 TIER_STORED_BYTES_PER_TOKEN = 32768
 TIER_LOADED_BYTES_PER_TOKEN = 19000
@@ -231,7 +234,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {}      # image name suffix: (stored, loaded) bytes
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 EXTEND_CACHE_STAGING_GIB = (4.5, 2.0)
 EXTEND_CACHE_DISK_MAX_GIB = 64.0
-EXTEND_CACHE_DISK_FREE_SHARE = 0.5
+EXTEND_CACHE_DISK_FREE_SHARE = 0.25
 SYS_DEV_BLOCK = Path('/sys/dev/block')
 PROC_MEMINFO = Path('/proc/meminfo')
 DEV_SHM = '/dev/shm'
@@ -489,12 +492,13 @@ def extend_cache_settings(args, environment):
         free = shutil.disk_usage(existing_parent(folder)).free / 2 ** 30
         cap = float(min(EXTEND_CACHE_DISK_MAX_GIB, math.floor(EXTEND_CACHE_DISK_FREE_SHARE * (free + used))))
         if tokens(cap) < EXTEND_CACHE_RAM_FACTOR * gpu[e]:
-            raise ValueError(f'--extend-cache: {free:.0f} GiB free under {folder}; half of it holds ~{tokens(cap):,} '
+            raise ValueError(f'--extend-cache: {free:.0f} GiB free under {folder}; a quarter of it holds ~{tokens(cap):,} '
                              f'tokens, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU pool\'s {gpu[e]:,}. Free space or '
                              'point --disk-cache-dir at a larger NVMe/SSD')
     restore = int(staging * 2 ** 30 / loaded) // 10000 * 10000
     best = max(placements, key=lambda e: tokens(tier[e]))
-    note = (f'--extend-cache {choice}: NVMe/SSD under {folder}, up to {cap:g} GiB (~{tokens(cap):,} tokens)'
+    note = (f'--extend-cache {choice}: NVMe/SSD under {folder}, up to {cap:g} GiB (~{tokens(cap):,} tokens; checked at '
+            'start, an over-full folder is removed then)'
             + (f' (system memory would hold ~{tokens(tier[best]):,} tokens, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU '
                'pool)' if choice == 'auto' else '')
             + f'; GPU pool {gpu[e]:,} tokens with the embedding {where(e)}; a {staging:g} GiB system-memory staging '
@@ -502,7 +506,7 @@ def extend_cache_settings(args, environment):
             + ('; the storage type of that folder is unknown: the disk tier wants NVMe or SSD' if rotational is None
                else ''))
     return {'extend_cache': None, 'host_cache_gib': staging, 'disk_cache_dir': folder, 'disk_cache_gib': cap,
-            'system_memory_weights': e, 'no_system_memory_weights': not e}, note
+            'disk_cache_auto_wipe': True, 'system_memory_weights': e, 'no_system_memory_weights': not e}, note
 
 
 def cache_bytes(value):
@@ -1136,15 +1140,25 @@ def docker_command(args, environment):
             raise ValueError('--disk-cache-dir must not contain colons or newlines (Docker volume syntax)')
         name, value = disk_cache_fingerprint(args, environment, weights, kv_mode, args.image or IMAGES[args.release])
         folder = base / name
+        cap = args.disk_cache_gib or DISK_CACHE_DEFAULT_GIB
+        used = folder_bytes(folder) / 2 ** 30 if folder.is_dir() else 0.0
+        if used > cap:
+            if not getattr(args, 'disk_cache_auto_wipe', False):
+                raise ValueError(f'--disk-cache-dir {folder} holds {used:.1f} GiB, more than --disk-cache-gib {cap:g}; '
+                                 'remove it with --wipe-disk-cache or raise --disk-cache-gib')
+            # --extend-cache: the tier has no size limit while it runs, so an over-full folder of this configuration
+            # (a cache the launcher owns) is removed at the start; other configurations' folders stay
+            print(f'Note: --extend-cache: {folder} holds {used:.1f} GiB, more than its {cap:g} GiB cap; '
+                  + ('a real start removes it first' if args.dry_run else 'removing it before the start'),
+                  file=sys.stderr)
+            if not args.dry_run and subprocess.run(
+                    ['docker', 'run', '--rm', '-v', f'{base}:/kvdisk:rw', '--entrypoint', 'rm', image, '-rf',
+                     f'/kvdisk/{name}']).returncode != 0:
+                raise ValueError(f'could not remove {folder}; remove it with --wipe-disk-cache')
         if not args.dry_run:
             base.mkdir(mode=0o700, parents=True, exist_ok=True)
             folder.mkdir(mode=0o700, exist_ok=True)
             (folder / 'FINGERPRINT.json').write_text(json.dumps(value, indent=1, sort_keys=True) + '\n')
-        cap = args.disk_cache_gib or DISK_CACHE_DEFAULT_GIB
-        used = folder_bytes(folder) / 2 ** 30 if folder.is_dir() else 0.0
-        if used > cap:
-            raise ValueError(f'--disk-cache-dir {folder} holds {used:.1f} GiB, more than --disk-cache-gib {cap:g}; '
-                             'remove it with --wipe-disk-cache or raise --disk-cache-gib')
         command += ['-v', f'{folder}:/kvdisk:rw']
         ipc = command.index('--ipc')
         command[ipc + 1:ipc + 2] = ['private', '--shm-size',

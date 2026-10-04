@@ -1363,6 +1363,34 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('Free space or point --disk-cache-dir at a larger NVMe/SSD',
                       self.refused('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', '--extend-cache'))
 
+    def test_extend_cache_removes_its_over_full_folder_at_start(self):
+        self._w3rot()
+        options = ('--extend-cache', 'disk', '--disk-cache-gib', '0.000001')
+        command, _ = self._extend(15.5, *options)
+        folder = Path(next(x for x in command if x.endswith(':/kvdisk:rw')).split(':')[0])
+        folder.mkdir(parents=True)
+        (folder / 'blob.bin').write_bytes(b'x' * 2048)
+        other = folder.parent / 'qwen38-0000000000000000'            # another configuration's folder is not touched
+        other.mkdir()
+        (other / 'blob.bin').write_bytes(b'x' * 2048)
+        _, stderr = self._extend(15.5, *options)                          # a dry run only says so
+        self.assertIn(f'{folder} holds 0.0 GiB, more than its 1e-06 GiB cap; a real start removes it first', stderr)
+        self.assertTrue((folder / 'blob.bin').exists())
+        self.record.unlink(missing_ok=True)
+        result = self.run_launcher('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', *options)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('removing it before the start', result.stderr)
+        self.assertTrue((other / 'blob.bin').exists())
+        recorded = json.loads(self.record.read_text())                    # the server started after the removal
+        self.assertIn('paiton-qwen38-local:dev', recorded)
+        self.assertNotIn('rm', recorded)
+        # the expert flags keep refusing an over-full folder (the fingerprint's image lookup is the only Docker call)
+        result = self.run_launcher('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', '--host-cache-gib', '2',
+                                   '--no-system-memory-weights', '--disk-cache-dir', str(folder.parent),
+                                   '--disk-cache-gib', '0.000001')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('remove it with --wipe-disk-cache', result.stderr)
+
     def test_extend_cache_refusals(self):
         self._w3rot()
         self._host(15.5, 13.5)
