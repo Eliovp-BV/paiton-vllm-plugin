@@ -276,6 +276,11 @@
       "overlay": "overlays/vllm/v1/kv_offload/cpu/spec.py",
       "original_sha256": "240d686342837804ca34e43ab7d48b52a16f747d737348f5187d7b0e8e0d5a8d",
       "overlay_sha256": "b64fffbe9f738a6f796088b555ff49182352499b6c42974f862d1752f95f94b9"
+    },
+    "/usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/rotary_embedding/mrope.py": {
+      "overlay": "overlays/vllm/model_executor/layers/rotary_embedding/mrope.py",
+      "original_sha256": "3fc4d03003471ffb0360b86820ff9bc27b0554d8f6aa464d02eec91fb3c96d23",
+      "overlay_sha256": "9ea61f09d0c7f27f203af191639f663506d34462144d02f9965af65a0f032e4e"
     }
   }
 }
