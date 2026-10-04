@@ -387,6 +387,17 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # RADIANCE: merge each GDN layer's two input projections into one GEMM.
             import radiance_gdnmerge as _radiance_gdnmerge
             _radiance_gdnmerge.merge_model(self.model)
+            # PAITON: opt-in host-memory input embedding (PAITON_HOST_EMBED=1); before the drafter shares the
+            # module and before compile/capture bake the weight address into the graphs.
+            import paiton_host_embed as _paiton_host_embed
+            _paiton_host_embed.offload(self.model)
+            # PAITON: opt-in host-memory vision encoder blocks, streamed per block (PAITON_HOST_VISION=1).
+            import paiton_host_vision as _paiton_host_vision
+            _paiton_host_vision.offload(self.model)
+            # PAITON: opt-in persistent compile cache (PAITON_COMPILE_CACHE=1, namespaced by cache_namespace.py); undo
+            # the W3 adapter's VLLM_DISABLE_COMPILE_CACHE before compilation (vLLM freezes its env after init)
+            if __import__("os").environ.get("PAITON_COMPILE_CACHE", "0") == "1":
+                __import__("os").environ["VLLM_DISABLE_COMPILE_CACHE"] = "0"
             if self.lora_config:
                 self.model = self.load_lora_model(
                     self.model, self.vllm_config, self.device
