@@ -2,6 +2,8 @@
 import hashlib
 import json
 import os
+import shutil
+import sys
 from pathlib import Path
 
 
@@ -48,4 +50,41 @@ def configure(root, manifest):
         os.environ[key] = str(Path(base)/'paiton-runtime'/namespace)
     os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES'] = json.dumps(bases, sort_keys=True)
     os.environ['PAITON_RUNTIME_COMPAT_CACHE_NAMESPACE'] = namespace
+    seed_caches(cache)
     return namespace
+
+
+def seed_caches(xdg_cache):
+    """Fill an empty compile cache from the image's seed (start-time item A4).
+
+    A first start with an empty runtime cache spends minutes compiling Triton and inductor kernels and comgr code objects
+    that are the same on every host with this image: their cache entries are keyed by content hashes (kernel source,
+    constants, target), not by paths or times, and this namespace only partitions them. The image may ship those entries
+    under PAITON_CACHE_SEED (default /usr/share/paiton/cache-seed/{triton,inductor,comgr}); when a target directory does
+    not exist yet, it is created from the seed with a copy-and-rename, so a concurrent process sees either nothing or the
+    complete seed. A directory that exists (a warm cache) is never touched. PAITON_CACHE_SEED=off disables it.
+    """
+    seed = os.environ.get('PAITON_CACHE_SEED', '/usr/share/paiton/cache-seed')
+    if seed == 'off' or not Path(seed).is_dir():
+        return {}
+    targets = {'triton': Path(os.environ['TRITON_CACHE_DIR']), 'inductor': Path(os.environ['TORCHINDUCTOR_CACHE_DIR']),
+               'comgr': Path(os.environ.get('AMD_COMGR_CACHE_DIR', str(Path(xdg_cache)/'comgr')))}
+    done = {}
+    for kind, target in targets.items():
+        source = Path(seed)/kind
+        if not source.is_dir() or target.exists():
+            continue
+        tmp = target.with_name(f'{target.name}.seed.tmp.{os.getpid()}')
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source, tmp, symlinks=True)
+            os.rename(tmp, target)
+            done[kind] = sum(1 for _ in target.rglob('*') if _.is_file())
+        except FileExistsError:
+            shutil.rmtree(tmp, ignore_errors=True)
+        except Exception as exc:  # noqa: BLE001  (a seed must never stop a start)
+            shutil.rmtree(tmp, ignore_errors=True)
+            done[kind] = f'failed: {exc!r}'
+    if done:
+        print('[paiton.cache] ' + json.dumps({'seeded': done, 'seed': seed, 'pid': os.getpid()}, sort_keys=True), file=sys.stderr, flush=True)
+    return done
