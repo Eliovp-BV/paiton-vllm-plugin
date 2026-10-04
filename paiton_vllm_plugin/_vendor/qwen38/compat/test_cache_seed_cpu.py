@@ -16,7 +16,7 @@ class Test(unittest.TestCase):
         self.tmp = pathlib.Path(tempfile.mkdtemp())
         (self.tmp / 'compat').mkdir(); (self.tmp / 'compat' / 'bootstrap.py').write_text('# b\n')
         seed = self.tmp / 'seed'
-        for kind, name in (('triton', 'abc123/k.hsaco'), ('inductor', 'ik/x/y.py'), ('comgr', 'llvmcache-1/obj')):
+        for kind, name in (('triton', 'abc123/k.hsaco'), ('inductor', 'ik/x/y.py'), ('comgr', 'llvmcache-1/obj'), ('vllm', 'torch_compile_cache/h/rank_0_0/model')):
             f = seed / kind / name; f.parent.mkdir(parents=True); f.write_text(kind)
         self.env = dict(os.environ)
         for k in list(os.environ):
@@ -32,6 +32,7 @@ class Test(unittest.TestCase):
         triton = pathlib.Path(os.environ['TRITON_CACHE_DIR']); self.assertTrue(triton.name == ns and (triton / 'abc123' / 'k.hsaco').read_text() == 'triton')
         self.assertEqual((pathlib.Path(os.environ['TORCHINDUCTOR_CACHE_DIR']) / 'ik' / 'x' / 'y.py').read_text(), 'inductor')
         self.assertEqual((self.tmp / 'cache' / 'comgr' / 'llvmcache-1' / 'obj').read_text(), 'comgr')
+        self.assertEqual((pathlib.Path(os.environ['VLLM_CACHE_ROOT']) / 'torch_compile_cache' / 'h' / 'rank_0_0' / 'model').read_text(), 'vllm')
         self.assertEqual([p.name for p in triton.parent.iterdir()], [ns])   # no temp directory left behind
         # a warm cache is left alone: add a file, re-run, the seed does not overwrite or duplicate anything
         (triton / 'warm.txt').write_text('x'); (self.tmp / 'seed' / 'triton' / 'abc123' / 'k.hsaco').write_text('changed')

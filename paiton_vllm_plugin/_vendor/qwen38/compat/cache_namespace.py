@@ -68,8 +68,11 @@ def seed_caches(xdg_cache):
 
     A first start with an empty runtime cache spends minutes compiling Triton and inductor kernels and comgr code objects
     that are the same on every host with this image: their cache entries are keyed by content hashes (kernel source,
-    constants, target), not by paths or times, and this namespace only partitions them. The image may ship those entries
-    under PAITON_CACHE_SEED (default /opt/paiton/cache-seed/{triton,inductor,comgr}, a Paiton path the release scan covers); when a target directory does
+    constants, target), not by paths or times, and this namespace only partitions them. The seed also fixes inductor's
+    autotune picks (best_config): without it every host's first start times a few configs per fused kernel and keeps
+    whichever won, and a different reduction blocking changes the summation order, so two hosts can disagree bit for bit. The image may ship those entries
+    under PAITON_CACHE_SEED (default /opt/paiton/cache-seed/{triton,inductor,vllm,comgr}, a Paiton path the release scan covers;
+    vllm holds the opt-in compile cache's AOT graphs); when a target directory does
     not exist yet, it is created from the seed with a copy-and-rename, so a concurrent process sees either nothing or the
     complete seed. A directory that exists (a warm cache) is never touched. PAITON_CACHE_SEED=off disables it.
     """
@@ -77,6 +80,7 @@ def seed_caches(xdg_cache):
     if seed == 'off' or not Path(seed).is_dir():
         return {}
     targets = {'triton': Path(os.environ['TRITON_CACHE_DIR']), 'inductor': Path(os.environ['TORCHINDUCTOR_CACHE_DIR']),
+               'vllm': Path(os.environ['VLLM_CACHE_ROOT']),
                'comgr': Path(os.environ.get('AMD_COMGR_CACHE_DIR', str(Path(xdg_cache)/'comgr')))}
     done = {}
     for kind, target in targets.items():
