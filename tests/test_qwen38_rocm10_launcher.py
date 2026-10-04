@@ -1059,6 +1059,16 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 self.assertIn('predates them', self.refused(*options, '--image', self.R1_IMAGE))
 
+    def test_validation_switches_never_reach_the_server(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.environment['PAITON_HOST_KV_DEBUG_UNALIGNED'] = '1'
+        for options in (('--mode', 'long-kv4'), ('--mode', 'long-kv4', '--host-cache-gib', '2', '--image',
+                                                  'paiton-qwen38-local:dev'), ('--mode', 'long')):
+            with self.subTest(options=options):
+                self.assertFalse([item for item in self.dry_run(*options) if 'PAITON_HOST_KV_DEBUG' in item])
+
     def test_compile_cache_is_opt_in(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
