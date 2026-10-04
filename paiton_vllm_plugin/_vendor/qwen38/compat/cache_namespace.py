@@ -7,6 +7,12 @@ import sys
 from pathlib import Path
 
 
+# Settings that only shape the start (what is read ahead, warmed, seeded or stamped) and never a compiled graph: toggling
+# them must not move the compile-cache namespace, or every toggle costs a cold recompile.
+START_ONLY_SETTINGS = frozenset({'PAITON_START_READAHEAD', 'PAITON_START_WARMUP', 'PAITON_FP8_WARMUP', 'PAITON_CACHE_SEED',
+                                 'PAITON_LOADER_DROP_PAGECACHE', 'PAITON_W3_STAMP_DIR', 'PAITON_CACHE_DIR', 'PAITON_PORT'})
+
+
 def configure(root, manifest):
     root = Path(root)
     provider = os.environ.get('PAITON_RUNTIME_COMPAT_NATIVE_PROVIDER', 'off')
@@ -28,7 +34,8 @@ def configure(root, manifest):
         # for one weight path could be reloaded into another. Key the namespace on every PAITON_ setting and on the
         # installed runtime pieces (adapters, radiance modules, native libraries), so such a reload cannot happen.
         value['paiton_env'] = {k: v for k, v in os.environ.items()
-                               if k.startswith('PAITON_') and not k.startswith('PAITON_RUNTIME_COMPAT_CACHE')}
+                               if k.startswith('PAITON_') and not k.startswith('PAITON_RUNTIME_COMPAT_CACHE')
+                               and k not in START_ONLY_SETTINGS}
         listing = []
         for base in (root.parent, Path('/opt/paiton')):
             if base.is_dir():

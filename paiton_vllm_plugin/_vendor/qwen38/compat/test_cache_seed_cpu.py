@@ -50,7 +50,11 @@ class Test(unittest.TestCase):
         self.assertTrue(any('cache-seed' in pathlib.Path(p).parts for p in [str(seeded / 'triton' / 'a')]))
         (self.tmp / 'site' / 'paiton_y.py').write_text('y')
         ns2 = cn.configure(root, {'files': {}}); self.assertNotEqual(ns1, ns2)   # a runtime file changes it ...
-        del os.environ['PAITON_COMPILE_CACHE']
+        del os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES']; os.environ['PAITON_START_READAHEAD'] = '1'; os.environ['PAITON_START_WARMUP'] = '1'
+        ns3 = cn.configure(root, {'files': {}}); self.assertEqual(ns2, ns3)      # ... a start-only switch does not
+        del os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES']; os.environ['PAITON_KV4'] = '1'
+        ns4 = cn.configure(root, {'files': {}}); self.assertNotEqual(ns3, ns4)   # ... a numerics switch does
+        for k in ('PAITON_START_READAHEAD', 'PAITON_START_WARMUP', 'PAITON_KV4', 'PAITON_COMPILE_CACHE'): del os.environ[k]
 
     def test_seed_off_and_missing(self):
         os.environ['PAITON_CACHE_SEED'] = 'off'; cn.configure(self.tmp / 'compat', {'files': {}})
