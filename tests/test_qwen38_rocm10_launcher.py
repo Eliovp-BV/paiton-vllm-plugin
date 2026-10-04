@@ -991,13 +991,18 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertLess(command.index('--ulimit'), command.index('serve'))
         self.assertIn('--enable-prefix-caching', command)
         limit = launcher.host_cache_limit_gib()
-        command = self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', 'paiton-qwen38-local:dev',
-                               '--host-cache-gib', '2')
-        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        # the host tier stays with the fp8 cache: with the 4-bit cache a hit can resume without a matching recurrent
+        # state, in every spelling of the 4-bit long mode
+        for options in (('--mode', 'long-kv4'), ('--mode', 'long-kv4', '--no-system-memory-weights'),
+                        ('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev'), ('--mode', 'long-512k'),
+                        ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on')):
+            with self.subTest(options=options):
+                self.assertIn('not qualified with the 4-bit KV cache', self.refused(*options, '--host-cache-gib', '2'))
         self.environment['PAITON_HOST_PIN_LIMIT_GIB'] = '6'
         self.dry_run('--mode', 'long', '--host-cache-gib', '5.5')
         del self.environment['PAITON_HOST_PIN_LIMIT_GIB']
-        cases = ((('--mode', 'long-kv4', '--prefix-caching', 'off', '--host-cache-gib', '1'), 'needs prefix caching'),
+        cases = ((('--mode', 'long-kv4', '--prefix-caching', 'off', '--host-cache-gib', '1'), 'the 4-bit KV cache'),
+                 (('--context', '262144', '--kv-cache', 'kv4', '--host-cache-gib', '1'), 'needs prefix caching'),
                  (('--mode', '65k', '--host-cache-gib', '1'), 'needs prefix caching'),
                  # the previous release images have neither the host tier's fixes nor its private pinned memory
                  (('--mode', 'long', '--image', self.R1_IMAGE, '--host-cache-gib', '1'), 'predates them'),
@@ -1138,7 +1143,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                     (('--no-system-memory-weights',), 'drop --no-system-memory-weights'),
                     (('--image', self.R1_IMAGE), 'kv4-v6'),
                     (('--image', self.R2_IMAGE), 'kv4-v6'),
-                    (('--host-cache-gib', '3'), 'plus --host-cache-gib 3'))
+                    (('--host-cache-gib', '1'), 'not qualified with the 4-bit KV cache'))
         for options, reason in refusals:
             with self.subTest(options=options):
                 stderr = self.refused('--mode', 'long-512k', *options)
@@ -1178,12 +1183,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--no-system-memory-weights')
         self.assertEqual(json.loads(result.stdout), command)
         self.assertNotIn('Note:', result.stderr)
-        # pinned memory is shared with the host KV tier: the tier wins, the embedding stays on the GPU
-        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--host-cache-gib', '3')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotIn('PAITON_HOST_EMBED=1', json.loads(result.stdout))
-        self.assertIn('this host can pin 4.5 GiB of system memory, not the 2.4 GiB embedding plus the 3 GiB host cache '
-                      'together; the embedding stays on the GPU', result.stderr)
+        # the host KV tier is not offered in the 4-bit modes
+        self.assertIn('not qualified with the 4-bit KV cache', self.refused('--mode', 'long-kv4', '--host-cache-gib', '3'))
 
     def test_low_available_memory_warns_without_refusing(self):
         w3rot = self.root / 'w3rot directory'

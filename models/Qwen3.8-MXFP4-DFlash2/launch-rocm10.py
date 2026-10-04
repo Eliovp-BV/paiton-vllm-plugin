@@ -129,6 +129,10 @@ KV4_SPARSE_ALIGN = True
 # long-kv4 without system memory (674 pool blocks, about 452,000 tokens with prefix caching). Off until qualified.
 KV4_LONG_VISION = False
 W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = W3_LONG_KV4_CACHE_BYTES
+# The host KV tier (--host-cache-gib) stays with the fp8 KV cache: with the 4-bit cache a host-tier hit can end on a
+# drafter block (800 tokens) inside a recurrent-state block (1,600 tokens) and resume from the wrong state.
+KV4_HOST_CACHE_REFUSAL = ('--host-cache-gib is not qualified with the 4-bit KV cache (a host-tier hit can resume at a '
+                          'position without a matching recurrent state); the host tier works with --mode long')
 # The serving process plus the pinned embedding need this much available system memory at launch; below it the
 # launcher warns (the host may swap or reclaim pinned pages under pressure).
 SYSTEM_MEMORY_MIN_AVAILABLE_GIB = 6.0
@@ -375,8 +379,8 @@ def parser():
                                'experimental')
     advanced.add_argument('--host-cache-gib', type=host_cache_gib, metavar='GIB',
                           help='experimental: keep up to GIB of evicted prefix-cache blocks in pinned system memory, '
-                               'so re-reading a long document restores it over PCIe instead of recomputing it. Needs '
-                               'prefix caching (--mode long); limited by system memory and /dev/shm. Off by default')
+                               'so re-reading a long document restores it over PCIe instead of recomputing it. '
+                               '--mode long (fp8 KV cache) only; limited by system memory. Off by default')
     advanced.add_argument('--disk-cache-dir', metavar='DIR',
                           help='experimental, with --host-cache-gib: also keep evicted prefix-cache blocks in files '
                                'under DIR (one folder per image, weights and KV format), so long documents survive a '
@@ -523,6 +527,8 @@ def apply_mode(args, environment):
         prefix = None if old_image else 'on'
     else:
         prefix = args.prefix_caching
+    if getattr(args, 'host_cache_gib', None) and weights == 'w3a4':
+        raise ValueError(f'{name}: {KV4_HOST_CACHE_REFUSAL}')
     if args.vision and not (KV4_LONG_VISION and not old_image) and weights == 'w3a4':
         raise ValueError(f'{name} is not qualified with --vision; for images use --mode long --vision (up to '
                          f'{W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
@@ -531,11 +537,9 @@ def apply_mode(args, environment):
         fits, limit = system_memory_weights_fit(args)
         sysmem = fits
         if not fits and not args.vision:
-            can_pin = f'this host can pin {limit if limit is not None else "an unknown amount of"} GiB of system memory'
-            need = ('the 2.4 GiB embedding plus the ' f'{args.host_cache_gib:g} GiB host cache together'
-                    if getattr(args, 'host_cache_gib', None) else 'the 2.4 GiB the embedding needs')
-            notes.append(f'{name}: {can_pin}, not {need}; the embedding stays on the GPU and the KV cache is smaller '
-                         '(about 452,000 tokens)')
+            notes.append(f'{name}: this host can pin {limit if limit is not None else "an unknown amount of"} GiB of '
+                         'system memory, not the 2.4 GiB the embedding needs; the embedding stays on the GPU and the KV '
+                         'cache is smaller (about 452,000 tokens)')
         elif not fits:
             raise ValueError(f'{name} --vision needs {system_memory_weights_bytes(args) / 2 ** 30:.1f} GiB of pinned '
                              f'system memory for the embedding; this host can pin '
@@ -562,6 +566,8 @@ def long_512k_settings(args, weights, name, settings):
         raise ValueError(f'{name} is not qualified with --vision; for images use --mode long --vision')
     if args.prefix_caching == 'off':
         raise ValueError(f'{name} serves with prefix caching; drop --prefix-caching off')
+    if getattr(args, 'host_cache_gib', None):
+        raise ValueError(f'{name}: {KV4_HOST_CACHE_REFUSAL}')
     if getattr(args, 'no_system_memory_weights', False):
         raise ValueError(f'{name} needs the embedding in system memory for its KV cache; drop '
                          '--no-system-memory-weights (or use --mode long-kv4)')
@@ -571,8 +577,7 @@ def long_512k_settings(args, weights, name, settings):
     fits, limit = system_memory_weights_fit(args)
     if not fits:
         raise ValueError(f'{name} needs 2.4 GiB of pinned system memory for the embedding'
-                         + (f' plus --host-cache-gib {args.host_cache_gib:g}' if getattr(args, 'host_cache_gib', None) else '')
-                         + f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB (MemTotal '
+                         f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB (MemTotal '
                          f'less {HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM limit less {HOST_CACHE_SHM_MARGIN_GIB:g} '
                          'GiB). Use --mode long-kv4 (262,144 tokens)')
     context = args.context if args.context is not None else KV4_YARN_CONTEXT
@@ -892,7 +897,8 @@ def docker_command(args, environment):
     if getattr(args, 'host_cache_gib', None):
         if not prefix_caching_enabled(args):
             raise ValueError('--host-cache-gib keeps evicted prefix-cache blocks; it needs prefix caching (--mode long)')
-        # with the 4-bit cache only together with prefix caching (--mode long-kv4 --prefix-caching on): experimental
+        if kv_mode == 'kv4':
+            raise ValueError(KV4_HOST_CACHE_REFUSAL)
         limit = host_cache_limit_gib()
         if limit is None or args.host_cache_gib + pinned_weights / 2 ** 30 > limit:
             raise ValueError(f'--host-cache-gib {args.host_cache_gib:g} exceeds what this host can pin safely '
