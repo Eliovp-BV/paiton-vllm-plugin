@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -214,6 +215,24 @@ W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
 DISK_CACHE_FORMAT = 1
 DISK_CACHE_DEFAULT_GIB = 64.0
 DISK_TIER_SHM_HEADROOM_GIB = 1.0
+# --extend-cache [auto|ram|disk] (experimental, --mode long-kv4, off unless given): sizes the prefix-cache tiers itself.
+# The host tier is inclusive (it keeps a copy of what the GPU pool holds), so system memory adds capacity only when its
+# tier holds clearly more than the GPU pool: auto picks system memory when the tier holds at least 1.25 x the pool's
+# tokens, otherwise NVMe/SSD behind the smallest staging tier that restores a whole 256K document (4.5 GiB, the
+# embedding on the GPU where needed) or else 2 GiB (documents up to ~110K tokens). Token capacities use the bytes a
+# stored token takes in the tier (4-bit cache: ~32 KB on the 20261004 images, measured 31.4-33.1 KB) and the bytes a
+# restored token loads (~19 KB), per image (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets
+# the larger capacities without other changes. The disk tier lives under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir)
+# on NVMe/SSD, at most 64 GiB or half the free space there.
+EXTEND_CACHE_RAM_FACTOR = 1.25
+TIER_STORED_BYTES_PER_TOKEN = 32768
+TIER_LOADED_BYTES_PER_TOKEN = 19000
+TIER_BYTES_BY_IMAGE_SUFFIX = {}      # image name suffix: (stored, loaded) bytes per token, for images that store less
+KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
+EXTEND_CACHE_STAGING_GIB = (4.5, 2.0)
+EXTEND_CACHE_DISK_MAX_GIB = 64.0
+EXTEND_CACHE_DISK_FREE_SHARE = 0.5
+SYS_DEV_BLOCK = Path('/sys/dev/block')
 PROC_MEMINFO = Path('/proc/meminfo')
 DEV_SHM = '/dev/shm'
 TTM_PAGES_LIMIT = Path('/sys/module/ttm/parameters/pages_limit')
@@ -370,6 +389,122 @@ def pin_limit_text(embedding_in_ram):
             f'the system and desktop, at most the TTM (GTT) limit less {HOST_CACHE_SHM_MARGIN_GIB:g} GiB')
 
 
+def tier_bytes_per_token(args):
+    """(stored, loaded) bytes per token of the selected image's host tier."""
+    name, _ = _image_parts(args)
+    return next((value for suffix, value in TIER_BYTES_BY_IMAGE_SUFFIX.items() if name.endswith(suffix)),
+                (TIER_STORED_BYTES_PER_TOKEN, TIER_LOADED_BYTES_PER_TOKEN))
+
+
+def existing_parent(path):
+    path = Path(path)
+    while not path.exists() and path != path.parent:
+        path = path.parent
+    return path
+
+
+def storage_is_rotational(path):
+    """True on a spinning disk, False on NVMe/SSD, None when the device cannot be determined (network, virtual or
+    pooled file systems)."""
+    device = os.stat(existing_parent(path)).st_dev
+    try:
+        node = (Path(SYS_DEV_BLOCK) / f'{os.major(device)}:{os.minor(device)}').resolve(strict=True)
+    except OSError:
+        return None
+    for folder in (node, node.parent):              # a partition's queue belongs to its disk
+        try:
+            return (folder / 'queue' / 'rotational').read_text().strip() == '1'
+        except OSError:
+            continue
+    return None
+
+
+def extend_cache_settings(args, environment):
+    """--extend-cache: (the tier flags it stands for, the note that explains the choice)."""
+    choice = args.extend_cache
+    if getattr(args, 'host_cache_gib', None):
+        raise ValueError('--extend-cache sizes the host tier itself; drop --host-cache-gib, or drop --extend-cache and '
+                         'set --host-cache-gib and --disk-cache-dir by hand')
+    if choice == 'ram' and getattr(args, 'disk_cache_dir', None):
+        raise ValueError('--extend-cache ram keeps the cache in system memory; drop --disk-cache-dir')
+    stored, loaded = tier_bytes_per_token(args)
+    if getattr(args, 'system_memory_weights', False):
+        placements = (True,)
+    elif getattr(args, 'no_system_memory_weights', False):
+        placements = (False,)
+    else:
+        placements = (True, False)
+    tier = {}
+    for embedding_in_ram in placements:
+        limit = host_cache_limit_gib(embedding_in_ram)
+        if limit is None:
+            raise ValueError('--extend-cache cannot read the size of this host\'s memory; set --host-cache-gib by hand')
+        pinned = system_memory_weights_bytes(args) / 2 ** 30 if embedding_in_ram else 0
+        tier[embedding_in_ram] = max(0.0, math.floor(2 * (limit - pinned)) / 2)
+
+    def tokens(gib):
+        return int(gib * 2 ** 30 / stored)
+
+    def where(embedding_in_ram):
+        return 'in system memory' if embedding_in_ram else 'on the GPU'
+    gpu = KV4_POOL_TOKENS
+    adds = [e for e in placements if tokens(tier[e]) >= EXTEND_CACHE_RAM_FACTOR * gpu[e]]
+    if choice == 'ram' or (choice == 'auto' and adds):
+        # the embedding stays in system memory (the larger GPU pool) whenever the tier adds capacity that way; a forced
+        # ram choice that adds little takes the largest tier
+        e = adds[0] if adds else max(placements, key=lambda e: (tokens(tier[e]), e))
+        if tier[e] < EXTEND_CACHE_STAGING_GIB[-1]:
+            raise ValueError(f'--extend-cache ram: this host can pin {tier[e]:g} GiB for the cache tier '
+                             f'({pin_limit_text(e)}), less than {EXTEND_CACHE_STAGING_GIB[-1]:g} GiB; use '
+                             '--extend-cache disk')
+        note = (f'--extend-cache {choice}: system memory, a {tier[e]:g} GiB tier (~{tokens(tier[e]):,} tokens) next to '
+                f'the GPU pool\'s {gpu[e]:,} tokens, the embedding {where(e)}; no disk tier')
+        if not adds:
+            note += (f'. The tier keeps a copy of what the GPU pool holds, so below {EXTEND_CACHE_RAM_FACTOR:g}x the '
+                     'pool it adds little; --extend-cache disk holds more')
+        return {'extend_cache': None, 'host_cache_gib': tier[e], 'system_memory_weights': e,
+                'no_system_memory_weights': not e}, note
+    for staging in EXTEND_CACHE_STAGING_GIB:         # the staging tier every disk hit passes through
+        e = next((e for e in placements if tier[e] >= staging), None)
+        if e is not None:
+            break
+    else:
+        raise ValueError(f'--extend-cache: this host can pin at most {max(tier.values()):g} GiB, not the '
+                         f'{EXTEND_CACHE_STAGING_GIB[-1]:g} GiB staging tier the disk cache needs '
+                         f'({pin_limit_text(placements[-1])})')
+    folder = getattr(args, 'disk_cache_dir', None)
+    if not folder:
+        cache = environment.get('PAITON_CACHE_DIR')
+        if not cache:
+            raise ValueError('--extend-cache keeps its disk tier under PAITON_CACHE_DIR/kv-disk; set PAITON_CACHE_DIR '
+                             'or --disk-cache-dir')
+        folder = str(Path(cache).expanduser().resolve() / 'kv-disk')
+    rotational = storage_is_rotational(folder)
+    if rotational and not getattr(args, 'disk_cache_allow_hdd', False):
+        raise ValueError(f'--extend-cache: {folder} is on a spinning disk; the disk tier needs NVMe or SSD storage '
+                         '(point --disk-cache-dir at one), or pass --disk-cache-allow-hdd')
+    cap = getattr(args, 'disk_cache_gib', None)
+    if cap is None:
+        used = folder_bytes(folder) / 2 ** 30 if Path(folder).is_dir() else 0.0
+        free = shutil.disk_usage(existing_parent(folder)).free / 2 ** 30
+        cap = float(min(EXTEND_CACHE_DISK_MAX_GIB, math.floor(EXTEND_CACHE_DISK_FREE_SHARE * (free + used))))
+        if tokens(cap) < EXTEND_CACHE_RAM_FACTOR * gpu[e]:
+            raise ValueError(f'--extend-cache: {free:.0f} GiB free under {folder}; half of it holds ~{tokens(cap):,} '
+                             f'tokens, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU pool\'s {gpu[e]:,}. Free space or '
+                             'point --disk-cache-dir at a larger NVMe/SSD')
+    restore = int(staging * 2 ** 30 / loaded) // 10000 * 10000
+    best = max(placements, key=lambda e: tokens(tier[e]))
+    note = (f'--extend-cache {choice}: NVMe/SSD under {folder}, up to {cap:g} GiB (~{tokens(cap):,} tokens)'
+            + (f' (system memory would hold ~{tokens(tier[best]):,} tokens, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU '
+               'pool)' if choice == 'auto' else '')
+            + f'; GPU pool {gpu[e]:,} tokens with the embedding {where(e)}; a {staging:g} GiB system-memory staging '
+            f'tier: documents up to ~{restore:,} tokens restore from disk'
+            + ('; the storage type of that folder is unknown: the disk tier wants NVMe or SSD' if rotational is None
+               else ''))
+    return {'extend_cache': None, 'host_cache_gib': staging, 'disk_cache_dir': folder, 'disk_cache_gib': cap,
+            'system_memory_weights': e, 'no_system_memory_weights': not e}, note
+
+
 def cache_bytes(value):
     return 'auto' if value == 'auto' else positive_integer(value)
 
@@ -444,6 +579,14 @@ def parser():
     advanced.add_argument('--disk-cache-gib', type=host_cache_gib, metavar='GIB',
                           help=f'refuse to start when the --disk-cache-dir folder of this configuration exceeds GIB '
                                f'(default {DISK_CACHE_DEFAULT_GIB:g})')
+    advanced.add_argument('--extend-cache', nargs='?', const='auto', choices=('auto', 'ram', 'disk'),
+                          help='experimental, --mode long-kv4: extend the prefix cache beyond the GPU. auto (also the '
+                               'flag alone) uses system memory where the host has enough of it to add capacity, '
+                               'otherwise NVMe/SSD under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir); ram or disk '
+                               'force one. Sizes the host tier, the disk cap and the embedding placement itself and '
+                               'prints its choice; off by default')
+    advanced.add_argument('--disk-cache-allow-hdd', action='store_true',
+                          help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -534,6 +677,8 @@ def apply_mode(args, environment):
     """--mode as the legacy flags it stands for (MODES), so the Docker argv is identical. An explicit flag that
     contradicts the preset raises ValueError; compatible refinements pass through to the usual checks."""
     mode = getattr(args, 'mode', None)
+    if getattr(args, 'extend_cache', None) and mode != 'long-kv4':
+        raise ValueError('--extend-cache extends the prefix cache of the coding mode; use it with --mode long-kv4')
     if mode is None:
         return args
     name = f'--mode {mode}'
@@ -586,6 +731,15 @@ def apply_mode(args, environment):
         prefix = None if old_image else 'on'
     else:
         prefix = args.prefix_caching
+    if getattr(args, 'extend_cache', None):
+        if prefix != 'on':
+            raise ValueError(f'{name} --extend-cache keeps evicted prefix-cache blocks; it needs prefix caching (drop '
+                             '--prefix-caching off)')
+        if image_predates_kv4_host_fix(args):
+            raise ValueError(f'{name} --extend-cache: {KV4_HOST_CACHE_REFUSAL}')
+        tiers, note = extend_cache_settings(args, environment)
+        args = argparse.Namespace(**{**vars(args), **tiers})
+        notes.append(note)
     if getattr(args, 'host_cache_gib', None) and weights == 'w3a4' and image_predates_kv4_host_fix(args):
         raise ValueError(f'{name}: {KV4_HOST_CACHE_REFUSAL}')
     if args.vision and not (KV4_LONG_VISION and not old_image) and weights == 'w3a4':

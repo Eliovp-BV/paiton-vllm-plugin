@@ -1268,6 +1268,123 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn('exceeds what this host can pin safely',
                               self.refused(*tier, '--host-cache-gib', f'{gpu_tier + 0.5:g}'))
 
+    def _extend(self, total_gib, *options):
+        """--mode long-kv4 --extend-cache on a host of total_gib (TTM at the kernel default): (argv, stderr)."""
+        self._host(total_gib, total_gib - 2)
+        self.overrides.setdefault('SYS_DEV_BLOCK', str(self.root / 'sys-dev-block'))     # storage type unknown
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', *options)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout), result.stderr
+
+    def _w3rot(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir(exist_ok=True)
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+
+    def test_extend_cache_picks_system_memory_only_where_it_adds_capacity(self):
+        self._w3rot()
+        disk_root = Path(self.environment['PAITON_CACHE_DIR']).resolve() / 'kv-disk'
+        # 16 GB: a RAM tier of 4.5 GiB (~147K tokens) is far below 1.25x the GPU pool -> NVMe/SSD behind a 4.5 GiB
+        # staging tier, the embedding on the GPU so the staging tier fits
+        command, stderr = self._extend(15.5, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertEqual(value(command, '--ipc'), 'private')
+        self.assertTrue(next(x for x in command if x.endswith(':/kvdisk:rw')).startswith(str(disk_root) + '/qwen38-'))
+        self.assertIn('--extend-cache auto: NVMe/SSD under', stderr)
+        self.assertIn('documents up to ~250,000 tokens restore from disk', stderr)
+        self.assertIn('the storage type of that folder is unknown', stderr)
+        # 32 GB: 13 GiB of RAM tier (~426K tokens) < 1.25 x 569,878 -> disk; the embedding stays in system memory
+        command, stderr = self._extend(32, '--extend-cache', 'auto')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        self.assertIn('GPU pool 569,878 tokens with the embedding in system memory', stderr)
+        # 64 GB: a 29 GiB tier (~950K tokens) adds capacity -> system memory, no disk tier
+        command, stderr = self._extend(64, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '29')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        self.assertEqual(value(command, '--ipc'), 'host')
+        self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
+        self.assertIn('a 29 GiB tier (~950,272 tokens) next to the GPU pool\'s 569,878 tokens', stderr)
+        command, _ = self._extend(128, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '61')
+
+    def test_extend_cache_capacity_follows_the_image_bytes_per_token(self):
+        self._w3rot()
+        # an image that stores ~21 KB per token: on 32 GB the 15.5 GiB tier with the embedding on the GPU (~774K
+        # tokens) passes 1.25 x 451,879 where the 13 GiB tier with it in system memory does not
+        self.overrides['TIER_STORED_BYTES_PER_TOKEN'] = 21504
+        command, stderr = self._extend(32, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '15.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
+        # per image: the suffix table wins over the default
+        self.overrides['TIER_STORED_BYTES_PER_TOKEN'] = 32768
+        self.overrides['TIER_BYTES_BY_IMAGE_SUFFIX'] = {':dev': (21504, 19000)}
+        self.assertEqual(value(self._extend(32, '--extend-cache')[0], '--kv-offloading-size'), '15.5')
+
+    def test_extend_cache_forced_choices_and_placement(self):
+        self._w3rot()
+        command, stderr = self._extend(15.5, '--extend-cache', 'ram')       # forced: the largest RAM tier, a caveat
+        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
+        self.assertIn('adds little; --extend-cache disk holds more', stderr)
+        command, _ = self._extend(64, '--extend-cache', 'disk')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        self.assertTrue(any(x.endswith(':/kvdisk:rw') for x in command))
+        command, _ = self._extend(64, '--extend-cache', '--no-system-memory-weights')    # an explicit placement holds
+        self.assertEqual(value(command, '--kv-offloading-size'), '31.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        other = self.root / 'nvme'
+        command, _ = self._extend(15.5, '--extend-cache', '--disk-cache-dir', str(other), '--disk-cache-gib', '100')
+        self.assertTrue(next(x for x in command if x.endswith(':/kvdisk:rw')).startswith(str(other.resolve()) + '/'))
+
+    def test_extend_cache_disk_needs_solid_state_and_room(self):
+        self._w3rot()
+        folder = Path(self.environment['PAITON_CACHE_DIR'])
+        device = os.stat(folder).st_dev
+        block = self.root / 'block' / 'sda'                       # a partition: the queue belongs to its disk
+        (block / 'sda3').mkdir(parents=True)
+        (block / 'queue').mkdir()
+        (block / 'queue' / 'rotational').write_text('1\n')
+        (self.root / 'sys-dev-block').mkdir()
+        (self.root / 'sys-dev-block' / f'{os.major(device)}:{os.minor(device)}').symlink_to(block / 'sda3')
+        self._host(15.5, 13.5)
+        self.overrides['SYS_DEV_BLOCK'] = str(self.root / 'sys-dev-block')
+        stderr = self.refused('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', '--extend-cache')
+        self.assertIn('is on a spinning disk; the disk tier needs NVMe or SSD storage', stderr)
+        _, stderr = self._extend(15.5, '--extend-cache', '--disk-cache-allow-hdd')
+        self.assertNotIn('storage type of that folder is unknown', stderr)
+        (block / 'queue' / 'rotational').write_text('0\n')
+        _, stderr = self._extend(15.5, '--extend-cache')
+        self.assertNotIn('unknown', stderr)
+        self.overrides['EXTEND_CACHE_DISK_FREE_SHARE'] = 1e-9                  # almost no room: refused
+        self.assertIn('Free space or point --disk-cache-dir at a larger NVMe/SSD',
+                      self.refused('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev', '--extend-cache'))
+
+    def test_extend_cache_refusals(self):
+        self._w3rot()
+        self._host(15.5, 13.5)
+        image = ('--image', 'paiton-qwen38-local:dev')
+        for options, reason in (
+                (('--mode', 'long-kv4', '--extend-cache', '--host-cache-gib', '2'), 'sizes the host tier itself'),
+                (('--mode', 'long', '--extend-cache'), 'use it with --mode long-kv4'),
+                (('--mode', 'long-512k', '--extend-cache'), 'use it with --mode long-kv4'),
+                (('--extend-cache',), 'use it with --mode long-kv4'),
+                (('--mode', 'long-kv4', '--prefix-caching', 'off', '--extend-cache'), 'needs prefix caching'),
+                (('--mode', 'long-kv4', '--extend-cache', 'ram', '--disk-cache-dir', str(self.root / 'd')),
+                 'drop --disk-cache-dir')):
+            with self.subTest(options=options):
+                self.assertIn(reason, self.refused(*options, *image))
+        stderr = self.refused('--mode', 'long-kv4', '--extend-cache', '--image',
+                              'paiton-qwen38-local:qwen38-rocm10-vllm029-20261003-r1')
+        self.assertIn('host-tier alignment fix', stderr)
+        # without the flag nothing changes
+        plain = self.dry_run('--mode', 'long-kv4', *image)
+        self.assertNotIn('--kv-transfer-config', plain)
+        self.assertEqual(value(plain, '--ipc'), 'host')
+
     def test_launch_refuses_a_host_tier_that_cannot_start(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
@@ -1588,7 +1705,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
-            '--compile-cache',
+            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache',
             '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
             '--gpu-memory-utilization',
             '--max-num-batched-tokens')))
