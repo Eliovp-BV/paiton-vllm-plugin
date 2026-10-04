@@ -218,8 +218,8 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 # --extend-cache [auto|ram|disk] (experimental, --mode long-kv4, off unless given): sizes the prefix-cache tiers itself.
 # The host tier is inclusive (it keeps a copy of what the GPU pool holds), so system memory adds capacity only when its
 # tier holds clearly more than the GPU pool: auto picks system memory when the tier holds at least 1.25 x the pool's
-# tokens, otherwise NVMe/SSD behind the smallest staging tier that restores a whole 256K document (4.5 GiB, the
-# embedding on the GPU where needed) or else 2 GiB (documents up to ~110K tokens). Token capacities use the bytes a
+# tokens, otherwise NVMe/SSD behind a staging tier that restores a whole 256K document (4.5 GiB, the embedding on the
+# GPU where needed) or the largest that fits down to 2 GiB (4 GiB: documents up to ~220K tokens, 2 GiB: ~110K). Token capacities use the bytes a
 # stored token takes in the tier (4-bit cache: ~32 KB on the 20261004 images, measured 31.4-33.1 KB) and the bytes a
 # restored token loads (~19 KB), per image (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets
 # the larger capacities without other changes. The disk tier lives under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir)
@@ -232,7 +232,7 @@ TIER_STORED_BYTES_PER_TOKEN = 32768
 TIER_LOADED_BYTES_PER_TOKEN = 19000
 TIER_BYTES_BY_IMAGE_SUFFIX = {}      # image name suffix: (stored, loaded) bytes per token, for images that store less
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
-EXTEND_CACHE_STAGING_GIB = (4.5, 2.0)
+EXTEND_CACHE_STAGING_GIB = (4.5, 4.0, 3.5, 3.0, 2.5, 2.0)     # the largest that fits; 4.5 restores a 256K document
 EXTEND_CACHE_DISK_MAX_GIB = 64.0
 EXTEND_CACHE_DISK_FREE_SHARE = 0.25
 SYS_DEV_BLOCK = Path('/sys/dev/block')
@@ -240,12 +240,13 @@ PROC_MEMINFO = Path('/proc/meminfo')
 DEV_SHM = '/dev/shm'
 TTM_PAGES_LIMIT = Path('/sys/module/ttm/parameters/pages_limit')
 # Pinned system memory (the embedding with --system-memory-weights, the host KV tier) is bounded so the whole server
-# fits: the serving processes' unpinned peak during model load and graph capture (measured on the 16 GiB testbench:
-# 4.65 GiB with the embedding in system memory, 3.78 GiB with it on the GPU; rounded up) plus the pinned buffers plus a
-# reserve for the system and a desktop (3.5 GiB) and the 3.5 GiB that must stay available, at most MemTotal. On a 16 GiB
-# host that keeps the coding mode's embedding in system memory and allows a RAM tier only with the embedding on the
-# GPU (up to ~4.5 GiB); the RAM tier with the embedding in system memory needs about 32 GB of RAM.
-SERVER_UNPINNED_PEAK_GIB = {True: 4.75, False: 3.9}     # keyed by: embedding in system memory
+# fits: the serving processes' unpinned peak during model load and graph capture (measured on the 16 GiB testbench,
+# MemAvailable drop less the pinned buffers: 4.3-4.65 GiB with the embedding in system memory; 4.0-4.2 GiB with it on
+# the GPU next to a 3 GiB tier and at least 4.5 GiB next to a 4.5 GiB tier, 4 Oct; rounded up) plus the pinned buffers
+# plus a reserve for the system and a desktop (3.5 GiB) and the 3.5 GiB that must stay available, at most MemTotal. On a
+# 16 GiB host that keeps the coding mode's embedding in system memory and allows a RAM tier only with the embedding on
+# the GPU (up to ~4 GiB); the RAM tier with the embedding in system memory needs about 32 GB of RAM.
+SERVER_UNPINNED_PEAK_GIB = {True: 4.75, False: 4.5}     # keyed by: embedding in system memory
 HOST_RESERVE_GIB = 7.0
 HOST_CACHE_SHM_MARGIN_GIB = 0.5
 # At launch, with a host KV tier: refuse below the server's need plus 1 GiB (the start would hit the OOM killer or swap

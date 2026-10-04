@@ -1252,7 +1252,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         fixed = ('--image', 'paiton-qwen38-local:dev')
         # (MemTotal GiB, embedding in RAM + 2 GiB tier served, tier with the embedding on the GPU: largest accepted)
-        for total, ram_tier, gpu_tier in ((15.5, False, 4.5), (24, True, 11.5), (32, True, 15.5), (64, True, 31.5)):
+        for total, ram_tier, gpu_tier in ((15.5, False, 4.0), (24, True, 11.5), (32, True, 15.5), (64, True, 31.5)):
             with self.subTest(total=total):
                 self._host(total, total - 3)
                 # the shipped coding mode keeps the embedding in system memory, without a tier, on every size
@@ -1284,16 +1284,19 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_extend_cache_picks_system_memory_only_where_it_adds_capacity(self):
         self._w3rot()
         disk_root = Path(self.environment['PAITON_CACHE_DIR']).resolve() / 'kv-disk'
-        # 16 GB: a RAM tier of 4.5 GiB (~147K tokens) is far below 1.25x the GPU pool -> NVMe/SSD behind a 4.5 GiB
-        # staging tier, the embedding on the GPU so the staging tier fits
+        # 16 GB: a RAM tier of 4 GiB (~131K tokens) is far below 1.25x the GPU pool -> NVMe/SSD behind the largest
+        # staging tier that fits (4 GiB, the embedding on the GPU)
         command, stderr = self._extend(15.5, '--extend-cache')
-        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4')
         self.assertNotIn('PAITON_HOST_EMBED=1', command)
         self.assertEqual(value(command, '--ipc'), 'private')
         self.assertTrue(next(x for x in command if x.endswith(':/kvdisk:rw')).startswith(str(disk_root) + '/qwen38-'))
         self.assertIn('--extend-cache auto: NVMe/SSD under', stderr)
-        self.assertIn('documents up to ~250,000 tokens restore from disk', stderr)
+        self.assertIn('documents up to ~220,000 tokens restore from disk', stderr)
         self.assertIn('the storage type of that folder is unknown', stderr)
+        command, stderr = self._extend(15.0, '--extend-cache')           # less room: the largest staging that fits
+        self.assertEqual(value(command, '--kv-offloading-size'), '3.5')
+        self.assertIn('documents up to ~190,000 tokens restore from disk', stderr)
         # 32 GB: 13 GiB of RAM tier (~426K tokens) < 1.25 x 569,878 -> disk; the embedding stays in system memory
         command, stderr = self._extend(32, '--extend-cache', 'auto')
         self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
@@ -1326,7 +1329,7 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_extend_cache_forced_choices_and_placement(self):
         self._w3rot()
         command, stderr = self._extend(15.5, '--extend-cache', 'ram')       # forced: the largest RAM tier, a caveat
-        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4')
         self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
         self.assertIn('adds little; --extend-cache disk holds more', stderr)
         command, _ = self._extend(64, '--extend-cache', 'disk')
@@ -1418,18 +1421,18 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         tier = ('--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib', '2', '--image',
-                'paiton-qwen38-local:dev')                    # needs 3.9 + 2 = 5.9 GiB
-        self._host(15.5, 6.5)                                  # < 5.9 + 1: refused, naming the shortfall
+                'paiton-qwen38-local:dev')                    # needs 4.5 + 2 = 6.5 GiB
+        self._host(15.5, 6.5)                                  # < 6.5 + 1: refused, naming the shortfall
         stderr = self.refused(*tier)
-        self.assertIn('needs about 5.9 GiB plus 1 GiB to start (0.4 GiB short)', stderr)
+        self.assertIn('needs about 6.5 GiB plus 1 GiB to start (1.0 GiB short)', stderr)
         self.assertIn('lower --host-cache-gib', stderr)
         result = self.run_launcher('--dry-run', *tier)         # a dry run starts nothing: warned, not refused
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Warning: only 6.5 GiB', result.stderr)
-        self._host(15.5, 8.0)                                  # < 5.9 + 3.5: served with a warning
+        self._host(15.5, 8.0)                                  # < 6.5 + 3.5: served with a warning
         result = self.run_launcher('--dry-run', *tier)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('should leave 3.5 GiB free (1.4 GiB short)', result.stderr)
+        self.assertIn('should leave 3.5 GiB free (2.0 GiB short)', result.stderr)
         self._host(15.5, 10.0)                                 # enough: no warning
         self.assertNotIn('Warning', self.run_launcher('--dry-run', *tier).stderr)
         # the shipped coding mode without a tier is never refused for available memory, only warned below 6 GiB
