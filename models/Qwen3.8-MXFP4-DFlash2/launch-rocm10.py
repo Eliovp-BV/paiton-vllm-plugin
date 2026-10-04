@@ -4,19 +4,30 @@
 Choose the weights and a mode; everything else is optional."""
 
 import argparse
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 
 IMAGES = {
-    # 2 October image: the 29 September r2 image with the new 4-bit KV page format (the 65K preset and --mode
-    # long-kv4) and the VRAM-headroom overlay; the r2 image stays usable through --image (KV4_V4_IMAGES).
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1@sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840',
+    # The coding-mode release: the 2 October image plus the prefix-caching, host-memory and long-context compat
+    # overlays and KV4 bundle kv4-v6. The previous release images (PREVIOUS_IMAGES) stay usable through --image with
+    # their previous behaviour.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
+}
+PREVIOUS_IMAGES = {
+    # the 29 September r2 image with the new 4-bit KV page format (the 65K preset and --mode long-kv4) and the
+    # VRAM-headroom overlay
+    '20261002-r1': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1@sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840',
+    # r1s: a rebuild of the 2 October r1 image with the same runtime behaviour (rollback image)
+    '20261002-r1s': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1s@sha256:a1c1025052f84a009428709bfe7e9431281ab5d5c0f723a49d79eecafe519dad',
+    '20260929-r2': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045',
 }
 # Images that carry the native 3-bit (W3A4) runtime. Its flags default on inside
 # the image and read the rotated weights from /models/w3rot.
@@ -57,6 +68,8 @@ KV4_FLAGS = ('PAITON_KV4', 'PAITON_KV4_CAPACITY')
 # explicit --kv-cache kv4, the launcher selects the 4-bit cache only in the 65K preset, where it was measured end to end.
 KV4_MAX_CONTEXT = 262144
 KV4_V4_MAX_CONTEXT = 200000
+# The 28 and 29 September images, by reference or by tag (with or without a digest).
+KV4_V4_SUFFIXES = ('qwen38-rocm10-vllm029-20260929-r2', 'qwen38-rocm10-vllm029-20260928-r1')
 KV4_V4_IMAGES = frozenset((
     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045',
     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260928-r1@sha256:487c97d51e5b4a3fcd0a206e53d842a52dd56a199d8ee3e884f48815093a80d4',
@@ -82,28 +95,65 @@ W3_MEMORY_FRACTION = 0.95
 # 3 Oct 2026: in the 4-bit long-context mode a prefix-cache hit on a shared-prefix (junction) checkpoint ended in a
 # GDN-norm nonfinite engine error (a repeated 32,758-token request after related requests). Until that is fixed the
 # 4-bit long mode runs without prefix caching; measured on one R9700 (repeat of that request):
-KV4_LONG_NO_PREFIX_CACHING = ('the 4-bit long-context mode (--mode long-kv4) runs without prefix caching until a '
-                              'prefix-cache-hit fault of that mode is fixed: every request prefills its full prompt '
-                              'again (a repeated 32K-token prompt takes 10.2 s instead of 2.9 s from the fp8 cache). '
-                              'The fp8 long-context mode (--mode long) keeps prefix caching.')
+KV4_LONG_NO_PREFIX_CACHING = ('this image runs the 4-bit long-context mode (--mode long-kv4) without prefix caching: '
+                              'it predates the fix of that mode\'s prefix-cache-hit fault, so every request prefills '
+                              'its full prompt again (a repeated 32K-token prompt takes 10.2 s instead of 2.9 s from the '
+                              'fp8 cache). The fp8 long-context mode (--mode long) and the current release image keep '
+                              'prefix caching.')
+KV4_LONG_PREFIX_CACHING_OFF = ('the 4-bit long-context cache runs without prefix caching in this spelling: every '
+                               'request prefills its full prompt again; --mode long-kv4 serves it with prefix caching.')
+# Prefix caching in the 4-bit long mode needs the Mamba seed-column compat overlay: without it a resumed request seeded
+# its GDN state from the drafter's block grid instead of the GDN block grid, so a prefix-cache hit could continue from
+# the wrong state. The 2 October release image (r1 and its rebuild r1s) and older images predate it; any other image
+# may enable it explicitly (experimental, --prefix-caching on).
+KV4_PREFIX_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261002-r1', 'qwen38-rocm10-vllm029-20261002-r1s',
+                                     'qwen38-rocm10-vllm029-20260929-r2', 'qwen38-rocm10-vllm029-20260928-r1')
+# With prefix caching, vLLM keeps a GDN state at every block of a cached prompt when an EAGLE-class drafter is present
+# (dense checkpoints, several pool blocks per block, so one long prompt can cycle the whole pool and evict every other
+# document). The 4-bit long mode with prefix caching retains them every 32,000 tokens instead, plus
+# (PAITON_PC_EAGLE_TAIL, compat overlays) the one block before each prompt's end, where the next turn of the same
+# conversation hits with the EAGLE tail-block drop.
+KV4_PREFIX_RETENTION_INTERVAL = 32000
+# --mode long-512k (experimental, up to 524,288 tokens): factor-2 position scaling on the target (the model card's route past 262,144
+# tokens; only the full-attention layers use RoPE), the drafter's position table extended to match (its sliding window
+# keeps relative distances short), an image with KV4 bundle kv4-v6, prefix caching, and --system-memory-weights for the
+# pool (815 blocks; one 524,288-token request takes 719). Static position scaling also changes short prompts slightly: opt-in only.
+KV4_YARN_CONTEXT = 524288
+W3_LONG_KV4_YARN_CACHE_BYTES = 815 * 14336000
+YARN_FACTOR_2 = {'rope_type': 'yarn', 'factor': 2.0, 'original_max_position_embeddings': 262144}
+# Prefill chunking under sparse retention (compat overlay PAITON_PC_SPARSE_ALIGN): with prefix caching in the 4-bit
+# long modes a prompt's chunks stop only at the states the retention keeps (and the tail checkpoint) instead of every
+# 1,600-token block: fewer, longer prefill steps.
+KV4_SPARSE_ALIGN = True
+# --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the KV cache at the budget of
+# long-kv4 without system memory (674 pool blocks, about 452,000 tokens with prefix caching). Off until qualified.
+KV4_LONG_VISION = False
+W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = W3_LONG_KV4_CACHE_BYTES
+# The serving process plus the pinned embedding need this much available system memory at launch; below it the
+# launcher warns (the host may swap or reclaim pinned pages under pressure).
+SYSTEM_MEMORY_MIN_AVAILABLE_GIB = 6.0
 # --mode: one named preset per serving mode of the 65k release image. Each stands for the legacy flags listed in MODES
 # (3-bit weights, text) and produces exactly their Docker argv; --mode long picks the context its configuration holds:
-# --context 200000 with the MXFP4 weights, --context 245000 with --vision. Explicit flags that contradict a preset are
-# refused, compatible refinements (a smaller --context, --max-num-seqs, --thinking, --port, memory budgets, ...) pass
-# through.
+# --context 200000 with the MXFP4 weights, --context 245000 with --vision. --mode long-kv4 falls back to the embedding on
+# the GPU (674 pool blocks, one printed note) where the host cannot pin it, and keeps its previous form (no prefix
+# caching) on images that predate the prefix-cache fix. Explicit flags that contradict a preset are refused, compatible
+# refinements (a smaller --context, --max-num-seqs, --thinking, --port, memory budgets, ...) pass through.
 LONG_CONTEXT = 262144
 MODES = {
     '65k': 'no flags',
     'long': '--context 262144',
-    'long-kv4': '--context 262144 --kv-cache kv4',
+    'long-kv4': '--context 262144 --kv-cache kv4 --prefix-caching on --system-memory-weights',
+    'long-512k': '--context 524288 --kv-cache kv4 --prefix-caching on --system-memory-weights',
 }
 MODE_HELP = (
     'how to serve; without --mode: 65k\n'
     '65k: 65,536 context, up to 8 requests, 4-bit KV cache with the 3-bit weights: the fast everyday default\n'
     'long: 262,144 context (MXFP4: 200,000, one request), fp8 KV cache with prefix caching: one long document at a '
     'time, fast follow-ups\n'
-    'long-kv4: 262,144 context per request, 4-bit KV cache, a 1.63x larger shared pool (458,922 tokens): more long '
-    'conversations at once; no prefix caching, every request re-reads its prompt (3-bit weights only)')
+    'long-kv4: 262,144 context per request, 4-bit KV cache with prefix caching and the embedding in system memory: '
+    'about 570,000 tokens of reusable cache, for coding agents and many long conversations (3-bit weights only)\n'
+    'long-512k: experimental, up to 524,288 context per request (long-context position scaling), otherwise as long-kv4; needs 2.4 GiB '
+    'of free system memory and an image with KV4 bundle kv4-v6')
 # VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit profiles (worker compat overlay; it
 # only ever lowers the launcher's fraction above): the KFD admits allocations past the physically free VRAM and evicts
 # to system memory instead of failing. 1 GiB = ~0.5 GiB margin to the KFD admission limit plus the ~270 MiB that
@@ -120,6 +170,34 @@ VISION_RELEASES = frozenset(('65k',))
 VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 6760000000, ('w3a4', 'kv4'): 6264832000}
 SYS_DRM = Path('/sys/class/drm')
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
+# --host-cache-gib (experimental, opt-in): evicted prefix-cache blocks kept in pinned system memory (vLLM's
+# OffloadingConnector). The launcher sets PAITON_HOST_KV_PRIVATE=1: the tier is private hipHostMalloc (GTT) memory, as in
+# upstream #57160, instead of a /dev/shm region registered as a user pointer, which the kernel can reclaim under memory
+# pressure and so stop the GPU queues (restore_userptr). GTT memory counts against the TTM limit (ttm.pages_limit,
+# 50 % of RAM by default), shared with the other pinned consumers; the tier also keeps clear of the host's working set:
+# at most MemTotal less 11 GiB for the serving process, the OS and the model load.
+# --system-memory-weights (3-bit long modes; the default of --mode long-kv4 where the host can pin it, required by
+# --mode long-512k, opt-in elsewhere; images with the host-memory modules only): the bf16 input embedding
+# (2,542,796,800 B) lives in pinned system memory (one hipHostMalloc table, rows read zero-copy) and the freed VRAM goes
+# to the KV cache. Budgets: long-kv4 850 pool blocks (two 262,144-token requests at 385 blocks each); fp8 long +2.5 GB.
+# The vision encoder always stays on the GPU: streaming its blocks from system memory (PAITON_HOST_VISION) is not
+# qualified, so --mode long --vision does not take --system-memory-weights.
+SYSTEM_MEMORY_EMBEDDING_BYTES = 2542796800
+W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
+W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
+# --disk-cache-dir (experimental, with --host-cache-gib): evicted host-tier blocks also go to files under DIR (vLLM's
+# TieringOffloadingSpec, file-system tier; every block passes through the host tier first). vLLM names its folder
+# after the served model path, dtype and cache groups only, which are the same for both weight sets of this launcher,
+# so the launcher adds a fingerprint folder (image id, weight folders, KV format, context, GDN state). The file tier has
+# no size limit of its own: the launcher refuses to start when the folder exceeds --disk-cache-gib (default 64) and
+# --wipe-disk-cache removes it (through Docker: the files are written by the container's user).
+DISK_CACHE_FORMAT = 1
+DISK_CACHE_DEFAULT_GIB = 64.0
+PROC_MEMINFO = Path('/proc/meminfo')
+DEV_SHM = '/dev/shm'
+TTM_PAGES_LIMIT = Path('/sys/module/ttm/parameters/pages_limit')
+HOST_CACHE_RESERVE_GIB = 11.0
+HOST_CACHE_SHM_MARGIN_GIB = 0.5
 
 
 def release_command(release):
@@ -173,6 +251,66 @@ def utilization(value):
     return result
 
 
+def host_cache_gib(value):
+    try:
+        result = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError('must be a number of GiB greater than 0') from None
+    if not math.isfinite(result) or result <= 0:
+        raise argparse.ArgumentTypeError('must be a number of GiB greater than 0')
+    return result
+
+
+def image_is_kv4_v4(args):
+    """The 28 and 29 September images: KV4 bundle kv4-v4 (decode up to 200,000 tokens, no prefix-caching check)."""
+    image = args.image or IMAGES[args.release]
+    return image in KV4_V4_IMAGES or image.split('@')[0].endswith(KV4_V4_SUFFIXES)
+
+
+def image_predates_prefix_fix(args):
+    """The 2 October release image and older: no seed-column overlay and no KV4 bundle kv4-v6."""
+    image = args.image or IMAGES[args.release]
+    return image_is_kv4_v4(args) or image.split('@')[0].endswith(KV4_PREFIX_CACHE_UNFIXED_SUFFIXES)
+
+
+def system_memory_weights_bytes(args):
+    return SYSTEM_MEMORY_EMBEDDING_BYTES
+
+
+def system_memory_weights_fit(args):
+    """(fits, limit GiB): whether this host can pin the embedding (plus any --host-cache-gib) within its limit."""
+    limit = host_cache_limit_gib()
+    need = system_memory_weights_bytes(args) / 2 ** 30 + (getattr(args, 'host_cache_gib', None) or 0)
+    return limit is not None and need <= limit, limit
+
+
+def mem_available_gib():
+    try:
+        return next(int(line.split()[1]) for line in PROC_MEMINFO.read_text().splitlines()
+                    if line.startswith('MemAvailable:')) / 2 ** 20
+    except (OSError, StopIteration, ValueError):
+        return None
+
+
+def host_cache_limit_gib():
+    """Largest --host-cache-gib this host allows (0.5 GiB steps), or None when it cannot be determined: MemTotal less
+    the reserve, at most the TTM (GTT) limit less a margin. PAITON_HOST_PIN_LIMIT_GIB overrides it for a host whose
+    memory is known to be free."""
+    override = os.environ.get('PAITON_HOST_PIN_LIMIT_GIB')
+    try:
+        if override:
+            return float(override)
+        total = next(int(line.split()[1]) for line in PROC_MEMINFO.read_text().splitlines()
+                     if line.startswith('MemTotal:')) / 2 ** 20
+        try:
+            ttm = int(TTM_PAGES_LIMIT.read_text()) * 4096 / 2 ** 30
+        except (OSError, ValueError):
+            ttm = total / 2           # the kernel's default
+    except (OSError, StopIteration, ValueError):
+        return None
+    return max(0.0, math.floor(2 * min(total - HOST_CACHE_RESERVE_GIB, ttm - HOST_CACHE_SHM_MARGIN_GIB)) / 2)
+
+
 def cache_bytes(value):
     return 'auto' if value == 'auto' else positive_integer(value)
 
@@ -197,7 +335,7 @@ def parser():
     choose.add_argument('--mode', choices=tuple(MODES), help=MODE_HELP)
     choose.add_argument('--vision', action='store_true',
                         help='gives you image input; works with --mode 65k and long (long: up to 245,000 context), '
-                             'not with long-kv4')
+                             'not with long-kv4 or long-512k')
     server = result.add_argument_group('Server')
     server.add_argument('--port', type=positive_integer, help='localhost API port (default: 18982)')
     server.add_argument('--name', help='Docker container name (run-3bit.sh and run-mxfp4.sh: paiton-qwen38)')
@@ -217,23 +355,48 @@ def parser():
                                '3-bit weights, 1 with MXFP4)')
     advanced.add_argument('--kv-cache', choices=('auto', 'kv4', 'fp8'), default='auto',
                           help='auto: the 4-bit KV cache with the 3-bit weights in the 65k mode, fp8 otherwise. kv4 '
-                               'with a context above 65536 is --mode long-kv4')
+                               'with a context above 65536 without --mode: the 2 October form of long-kv4 (no prefix '
+                               'caching)')
     advanced.add_argument('--prefix-caching', choices=('on', 'off'),
-                          help='prefix reuse with materialized recurrent state: on in --mode long, off in the other '
-                               'modes')
+                          help='prefix reuse with materialized recurrent state: on in --mode long, long-kv4 and '
+                               'long-512k; off in 65k')
     advanced.add_argument('--thinking', choices=('on', 'off'),
-                          help='server default for enable_thinking (off in both long modes); individual requests may '
+                          help='server default for enable_thinking (off in the long modes); individual requests may '
                                'override it')
     advanced.add_argument('--long-prefill-threshold', type=positive_integer, metavar='TOKENS',
                           help='cap the prefill tokens a long prompt takes per step so short requests answer within '
                                'seconds while it is processed (measured: 3072 or 2048 cost the long prompt about 16%% '
                                'more time to first token); off by default')
+    advanced.add_argument('--gdn-state', choices=('auto', 'lazy', 'eager'), default='auto',
+                          help='recurrent-state snapshots of the linear-attention layers during speculative decoding: '
+                               'lazy keeps one stash per request (fewer cache blocks per request, more KV tokens), '
+                               'eager one snapshot per draft token. auto: lazy in the 65k mode, eager in the long '
+                               'modes. lazy needs prefix caching off (--mode long-kv4 --prefix-caching off); '
+                               'experimental')
+    advanced.add_argument('--host-cache-gib', type=host_cache_gib, metavar='GIB',
+                          help='experimental: keep up to GIB of evicted prefix-cache blocks in pinned system memory, '
+                               'so re-reading a long document restores it over PCIe instead of recomputing it. Needs '
+                               'prefix caching (--mode long); limited by system memory and /dev/shm. Off by default')
+    advanced.add_argument('--disk-cache-dir', metavar='DIR',
+                          help='experimental, with --host-cache-gib: also keep evicted prefix-cache blocks in files '
+                               'under DIR (one folder per image, weights and KV format), so long documents survive a '
+                               'restart; bounded by --disk-cache-gib, removed with --wipe-disk-cache')
+    advanced.add_argument('--disk-cache-gib', type=host_cache_gib, metavar='GIB',
+                          help=f'refuse to start when the --disk-cache-dir folder of this configuration exceeds GIB '
+                               f'(default {DISK_CACHE_DEFAULT_GIB:g})')
+    advanced.add_argument('--wipe-disk-cache', action='store_true',
+                          help='remove every configuration folder under --disk-cache-dir and exit')
+    advanced.add_argument('--no-system-memory-weights', action='store_true',
+                          help='keep the input embedding on the GPU in --mode long-kv4 (smaller KV cache)')
+    advanced.add_argument('--system-memory-weights', action='store_true',
+                          help='keep the input embedding (2.4 GiB) in pinned system memory and give the VRAM to the KV '
+                               'cache: the default of --mode long-kv4 and long-512k (two concurrent 262,144-token '
+                               'requests); experimental in --mode long without --vision (3-bit long modes only)')
     advanced.add_argument('--profile', choices=('release', 'desktop', 'chat'),
                           help='desktop: 32768 context, 2 GiB KV, one request, 1024 prefill chunks, for a GPU shared '
-                               'with a desktop. chat: the long-context mode (--mode long, or with --kv-cache kv4 '
-                               '--mode long-kv4); MXFP4: 200000 context (tested to 220000), one request, 1024 prefill '
-                               'chunks, 8 GiB KV. Default: release, or chat when --context exceeds 65536 on the 65k '
-                               'image')
+                               'with a desktop. chat: the long-context mode (--mode long); MXFP4: 200000 context '
+                               '(tested to 220000), one request, 1024 prefill chunks, 8 GiB KV. Default: release, or '
+                               'chat when --context exceeds 65536 on the 65k image')
     advanced.add_argument('--kv-cache-memory-bytes', type=cache_bytes, metavar='BYTES|auto',
                           help='fixed KV budget in bytes, or automatic sizing from GPU memory utilization')
     advanced.add_argument('--gpu-memory-utilization', type=utilization, metavar='FRACTION',
@@ -330,7 +493,7 @@ def apply_mode(args, environment):
             raise ValueError(f'{name} uses the fp8 KV cache; for the 4-bit KV cache use --mode long-kv4')
         if args.prefix_caching == 'off':
             raise ValueError(f'{name} serves with prefix caching, which makes re-reading a document fast; drop '
-                             '--prefix-caching off (--mode long-kv4 runs without it)')
+                             '--prefix-caching off (without prefix caching: --mode long-kv4 --prefix-caching off)')
         if weights != 'w3a4' and args.vision:
             raise ValueError(f'{name} --vision needs the 3-bit W3A4 weights (set PAITON_W3ROT_DIR or use run-3bit.sh); '
                              'with the MXFP4 weights use --vision without --mode long')
@@ -348,14 +511,75 @@ def apply_mode(args, environment):
         return argparse.Namespace(**{**vars(args), **settings, 'context': context})
     if args.kv_cache == 'fp8':
         raise ValueError(f'{name} uses the 4-bit KV cache; for the fp8 KV cache use --mode long')
-    refusal = long_kv4_refusal(args, weights)
+    if getattr(args, 'system_memory_weights', False) and getattr(args, 'no_system_memory_weights', False):
+        raise ValueError(f'{name}: --system-memory-weights and --no-system-memory-weights contradict each other')
+    if mode == 'long-512k':
+        return long_512k_settings(args, weights, name, settings)
+    notes = []
+    # An image that predates the prefix-cache fix and the host-memory overlays keeps the previous form of the mode:
+    # no prefix caching, the embedding on the GPU (an explicit --prefix-caching on is refused by long_kv4_refusal).
+    old_image = image_predates_prefix_fix(args)
+    if args.prefix_caching is None:
+        prefix = None if old_image else 'on'
+    else:
+        prefix = args.prefix_caching
+    if args.vision and not (KV4_LONG_VISION and not old_image) and weights == 'w3a4':
+        raise ValueError(f'{name} is not qualified with --vision; for images use --mode long --vision (up to '
+                         f'{W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
+    sysmem = getattr(args, 'system_memory_weights', False)
+    if not sysmem and not getattr(args, 'no_system_memory_weights', False) and not old_image:
+        fits, limit = system_memory_weights_fit(args)
+        sysmem = fits
+        if not fits and not args.vision:
+            can_pin = f'this host can pin {limit if limit is not None else "an unknown amount of"} GiB of system memory'
+            need = ('the 2.4 GiB embedding plus the ' f'{args.host_cache_gib:g} GiB host cache together'
+                    if getattr(args, 'host_cache_gib', None) else 'the 2.4 GiB the embedding needs')
+            notes.append(f'{name}: {can_pin}, not {need}; the embedding stays on the GPU and the KV cache is smaller '
+                         '(about 452,000 tokens)')
+        elif not fits:
+            raise ValueError(f'{name} --vision needs {system_memory_weights_bytes(args) / 2 ** 30:.1f} GiB of pinned '
+                             f'system memory for the embedding; this host can pin '
+                             f'{limit if limit is not None else "an unknown amount of"} GiB. For images use --mode long '
+                             f'--vision (up to {W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
+    refusal = long_kv4_refusal(argparse.Namespace(**{**vars(args), 'prefix_caching': prefix,
+                                                     'system_memory_weights': sysmem}), weights)
     if refusal:
         raise ValueError(f'{name} {refusal}')
     if args.context is not None and args.context > KV4_MAX_CONTEXT:
-        raise ValueError(f'{name} serves up to --context {KV4_MAX_CONTEXT} per request, the model\'s limit')
+        raise ValueError(f'{name} serves up to --context {KV4_MAX_CONTEXT} per request, the model\'s native limit; '
+                         f'for up to {KV4_YARN_CONTEXT} use --mode long-512k')
     settings['context'] = args.context if args.context is not None else LONG_CONTEXT
-    # an explicit --prefix-caching off restates the preset (the note on what running without it costs still prints)
-    return argparse.Namespace(**{**vars(args), **settings, 'kv_cache': 'kv4', 'prefix_caching': None})
+    return argparse.Namespace(**{**vars(args), **settings, 'kv_cache': 'kv4', 'prefix_caching': prefix,
+                                 'system_memory_weights': sysmem, 'launcher_notes': notes})
+
+
+def long_512k_settings(args, weights, name, settings):
+    """--mode long-512k: long-kv4 with factor-2 position scaling up to 524,288 tokens; system-memory weights are required (the
+    pool must hold one full-length request)."""
+    if weights != 'w3a4':
+        raise ValueError(f'{name} needs the 3-bit W3A4 weights (set PAITON_W3ROT_DIR or use run-3bit.sh)')
+    if args.vision:
+        raise ValueError(f'{name} is not qualified with --vision; for images use --mode long --vision')
+    if args.prefix_caching == 'off':
+        raise ValueError(f'{name} serves with prefix caching; drop --prefix-caching off')
+    if getattr(args, 'no_system_memory_weights', False):
+        raise ValueError(f'{name} needs the embedding in system memory for its KV cache; drop '
+                         '--no-system-memory-weights (or use --mode long-kv4)')
+    if image_predates_prefix_fix(args):
+        raise ValueError(f'{name} needs an image with KV4 bundle kv4-v6 and the prefix-cache fix, such as the pinned '
+                         'release image; this image predates them')
+    fits, limit = system_memory_weights_fit(args)
+    if not fits:
+        raise ValueError(f'{name} needs 2.4 GiB of pinned system memory for the embedding'
+                         + (f' plus --host-cache-gib {args.host_cache_gib:g}' if getattr(args, 'host_cache_gib', None) else '')
+                         + f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB (MemTotal '
+                         f'less {HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM limit less {HOST_CACHE_SHM_MARGIN_GIB:g} '
+                         'GiB). Use --mode long-kv4 (262,144 tokens)')
+    context = args.context if args.context is not None else KV4_YARN_CONTEXT
+    if context > KV4_YARN_CONTEXT:
+        raise ValueError(f'{name} serves up to --context {KV4_YARN_CONTEXT}')
+    return argparse.Namespace(**{**vars(args), **settings, 'kv_cache': 'kv4', 'prefix_caching': 'on',
+                                 'system_memory_weights': True, 'context': context, 'launcher_notes': []})
 
 
 def mode_context(args, weights):
@@ -378,13 +602,16 @@ def long_kv4_refusal(args, weights):
     if weights != 'w3a4':
         return ('needs the 3-bit W3A4 weights, the only weights the 4-bit KV cache is qualified with (set '
                 'PAITON_W3ROT_DIR or use run-3bit.sh); with MXFP4 use --mode long (200,000 tokens, one request)')
-    if args.prefix_caching == 'on':
-        return ('runs without prefix caching until a prefix-cache-hit fault of that mode is fixed; drop '
-                '--prefix-caching on (--mode long keeps prefix caching)')
-    if args.vision:
+    if args.prefix_caching == 'on' and image_predates_prefix_fix(args):
+        return ('runs without prefix caching on this image: it predates the prefix-cache-hit fix of that mode; drop '
+                '--prefix-caching on (--mode long keeps prefix caching), or use an image with the fix')
+    if args.vision and not (KV4_LONG_VISION and not image_predates_prefix_fix(args)):
         return (f'is not qualified with --vision; for images use --mode long --vision (up to '
                 f'{W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
-    if (args.image or IMAGES[args.release]) in KV4_V4_IMAGES:
+    if args.vision and not getattr(args, 'system_memory_weights', False):
+        return ('--vision keeps the embedding and the vision encoder in system memory; drop '
+                f'--no-system-memory-weights, or use --mode long --vision (up to {W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
+    if image_is_kv4_v4(args):
         return ('needs an image with KV4 bundle kv4-v5, such as the pinned release image; this image carries kv4-v4 '
                 f'(decode up to {KV4_V4_MAX_CONTEXT} tokens, no prefix-caching check)')
     return None
@@ -401,7 +628,7 @@ def selected_profile(args):
 
 def prefix_caching_enabled(args):
     if args.kv_cache == 'kv4' and args.profile == 'chat':
-        return False                                    # KV4_LONG_NO_PREFIX_CACHING
+        return args.prefix_caching == 'on'              # off unless asked for: KV4_LONG_NO_PREFIX_CACHING
     return args.prefix_caching == 'on' or (args.prefix_caching is None and args.profile == 'chat')
 
 
@@ -419,7 +646,7 @@ def kv4_refusal(args, weights):
         return ('the 4-bit KV cache runs without prefix caching; drop --prefix-caching on, or use --kv-cache fp8 '
                 '(--mode long serves the long-context mode with prefix caching)')
     image = args.image or IMAGES[args.release]
-    limit = KV4_V4_MAX_CONTEXT if image in KV4_V4_IMAGES else KV4_MAX_CONTEXT
+    limit = KV4_V4_MAX_CONTEXT if image_is_kv4_v4(args) else KV4_MAX_CONTEXT
     if args.context is not None and args.context > limit:
         return f'the 4-bit decode path of this image is qualified up to --context {limit}'
     return None
@@ -440,7 +667,9 @@ def kv_cache_mode(args, weights):
 
 
 def engine_command(args, weights='mxfp4'):
-    if args.context is not None and args.context > 262144:
+    yarn = (args.context is not None and args.context <= KV4_YARN_CONTEXT and args.kv_cache == 'kv4'
+            and args.profile == 'chat' and args.prefix_caching == 'on' and getattr(args, 'system_memory_weights', False))
+    if args.context is not None and args.context > 262144 and not yarn:
         raise ValueError('--context exceeds this checkpoint\'s 262144-token model limit')
     if args.max_num_seqs is not None and args.max_num_seqs > 8:
         raise ValueError('--max-num-seqs must be between 1 and 8 for this release')
@@ -460,7 +689,14 @@ def engine_command(args, weights='mxfp4'):
     if args.vision and chat and not long_w3:
         raise ValueError('--vision in the long-context mode needs the 3-bit W3A4 weights (set PAITON_W3ROT_DIR or '
                          '--weights w3a4); with MXFP4 use it in the 65K mode')
-    if args.vision and long_w3 and context > W3_LONG_VISION_MAX_CONTEXT:
+    sysmem = getattr(args, 'system_memory_weights', False)
+    if sysmem and not long_w3:
+        raise ValueError('--system-memory-weights is qualified in the 3-bit long-context modes only (--mode long, '
+                         '--mode long-kv4, --mode long-512k)')
+    if sysmem and args.vision and kv_cache_mode(args, weights) != 'kv4':
+        raise ValueError('--system-memory-weights is not qualified with --vision in --mode long; drop one of them '
+                         f'(--mode long --vision serves up to {W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
+    if args.vision and long_w3 and not sysmem and context > W3_LONG_VISION_MAX_CONTEXT:
         raise ValueError(f'--vision in the long-context mode holds up to --context {W3_LONG_VISION_MAX_CONTEXT} '
                          f'(measured cache capacity with the vision encoder loaded)')
     if chat and not long_w3 and context > MXFP4_LONG_MAX_CONTEXT:
@@ -474,8 +710,15 @@ def engine_command(args, weights='mxfp4'):
     if cache is None:
         if args.gpu_memory_utilization is not None:
             cache = 'auto'
+        elif args.vision and long_w3 and sysmem and kv_cache_mode(args, weights) == 'kv4':
+            cache = W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES
         elif args.vision and long_w3:
             cache = W3_LONG_VISION_KV_CACHE_BYTES
+        elif chat and long_w3 and sysmem and context is not None and context > KV4_MAX_CONTEXT:
+            cache = W3_LONG_KV4_YARN_CACHE_BYTES
+        elif chat and long_w3 and sysmem:
+            cache = (W3_LONG_KV4_SYSMEM_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4'
+                     else W3_LONG_SYSMEM_CACHE_BYTES)
         elif desktop:
             cache = 2 * 1024**3          # the desktop profile keeps its 2 GiB budget, with or without --vision
         elif chat and long_w3:
@@ -511,6 +754,8 @@ def engine_command(args, weights='mxfp4'):
     if prefix_caching_enabled(args):
         command[command.index('--no-enable-prefix-caching')] = '--enable-prefix-caching'
         replace_value(command, '--mamba-cache-mode', 'align')
+        if args.kv_cache == 'kv4' and chat:
+            command += ['--prefix-cache-retention-interval', str(KV4_PREFIX_RETENTION_INTERVAL)]
     thinking = args.thinking if args.thinking is not None else ('off' if chat else None)
     if thinking is not None:
         command += ['--default-chat-template-kwargs',
@@ -519,6 +764,18 @@ def engine_command(args, weights='mxfp4'):
         command.append('--enable-prompt-tokens-details')
     if args.long_prefill_threshold is not None:
         command += ['--long-prefill-token-threshold', str(args.long_prefill_threshold)]
+    if context is not None and context > KV4_MAX_CONTEXT:
+        command += ['--hf-overrides', json.dumps({'text_config': {'rope_parameters': YARN_FACTOR_2}})]
+    if getattr(args, 'host_cache_gib', None):
+        command += ['--kv-offloading-size', f'{args.host_cache_gib:g}', '--kv-offloading-backend', 'native']
+    if getattr(args, 'disk_cache_dir', None):
+        # blocks on disk must match after a restart: a cryptographic block hash with vLLM's fixed seed (a
+        # non-cryptographic one takes a random per-process seed unless PYTHONHASHSEED is set)
+        command += ['--prefix-caching-hash-algo', 'sha256']
+        command += ['--kv-transfer-config', json.dumps({
+            'kv_connector': 'OffloadingConnector', 'kv_role': 'kv_both',
+            'kv_connector_extra_config': {'spec_name': 'TieringOffloadingSpec',
+                                          'secondary_tiers': [{'type': 'fs', 'root_dir': '/kvdisk'}]}})]
     return command
 
 
@@ -530,6 +787,39 @@ def weights_mode(args, environment):
     if args.weights == 'auto':
         return 'w3a4' if environment.get('PAITON_W3ROT_DIR') else 'mxfp4'
     return args.weights
+
+
+def disk_cache_fingerprint(args, environment, weights, kv_mode, image):
+    """Folder name for --disk-cache-dir: everything that changes the bytes of a stored block."""
+    image_id = image
+    if not args.dry_run:     # a dry run prints the command without touching Docker
+        try:
+            image_id = subprocess.run(['docker', 'image', 'inspect', '--format', '{{.Id}}', image],
+                                      capture_output=True, text=True, timeout=30).stdout.strip() or image
+        except (OSError, subprocess.SubprocessError):
+            pass
+    folders = {}
+    for variable in ('PAITON_TARGET_DIR', 'PAITON_DRAFT_DIR') + (('PAITON_W3ROT_DIR',) if weights == 'w3a4' else ()):
+        path = Path(environment.get(variable, '')).expanduser().resolve()
+        listing = sorted((f.name, f.stat().st_size, int(f.stat().st_mtime)) for f in path.iterdir()
+                         if f.is_file()) if path.is_dir() else []
+        folders[variable] = [str(path), listing]
+    value = {'format': DISK_CACHE_FORMAT, 'image': image_id, 'weights': weights, 'folders': folders,
+             'kv_cache': kv_mode, 'context': args.context, 'release': args.release,
+             'gdn_state': getattr(args, 'gdn_state', 'auto'), 'system_memory_weights': args.system_memory_weights}
+    digest = hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()[:16]
+    return f'qwen38-{digest}', value
+
+
+def folder_bytes(path):
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(root, name)).st_size
+            except OSError:
+                pass
+    return total
 
 
 def model_mounts(environment, weights):
@@ -582,7 +872,65 @@ def docker_command(args, environment):
         # image default (off) applies otherwise.
         if variable in environment:
             command += ['-e', variable + '=' + environment[variable]]
-    if prefix_caching_enabled(args) or (args.kv_cache == 'kv4' and args.profile == 'chat'):
+    pinned_weights = 0
+    if (getattr(args, 'system_memory_weights', False) or getattr(args, 'host_cache_gib', None)) and \
+            image_predates_prefix_fix(args):
+        raise ValueError('--system-memory-weights and --host-cache-gib need the compat overlays of the current release '
+                         'image; this image predates them')
+    if getattr(args, 'system_memory_weights', False):
+        pinned_weights = system_memory_weights_bytes(args)
+        limit = host_cache_limit_gib()
+        if limit is None or pinned_weights / 2 ** 30 + (getattr(args, 'host_cache_gib', None) or 0) > limit:
+            raise ValueError(f'--system-memory-weights pins {pinned_weights / 2 ** 30:.1f} GiB'
+                             + (f' and --host-cache-gib {args.host_cache_gib:g} GiB more' if getattr(args, 'host_cache_gib', None) else '')
+                             + f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB safely '
+                             f'(MemTotal less {HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM (GTT) limit less '
+                             f'{HOST_CACHE_SHM_MARGIN_GIB:g} GiB)')
+        command += ['-e', 'PAITON_HOST_EMBED=1']
+    if getattr(args, 'disk_cache_dir', None) and not getattr(args, 'host_cache_gib', None):
+        raise ValueError('--disk-cache-dir needs --host-cache-gib: every block passes through the host tier')
+    if getattr(args, 'host_cache_gib', None):
+        if not prefix_caching_enabled(args):
+            raise ValueError('--host-cache-gib keeps evicted prefix-cache blocks; it needs prefix caching (--mode long)')
+        # with the 4-bit cache only together with prefix caching (--mode long-kv4 --prefix-caching on): experimental
+        limit = host_cache_limit_gib()
+        if limit is None or args.host_cache_gib + pinned_weights / 2 ** 30 > limit:
+            raise ValueError(f'--host-cache-gib {args.host_cache_gib:g} exceeds what this host can pin safely '
+                             f'({limit if limit is not None else "unknown"} GiB: MemTotal less '
+                             f'{HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM (GTT) limit less '
+                             f'{HOST_CACHE_SHM_MARGIN_GIB:g} GiB)')
+        # the region is registered page by page with the GPU driver; the default container memlock limit is too small
+        limit_bytes = int((args.host_cache_gib + 1) * 2 ** 30)
+        command += ['--ulimit', f'memlock={limit_bytes}:{limit_bytes}', '-e', 'PAITON_HOST_KV_PRIVATE=1']
+    if getattr(args, 'disk_cache_dir', None):
+        base = Path(args.disk_cache_dir).expanduser().resolve()
+        if ':' in str(base) or '\n' in str(base):
+            raise ValueError('--disk-cache-dir must not contain colons or newlines (Docker volume syntax)')
+        name, value = disk_cache_fingerprint(args, environment, weights, kv_mode, args.image or IMAGES[args.release])
+        folder = base / name
+        if not args.dry_run:
+            base.mkdir(mode=0o700, parents=True, exist_ok=True)
+            folder.mkdir(mode=0o700, exist_ok=True)
+            (folder / 'FINGERPRINT.json').write_text(json.dumps(value, indent=1, sort_keys=True) + '\n')
+        cap = args.disk_cache_gib or DISK_CACHE_DEFAULT_GIB
+        used = folder_bytes(folder) / 2 ** 30 if folder.is_dir() else 0.0
+        if used > cap:
+            raise ValueError(f'--disk-cache-dir {folder} holds {used:.1f} GiB, more than --disk-cache-gib {cap:g}; '
+                             'remove it with --wipe-disk-cache or raise --disk-cache-gib')
+        command += ['-v', f'{folder}:/kvdisk:rw']
+    if kv_mode == 'kv4' and args.profile == 'chat' and prefix_caching_enabled(args):
+        command += ['-e', 'PAITON_PC_EAGLE_TAIL=1']
+        if KV4_SPARSE_ALIGN:
+            command += ['-e', 'PAITON_PC_SPARSE_ALIGN=1']
+    gdn_state = getattr(args, 'gdn_state', 'auto')
+    if gdn_state == 'lazy':
+        if prefix_caching_enabled(args):
+            raise ValueError('--gdn-state lazy runs without prefix caching (prefix reuse needs a snapshot per draft '
+                             'token); drop --gdn-state lazy, or use --mode long-kv4 --prefix-caching off')
+        # opt-in: one stash block per request instead of one per draft token (radiance_gdn_lazy.py)
+        command += ['-e', 'RADIANCE_GDN_LAZY=1']
+    elif (gdn_state == 'eager' or prefix_caching_enabled(args)
+          or (args.kv_cache == 'kv4' and args.profile == 'chat')):
         # the 4-bit long mode keeps its measured GDN path while it runs without prefix caching
         command += ['-e', 'RADIANCE_GDN_LAZY=0']
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
@@ -603,7 +951,20 @@ def docker_command(args, environment):
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
     if args.detach:
         command.append('--detach')
-    return command + model_mounts(environment, weights) + [image] + engine
+    mounts = model_mounts(environment, weights)
+    if args.context is not None and args.context > KV4_MAX_CONTEXT:
+        # the drafter's rotary table covers its config's max_position_embeddings: a copy of its config.json with the
+        # extended length, mounted over the original (written to the writable cache folder, not in a dry run)
+        draft = Path(environment['PAITON_DRAFT_DIR']).expanduser().resolve()
+        target = Path(environment['PAITON_CACHE_DIR']).expanduser().resolve() / 'paiton-launcher' / \
+            f'draft-config-{args.context}.json'
+        if not args.dry_run:
+            config = json.loads((draft / 'config.json').read_text())
+            config['max_position_embeddings'] = max(int(config.get('max_position_embeddings', 0)), args.context)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(config, indent=2) + '\n')
+        mounts += ['-v', f'{target}:/models/draft/config.json:ro']
+    return command + mounts + [image] + engine
 
 
 def main(argv=None):
@@ -613,6 +974,20 @@ def main(argv=None):
         devices = discover_gpus()
         print('\n'.join(describe_gpu(gpu) for gpu in devices) or 'No DRM render devices found.')
         return 0
+    if args.wipe_disk_cache:
+        if not args.disk_cache_dir:
+            arguments.error('--wipe-disk-cache needs --disk-cache-dir')
+        base = Path(args.disk_cache_dir).expanduser().resolve()
+        targets = sorted(p.name for p in base.glob('qwen38-*') if p.is_dir()) if base.is_dir() else []
+        if not targets:
+            print(f'Nothing to remove under {base}.', file=sys.stderr)
+            return 0
+        command = ['docker', 'run', '--rm', '-v', f'{base}:/kvdisk:rw', '--entrypoint', 'rm',
+                   args.image or IMAGES[args.release], '-rf'] + [f'/kvdisk/{t}' for t in targets]
+        if args.dry_run:
+            print(json.dumps(command, indent=2))
+            return 0
+        return subprocess.run(command).returncode
     try:
         given = args
         args = apply_mode(args, os.environ)
@@ -628,7 +1003,18 @@ def main(argv=None):
         print('Serving MXFP4 weights; set PAITON_W3ROT_DIR to the downloaded 3-bit weights for faster decode and prefill.',
               file=sys.stderr)
     if args.kv_cache == 'kv4' and selected_profile(args) == 'chat' and args.prefix_caching is None:
-        print('Note: ' + KV4_LONG_NO_PREFIX_CACHING, file=sys.stderr)
+        print('Note: ' + (KV4_LONG_NO_PREFIX_CACHING if image_predates_prefix_fix(args) else
+                          KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
+    for note in getattr(args, 'launcher_notes', None) or ():
+        print('Note: ' + note, file=sys.stderr)
+    if getattr(args, 'system_memory_weights', False) or getattr(args, 'host_cache_gib', None):
+        available = mem_available_gib()
+        if available is not None and available < SYSTEM_MEMORY_MIN_AVAILABLE_GIB:
+            advice = ('Close other programs (--mode long-512k needs the embedding in system memory).'
+                      if given.mode == 'long-512k' else
+                      'Close other programs, or with --mode long-kv4 add --no-system-memory-weights.')
+            print(f'Warning: only {available:.1f} GiB of system memory is available; the server and its pinned '
+                  f'buffers want about {SYSTEM_MEMORY_MIN_AVAILABLE_GIB:g} GiB. {advice}', file=sys.stderr)
     if args.dry_run:
         print(json.dumps(command, indent=2))
         return 0
