@@ -211,6 +211,17 @@ SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 # qualified, so --mode long --vision does not take --system-memory-weights.
 SYSTEM_MEMORY_EMBEDDING_BYTES = 2542796800
 W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
+# FP8 lm_head (--lm-head fp8; the compiler's lmhead-w8 bundle, PAITON_LMHEAD_W8=1): the checkpoint's FP8 head stays
+# as loaded (1.19 GiB: e4m3 rows and one scale per row, served by a native W8A16 kernel) instead of the 2.37 GiB bf16
+# copy. In --mode long-kv4 the freed 1.18 GiB go to the pool: LMHEAD_W8_POOL_BLOCKS more blocks of 14,336,000 B.
+# Measured 4 Oct 2026 on one R9700 (20261003-r1 image + bundle, --mode long-kv4, 938 blocks): 628,877 KV4 tokens
+# (+59,000), idle 4.09 GiB free (the release: 1.71; the fp8 head also drops the startup zero check's 2.37 GiB
+# temporary), peak 30.84 GiB, GSM8K-200 188/200 as the release, DFlash2 acceptance unchanged; sampled C1 decode +6.9 %,
+# C8 +14.5 % (those take the full-vocab head). Images that carry the bundle select it by default (--lm-head auto);
+# others keep the bf16 head and refuse fp8.
+LMHEAD_W8_IMAGE_SUFFIXES = ()
+LMHEAD_W8_POOL_BLOCKS = 88
+W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
 W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
 # --disk-cache-dir (experimental, with --host-cache-gib): evicted host-tier blocks also go to files under DIR (vLLM's
 # TieringOffloadingSpec, file-system tier; every block passes through the host tier first). vLLM names its folder
@@ -376,6 +387,21 @@ def image_predates_prefix_fix(args):
     name, digest = _image_parts(args)
     return (image_is_kv4_v4(args) or name.endswith(KV4_PREFIX_CACHE_UNFIXED_SUFFIXES)
             or digest in _released_digests('20261002-r1', '20261002-r1s'))
+
+
+def image_has_lmhead_w8(args):
+    """Images that carry the native FP8 lm_head bundle (/opt/paiton/runtime/lmhead-w8)."""
+    name, _ = _image_parts(args)
+    return bool(LMHEAD_W8_IMAGE_SUFFIXES) and name.endswith(LMHEAD_W8_IMAGE_SUFFIXES)
+
+
+def lm_head_mode(args):
+    choice = getattr(args, 'lm_head', 'auto') or 'auto'
+    if choice == 'fp8' and not image_has_lmhead_w8(args) and not args.image:
+        raise ValueError('--lm-head fp8 needs an image with the native FP8 head (pass it with --image)')
+    if choice == 'auto':
+        return 'fp8' if image_has_lmhead_w8(args) else 'bf16'
+    return choice
 
 
 def system_memory_weights_bytes(args):
@@ -655,6 +681,10 @@ def parser():
                                'prints its choice; off by default')
     advanced.add_argument('--disk-cache-allow-hdd', action='store_true',
                           help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
+    advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',
+                          help='fp8: keep the checkpoint\'s FP8 output head (1.19 GiB instead of a 2.37 GiB bf16 '
+                               'copy; --mode long-kv4 gives the difference to the KV cache); needs an image with the '
+                               'native FP8 head. auto: fp8 on such images, bf16 otherwise')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -1127,8 +1157,12 @@ def engine_command(args, weights='mxfp4'):
         elif chat and long_w3 and sysmem and context is not None and context > KV4_MAX_CONTEXT:
             cache = W3_LONG_KV4_YARN_CACHE_BYTES
         elif chat and long_w3 and sysmem:
-            cache = (W3_LONG_KV4_SYSMEM_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4'
-                     else W3_LONG_SYSMEM_CACHE_BYTES)
+            if kv_cache_mode(args, weights) != 'kv4':
+                cache = W3_LONG_SYSMEM_CACHE_BYTES
+            elif lm_head_mode(args) == 'fp8':
+                cache = W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES
+            else:
+                cache = W3_LONG_KV4_SYSMEM_CACHE_BYTES
         elif desktop:
             cache = 2 * 1024**3          # the desktop profile keeps its 2 GiB budget, with or without --vision
         elif chat and long_w3:
@@ -1380,6 +1414,8 @@ def docker_command(args, environment):
             command += ['-e', variable + '=' + state]
     if weights == 'w3a4' and not args.vision:
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
+    if lm_head_mode(args) == 'fp8':
+        command += ['-e', 'PAITON_LMHEAD_W8=1']
     if args.detach:
         command.append('--detach')
     mounts = model_mounts(environment, weights)

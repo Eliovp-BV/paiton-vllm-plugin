@@ -1979,7 +1979,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
-            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache',
+            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache', '--lm-head',
             '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
             '--gpu-memory-utilization',
             '--max-num-batched-tokens')))
@@ -1990,6 +1990,34 @@ class Rocm10LauncherTests(unittest.TestCase):
         options = {item for action in launcher.parser()._actions for item in action.option_strings
                    if item.startswith('--') and action.help is not launcher.argparse.SUPPRESS}
         self.assertEqual(options - {'--help'}, listed - {'--help'})
+
+    def test_lm_head_fp8_keeps_the_checkpoint_head_and_grows_the_long_kv4_pool(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        block = 14336000
+        # released images: bf16 head, the measured budget, no flag; an explicit fp8 needs an explicit image
+        command = self.dry_run('--mode', 'long-kv4')
+        self.assertNotIn('PAITON_LMHEAD_W8=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))
+        self.assertIn('--lm-head fp8 needs an image', self.refused('--mode', 'long-kv4', '--lm-head', 'fp8'))
+        image = 'paiton-qwen38-local:kernel-b1-test'
+        command = self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'fp8')
+        self.assertIn('PAITON_LMHEAD_W8=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'),
+                         str((850 + launcher.LMHEAD_W8_POOL_BLOCKS) * block))
+        self.assertEqual(launcher.LMHEAD_W8_POOL_BLOCKS, 88)
+        # other modes keep their budgets (the freed VRAM stays headroom there); an explicit budget still wins
+        for mode in ('65k', 'long'):
+            with self.subTest(mode=mode):
+                plain = self.dry_run('--mode', mode, '--image', image)
+                fp8 = self.dry_run('--mode', mode, '--image', image, '--lm-head', 'fp8')
+                self.assertEqual(value(plain, '--kv-cache-memory-bytes'), value(fp8, '--kv-cache-memory-bytes'))
+                self.assertIn('PAITON_LMHEAD_W8=1', fp8)
+        command = self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'fp8',
+                               '--kv-cache-memory-bytes', '9000000000')
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9000000000')
+        self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'bf16'))
 
     def test_help_describes_each_mode_on_its_own_line(self):
         result = self.run_launcher('--help')
