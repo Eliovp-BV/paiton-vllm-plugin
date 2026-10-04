@@ -257,10 +257,25 @@
       "original_sha256": "3125114cf05646e7bc526ec30a6838da15bc9aa4591e42527e1012eaca3d276d",
       "overlay_sha256": "6937efd4c9f73eb97ea3893017ffeacf1b2cf594fa4a85eeb21cf824a2e59b0b"
     },
+    "/usr/local/lib/python3.12/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py": {
+      "overlay": "overlays/vllm/v1/kv_offload/cpu/gpu_worker.py",
+      "original_sha256": "fee55470dfc8143b3bcc559912d7bcbbcade5a8c014c78588f85ba2ad9582c51",
+      "overlay_sha256": "3ac4f5ce92b7681c776843a35931b3588820040a00eb21fccbe52db62d0ebeb7"
+    },
+    "/usr/local/lib/python3.12/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py": {
+      "overlay": "overlays/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py",
+      "original_sha256": "0a66105e9cb9f537981247aac1e59164dba4410d03a93cf28eae3347f7abb35d",
+      "overlay_sha256": "71ef37c8ca63377ba1cfc2af7df4654b44822258ed454f53ffbfeb31fd570dfd"
+    },
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/core/single_type_kv_cache_manager.py": {
       "overlay": "overlays/vllm/v1/core/single_type_kv_cache_manager.py",
       "original_sha256": "3038a12b187453a5e1a3b2fd4f5cb4f5be08b23108f8352263032d9179472d55",
       "overlay_sha256": "96879195d80f3d09d0c20de32b173c86af7b81c99670433a1b0819919f97c336"
+    },
+    "/usr/local/lib/python3.12/dist-packages/vllm/v1/kv_offload/cpu/spec.py": {
+      "overlay": "overlays/vllm/v1/kv_offload/cpu/spec.py",
+      "original_sha256": "240d686342837804ca34e43ab7d48b52a16f747d737348f5187d7b0e8e0d5a8d",
+      "overlay_sha256": "b64fffbe9f738a6f796088b555ff49182352499b6c42974f862d1752f95f94b9"
     }
   }
 }
