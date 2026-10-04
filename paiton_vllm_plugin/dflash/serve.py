@@ -34,6 +34,22 @@ def prepare_server_args(argv, env):
     return args
 
 
+def _spawn_warmup_sidecar(args):
+    """A11 (opt-in, PAITON_START_WARMUP=1): the image serves through this entry point, so the self-request warm-up sidecar is
+    spawned here: a detached stdlib-only helper that waits for /health, sends the first-request shapes (C1, C8, a 2K prompt
+    and its prefix hit) so their Triton kernels compile before a user arrives, and logs when it is done. Advisory: a
+    failure to start it only prints a line; outputs are unchanged either way."""
+    import subprocess
+    try:
+        port = args[args.index('--port') + 1] if '--port' in args else '18982'
+        env = dict(os.environ, PAITON_PORT=str(port))
+        subprocess.Popen([sys.executable, '-m', 'paiton_vllm_plugin.start_warmup'], env=env, stdin=subprocess.DEVNULL,
+                         stdout=sys.stderr, stderr=sys.stderr, start_new_session=True)
+        print('[paiton.warmup] self-warm-up sidecar started for port ' + str(port), file=sys.stderr, flush=True)
+    except Exception as exc:  # noqa: BLE001
+        print('[paiton.warmup] self-warm-up sidecar not started: %r' % (exc,), file=sys.stderr, flush=True)
+
+
 def main():
     from ..activation import activate
     activate('dflash', os.environ)
@@ -43,10 +59,7 @@ def main():
     from . import install
     install()
     if os.environ.get('PAITON_START_WARMUP', '0') == '1':
-        # A11 (opt-in): the image serves through this entry point, not the generic CLI, so the self-request warm-up sidecar is
-        # spawned here (detached; it waits for /health and sends the first-request shapes, then logs that it is done)
-        from ..execution.api import _start_warmup
-        _start_warmup(args, dict(os.environ))
+        _spawn_warmup_sidecar(args)
     sys.argv = ['vllm.entrypoints.openai.api_server', *args]
     runpy.run_module('vllm.entrypoints.openai.api_server', run_name='__main__')
 
