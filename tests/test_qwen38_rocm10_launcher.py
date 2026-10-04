@@ -991,13 +991,27 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertLess(command.index('--ulimit'), command.index('serve'))
         self.assertIn('--enable-prefix-caching', command)
         limit = launcher.host_cache_limit_gib()
-        # the host tier stays with the fp8 cache: with the 4-bit cache a hit can resume without a matching recurrent
-        # state, in every spelling of the 4-bit long mode
+        # with the 4-bit cache the host tier needs the alignment fix: refused on the 3 October image and older (a hit can
+        # resume without a matching recurrent state), in every spelling of the 4-bit long mode
         for options in (('--mode', 'long-kv4'), ('--mode', 'long-kv4', '--no-system-memory-weights'),
-                        ('--mode', 'long-kv4', '--image', 'paiton-qwen38-local:dev'), ('--mode', 'long-512k'),
-                        ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on')):
+                        ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on'),
+                        ('--mode', 'long-kv4', '--image', self.R1S_IMAGE)):
             with self.subTest(options=options):
-                self.assertIn('not qualified with the 4-bit KV cache', self.refused(*options, '--host-cache-gib', '2'))
+                self.assertIn('needs an image with the host-tier alignment fix',
+                              self.refused(*options, '--host-cache-gib', '2'))
+        # an image with the fix serves it, with or without the embedding in system memory; long-512k stays without
+        fixed = ('--image', 'paiton-qwen38-local:dev')
+        command = self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib', '2', *fixed)
+        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        self.assertIn('--enable-prefix-caching', command)
+        command = self.dry_run('--mode', 'long-kv4', '--host-cache-gib', '2', *fixed)
+        self.assertIn('PAITON_HOST_EMBED=1', command)              # 2.4 + 2 GiB fit the 4.5 GiB of this host
+        self.assertEqual(value(command, '--kv-offloading-size'), '2')
+        self.assertEqual(self.dry_run('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on',
+                                      '--host-cache-gib', '2', *fixed)[-1], command[-1])
+        for options in (('--mode', 'long-512k'), ('--mode', 'long-512k', *fixed)):
+            with self.subTest(options=options):
+                self.assertIn('not qualified with --mode long-512k', self.refused(*options, '--host-cache-gib', '1'))
         self.environment['PAITON_HOST_PIN_LIMIT_GIB'] = '6'
         self.dry_run('--mode', 'long', '--host-cache-gib', '5.5')
         del self.environment['PAITON_HOST_PIN_LIMIT_GIB']
@@ -1044,6 +1058,19 @@ class Rocm10LauncherTests(unittest.TestCase):
         for options in (('--mode', 'long', '--system-memory-weights'), ('--mode', 'long-kv4', '--system-memory-weights')):
             with self.subTest(options=options):
                 self.assertIn('predates them', self.refused(*options, '--image', self.R1_IMAGE))
+
+    def test_compile_cache_is_opt_in(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for options in (('--mode', '65k'), ('--mode', 'long'), ('--mode', 'long-kv4'), ('--mode', 'long-512k')):
+            with self.subTest(options=options):
+                plain = self.dry_run(*options)
+                self.assertNotIn('PAITON_COMPILE_CACHE=1', plain)
+                cached = self.dry_run(*options, '--compile-cache')
+                self.assertEqual([item for item in cached if item not in ('-e', 'PAITON_COMPILE_CACHE=1')],
+                                 [item for item in plain if item != '-e'])
+                self.assertLess(cached.index('PAITON_COMPILE_CACHE=1'), cached.index(launcher.IMAGES['65k']))
 
     def test_disk_cache_is_opt_in_fingerprinted_and_bounded(self):
         w3rot = self.root / 'w3rot directory'
@@ -1143,7 +1170,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                     (('--no-system-memory-weights',), 'drop --no-system-memory-weights'),
                     (('--image', self.R1_IMAGE), 'kv4-v6'),
                     (('--image', self.R2_IMAGE), 'kv4-v6'),
-                    (('--host-cache-gib', '1'), 'not qualified with the 4-bit KV cache'))
+                    (('--host-cache-gib', '1'), 'not qualified with --mode long-512k'))
         for options, reason in refusals:
             with self.subTest(options=options):
                 stderr = self.refused('--mode', 'long-512k', *options)
@@ -1184,7 +1211,14 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(json.loads(result.stdout), command)
         self.assertNotIn('Note:', result.stderr)
         # the host KV tier is not offered in the 4-bit modes
-        self.assertIn('not qualified with the 4-bit KV cache', self.refused('--mode', 'long-kv4', '--host-cache-gib', '3'))
+        self.assertIn('needs an image with the host-tier alignment fix',
+                      self.refused('--mode', 'long-kv4', '--host-cache-gib', '3'))
+        # on an image with the fix the pinned memory is shared: the tier wins, the embedding stays on the GPU
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--host-cache-gib', '3', '--image',
+                                   'paiton-qwen38-local:dev')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('PAITON_HOST_EMBED=1', json.loads(result.stdout))
+        self.assertIn('not the 2.4 GiB embedding plus the 3 GiB host cache together', result.stderr)
 
     def test_low_available_memory_warns_without_refusing(self):
         w3rot = self.root / 'w3rot directory'
@@ -1459,6 +1493,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
+            '--compile-cache',
             '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
             '--gpu-memory-utilization',
             '--max-num-batched-tokens')))
