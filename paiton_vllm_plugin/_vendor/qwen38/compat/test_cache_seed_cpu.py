@@ -34,6 +34,7 @@ class Test(unittest.TestCase):
         self.assertEqual((self.tmp / 'cache' / 'comgr' / 'llvmcache-1' / 'obj').read_text(), 'comgr')
         self.assertEqual((pathlib.Path(os.environ['VLLM_CACHE_ROOT']) / 'torch_compile_cache' / 'h' / 'rank_0_0' / 'model').read_text(), 'vllm')
         self.assertEqual([p.name for p in triton.parent.iterdir()], [ns])   # no temp directory left behind
+        self.assertTrue((triton / '.paiton-seed').exists())
         # a warm cache is left alone: add a file, re-run, the seed does not overwrite or duplicate anything
         (triton / 'warm.txt').write_text('x'); (self.tmp / 'seed' / 'triton' / 'abc123' / 'k.hsaco').write_text('changed')
         del os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES']

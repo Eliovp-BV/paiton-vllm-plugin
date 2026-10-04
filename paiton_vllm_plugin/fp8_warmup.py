@@ -8,7 +8,9 @@ runs, after vLLM's own kernel warm-up and before graph capture, one forward per 
 drafter) for EVERY M <= max_num_seqs x (num_speculative_tokens + 1) (every row count a decode/verify step can produce) and,
 up to max_num_batched_tokens, every multiple of 16 and its successor: the compiled variant also depends on the grid constant
 GRID_MN = cdiv(M, BLOCK_SIZE_M) x cdiv(N, BLOCK_SIZE_N), one per band of BLOCK_SIZE_M rows and per integer class of M. Same kernels, same arguments as production, so outputs do
-not change; the cost is paid once per cache namespace. PAITON_FP8_WARMUP=0 disables it.
+not change; the cost is paid once per cache namespace. On a cache filled from the image's seed every forward is a cache hit
+and the sweep is complete; on a cold unseeded cache the band sweep stops after PAITON_FP8_WARMUP_BUDGET_S (60 s) once the
+decode rows and the full chunk are compiled, and the line it logs says where it stopped. PAITON_FP8_WARMUP=0 disables it.
 """
 import os
 import time
@@ -66,7 +68,17 @@ def _m_values(worker):
         ms.add(b)
         ms.add(min(m_max, b + 1))
     ms.add(m_max)
-    return sorted(ms), m_decode, m_max
+    # order: the decode rows and the full chunk first (what every request hits), then the bands from small to large,
+    # so a time budget cuts the rarest shapes, never the common ones
+    first = list(range(1, m_decode + 1)) + [m_max, max(1, m_max - 1)]
+    rest = sorted(m for m in ms if m not in set(first))
+    return first + rest, m_decode, m_max
+
+
+def _seeded():
+    """True when the compile cache of this process was filled from the image's seed (a marker the seeder leaves)."""
+    d = os.environ.get("TRITON_CACHE_DIR")
+    return bool(d) and os.path.exists(os.path.join(d, ".paiton-seed"))
 
 
 def fp8_blockscale_warmup(worker):
@@ -78,7 +90,9 @@ def fp8_blockscale_warmup(worker):
         logger.info("[paiton.warmup] fp8 block-scale warm-up: no fp8 block-quant linear found")
         return {"layers": 0}
     ms, m_decode, m_max = _m_values(worker)
-    plan = [(name, mod, n, k, m) for name, mod, n, k in layers for m in ms]
+    plan = [(name, mod, n, k, m) for m in ms for name, mod, n, k in layers]      # M-major: common shapes first
+    seeded = _seeded()
+    budget = None if seeded else float(os.environ.get("PAITON_FP8_WARMUP_BUDGET_S", "60"))
     device = worker.device
     dtype = getattr(worker.model_config, "dtype", torch.bfloat16)
     cuda = torch.cuda.is_available() and torch.device(device).type == "cuda"
@@ -90,8 +104,12 @@ def fp8_blockscale_warmup(worker):
         mem["reserved_before_mib"] = round(torch.cuda.memory_reserved(device) / 2**20)
     t_start = time.time()
     done = 0
+    truncated_at = None
     with torch.inference_mode():
         for name, mod, n, k, m in plan:
+            if budget is not None and done >= len(layers) * (m_decode + 2) and time.time() - t_start > budget:
+                truncated_at = m        # over budget on a cold, unseeded cache: keep the decode rows and the full chunk, stop the band sweep
+                break
             x = torch.zeros(m, k, dtype=dtype, device=device)
             out = mod(x)
             del out, x
@@ -110,7 +128,10 @@ def fp8_blockscale_warmup(worker):
             pass
     logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up window epoch %.3f-%.3f memory %s", t_start, t_end, mem)
     shapes = sorted({(n, k) for _, _, n, k, _ in plan})
-    logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up: %d linears, %d (N,K) shapes %s, M <= %d exhaustive + bucket "
-                "boundaries to %d (%d M values), %d forwards in %.1f s",
-                len(layers), len(shapes), shapes, m_decode, m_max, len(ms), done, time.time() - t0)
-    return {"layers": len(layers), "shapes": shapes, "calls": done, "seconds": round(time.time() - t0, 1), "memory": mem}
+    logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up: %d linears, %d (N,K) shapes %s, M <= %d exhaustive then every "
+                "16-band to %d (%d M values), %d of %d forwards in %.1f s, seeded cache %s, budget %s, %s",
+                len(layers), len(shapes), shapes, m_decode, m_max, len(ms), done, len(plan), t_end - t_start, seeded,
+                "none" if budget is None else f"{budget:.0f} s",
+                "complete" if truncated_at is None else f"band sweep stopped at M={truncated_at} (over budget on an unseeded cache)")
+    return {"layers": len(layers), "shapes": shapes, "calls": done, "planned": len(plan), "seconds": round(t_end - t_start, 1),
+            "memory": mem, "seeded": seeded, "truncated_at": truncated_at}

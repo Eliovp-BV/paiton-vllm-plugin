@@ -36,12 +36,13 @@ class Test(unittest.TestCase):
         w = types.SimpleNamespace(vllm_config=_Cfg(8, 4096, 7))
         ms, m_decode, m_max = fw._m_values(w)
         self.assertEqual((m_decode, m_max), (64, 4096))
-        self.assertEqual(ms[:64], list(range(1, 65)))
-        self.assertEqual(ms[64:70], [65, 80, 81, 96, 97, 112]); self.assertEqual(ms[-3:], [4080, 4081, 4096]); expected = set(range(1, 65)) | {b for b in range(16, 4097, 16)} | {min(4096, b + 1) for b in range(16, 4097, 16)} | {4096}; self.assertEqual(ms, sorted(expected)); self.assertEqual(len(ms), 567)
+        self.assertEqual(ms[:66], list(range(1, 65)) + [4096, 4095])        # decode rows, then the full chunk, first
+        expected = set(range(1, 65)) | {b for b in range(16, 4097, 16)} | {min(4096, b + 1) for b in range(16, 4097, 16)} | {4096, 4095}
+        self.assertEqual(set(ms), expected); self.assertEqual(len(ms), len(expected)); self.assertEqual(ms[66:], sorted(expected - set(ms[:66])))
 
     def test_m_values_without_speculation_and_small_batch(self):
         ms, m_decode, m_max = fw._m_values(types.SimpleNamespace(vllm_config=_Cfg(4, 100, None)))
-        self.assertEqual((m_decode, m_max), (4, 100)); self.assertEqual(ms, [1, 2, 3, 4, 16, 17, 32, 33, 48, 49, 64, 65, 80, 81, 96, 97, 100])
+        self.assertEqual((m_decode, m_max), (4, 100)); self.assertEqual(ms, [1, 2, 3, 4, 100, 99, 16, 17, 32, 33, 48, 49, 64, 65, 80, 81, 96, 97])
 
     def test_layers_and_forwards(self):
         tgt = torch.nn.Module(); tgt.a = _Lin(24576, 4096, True); tgt.b = _Lin(4096, 4096, False)
@@ -55,8 +56,34 @@ class Test(unittest.TestCase):
             r = fw.fp8_blockscale_warmup(w)
         finally:
             torch.cuda.synchronize = orig
-        self.assertEqual([s[0] for s in tgt.a.calls], [1, 2, 3, 4, 5, 6, 7, 8, 16, 17, 32]); self.assertEqual(r["calls"], 2 * 11)
+        self.assertEqual(sorted(set(s[0] for s in tgt.a.calls)), [1, 2, 3, 4, 5, 6, 7, 8, 16, 17, 31, 32]); self.assertEqual(r["calls"], 2 * 12)
         self.assertEqual(tgt.b.calls, [])
+
+    def test_budget_keeps_decode_rows_and_chunk(self):
+        import os, time
+        tgt = torch.nn.Module(); tgt.a = _Lin(1024, 256, True)
+        slow = tgt.a.forward
+        def forward(x):
+            time.sleep(0.002); return slow(x)
+        tgt.a.forward = forward
+        w = types.SimpleNamespace(vllm_config=_Cfg(2, 4096, 3), model_runner=types.SimpleNamespace(model=tgt),
+                                  device=torch.device("cpu"), model_config=types.SimpleNamespace(dtype=torch.float32))
+        os.environ["PAITON_FP8_WARMUP_BUDGET_S"] = "0.05"; os.environ.pop("TRITON_CACHE_DIR", None)
+        try:
+            r = fw.fp8_blockscale_warmup(w)
+        finally:
+            del os.environ["PAITON_FP8_WARMUP_BUDGET_S"]
+        ms = [s[0] for s in tgt.a.calls]
+        self.assertEqual(ms[:10], [1, 2, 3, 4, 5, 6, 7, 8, 4096, 4095]); self.assertIsNotNone(r["truncated_at"]); self.assertLess(r["calls"], r["planned"])
+        # seeded cache: no budget, full sweep
+        import tempfile, pathlib
+        d = tempfile.mkdtemp(); pathlib.Path(d, ".paiton-seed").write_text("x"); os.environ["TRITON_CACHE_DIR"] = d
+        tgt.a.calls.clear(); os.environ["PAITON_FP8_WARMUP_BUDGET_S"] = "0.05"
+        try:
+            r = fw.fp8_blockscale_warmup(w)
+        finally:
+            del os.environ["PAITON_FP8_WARMUP_BUDGET_S"]; del os.environ["TRITON_CACHE_DIR"]
+        self.assertIsNone(r["truncated_at"]); self.assertEqual(r["calls"], r["planned"]); self.assertTrue(r["seeded"])
 
     def test_disabled(self):
         import os

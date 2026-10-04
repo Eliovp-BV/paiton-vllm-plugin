@@ -97,6 +97,7 @@ def seed_caches(xdg_cache):
         try:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(source, tmp, symlinks=True)
+            (tmp/'.paiton-seed').write_text(f'{seed}\n{namespace}\n')   # tells the warm-ups the cache is seeded
             os.rename(tmp, target)
             done[kind] = sum(1 for _ in target.rglob('*') if _.is_file())
         except FileExistsError:
