@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+import os
 import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -124,6 +125,9 @@ def get_sliding_window_size_in_chunks(
 
     assert isinstance(kv_cache_spec, FullAttentionSpec)
     return None
+
+
+_PAITON_DEBUG_UNALIGNED = os.environ.get("PAITON_HOST_KV_DEBUG_UNALIGNED", "0") == "1"
 
 
 def is_store_reachable_swa_chunk(
@@ -914,8 +918,9 @@ class OffloadingConnectorScheduler:
     def _paiton_mamba_aligned(self, tokens: int) -> int:
         # PAITON: every tightening of the hit end keeps it on a Mamba block. Groups with smaller chunks (the DFlash
         # drafter's 800-token chunks next to 1,600-token Mamba blocks) would otherwise move the end between two
-        # recurrent states.
-        if self._mamba_align_size is None:
+        # recurrent states. PAITON_HOST_KV_DEBUG_UNALIGNED=1 (validation only) skips this alignment so the hit-end
+        # guard in _lookup_complete_chunks can be exercised on a running server.
+        if self._mamba_align_size is None or _PAITON_DEBUG_UNALIGNED:
             return tokens
         return round_down(tokens, self._mamba_align_size)
 

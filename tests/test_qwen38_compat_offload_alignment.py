@@ -123,6 +123,16 @@ def test_aligning_the_end_rechecks_the_drafter_window():
     assert _serves(stored, 0, hit)
 
 
+def test_debug_switch_exercises_the_hit_end_guard(monkeypatch):
+    # PAITON_HOST_KV_DEBUG_UNALIGNED=1 (validation only) skips the alignment; the guard then recomputes the request
+    monkeypatch.setattr(conn, "_PAITON_DEBUG_UNALIGNED", True)
+    s = _scheduler(_everything_stored(258000))
+    assert s._lookup_complete_chunks(_status(258000)) == 0
+    assert s._paiton_unaligned_hits == 1
+    # an aligned prompt has nothing to recompute
+    assert _scheduler(_everything_stored(32000))._lookup_complete_chunks(_status(32000)) % ALIGN == 0
+
+
 def test_hit_after_a_local_gpu_hit_stays_aligned():
     stored = _everything_stored(200000)
     hit = _scheduler(stored)._lookup_complete_chunks(_status(200000, local=96000))
