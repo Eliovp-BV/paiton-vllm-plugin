@@ -73,6 +73,14 @@ def fp8_blockscale_warmup(worker):
     plan = [(name, mod, n, k, m) for name, mod, n, k in layers for m in ms]
     device = worker.device
     dtype = getattr(worker.model_config, "dtype", torch.bfloat16)
+    cuda = torch.cuda.is_available() and torch.device(device).type == "cuda"
+    mem = {}
+    if cuda:  # the warm-up runs after the KV pool is allocated: record its own allocator peak against the cap
+        torch.cuda.synchronize(device)
+        torch.cuda.reset_peak_memory_stats(device)
+        mem["allocated_before_mib"] = round(torch.cuda.memory_allocated(device) / 2**20)
+        mem["reserved_before_mib"] = round(torch.cuda.memory_reserved(device) / 2**20)
+    t_start = time.time()
     done = 0
     with torch.inference_mode():
         for name, mod, n, k, m in plan:
@@ -80,9 +88,21 @@ def fp8_blockscale_warmup(worker):
             out = mod(x)
             del out, x
             done += 1
-        torch.cuda.synchronize(device)
+        if cuda:
+            torch.cuda.synchronize(device)
+    t_end = time.time()
+    if cuda:
+        mem["peak_allocated_mib"] = round(torch.cuda.max_memory_allocated(device) / 2**20)
+        mem["peak_reserved_mib"] = round(torch.cuda.max_memory_reserved(device) / 2**20)
+        mem["reserved_after_mib"] = round(torch.cuda.memory_reserved(device) / 2**20)
+        try:
+            total = torch.cuda.get_device_properties(device).total_memory
+            mem["cap_mib"] = round(torch.cuda.get_per_process_memory_fraction(device) * total / 2**20)
+        except Exception:  # noqa: BLE001
+            pass
+    logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up window epoch %.3f-%.3f memory %s", t_start, t_end, mem)
     shapes = sorted({(n, k) for _, _, n, k, _ in plan})
     logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up: %d linears, %d (N,K) shapes %s, M <= %d exhaustive + bucket "
                 "boundaries to %d (%d M values), %d forwards in %.1f s",
                 len(layers), len(shapes), shapes, m_decode, m_max, len(ms), done, time.time() - t0)
-    return {"layers": len(layers), "shapes": shapes, "calls": done, "seconds": round(time.time() - t0, 1)}
+    return {"layers": len(layers), "shapes": shapes, "calls": done, "seconds": round(time.time() - t0, 1), "memory": mem}
