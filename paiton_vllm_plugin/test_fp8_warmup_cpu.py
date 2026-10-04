@@ -37,7 +37,7 @@ class Test(unittest.TestCase):
         ms, m_decode, m_max = fw._m_values(w)
         self.assertEqual((m_decode, m_max), (64, 4096))
         self.assertEqual(ms[:64], list(range(1, 65)))
-        self.assertEqual(ms[64:70], [65, 80, 81, 96, 97, 112]); self.assertEqual(ms[-3:], [4080, 4081, 4096]); self.assertEqual(len(ms), 64 + 2 * 252 + 1)
+        self.assertEqual(ms[64:70], [65, 80, 81, 96, 97, 112]); self.assertEqual(ms[-3:], [4080, 4081, 4096]); expected = set(range(1, 65)) | {b for b in range(16, 4097, 16)} | {min(4096, b + 1) for b in range(16, 4097, 16)} | {4096}; self.assertEqual(ms, sorted(expected)); self.assertEqual(len(ms), 567)
 
     def test_m_values_without_speculation_and_small_batch(self):
         ms, m_decode, m_max = fw._m_values(types.SimpleNamespace(vllm_config=_Cfg(4, 100, None)))
