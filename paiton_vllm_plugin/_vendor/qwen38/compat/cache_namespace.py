@@ -70,7 +70,9 @@ def seed_caches(xdg_cache):
     that are the same on every host with this image: their cache entries are keyed by content hashes (kernel source,
     constants, target), not by paths or times, and this namespace only partitions them. The seed also fixes inductor's
     autotune picks (best_config): without it every host's first start times a few configs per fused kernel and keeps
-    whichever won, and a different reduction blocking changes the summation order, so two hosts can disagree bit for bit. The image may ship those entries
+    whichever won, and a different reduction blocking changes the summation order, so two hosts can disagree bit for bit.
+    Picks differ between modes (namespaces) for the same kernel, so the seed may hold ns/<namespace>/{inductor,vllm}
+    next to the shared pools; a namespace takes its own when present and the pool otherwise. The image may ship those entries
     under PAITON_CACHE_SEED (default /opt/paiton/cache-seed/{triton,inductor,vllm,comgr}, a Paiton path the release scan covers;
     vllm holds the opt-in compile cache's AOT graphs); when a target directory does
     not exist yet, it is created from the seed with a copy-and-rename, so a concurrent process sees either nothing or the
@@ -83,8 +85,12 @@ def seed_caches(xdg_cache):
                'vllm': Path(os.environ['VLLM_CACHE_ROOT']),
                'comgr': Path(os.environ.get('AMD_COMGR_CACHE_DIR', str(Path(xdg_cache)/'comgr')))}
     done = {}
+    namespace = os.environ.get('PAITON_RUNTIME_COMPAT_CACHE_NAMESPACE', '')
     for kind, target in targets.items():
         source = Path(seed)/kind
+        if kind in ('inductor', 'vllm') and namespace and (Path(seed)/'ns'/namespace/kind).is_dir():
+            source = Path(seed)/'ns'/namespace/kind      # this namespace's own autotune picks and graphs
+            done[kind + '_source'] = 'namespace'
         if not source.is_dir() or target.exists():
             continue
         tmp = target.with_name(f'{target.name}.seed.tmp.{os.getpid()}')

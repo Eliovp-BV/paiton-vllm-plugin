@@ -57,6 +57,16 @@ class Test(unittest.TestCase):
         ns4 = cn.configure(root, {'files': {}}); self.assertNotEqual(ns3, ns4)   # ... a numerics switch does
         for k in ('PAITON_START_READAHEAD', 'PAITON_START_WARMUP', 'PAITON_KV4', 'PAITON_COMPILE_CACHE'): del os.environ[k]
 
+    def test_namespace_specific_picks_win_over_the_pool(self):
+        ns = cn.configure(self.tmp / 'compat', {'files': {}})
+        # a second namespace dir, seeded from a per-namespace tree if one exists for it
+        import shutil
+        shutil.rmtree(self.tmp / 'cache'); del os.environ['PAITON_RUNTIME_COMPAT_CACHE_BASES']
+        f = self.tmp / 'seed' / 'ns' / ns / 'inductor' / 'ik' / 'x' / 'y.py'; f.parent.mkdir(parents=True); f.write_text('namespace pick')
+        self.assertEqual(cn.configure(self.tmp / 'compat', {'files': {}}), ns)
+        self.assertEqual((pathlib.Path(os.environ['TORCHINDUCTOR_CACHE_DIR']) / 'ik' / 'x' / 'y.py').read_text(), 'namespace pick')
+        self.assertEqual((pathlib.Path(os.environ['TRITON_CACHE_DIR']) / 'abc123' / 'k.hsaco').read_text(), 'triton')   # pool kinds unchanged
+
     def test_seed_off_and_missing(self):
         os.environ['PAITON_CACHE_SEED'] = 'off'; cn.configure(self.tmp / 'compat', {'files': {}})
         self.assertFalse(pathlib.Path(os.environ['TRITON_CACHE_DIR']).exists())
