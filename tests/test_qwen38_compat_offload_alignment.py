@@ -172,3 +172,55 @@ def test_partial_tail_hits_stay_off_with_a_draft_group():
     # exists, so they cannot bypass it for this model
     source = OVERLAY.read_text()
     assert "and not any(config.is_eagle_group for config in kv_group_configs)" in source
+
+
+# Phase B: only draft-group chunks that can serve a hit are stored (sparse Mamba retention, PAITON_HOST_KV_DRAFTER_TRIM)
+RET = 32000
+
+
+def _retained(prompt):
+    """Boundaries with a retained recurrent state for one prompt: multiples of the retention interval, the replay
+    boundary and the tail checkpoint."""
+    tail = prompt // ALIGN * ALIGN - ALIGN
+    return {k * RET for k in range(1, prompt // RET + 1)} | {(prompt - 1) // ALIGN * ALIGN} | ({tail} if tail > 0 else set())
+
+
+def _trim_scheduler():
+    s = types.SimpleNamespace(_paiton_retention=RET, _mamba_align_size=ALIGN)
+    s._paiton_drafter_chunk_reachable = types.MethodType(SCHED._paiton_drafter_chunk_reachable, s)
+    return s
+
+
+def _req(prompt):
+    return types.SimpleNamespace(num_prompt_tokens=prompt, paiton_eagle_ckpt=prompt // ALIGN * ALIGN - ALIGN,
+                                 shared_prefix_boundary=None)
+
+
+@pytest.mark.parametrize("prompt", [3308, 32000, 33552, 64801, 130001, 256801, 258000, 262143])
+def test_trim_keeps_exactly_the_reachable_drafter_chunks(prompt):
+    s, req = _trim_scheduler(), _req(prompt)
+    kept = {i for i in range(prompt // DRAFT_CHUNK) if s._paiton_drafter_chunk_reachable(req, i, DRAFT_CHUNK, DRAFT_WINDOW)}
+    want = {i for b in _retained(prompt) for i in range(b // DRAFT_CHUNK - DRAFT_WINDOW, b // DRAFT_CHUNK + 1)
+            if 0 <= i < prompt // DRAFT_CHUNK}
+    assert kept == want
+    if prompt > 200000:
+        assert len(kept) < 0.2 * (prompt // DRAFT_CHUNK)       # most drafter chunks are no longer stored
+
+
+def test_trim_leaves_every_host_hit_unchanged():
+    rng = random.Random(4)
+    s_trim = _trim_scheduler()
+    for _ in range(300):
+        prompt = rng.randint(1600, 262144)
+        req = _req(prompt)
+        keys = _keys(prompt)
+        states = {b // ALIGN - 1 for b in _retained(prompt)}
+        full = {k for ks in keys for k in ks
+                if GROUPS[k[0]][1] is None or (GROUPS[k[0]][1] == 1 and k[1] in states) or k[0] == 8}
+        trimmed = {k for k in full
+                   if k[0] != 8 or s_trim._paiton_drafter_chunk_reachable(req, k[1], DRAFT_CHUNK, DRAFT_WINDOW)}
+        a = _scheduler(full)._lookup_complete_chunks(_status(prompt))
+        b = _scheduler(trimmed)._lookup_complete_chunks(_status(prompt))
+        assert a == b, (prompt, a, b)
+        if b:
+            assert _serves(trimmed, 0, b)

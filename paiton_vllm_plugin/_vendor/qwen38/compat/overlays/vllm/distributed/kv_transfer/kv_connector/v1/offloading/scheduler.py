@@ -541,6 +541,17 @@ class OffloadingConnectorScheduler:
         # PAITON: complete-chunk hits rejected for ending off a Mamba block (_lookup_complete_chunks); partial-tail
         # hits carry their own boundary state and are not affected.
         self._paiton_unaligned_hits = 0
+        # PAITON: under sparse Mamba retention a host hit can only end where a recurrent state is retained (multiples of
+        # the retention interval, the replay boundary, the tail checkpoint, a shared-prefix junction). Of the draft
+        # (EAGLE) groups' sliding-window chunks only those within the window (+ the verify chunk) before such a
+        # boundary can serve a hit, so only those are stored (PAITON_HOST_KV_DRAFTER_TRIM=0 stores every chunk).
+        self._paiton_retention = vllm_config.cache_config.prefix_cache_retention_interval or 0
+        self._paiton_trim_drafter = (
+            os.environ.get("PAITON_HOST_KV_DRAFTER_TRIM", "1") != "0"
+            and self._mamba_align_size is not None
+            and self._paiton_retention > 0
+            and any(c.is_eagle_group for c in self.config.kv_group_configs)
+        )
         self._partial_tail_block_size = (
             self.config.kv_group_configs[0].tokens_per_block
             if self.config.supports_partial_tail
@@ -914,6 +925,23 @@ class OffloadingConnectorScheduler:
         )
 
         return num_hit_tokens
+
+    def _paiton_drafter_chunk_reachable(
+        self, req: Request, chunk_idx: int, tokens_per_chunk: int, window_chunks: int
+    ) -> bool:
+        # A draft-group chunk serves a hit ending at boundary B when B // tokens_per_chunk - window_chunks <= chunk_idx
+        # <= B // tokens_per_chunk (the window before B and the verify chunk at B), i.e. B in [lo, hi] below.
+        lo = chunk_idx * tokens_per_chunk
+        hi = (chunk_idx + window_chunks) * tokens_per_chunk
+        ret = self._paiton_retention
+        if hi // ret * ret >= max(lo, ret):
+            return True
+        align = self._mamba_align_size
+        boundaries = [round_down(req.num_prompt_tokens - 1, align)]
+        for extra in (getattr(req, "paiton_eagle_ckpt", 0), getattr(req, "shared_prefix_boundary", None)):
+            if extra:
+                boundaries.append(round_down(extra, align))
+        return any(lo <= b <= hi for b in boundaries)
 
     def _paiton_mamba_aligned(self, tokens: int) -> int:
         # PAITON: every tightening of the hit end keeps it on a Mamba block. Groups with smaller chunks (the DFlash
@@ -1446,6 +1474,18 @@ class OffloadingConnectorScheduler:
                     # reachable. EAGLE/MTP requires one additional chunk that
                     # lookup later drops as its volatile draft tail.
                     abs_chunk_idx = start_chunk_idx + key_idx
+                    if (
+                        self._paiton_trim_drafter
+                        and group_config.is_eagle_group
+                        and group_config.sliding_window_size_in_chunks is not None
+                        and not self._paiton_drafter_chunk_reachable(
+                            req,
+                            abs_chunk_idx,
+                            group_config.tokens_per_chunk,
+                            group_config.sliding_window_size_in_chunks,
+                        )
+                    ):
+                        continue
                     if not is_store_reachable_swa_chunk(
                         abs_chunk_idx,
                         num_chunks,
