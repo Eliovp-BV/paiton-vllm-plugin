@@ -10,7 +10,8 @@ up to max_num_batched_tokens, every multiple of 16 and its successor: the compil
 GRID_MN = cdiv(M, BLOCK_SIZE_M) x cdiv(N, BLOCK_SIZE_N), one per band of BLOCK_SIZE_M rows and per integer class of M. Same kernels, same arguments as production, so outputs do
 not change; the cost is paid once per cache namespace. The band sweep stops after PAITON_FP8_WARMUP_BUDGET_S (60 s) once the
 decode rows and the full chunk are compiled (a seed that carries the variants finishes in seconds); the line it logs says
-where it stopped. Reserved memory is released per 512-row band so the large-M activations do not stay reserved.
+where it stopped. Reserved memory is released per 512-row band so the large-M activations do not stay reserved, and the
+sweep stops when the card's free VRAM drops below PAITON_FP8_WARMUP_MIN_FREE_GIB (1.5 GiB): the host-freeze edge is never approached.
 PAITON_FP8_WARMUP=0 disables it.
 """
 import os
@@ -22,6 +23,7 @@ from vllm.logger import init_logger
 
 # vLLM installs its handlers on the 'vllm' logger hierarchy only; a plugin-named logger would print nothing below WARNING
 logger = init_logger('vllm.paiton.warmup')
+GUARD_FREE_BYTES = int(float(os.environ.get("PAITON_FP8_WARMUP_MIN_FREE_GIB", "1.5")) * 2**30)   # stop the sweep below this free VRAM
 
 
 def _models(worker):
@@ -105,15 +107,19 @@ def fp8_blockscale_warmup(worker):
         mem["reserved_before_mib"] = round(torch.cuda.memory_reserved(device) / 2**20)
     t_start = time.time()
     done = 0
-    truncated_at = None
+    truncated_at = None; stop_reason = ""
     last_band = 0
     with torch.inference_mode():
         for name, mod, n, k, m in plan:
             if done >= len(layers) * (m_decode + 2) and time.time() - t_start > budget:
-                truncated_at = m        # over budget: the decode rows and the full chunk are done, stop the band sweep
+                truncated_at = m; stop_reason = "over budget"        # the decode rows and the full chunk are done, stop the band sweep
                 break
             if cuda and m // 512 != last_band:   # the large-M activations must not stay as reserved segments: keep reserved near allocated
                 torch.cuda.synchronize(device); torch.cuda.empty_cache(); last_band = m // 512
+                free_b, _total = torch.cuda.mem_get_info(device)
+                if free_b < GUARD_FREE_BYTES:     # hard guard: never push the card toward the host-freeze edge
+                    truncated_at = m; stop_reason = f"free VRAM {free_b / 2**20:.0f} MiB below the {GUARD_FREE_BYTES / 2**20:.0f} MiB guard"
+                    break
             x = torch.zeros(m, k, dtype=dtype, device=device)
             out = mod(x)
             del out, x
@@ -137,6 +143,6 @@ def fp8_blockscale_warmup(worker):
                 "16-band to %d (%d M values), %d of %d forwards in %.1f s, seeded cache %s, budget %s, %s",
                 len(layers), len(shapes), shapes, m_decode, m_max, len(ms), done, len(plan), t_end - t_start, seeded,
                 f"{budget:.0f} s",
-                "complete" if truncated_at is None else f"band sweep stopped at M={truncated_at} (over budget)")
+                "complete" if truncated_at is None else f"band sweep stopped at M={truncated_at} ({stop_reason})")
     return {"layers": len(layers), "shapes": shapes, "calls": done, "planned": len(plan), "seconds": round(t_end - t_start, 1),
-            "memory": mem, "seeded": seeded, "truncated_at": truncated_at}
+            "memory": mem, "seeded": seeded, "truncated_at": truncated_at, "stop_reason": stop_reason}
