@@ -265,7 +265,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py": {
       "overlay": "overlays/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py",
       "original_sha256": "0a66105e9cb9f537981247aac1e59164dba4410d03a93cf28eae3347f7abb35d",
-      "overlay_sha256": "71ef37c8ca63377ba1cfc2af7df4654b44822258ed454f53ffbfeb31fd570dfd"
+      "overlay_sha256": "41f2151a880b0c508feb798b7917fefff402345e184cbf76ebb65623250c99c0"
     },
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/core/single_type_kv_cache_manager.py": {
       "overlay": "overlays/vllm/v1/core/single_type_kv_cache_manager.py",

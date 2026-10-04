@@ -534,6 +534,9 @@ class OffloadingConnectorScheduler:
         self._mamba_align_size: int | None = resolve_mamba_align_size(
             spec, kv_cache_config
         )
+        # PAITON: complete-chunk hits rejected for ending off a Mamba block (_lookup_complete_chunks); partial-tail
+        # hits carry their own boundary state and are not affected.
+        self._paiton_unaligned_hits = 0
         self._partial_tail_block_size = (
             self.config.kv_group_configs[0].tokens_per_block
             if self.config.supports_partial_tail
@@ -735,6 +738,8 @@ class OffloadingConnectorScheduler:
         # in the current convergence iteration. Reset when a non-eagle group
         # tightens the hit boundary, requiring a fresh pop.
         eagle_verified: set[int] = set()
+        # PAITON: set when aligning the hit end moved it below a sliding-window group's verified window
+        paiton_recheck_sliding = False
         while lookup_groups:
             looked_up_sliding_window: bool = False
             groups_iter = iter(lookup_groups)
@@ -756,8 +761,8 @@ class OffloadingConnectorScheduler:
                 )
 
                 # Constrain to a chunk-aligned boundary for this group.
-                max_hit_size_tokens = min(
-                    max_hit_size_tokens, len(offload_keys) * tokens_per_chunk
+                max_hit_size_tokens = self._paiton_mamba_aligned(
+                    min(max_hit_size_tokens, len(offload_keys) * tokens_per_chunk)
                 )
                 if max_hit_size_tokens - num_computed_tokens < tokens_per_chunk:
                     # We can only load less than a chunk, so skip.
@@ -810,10 +815,16 @@ class OffloadingConnectorScheduler:
                         num_hit_chunks -= 1
                         eagle_verified.add(group_idx)
 
-                    max_hit_size_tokens = min(
+                    unaligned = min(
                         max_hit_size_tokens,
                         tokens_per_chunk * (start_chunk_idx + num_hit_chunks),
                     )
+                    max_hit_size_tokens = self._paiton_mamba_aligned(unaligned)
+                    if (
+                        max_hit_size_tokens < unaligned
+                        and sliding_window_size_in_chunks is not None
+                    ):
+                        paiton_recheck_sliding = True
 
                 new_num_hit_tokens = max_hit_size_tokens - num_computed_tokens
                 if new_num_hit_tokens < tokens_per_chunk:
@@ -832,6 +843,10 @@ class OffloadingConnectorScheduler:
                         # we need another iteration to confirm previously looked up
                         # sliding window works with the new_num_hit_tokens
                         lookup_groups = self._sliding_window_groups
+                if paiton_recheck_sliding and not lookup_groups:
+                    # PAITON: the window before the aligned (earlier) end was not looked up yet
+                    lookup_groups = self._sliding_window_groups
+                paiton_recheck_sliding = False
 
                 looked_up_sliding_window |= sliding_window_size_in_chunks is not None
                 num_hit_tokens = new_num_hit_tokens
@@ -869,6 +884,24 @@ class OffloadingConnectorScheduler:
                     )
                     return None
 
+        if (
+            self._mamba_align_size is not None
+            and num_hit_tokens
+            and (num_computed_tokens + num_hit_tokens) % self._mamba_align_size
+        ):
+            # PAITON: a hit must end on a Mamba block, where a recurrent state exists; anything else would resume
+            # from another position's state. Recompute instead (a cold prefill is always correct).
+            self._paiton_unaligned_hits += 1
+            logger.warning(
+                "Offloading: request %s hit end %d is not a multiple of the Mamba block %d; recomputing "
+                "(%d such hits)",
+                req_status.req.request_id,
+                num_computed_tokens + num_hit_tokens,
+                self._mamba_align_size,
+                self._paiton_unaligned_hits,
+            )
+            return 0
+
         logger.debug(
             "Request %s hit %s offloaded tokens after %s GPU hit tokens",
             req_status.req.request_id,
@@ -877,6 +910,14 @@ class OffloadingConnectorScheduler:
         )
 
         return num_hit_tokens
+
+    def _paiton_mamba_aligned(self, tokens: int) -> int:
+        # PAITON: every tightening of the hit end keeps it on a Mamba block. Groups with smaller chunks (the DFlash
+        # drafter's 800-token chunks next to 1,600-token Mamba blocks) would otherwise move the end between two
+        # recurrent states.
+        if self._mamba_align_size is None:
+            return tokens
+        return round_down(tokens, self._mamba_align_size)
 
     def _make_boundary_key(
         self, request: Request, group_idx: int, boundary_tokens: int
@@ -1014,6 +1055,9 @@ class OffloadingConnectorScheduler:
         partial_tail_boundary = req_status.partial_tail_boundary
         if partial_tail_boundary is not None:
             assert partial_tail_boundary == num_cached_tokens
+        elif self._mamba_align_size is not None:
+            # PAITON: the recurrent state loaded below is the one at the end of the hit
+            assert num_cached_tokens % self._mamba_align_size == 0, (num_cached_tokens, self._mamba_align_size)
 
         keys_to_load: list[OffloadKey] = []
         dst_block_ids: list[int] = []
