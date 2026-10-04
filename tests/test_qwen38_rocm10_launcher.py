@@ -1004,11 +1004,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib', '2', *fixed)
         self.assertEqual(value(command, '--kv-offloading-size'), '2')
         self.assertIn('--enable-prefix-caching', command)
+        # with the embedding in system memory 2.4 + 2 GiB exceed the 3.5 GiB a 15.5 GiB host can pin: the tier wins and
+        # the embedding stays on the GPU
         command = self.dry_run('--mode', 'long-kv4', '--host-cache-gib', '2', *fixed)
-        self.assertIn('PAITON_HOST_EMBED=1', command)              # 2.4 + 2 GiB fit the 4.5 GiB of this host
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
         self.assertEqual(value(command, '--kv-offloading-size'), '2')
-        self.assertEqual(self.dry_run('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on',
-                                      '--host-cache-gib', '2', *fixed)[-1], command[-1])
         for options in (('--mode', 'long-512k'), ('--mode', 'long-512k', *fixed)):
             with self.subTest(options=options):
                 self.assertIn('not qualified with --mode long-512k', self.refused(*options, '--host-cache-gib', '1'))
@@ -1050,9 +1050,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         # an explicit budget still wins
         command = self.dry_run('--mode', 'long-kv4', '--system-memory-weights', '--kv-cache-memory-bytes', '9662464000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9662464000')
-        # pinned memory is shared with the host KV tier: 2.4 GiB + 2 GiB fit the 4.5 GiB of a 15.5 GiB host, + 3 GiB not
-        self.dry_run('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '2')
-        self.assertIn('pins 2.4 GiB', self.refused('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '3'))
+        # pinned memory is shared with the host KV tier: on a 15.5 GiB host 2.4 GiB + 1 GiB fit, + 2 GiB not (the RAM
+        # tier with the embedding in system memory needs about 32 GB)
+        self.dry_run('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '1')
+        stderr = self.refused('--mode', 'long', '--system-memory-weights', '--host-cache-gib', '2')
+        self.assertIn('pins 2.4 GiB', stderr)
+        self.assertIn('needs about 32 GB of RAM', stderr)
         self.assertIn('3-bit long-context modes only', self.refused('--mode', '65k', '--system-memory-weights'))
         # the previous release images do not carry the host-memory modules
         for options in (('--mode', 'long', '--system-memory-weights'), ('--mode', 'long-kv4', '--system-memory-weights')):
@@ -1097,6 +1100,14 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--kv-offloading-size'), '2')
         self.assertEqual(value(command, '--prefix-caching-hash-algo'), 'sha256')
         self.assertFalse(disk.exists())                  # a dry run creates nothing
+        # the tier's /dev/shm file goes away with the container, however the server exits
+        self.assertEqual(value(command, '--ipc'), 'private')
+        self.assertEqual(value(command, '--shm-size'), '3g')
+        self.assertEqual(value(self.dry_run('--mode', 'long', '--host-cache-gib', '2.5', '--disk-cache-dir', str(disk)),
+                               '--shm-size'), '4g')
+        ram_only = self.dry_run('--mode', 'long', '--host-cache-gib', '2')
+        self.assertEqual(value(ram_only, '--ipc'), 'host')
+        self.assertNotIn('--shm-size', ram_only)
         # another KV format or weight set gets another folder
         other = self.dry_run('--mode', 'long', '--host-cache-gib', '2', '--disk-cache-dir', str(disk),
                              '--gdn-state', 'eager')
@@ -1186,11 +1197,11 @@ class Rocm10LauncherTests(unittest.TestCase):
                 stderr = self.refused('--mode', 'long-512k', *options)
                 self.assertIn('--mode long-512k', stderr)
                 self.assertIn(reason, stderr)
-        # a host that cannot pin the embedding: refused with the reason (12 GiB of RAM leaves 1 GiB to pin)
+        # a host that cannot pin the embedding: refused with the reason (12 GiB of RAM leaves nothing to pin)
         (self.root / 'meminfo').write_text('MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n')
         stderr = self.refused('--mode', 'long-512k')
         self.assertIn('needs 2.4 GiB of pinned system memory', stderr)
-        self.assertIn('this host can pin 1.0 GiB', stderr)
+        self.assertIn('this host can pin 0 GiB', stderr)
         # the experimental spelling of the 512K context outside the preset still needs prefix caching and system memory
         (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
         self.assertIn('--context exceeds', self.refused('--context', '524288', '--kv-cache', 'kv4'))
@@ -1210,7 +1221,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
         self.assertIn('PAITON_PC_EAGLE_TAIL=1', command)
         self.assertEqual(sum(line.startswith('Note: ') for line in result.stderr.splitlines()), 1, result.stderr)
-        self.assertIn('this host can pin 1.0 GiB of system memory, not the 2.4 GiB the embedding needs; the embedding '
+        self.assertIn('this host can pin 0 GiB of system memory, not the 2.4 GiB the embedding needs; the embedding '
                       'stays on the GPU and the KV cache is smaller (about 452,000 tokens)', result.stderr)
         self.assertEqual(command, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights'))
         # an explicit --system-memory-weights is refused rather than dropped
@@ -1230,12 +1241,61 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('PAITON_HOST_EMBED=1', json.loads(result.stdout))
         self.assertIn('not the 2.4 GiB embedding plus the 3 GiB host cache together', result.stderr)
 
+    def _host(self, total_gib, available_gib):
+        (self.root / 'meminfo').write_text(f'MemTotal: {int(total_gib * 2 ** 20)} kB\n'
+                                           f'MemAvailable: {int(available_gib * 2 ** 20)} kB\n')
+        (self.root / 'ttm_pages_limit').write_text(f'{int(total_gib * 2 ** 30 / 2 / 4096)}\n')   # the kernel default
+
+    def test_pin_limit_follows_the_server_footprint(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        fixed = ('--image', 'paiton-qwen38-local:dev')
+        # (MemTotal GiB, embedding in RAM + 2 GiB tier served, tier with the embedding on the GPU: largest accepted)
+        for total, ram_tier, gpu_tier in ((15.5, False, 4.5), (24, True, 11.5), (32, True, 15.5), (64, True, 31.5)):
+            with self.subTest(total=total):
+                self._host(total, total - 3)
+                # the shipped coding mode keeps the embedding in system memory, without a tier, on every size
+                self.assertIn('PAITON_HOST_EMBED=1', self.dry_run('--mode', 'long-kv4', *fixed))
+                explicit = ('--mode', 'long-kv4', '--system-memory-weights', '--host-cache-gib', '2', *fixed)
+                if ram_tier:
+                    self.assertIn('PAITON_HOST_EMBED=1', self.dry_run(*explicit))
+                else:
+                    self.assertIn('needs about 32 GB of RAM', self.refused(*explicit))
+                tier = ('--mode', 'long-kv4', '--no-system-memory-weights', *fixed)
+                self.assertEqual(value(self.dry_run(*tier, '--host-cache-gib', f'{gpu_tier:g}'), '--kv-offloading-size'),
+                                 f'{gpu_tier:g}')
+                self.assertIn('exceeds what this host can pin safely',
+                              self.refused(*tier, '--host-cache-gib', f'{gpu_tier + 0.5:g}'))
+
+    def test_launch_refuses_a_host_tier_that_cannot_start(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        tier = ('--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib', '2', '--image',
+                'paiton-qwen38-local:dev')                    # needs 3.9 + 2 = 5.9 GiB
+        self._host(15.5, 6.5)                                  # < 5.9 + 1: refused, naming the shortfall
+        stderr = self.refused(*tier)
+        self.assertIn('needs about 5.9 GiB plus 1 GiB to start (0.4 GiB short)', stderr)
+        self.assertIn('lower --host-cache-gib', stderr)
+        self._host(15.5, 8.0)                                  # < 5.9 + 3.5: served with a warning
+        result = self.run_launcher('--dry-run', *tier)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('should leave 3.5 GiB free (1.4 GiB short)', result.stderr)
+        self._host(15.5, 10.0)                                 # enough: no warning
+        self.assertNotIn('Warning', self.run_launcher('--dry-run', *tier).stderr)
+        # the shipped coding mode without a tier is never refused for available memory, only warned below 6 GiB
+        self._host(15.5, 4.0)
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Warning: only 4.0 GiB', result.stderr)
+
     def test_low_available_memory_warns_without_refusing(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:    4194304 kB\n')   # 4 GiB
-        for options in (('--mode', 'long-kv4'), ('--mode', 'long-512k'), ('--mode', 'long', '--host-cache-gib', '1')):
+        for options in (('--mode', 'long-kv4'), ('--mode', 'long-512k')):      # no host tier: a warning only
             with self.subTest(options=options):
                 result = self.run_launcher('--dry-run', *options)
                 self.assertEqual(result.returncode, 0, result.stderr)

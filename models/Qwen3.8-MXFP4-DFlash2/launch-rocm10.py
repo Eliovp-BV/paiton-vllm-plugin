@@ -207,13 +207,30 @@ W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
 # so the launcher adds a fingerprint folder (image id, weight folders, KV format, context, GDN state). The file tier has
 # no size limit of its own: the launcher refuses to start when the folder exceeds --disk-cache-gib (default 64) and
 # --wipe-disk-cache removes it (through Docker: the files are written by the container's user).
+# The tiering spec keeps the host tier in a /dev/shm file that it unlinks only on a clean shutdown (it ignores
+# PAITON_HOST_KV_PRIVATE), so in the host's IPC namespace a killed server (OOM killer, docker kill) leaves the whole tier
+# in the host's /dev/shm until reboot. With a disk tier the container gets a private IPC namespace instead: its own
+# /dev/shm, the tier plus 1 GiB, which Docker unmounts when the container stops, however the server exits.
 DISK_CACHE_FORMAT = 1
 DISK_CACHE_DEFAULT_GIB = 64.0
+DISK_TIER_SHM_HEADROOM_GIB = 1.0
 PROC_MEMINFO = Path('/proc/meminfo')
 DEV_SHM = '/dev/shm'
 TTM_PAGES_LIMIT = Path('/sys/module/ttm/parameters/pages_limit')
-HOST_CACHE_RESERVE_GIB = 11.0
+# Pinned system memory (the embedding with --system-memory-weights, the host KV tier) is bounded so the whole server
+# fits: the serving processes' unpinned peak during model load and graph capture (measured on the 16 GiB testbench:
+# 4.65 GiB with the embedding in system memory, 3.78 GiB with it on the GPU; rounded up) plus the pinned buffers plus a
+# reserve for the system and a desktop (3.5 GiB) and the 3.5 GiB that must stay available, at most MemTotal. On a 16 GiB
+# host that keeps the coding mode's embedding in system memory and allows a RAM tier only with the embedding on the
+# GPU (up to ~4.5 GiB); the RAM tier with the embedding in system memory needs about 32 GB of RAM.
+SERVER_UNPINNED_PEAK_GIB = {True: 4.75, False: 3.9}     # keyed by: embedding in system memory
+HOST_RESERVE_GIB = 7.0
 HOST_CACHE_SHM_MARGIN_GIB = 0.5
+# At launch, with a host KV tier: refuse below the server's need plus 1 GiB (the start would hit the OOM killer or swap
+# hard), warn below its need plus 3.5 GiB.
+LAUNCH_REFUSE_MARGIN_GIB = 1.0
+LAUNCH_WARN_MARGIN_GIB = 3.5
+RAM_TIER_WITH_EMBEDDING_MIN_GB = 32
 
 
 def release_command(release):
@@ -314,7 +331,7 @@ def system_memory_weights_bytes(args):
 
 def system_memory_weights_fit(args):
     """(fits, limit GiB): whether this host can pin the embedding (plus any --host-cache-gib) within its limit."""
-    limit = host_cache_limit_gib()
+    limit = host_cache_limit_gib(True)
     need = system_memory_weights_bytes(args) / 2 ** 30 + (getattr(args, 'host_cache_gib', None) or 0)
     return limit is not None and need <= limit, limit
 
@@ -327,10 +344,10 @@ def mem_available_gib():
         return None
 
 
-def host_cache_limit_gib():
-    """Largest --host-cache-gib this host allows (0.5 GiB steps), or None when it cannot be determined: MemTotal less
-    the reserve, at most the TTM (GTT) limit less a margin. PAITON_HOST_PIN_LIMIT_GIB overrides it for a host whose
-    memory is known to be free."""
+def host_cache_limit_gib(embedding_in_ram=True):
+    """Largest total of pinned system memory (embedding and host KV tier, 0.5 GiB steps) this host allows, or None
+    when it cannot be determined: MemTotal less the server's unpinned peak and the reserve, at most the TTM (GTT) limit
+    less a margin. PAITON_HOST_PIN_LIMIT_GIB overrides it for a host whose memory is known to be free."""
     override = os.environ.get('PAITON_HOST_PIN_LIMIT_GIB')
     try:
         if override:
@@ -343,7 +360,14 @@ def host_cache_limit_gib():
             ttm = total / 2           # the kernel's default
     except (OSError, StopIteration, ValueError):
         return None
-    return max(0.0, math.floor(2 * min(total - HOST_CACHE_RESERVE_GIB, ttm - HOST_CACHE_SHM_MARGIN_GIB)) / 2)
+    room = total - SERVER_UNPINNED_PEAK_GIB[embedding_in_ram] - HOST_RESERVE_GIB
+    return max(0.0, math.floor(2 * min(room, ttm - HOST_CACHE_SHM_MARGIN_GIB)) / 2)
+
+
+def pin_limit_text(embedding_in_ram):
+    return (f'MemTotal less the server ({SERVER_UNPINNED_PEAK_GIB[embedding_in_ram]:g} GiB with the embedding '
+            f'{"in system memory" if embedding_in_ram else "on the GPU"}) and a {HOST_RESERVE_GIB:g} GiB reserve for '
+            f'the system and desktop, at most the TTM (GTT) limit less {HOST_CACHE_SHM_MARGIN_GIB:g} GiB')
 
 
 def cache_bytes(value):
@@ -574,13 +598,13 @@ def apply_mode(args, environment):
         if not fits and not args.vision:
             need = (f'the 2.4 GiB embedding plus the {args.host_cache_gib:g} GiB host cache together'
                     if getattr(args, 'host_cache_gib', None) else 'the 2.4 GiB the embedding needs')
-            notes.append(f'{name}: this host can pin {limit if limit is not None else "an unknown amount of"} GiB of '
+            notes.append(f'{name}: this host can pin {format(limit, "g") if limit is not None else "an unknown amount of"} GiB of '
                          f'system memory, not {need}; the embedding stays on the GPU and the KV cache is smaller '
                          '(about 452,000 tokens)')
         elif not fits:
             raise ValueError(f'{name} --vision needs {system_memory_weights_bytes(args) / 2 ** 30:.1f} GiB of pinned '
                              f'system memory for the embedding; this host can pin '
-                             f'{limit if limit is not None else "an unknown amount of"} GiB. For images use --mode long '
+                             f'{format(limit, "g") if limit is not None else "an unknown amount of"} GiB. For images use --mode long '
                              f'--vision (up to {W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
     refusal = long_kv4_refusal(argparse.Namespace(**{**vars(args), 'prefix_caching': prefix,
                                                      'system_memory_weights': sysmem}), weights)
@@ -614,9 +638,8 @@ def long_512k_settings(args, weights, name, settings):
     fits, limit = system_memory_weights_fit(args)
     if not fits:
         raise ValueError(f'{name} needs 2.4 GiB of pinned system memory for the embedding'
-                         f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB (MemTotal '
-                         f'less {HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM limit less {HOST_CACHE_SHM_MARGIN_GIB:g} '
-                         'GiB). Use --mode long-kv4 (262,144 tokens)')
+                         f'; this host can pin {format(limit, "g") if limit is not None else "an unknown amount of"} GiB '
+                         f'({pin_limit_text(True)}). Use --mode long-kv4 (262,144 tokens)')
     context = args.context if args.context is not None else KV4_YARN_CONTEXT
     if context > KV4_YARN_CONTEXT:
         raise ValueError(f'{name} serves up to --context {KV4_YARN_CONTEXT}')
@@ -924,13 +947,17 @@ def docker_command(args, environment):
                          'image; this image predates them')
     if getattr(args, 'system_memory_weights', False):
         pinned_weights = system_memory_weights_bytes(args)
-        limit = host_cache_limit_gib()
+        limit = host_cache_limit_gib(True)
         if limit is None or pinned_weights / 2 ** 30 + (getattr(args, 'host_cache_gib', None) or 0) > limit:
+            tier = getattr(args, 'host_cache_gib', None)
+            gpu_limit = host_cache_limit_gib(False)
             raise ValueError(f'--system-memory-weights pins {pinned_weights / 2 ** 30:.1f} GiB'
-                             + (f' and --host-cache-gib {args.host_cache_gib:g} GiB more' if getattr(args, 'host_cache_gib', None) else '')
-                             + f'; this host can pin {limit if limit is not None else "an unknown amount of"} GiB safely '
-                             f'(MemTotal less {HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM (GTT) limit less '
-                             f'{HOST_CACHE_SHM_MARGIN_GIB:g} GiB)')
+                             + (f' and --host-cache-gib {tier:g} GiB more' if tier else '')
+                             + f'; this host can pin {format(limit, "g") if limit is not None else "an unknown amount of"} GiB safely '
+                             f'({pin_limit_text(True)})'
+                             + (f'. The RAM tier with the embedding in system memory needs about '
+                                f'{RAM_TIER_WITH_EMBEDDING_MIN_GB} GB of RAM; here use --no-system-memory-weights (host '
+                                f'tier up to {gpu_limit:g} GiB)' if tier and gpu_limit is not None else ''))
         command += ['-e', 'PAITON_HOST_EMBED=1']
     if getattr(args, 'disk_cache_dir', None) and not getattr(args, 'host_cache_gib', None):
         raise ValueError('--disk-cache-dir needs --host-cache-gib: every block passes through the host tier')
@@ -941,12 +968,11 @@ def docker_command(args, environment):
             raise ValueError(KV4_HOST_CACHE_REFUSAL)
         if kv_mode == 'kv4' and args.context is not None and args.context > KV4_MAX_CONTEXT:
             raise ValueError(KV4_512K_HOST_CACHE_REFUSAL)
-        limit = host_cache_limit_gib()
+        embedding_in_ram = bool(getattr(args, 'system_memory_weights', False))
+        limit = host_cache_limit_gib(embedding_in_ram)
         if limit is None or args.host_cache_gib + pinned_weights / 2 ** 30 > limit:
             raise ValueError(f'--host-cache-gib {args.host_cache_gib:g} exceeds what this host can pin safely '
-                             f'({limit if limit is not None else "unknown"} GiB: MemTotal less '
-                             f'{HOST_CACHE_RESERVE_GIB:g} GiB, at most the TTM (GTT) limit less '
-                             f'{HOST_CACHE_SHM_MARGIN_GIB:g} GiB)')
+                             f'({format(limit, "g") if limit is not None else "unknown"} GiB: {pin_limit_text(embedding_in_ram)})')
         # the region is registered page by page with the GPU driver; the default container memlock limit is too small
         limit_bytes = int((args.host_cache_gib + 1) * 2 ** 30)
         command += ['--ulimit', f'memlock={limit_bytes}:{limit_bytes}', '-e', 'PAITON_HOST_KV_PRIVATE=1']
@@ -966,6 +992,9 @@ def docker_command(args, environment):
             raise ValueError(f'--disk-cache-dir {folder} holds {used:.1f} GiB, more than --disk-cache-gib {cap:g}; '
                              'remove it with --wipe-disk-cache or raise --disk-cache-gib')
         command += ['-v', f'{folder}:/kvdisk:rw']
+        ipc = command.index('--ipc')
+        command[ipc + 1:ipc + 2] = ['private', '--shm-size',
+                                    f'{math.ceil(args.host_cache_gib + DISK_TIER_SHM_HEADROOM_GIB)}g']
     if kv_mode == 'kv4' and args.profile == 'chat' and prefix_caching_enabled(args):
         command += ['-e', 'PAITON_PC_EAGLE_TAIL=1']
         if KV4_SPARSE_ALIGN:
@@ -1055,8 +1084,22 @@ def main(argv=None):
                           KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
-    if getattr(args, 'system_memory_weights', False) or getattr(args, 'host_cache_gib', None):
-        available = mem_available_gib()
+    available = mem_available_gib()
+    if getattr(args, 'host_cache_gib', None) and available is not None:
+        embedding_in_ram = bool(getattr(args, 'system_memory_weights', False))
+        need = (SERVER_UNPINNED_PEAK_GIB[embedding_in_ram] + args.host_cache_gib
+                + (SYSTEM_MEMORY_EMBEDDING_BYTES / 2 ** 30 if embedding_in_ram else 0))
+        fixes = ('close other programs, lower --host-cache-gib'
+                 + (', or add --no-system-memory-weights' if embedding_in_ram else ''))
+        if available < need + LAUNCH_REFUSE_MARGIN_GIB:
+            arguments.error(f'only {available:.1f} GiB of system memory is available; the server with this host tier '
+                            f'needs about {need:.1f} GiB plus {LAUNCH_REFUSE_MARGIN_GIB:g} GiB to start '
+                            f'({need + LAUNCH_REFUSE_MARGIN_GIB - available:.1f} GiB short): {fixes}')
+        if available < need + LAUNCH_WARN_MARGIN_GIB:
+            print(f'Warning: only {available:.1f} GiB of system memory is available; the server with this host tier '
+                  f'needs about {need:.1f} GiB and should leave {LAUNCH_WARN_MARGIN_GIB:g} GiB free '
+                  f'({need + LAUNCH_WARN_MARGIN_GIB - available:.1f} GiB short): {fixes}.', file=sys.stderr)
+    elif getattr(args, 'system_memory_weights', False):
         if available is not None and available < SYSTEM_MEMORY_MIN_AVAILABLE_GIB:
             advice = ('Close other programs (--mode long-512k needs the embedding in system memory).'
                       if given.mode == 'long-512k' else
