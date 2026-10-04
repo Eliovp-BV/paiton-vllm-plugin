@@ -1091,7 +1091,8 @@ def main(argv=None):
                 + (SYSTEM_MEMORY_EMBEDDING_BYTES / 2 ** 30 if embedding_in_ram else 0))
         fixes = ('close other programs, lower --host-cache-gib'
                  + (', or add --no-system-memory-weights' if embedding_in_ram else ''))
-        if available < need + LAUNCH_REFUSE_MARGIN_GIB:
+        # a dry run starts nothing: the memory of the moment is a warning there (validators build arms that way)
+        if available < need + LAUNCH_REFUSE_MARGIN_GIB and not args.dry_run:
             arguments.error(f'only {available:.1f} GiB of system memory is available; the server with this host tier '
                             f'needs about {need:.1f} GiB plus {LAUNCH_REFUSE_MARGIN_GIB:g} GiB to start '
                             f'({need + LAUNCH_REFUSE_MARGIN_GIB - available:.1f} GiB short): {fixes}')

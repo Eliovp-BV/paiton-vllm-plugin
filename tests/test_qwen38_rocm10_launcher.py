@@ -1278,6 +1278,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         stderr = self.refused(*tier)
         self.assertIn('needs about 5.9 GiB plus 1 GiB to start (0.4 GiB short)', stderr)
         self.assertIn('lower --host-cache-gib', stderr)
+        result = self.run_launcher('--dry-run', *tier)         # a dry run starts nothing: warned, not refused
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Warning: only 6.5 GiB', result.stderr)
         self._host(15.5, 8.0)                                  # < 5.9 + 3.5: served with a warning
         result = self.run_launcher('--dry-run', *tier)
         self.assertEqual(result.returncode, 0, result.stderr)
