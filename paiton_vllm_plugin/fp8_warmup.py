@@ -5,9 +5,9 @@ the config aiter picks per M bucket (M_LEQ_8 … M_LEQ_512, any, per N/K) and on
 argument M (== 1, divisible by 16, other), so a fresh server compiles it again for every new (bucket, class) a request mix
 produces: 0.3-0.45 s stalls during the first minutes after a start, exactly when the plugin's JIT monitor warns. This
 runs, after vLLM's own kernel warm-up and before graph capture, one forward per fp8 block-quant Linear (target and
-drafter) for EVERY M <= max_num_seqs x (num_speculative_tokens + 1) (every row count a decode/verify step can produce; no
-bucketing assumptions, so split-K or other M-derived kernel parameters are covered too) plus the config-bucket boundaries up
-to max_num_batched_tokens, each in a %16 and a non-%16 variant. Same kernels, same arguments as production, so outputs do
+drafter) for EVERY M <= max_num_seqs x (num_speculative_tokens + 1) (every row count a decode/verify step can produce) and,
+up to max_num_batched_tokens, every multiple of 16 and its successor: the compiled variant also depends on the grid constant
+GRID_MN = cdiv(M, BLOCK_SIZE_M) x cdiv(N, BLOCK_SIZE_N), one per band of BLOCK_SIZE_M rows and per integer class of M. Same kernels, same arguments as production, so outputs do
 not change; the cost is paid once per cache namespace. PAITON_FP8_WARMUP=0 disables it.
 """
 import os
@@ -17,17 +17,22 @@ import torch
 
 from vllm.logger import init_logger
 
-logger = init_logger(__name__)
+# vLLM installs its handlers on the 'vllm' logger hierarchy only; a plugin-named logger would print nothing below WARNING
+logger = init_logger('vllm.paiton.warmup')
 
 
 def _models(worker):
     runner = worker.model_runner
     out = [("target", runner.model)]
-    drafter = getattr(runner, "drafter", None)
-    if drafter is not None:
-        for name, value in vars(drafter).items():
+    for attr in ("drafter", "speculator"):          # the old runner's drafter, the new runner's speculator (DFlash2)
+        holder = getattr(runner, attr, None)
+        if holder is None:
+            continue
+        if isinstance(holder, torch.nn.Module):
+            out.append((attr, holder))
+        for name, value in vars(holder).items():
             if isinstance(value, torch.nn.Module):
-                out.append((f"drafter.{name}", value))
+                out.append((f"{attr}.{name}", value))
     return out
 
 
@@ -52,11 +57,14 @@ def _m_values(worker):
     k = int(getattr(spec, "num_speculative_tokens", 0) or 0) if spec is not None else 0
     m_decode = int(sched.max_num_seqs) * (k + 1)                 # verify rows of a decode step; >= the drafter's block rows
     m_max = max(int(sched.max_num_batched_tokens), m_decode)
+    # The kernel's compiled variant depends on M through the aiter config bucket, Triton's integer specialisation of M
+    # (1, multiple of 16, other) and the heuristic constant GRID_MN = cdiv(M, BLOCK_SIZE_M) * cdiv(N, BLOCK_SIZE_N), i.e.
+    # one variant per band of BLOCK_SIZE_M (16 or 64 here) rows and per class. Every M up to m_decode, then every multiple
+    # of 16 and its successor up to m_max cover all bands in both classes; already-compiled variants cost a cache hit.
     ms = set(range(1, m_decode + 1))
-    for b in (65, 128, 129, 256, 257, 512, 513, 1024, 2048, 4096):
-        if b <= m_max:
-            ms.add(b)
-            ms.add(min(m_max, b + (-b) % 16))                     # the next multiple of 16 in the same bucket
+    for b in range(16, m_max + 1, 16):
+        ms.add(b)
+        ms.add(min(m_max, b + 1))
     ms.add(m_max)
     return sorted(ms), m_decode, m_max
 

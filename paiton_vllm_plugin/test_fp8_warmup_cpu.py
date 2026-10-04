@@ -37,25 +37,25 @@ class Test(unittest.TestCase):
         ms, m_decode, m_max = fw._m_values(w)
         self.assertEqual((m_decode, m_max), (64, 4096))
         self.assertEqual(ms[:64], list(range(1, 65)))
-        self.assertEqual(ms[64:], [65, 80, 128, 129, 144, 256, 257, 272, 512, 513, 528, 1024, 2048, 4096])
+        self.assertEqual(ms[64:70], [65, 80, 81, 96, 97, 112]); self.assertEqual(ms[-3:], [4080, 4081, 4096]); self.assertEqual(len(ms), 64 + 2 * 252 + 1)
 
     def test_m_values_without_speculation_and_small_batch(self):
         ms, m_decode, m_max = fw._m_values(types.SimpleNamespace(vllm_config=_Cfg(4, 100, None)))
-        self.assertEqual((m_decode, m_max), (4, 100)); self.assertEqual(ms, [1, 2, 3, 4, 65, 80, 100])
+        self.assertEqual((m_decode, m_max), (4, 100)); self.assertEqual(ms, [1, 2, 3, 4, 16, 17, 32, 33, 48, 49, 64, 65, 80, 81, 96, 97, 100])
 
     def test_layers_and_forwards(self):
         tgt = torch.nn.Module(); tgt.a = _Lin(24576, 4096, True); tgt.b = _Lin(4096, 4096, False)
         drafter = types.SimpleNamespace(model=torch.nn.Module(), other=3); drafter.model.c = _Lin(6144, 4096, True)
-        w = types.SimpleNamespace(vllm_config=_Cfg(2, 32, 3), model_runner=types.SimpleNamespace(model=tgt, drafter=drafter),
+        w = types.SimpleNamespace(vllm_config=_Cfg(2, 32, 3), model_runner=types.SimpleNamespace(model=tgt, speculator=drafter),
                                   device=torch.device("cpu"), model_config=types.SimpleNamespace(dtype=torch.float32))
         layers = fw._fp8_block_layers(fw._models(w))
-        self.assertEqual([(n, N, K) for n, _, N, K in layers], [("target.a", 24576, 4096), ("drafter.model.c", 6144, 4096)])
+        self.assertEqual([(n, N, K) for n, _, N, K in layers], [("target.a", 24576, 4096), ("speculator.model.c", 6144, 4096)])
         orig = torch.cuda.synchronize; torch.cuda.synchronize = lambda *_: None
         try:
             r = fw.fp8_blockscale_warmup(w)
         finally:
             torch.cuda.synchronize = orig
-        self.assertEqual(r["calls"], 2 * (8 + 1)); self.assertEqual([s[0] for s in tgt.a.calls], [1, 2, 3, 4, 5, 6, 7, 8, 32])
+        self.assertEqual([s[0] for s in tgt.a.calls], [1, 2, 3, 4, 5, 6, 7, 8, 16, 17, 32]); self.assertEqual(r["calls"], 2 * 11)
         self.assertEqual(tgt.b.calls, [])
 
     def test_disabled(self):
