@@ -55,16 +55,21 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.device(128, 0x1002, 0x7551, 120001, 32 * 1024**3)
         self.device(129, 0x8086, 0x3e92, 0, 0)
 
-    def device(self, minor, vendor, identifier, architecture, vram):
+    def device(self, minor, vendor, identifier, architecture, vram, node=None, unique_id=None):
         path = self.drm / f'renderD{minor}' / 'device'
         path.mkdir(parents=True)
         for name, setting in (('vendor', hex(vendor)), ('device', hex(identifier)),
                               ('mem_info_vram_total', str(vram)),
                               ('uevent', f'PCI_SLOT_NAME=0000:{minor - 128:02x}:00.0')):
             (path / name).write_text(setting)
-        node = self.kfd / str(minor)
+        node = self.kfd / str(minor if node is None else node)
         node.mkdir()
-        (node / 'properties').write_text(f'drm_render_minor {minor}\ngfx_target_version {architecture}\n')
+        (node / 'properties').write_text(f'drm_render_minor {minor}\ngfx_target_version {architecture}\n'
+                                         + (f'unique_id {unique_id}\n' if unique_id is not None else ''))
+
+    def visibility(self, command):
+        image = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
+        return [command[i + 1] for i in range(image) if command[i] == '-e' and 'VISIBLE_DEVICES' in command[i + 1]]
 
     def run_launcher(self, *args):
         harness = ('import importlib.util, pathlib, sys\n'
@@ -89,15 +94,13 @@ class Rocm10LauncherTests(unittest.TestCase):
         index = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
         return command[index + 1:]
 
-    def test_default_exec_preserves_release_limits_and_leaves_gpu_choice_to_user(self):
+    def test_default_exec_preserves_release_limits_and_runs_on_the_first_r9700(self):
         command = self.command()
         self.assertEqual([command[i + 1] for i, item in enumerate(command) if item == '--device'],
                          ['/dev/kfd', '/dev/dri'])
-        self.assertIn('ROCR_VISIBLE_DEVICES', command)
-        self.assertIn('HIP_VISIBLE_DEVICES', command)
-        self.assertIn('CUDA_VISIBLE_DEVICES', command)
-        self.assertNotIn('ROCR_VISIBLE_DEVICES=0', command)
-        self.assertNotIn('HIP_VISIBLE_DEVICES=0', command)
+        # exactly one GPU: never a bare name, which would delete the image default and show every card
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
+                                                    'CUDA_VISIBLE_DEVICES=0'])
         self.assertEqual(value(command, '--group-add'), 'video')
         self.assertEqual(value(command, '--ipc'), 'host')
         self.assertNotIn('--shm-size', command)
@@ -161,8 +164,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.command('--release', '200k', '--profile', 'chat', *options)
                 image_index = command.index(launcher.IMAGES['200k'])
                 environment = [command[i + 1] for i in range(image_index) if command[i] == '-e']
-                self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES',
-                                                   'CUDA_VISIBLE_DEVICES',
+                self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
+                                                   'CUDA_VISIBLE_DEVICES=0',
                                                    'RADIANCE_GDN_LAZY=0',
                                                    'PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
                 engine = self.engine(command)
@@ -241,22 +244,83 @@ class Rocm10LauncherTests(unittest.TestCase):
                     self.assertEqual(json.loads(engine[-1]), {'enable_thinking': expected})
                     self.assertEqual(engine.count('--default-chat-template-kwargs'), 1)
 
-    def test_two_compatible_cards_are_allowed_without_automatic_selection(self):
+    def test_two_r9700s_run_on_the_first_unless_devices_selects_another(self):
         self.device(130, 0x1002, 0x7551, 120001, 32 * 1024**3)
         command = self.command()
         self.assertIn('/dev/dri', command)
         self.assertNotIn('/dev/dri/renderD130', command)
         self.assertNotIn('/dev/dri/renderD128', command)
         self.assertNotIn('/dev/dri/renderD129', command)
-        self.assertIn('ROCR_VISIBLE_DEVICES', command)
-        self.assertNotIn('ROCR_VISIBLE_DEVICES=0', command)
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
+                                                    'CUDA_VISIBLE_DEVICES=0'])
+        command = self.command('--devices', '1')
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=1', 'HIP_VISIBLE_DEVICES=0',
+                                                    'CUDA_VISIBLE_DEVICES=0'])
+        result = self.run_launcher('--devices', '1')
+        self.assertIn('Using GPU 1 (/dev/dri/renderD130', result.stderr)
 
-    def test_mixed_amd_generations_leave_selection_to_user_by_default(self):
-        self.device(130, 0x1002, 0x73bf, 100300, 16 * 1024**3)
+    def test_mixed_amd_generations_run_on_the_r9700(self):
+        # the unsupported card is runtime GPU 0 (lower KFD node), the R9700 runtime GPU 1
+        (self.kfd / '128').rename(self.kfd / '3')
+        self.device(130, 0x1002, 0x73bf, 100300, 16 * 1024**3, node=2)
         command = self.command()
         self.assertIn('/dev/dri', command)
         self.assertNotIn('/dev/dri/renderD128', command)
         self.assertNotIn('/dev/dri/renderD130', command)
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=1', 'HIP_VISIBLE_DEVICES=0',
+                                                    'CUDA_VISIBLE_DEVICES=0'])
+        self.record.unlink()
+        result = self.run_launcher('--devices', '0')
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('not a 32 GiB R9700', result.stderr)
+        self.assertFalse(self.record.exists())
+
+    def test_uuid_selects_the_gpu_where_kfd_reports_one(self):
+        (self.kfd / '128' / 'properties').write_text('drm_render_minor 128\ngfx_target_version 120001\n'
+                                                      'simd_count 128\nunique_id 5752170827923136638\n')
+        command = self.command()
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=GPU-4fd3d0e445b9207e',
+                                                    'HIP_VISIBLE_DEVICES=0', 'CUDA_VISIBLE_DEVICES=0'])
+
+    def test_cpu_nodes_do_not_count_as_gpus(self):
+        (self.kfd / '0').mkdir()
+        (self.kfd / '0' / 'properties').write_text('cpu_cores_count 6\nsimd_count 0\ngfx_target_version 0\n'
+                                                    'drm_render_minor 0\n')
+        self.assertEqual(self.visibility(self.command())[0], 'ROCR_VISIBLE_DEVICES=0')
+
+    def test_devices_refusals_happen_before_docker(self):
+        self.device(130, 0x1002, 0x7551, 120001, 32 * 1024**3)
+        cases = [(('--devices', '2'), 'no such GPU'), (('--devices', '0,1'), 'one GPU'),
+                 (('--devices', '0,0'), 'twice'), (('--devices', 'x'), 'GPU numbers'),
+                 (('--devices', '-1'), 'GPU numbers')]
+        for case, message in cases:
+            with self.subTest(case=case):
+                result = self.run_launcher(*case)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertFalse(self.record.exists())
+        self.environment['HIP_VISIBLE_DEVICES'] = '1'
+        result = self.run_launcher('--devices', '0')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn('--devices replaces HIP_VISIBLE_DEVICES', result.stderr)
+        self.assertFalse(self.record.exists())
+
+    def test_list_gpus_prints_the_gpu_numbers_devices_takes(self):
+        self.device(130, 0x1002, 0x7551, 120001, 32 * 1024**3)
+        result = self.run_launcher('--list-gpus')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = result.stdout.splitlines()
+        self.assertTrue(lines[0].startswith('GPU 0') and 'renderD128' in lines[0])
+        self.assertTrue(lines[1].startswith('-') and 'Intel' in lines[1])
+        self.assertTrue(lines[2].startswith('GPU 1') and 'renderD130' in lines[2])
+
+    def test_without_kfd_data_the_image_default_applies(self):
+        for child in self.kfd.iterdir():
+            (child / 'properties').unlink()
+            child.rmdir()
+        command = self.command()
+        self.assertEqual(self.visibility(command), [])
+        self.assertIn('image default', self.run_launcher().stderr)
 
     def test_launch_does_not_require_kfd_architecture_metadata(self):
         properties = self.kfd / '128' / 'properties'
@@ -1746,7 +1810,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual([name for name in sections if name not in ('options', 'optional arguments')],
                          ['Choose how to run', 'Server', 'Advanced tuning'])
         self.assertEqual(sections['Choose how to run'], ['--weights', '--mode', '--vision'])
-        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--list-gpus', '--image'])
+        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--list-gpus', '--devices',
+                                                    '--image'])
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',

@@ -549,7 +549,10 @@ def parser():
     server.add_argument('--dry-run', action='store_true',
                         help='print Docker argv as JSON; do not pull or start the image')
     server.add_argument('--list-gpus', action='store_true',
-                        help='list physical render devices without starting Docker')
+                        help='list physical render devices and their GPU numbers without starting Docker')
+    server.add_argument('--devices', type=device_list, metavar='GPU',
+                        help='the GPU number from --list-gpus to run on (default: the first R9700); replaces the '
+                             'ROCR/HIP/CUDA_VISIBLE_DEVICES masks')
     server.add_argument('--image', help='compatible runtime image override; preserves the selected release settings')
     advanced = result.add_argument_group('Advanced tuning',
                                          'Each --mode sets these; flags that contradict it are refused.')
@@ -639,18 +642,34 @@ def read_number(path):
         return 0
 
 
-def discover_gpus():
-    """Match DRM and KFD by render minor, without initializing a GPU runtime."""
-    architectures = {}
+def kfd_gpu_nodes():
+    """{render minor: (architecture, runtime ordinal, uuid)} from the KFD topology, without initializing a GPU
+    runtime. The runtime numbers GPU agents in KFD node order, skipping CPU nodes; that ordinal is what
+    ROCR_VISIBLE_DEVICES indexes. The uuid is the runtime's 'GPU-%016x' form of unique_id, or None without one."""
+    nodes = []
     for path in SYS_KFD.glob('*/properties'):
         properties = dict(line.split(maxsplit=1) for line in read_text(path).splitlines()
                           if len(line.split(maxsplit=1)) == 2)
         try:
             minor = int(properties.get('drm_render_minor', 0))
             architecture = int(properties.get('gfx_target_version', 0))
+            simds = int(properties.get('simd_count', 0))
+            unique = int(properties.get('unique_id', 0))
         except ValueError:
             continue
-        architectures[minor] = architecture
+        node = int(path.parent.name) if path.parent.name.isdigit() else None
+        nodes.append((node, minor, architecture, simds, unique))
+    gpus = sorted((n for n in nodes if n[2] > 0 or n[3] > 0), key=lambda n: (n[0] is None, n[0] or 0))
+    result = {minor: (architecture, None, None) for _, minor, architecture, _, _ in nodes}
+    numbered = all(n[0] is not None for n in gpus)
+    for ordinal, (_, minor, architecture, _, unique) in enumerate(gpus):
+        result[minor] = (architecture, ordinal if numbered else None, f'GPU-{unique:016x}' if unique else None)
+    return result
+
+
+def discover_gpus():
+    """Match DRM and KFD by render minor, without initializing a GPU runtime."""
+    runtime = kfd_gpu_nodes()
     devices = []
     for path in sorted(SYS_DRM.glob('renderD*')):
         if not re.fullmatch(r'renderD\d+', path.name):
@@ -658,7 +677,7 @@ def discover_gpus():
         device = path / 'device'
         vendor, identifier = read_number(device / 'vendor'), read_number(device / 'device')
         properties = dict(line.split('=', 1) for line in read_text(device / 'uevent').splitlines() if '=' in line)
-        architecture = architectures.get(int(path.name[7:]), 0)
+        architecture, ordinal, uuid = runtime.get(int(path.name[7:]), (0, None, None))
         vram = read_number(device / 'mem_info_vram_total')
         # The qualified card is a 32 GiB gfx1201 device. The same architecture's
         # smaller consumer cards cannot hold this release's model and cache.
@@ -666,7 +685,8 @@ def discover_gpus():
         devices.append({'path': '/dev/dri/' + path.name,
                         'pci': properties.get('PCI_SLOT_NAME', device.resolve().name),
                         'vendor': vendor, 'device': identifier, 'vram': vram,
-                        'gfx': architecture, 'supported': supported})
+                        'gfx': architecture, 'supported': supported,
+                        'ordinal': ordinal if vendor == 0x1002 else None, 'uuid': uuid})
     return devices
 
 
@@ -677,8 +697,71 @@ def describe_gpu(gpu):
         0x10de: 'NVIDIA (not supported by this release)',
     }.get(gpu['vendor'], 'not supported by this release')
     vram = f"{gpu['vram'] / 1024**3:.1f} GiB" if gpu['vram'] else 'unknown VRAM'
-    return (f"{gpu['path']}  PCI {gpu['pci']}  {gpu['vendor']:04x}:{gpu['device']:04x}  "
+    ordinal = f"GPU {gpu['ordinal']}" if gpu.get('ordinal') is not None else '-'
+    return (f"{ordinal:6s} {gpu['path']}  PCI {gpu['pci']}  {gpu['vendor']:04x}:{gpu['device']:04x}  "
             f"{vram}  {label}")
+
+
+VISIBILITY_VARIABLES = ('ROCR_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES')
+
+
+def device_list(value):
+    """--devices: comma-separated runtime GPU ordinals as --list-gpus prints them."""
+    try:
+        result = [int(part) for part in value.split(',')]
+    except ValueError:
+        raise argparse.ArgumentTypeError('must be GPU numbers from --list-gpus, separated by commas') from None
+    if any(item < 0 for item in result):
+        raise argparse.ArgumentTypeError('must be GPU numbers from --list-gpus, separated by commas')
+    if len(set(result)) != len(result):
+        raise argparse.ArgumentTypeError('lists a GPU twice')
+    return result
+
+
+def gpu_selection(args, environment, devices=None):
+    """(Docker -e arguments, stderr note) that make exactly the GPUs this server runs on visible in the container.
+
+    The image sets ROCR_VISIBLE_DEVICES=0 and HIP_VISIBLE_DEVICES=0; a bare '-e NAME' for a variable the host does
+    not set deletes that default, and a two-GPU host then shows both cards (the one-GPU runtime refuses to start).
+    - --devices N: GPU N of --list-gpus (one GPU per server).
+    - host visibility variables set, no --devices: forwarded exactly; unset ones lose the image default, so the host
+      masks apply to every GPU (unchanged behaviour).
+    - neither: the first qualified R9700. Without one (no KFD data), the image default (runtime GPU 0) applies.
+    ROCR_VISIBLE_DEVICES takes the GPU's UUID where KFD reports one, otherwise its runtime ordinal; HIP and CUDA then
+    number the remaining GPUs from 0."""
+    requested = getattr(args, 'devices', None)
+    inherited = [variable for variable in VISIBILITY_VARIABLES if variable in environment]
+    if requested is not None and inherited:
+        raise ValueError('--devices replaces ' + ', '.join(inherited) + '; unset ' +
+                         ('it' if len(inherited) == 1 else 'them') + ' or drop --devices')
+    if requested is None and inherited:
+        result = []
+        for variable in VISIBILITY_VARIABLES:
+            result += ['-e', variable + '=' + environment[variable] if variable in environment else variable]
+        return result, 'GPU selection follows your visibility environment and runtime.'
+    devices = discover_gpus() if devices is None else devices
+    numbered = {gpu['ordinal']: gpu for gpu in devices if gpu.get('ordinal') is not None}
+    if requested is None:
+        qualified = [numbered[ordinal] for ordinal in sorted(numbered) if numbered[ordinal]['supported']]
+        if not qualified:
+            return [], 'No qualified R9700 found in the KFD topology; the image default (runtime GPU 0) applies.'
+        selected = qualified[:1]
+    else:
+        for ordinal in requested:
+            if ordinal not in numbered:
+                raise ValueError(f'--devices {ordinal}: no such GPU; --list-gpus prints the GPU numbers')
+            if not numbered[ordinal]['supported']:
+                raise ValueError(f'--devices {ordinal}: {numbered[ordinal]["path"]} is not a 32 GiB R9700 / gfx1201')
+        if len(requested) != 1:
+            raise ValueError('--devices takes one GPU: this launcher runs one GPU per server')
+        selected = [numbered[ordinal] for ordinal in requested]
+    uuids = all(gpu['uuid'] for gpu in selected)
+    rocr = ','.join(gpu['uuid'] if uuids else str(gpu['ordinal']) for gpu in selected)
+    hip = ','.join(str(index) for index in range(len(selected)))
+    note = 'Using ' + ', '.join(f"GPU {gpu['ordinal']} ({gpu['path']}, PCI {gpu['pci']})" for gpu in selected) + \
+        (' (the first qualified R9700; choose another with --devices).' if requested is None else '.')
+    return ['-e', 'ROCR_VISIBLE_DEVICES=' + rocr, '-e', 'HIP_VISIBLE_DEVICES=' + hip,
+            '-e', 'CUDA_VISIBLE_DEVICES=' + hip], note
 
 
 def replace_value(command, flag, value):
@@ -1093,11 +1176,7 @@ def docker_command(args, environment):
                '--group-add', 'video', '--ipc', 'host']
     if not args.detach and sys.stdin.isatty() and sys.stdout.isatty():
         command.append('-it')
-    for variable in ('ROCR_VISIBLE_DEVICES', 'HIP_VISIBLE_DEVICES', 'CUDA_VISIBLE_DEVICES'):
-        # A bare name removes an image default when absent from Docker's host
-        # environment. Explicit values, including empty strings, stay unchanged.
-        setting = variable + '=' + environment[variable] if variable in environment else variable
-        command += ['-e', setting]
+    command += gpu_selection(args, environment)[0]
     if getattr(args, 'compile_cache', False):
         # the image's compat layer keys the compile-cache folders on every PAITON_ setting and the installed runtime
         command += ['-e', 'PAITON_COMPILE_CACHE=1']
@@ -1247,7 +1326,7 @@ def main(argv=None):
         command = docker_command(args, os.environ)
     except ValueError as error:
         arguments.error(str(error))
-    print('Exposing /dev/dri; GPU selection follows your visibility environment and runtime.', file=sys.stderr)
+    print(gpu_selection(args, os.environ)[1], file=sys.stderr)
     if given.mode == 'long' and given.context is None and args.context != LONG_CONTEXT:
         print(f'--mode long: context {args.context:,} tokens ' + (
             '(the vision encoder takes its memory from the KV cache).' if args.vision else
