@@ -8,9 +8,10 @@ runs, after vLLM's own kernel warm-up and before graph capture, one forward per 
 drafter) for EVERY M <= max_num_seqs x (num_speculative_tokens + 1) (every row count a decode/verify step can produce) and,
 up to max_num_batched_tokens, every multiple of 16 and its successor: the compiled variant also depends on the grid constant
 GRID_MN = cdiv(M, BLOCK_SIZE_M) x cdiv(N, BLOCK_SIZE_N), one per band of BLOCK_SIZE_M rows and per integer class of M. Same kernels, same arguments as production, so outputs do
-not change; the cost is paid once per cache namespace. On a cache filled from the image's seed every forward is a cache hit
-and the sweep is complete; on a cold unseeded cache the band sweep stops after PAITON_FP8_WARMUP_BUDGET_S (60 s) once the
-decode rows and the full chunk are compiled, and the line it logs says where it stopped. PAITON_FP8_WARMUP=0 disables it.
+not change; the cost is paid once per cache namespace. The band sweep stops after PAITON_FP8_WARMUP_BUDGET_S (60 s) once the
+decode rows and the full chunk are compiled (a seed that carries the variants finishes in seconds); the line it logs says
+where it stopped. Reserved memory is released per 512-row band so the large-M activations do not stay reserved.
+PAITON_FP8_WARMUP=0 disables it.
 """
 import os
 import time
@@ -91,8 +92,8 @@ def fp8_blockscale_warmup(worker):
         return {"layers": 0}
     ms, m_decode, m_max = _m_values(worker)
     plan = [(name, mod, n, k, m) for m in ms for name, mod, n, k in layers]      # M-major: common shapes first
-    seeded = _seeded()
-    budget = None if seeded else float(os.environ.get("PAITON_FP8_WARMUP_BUDGET_S", "60"))
+    seeded = _seeded()                                                      # logged only: a seed that carries the variants finishes in seconds
+    budget = float(os.environ.get("PAITON_FP8_WARMUP_BUDGET_S", "60"))     # applies always: a seed without the variants would otherwise cost minutes
     device = worker.device
     dtype = getattr(worker.model_config, "dtype", torch.bfloat16)
     cuda = torch.cuda.is_available() and torch.device(device).type == "cuda"
@@ -105,17 +106,21 @@ def fp8_blockscale_warmup(worker):
     t_start = time.time()
     done = 0
     truncated_at = None
+    last_band = 0
     with torch.inference_mode():
         for name, mod, n, k, m in plan:
-            if budget is not None and done >= len(layers) * (m_decode + 2) and time.time() - t_start > budget:
-                truncated_at = m        # over budget on a cold, unseeded cache: keep the decode rows and the full chunk, stop the band sweep
+            if done >= len(layers) * (m_decode + 2) and time.time() - t_start > budget:
+                truncated_at = m        # over budget: the decode rows and the full chunk are done, stop the band sweep
                 break
+            if cuda and m // 512 != last_band:   # the large-M activations must not stay as reserved segments: keep reserved near allocated
+                torch.cuda.synchronize(device); torch.cuda.empty_cache(); last_band = m // 512
             x = torch.zeros(m, k, dtype=dtype, device=device)
             out = mod(x)
             del out, x
             done += 1
         if cuda:
             torch.cuda.synchronize(device)
+            torch.cuda.empty_cache()
     t_end = time.time()
     if cuda:
         mem["peak_allocated_mib"] = round(torch.cuda.max_memory_allocated(device) / 2**20)
@@ -131,7 +136,7 @@ def fp8_blockscale_warmup(worker):
     logger.info("[paiton.warmup] fp8 block-scale GEMM warm-up: %d linears, %d (N,K) shapes %s, M <= %d exhaustive then every "
                 "16-band to %d (%d M values), %d of %d forwards in %.1f s, seeded cache %s, budget %s, %s",
                 len(layers), len(shapes), shapes, m_decode, m_max, len(ms), done, len(plan), t_end - t_start, seeded,
-                "none" if budget is None else f"{budget:.0f} s",
-                "complete" if truncated_at is None else f"band sweep stopped at M={truncated_at} (over budget on an unseeded cache)")
+                f"{budget:.0f} s",
+                "complete" if truncated_at is None else f"band sweep stopped at M={truncated_at} (over budget)")
     return {"layers": len(layers), "shapes": shapes, "calls": done, "planned": len(plan), "seconds": round(t_end - t_start, 1),
             "memory": mem, "seeded": seeded, "truncated_at": truncated_at}

@@ -75,7 +75,7 @@ class Test(unittest.TestCase):
             del os.environ["PAITON_FP8_WARMUP_BUDGET_S"]
         ms = [s[0] for s in tgt.a.calls]
         self.assertEqual(ms[:10], [1, 2, 3, 4, 5, 6, 7, 8, 4096, 4095]); self.assertIsNotNone(r["truncated_at"]); self.assertLess(r["calls"], r["planned"])
-        # seeded cache: no budget, full sweep
+        # a seeded cache is reported but gets the same budget (a seed without the variants would otherwise cost minutes)
         import tempfile, pathlib
         d = tempfile.mkdtemp(); pathlib.Path(d, ".paiton-seed").write_text("x"); os.environ["TRITON_CACHE_DIR"] = d
         tgt.a.calls.clear(); os.environ["PAITON_FP8_WARMUP_BUDGET_S"] = "0.05"
@@ -83,7 +83,14 @@ class Test(unittest.TestCase):
             r = fw.fp8_blockscale_warmup(w)
         finally:
             del os.environ["PAITON_FP8_WARMUP_BUDGET_S"]; del os.environ["TRITON_CACHE_DIR"]
-        self.assertIsNone(r["truncated_at"]); self.assertEqual(r["calls"], r["planned"]); self.assertTrue(r["seeded"])
+        self.assertIsNotNone(r["truncated_at"]); self.assertTrue(r["seeded"])
+        # with a generous budget the sweep completes
+        tgt.a.calls.clear(); os.environ["PAITON_FP8_WARMUP_BUDGET_S"] = "600"
+        try:
+            r = fw.fp8_blockscale_warmup(w)
+        finally:
+            del os.environ["PAITON_FP8_WARMUP_BUDGET_S"]
+        self.assertIsNone(r["truncated_at"]); self.assertEqual(r["calls"], r["planned"])
 
     def test_disabled(self):
         import os
