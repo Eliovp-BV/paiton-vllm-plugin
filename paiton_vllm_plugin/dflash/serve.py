@@ -42,6 +42,11 @@ def main():
     os.environ['_PAITON_DFLASH_SERVER_OPTIONS_V3'] = json.dumps([settings.sample_method, settings.rerank, settings.block_candidates, settings.verify_cap])
     from . import install
     install()
+    if os.environ.get('PAITON_START_WARMUP', '0') == '1':
+        # A11 (opt-in): the image serves through this entry point, not the generic CLI, so the self-request warm-up sidecar is
+        # spawned here (detached; it waits for /health and sends the first-request shapes, then logs that it is done)
+        from ..execution.api import _start_warmup
+        _start_warmup(args, dict(os.environ))
     sys.argv = ['vllm.entrypoints.openai.api_server', *args]
     runpy.run_module('vllm.entrypoints.openai.api_server', run_name='__main__')
 
