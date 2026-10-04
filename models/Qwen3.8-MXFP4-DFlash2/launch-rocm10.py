@@ -219,16 +219,21 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 # The host tier is inclusive (it keeps a copy of what the GPU pool holds), so system memory adds capacity only when its
 # tier holds clearly more than the GPU pool: auto picks system memory when the tier holds at least 1.25 x the pool's
 # tokens, otherwise NVMe/SSD behind a staging tier that restores a whole 256K document (4.5 GiB, the embedding on the
-# GPU where needed) or the largest that fits down to 2 GiB (4 GiB: documents up to ~220K tokens, 2 GiB: ~110K). Token capacities use the bytes a
-# stored token takes in the tier (4-bit cache: ~32 KB on the 20261004 images, measured 31.4-33.1 KB) and the bytes a
-# restored token loads (~19 KB), per image (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets
-# the larger capacities without other changes. The disk tier lives under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir)
-# on NVMe/SSD, at most 64 GiB or a quarter of the free space there (with what the folder already holds). The tier has no
-# size limit while it runs (~32 KB per newly prefilled token: a 64 GiB cap holds ~2.1M new tokens; continuous prefill
+# GPU where needed) or the largest that fits down to 2 GiB (4 GiB: documents up to ~220K tokens, 2 GiB: ~110K).
+# Token capacities use the tier space a stored token takes and the bytes a restored token loads (~19 KB), per image
+# (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets the larger capacities without other changes.
+# Every stored key (one chunk of one KV group) takes a whole tier slot of ~14.36 MB, the size of a block across the
+# cache's layers (a 4 GiB tier holds 299 slots), and a 4-bit prompt stores ~4.3 keys per 1,600 tokens (two attention
+# chunks, two 800-token drafter chunks, the recurrent states at the retained boundaries): ~40 KB of tier per token
+# (330 slots for 120,001 tokens on the 20261004 images; the transferred bytes, 31-33 KB, undercount the padded slots).
+# A prompt that needs more slots than the tier holds evicts its own oldest keys while it is stored, its recurrent
+# checkpoints first, and gets no tier hit. The disk tier lives under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir) on
+# NVMe/SSD, at most 64 GiB or a quarter of the free space there (with what the folder already holds). The tier has no
+# size limit while it runs (~40 KB per newly prefilled token: a 64 GiB cap holds ~1.7M new tokens; continuous prefill
 # fills it in minutes, a coding session in hours), so a run can overshoot the cap: the next start removes an over-full
 # folder of its configuration. A full disk is safe for the tier: a failed store is logged and skipped (atomic files).
 EXTEND_CACHE_RAM_FACTOR = 1.25
-TIER_STORED_BYTES_PER_TOKEN = 32768
+TIER_STORED_BYTES_PER_TOKEN = 40960
 TIER_LOADED_BYTES_PER_TOKEN = 19000
 TIER_BYTES_BY_IMAGE_SUFFIX = {}      # image name suffix: (stored, loaded) bytes per token, for images that store less
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory

@@ -1297,18 +1297,28 @@ class Rocm10LauncherTests(unittest.TestCase):
         command, stderr = self._extend(15.0, '--extend-cache')           # less room: the largest staging that fits
         self.assertEqual(value(command, '--kv-offloading-size'), '3.5')
         self.assertIn('documents up to ~190,000 tokens restore from disk', stderr)
-        # 32 GB: 13 GiB of RAM tier (~426K tokens) < 1.25 x 569,878 -> disk; the embedding stays in system memory
+        # 32 GB: 13 GiB of RAM tier (~341K tokens) < 1.25 x 569,878 -> disk; the embedding stays in system memory
         command, stderr = self._extend(32, '--extend-cache', 'auto')
         self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
         self.assertIn('PAITON_HOST_EMBED=1', command)
         self.assertIn('GPU pool 569,878 tokens with the embedding in system memory', stderr)
-        # 64 GB: a 29 GiB tier (~950K tokens) adds capacity -> system memory, no disk tier
+        # 24 GB: 9 / 11.5 GiB tiers (~236K / ~301K tokens) add little -> disk, the embedding in system memory
+        command, _ = self._extend(24, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        # 48 GB: with the embedding in system memory the 21 GiB tier (~550K tokens) is under 1.25 x 569,878; with it
+        # on the GPU the 23.5 GiB tier (~616K tokens) passes 1.25 x 451,879 -> system memory, the embedding on the GPU
+        command, _ = self._extend(48, '--extend-cache')
+        self.assertEqual(value(command, '--kv-offloading-size'), '23.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
+        # 64 GB: a 29 GiB tier (~760K tokens at ~40 KB of tier per token) adds capacity -> system memory, no disk tier
         command, stderr = self._extend(64, '--extend-cache')
         self.assertEqual(value(command, '--kv-offloading-size'), '29')
         self.assertIn('PAITON_HOST_EMBED=1', command)
         self.assertEqual(value(command, '--ipc'), 'host')
         self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
-        self.assertIn('a 29 GiB tier (~950,272 tokens) next to the GPU pool\'s 569,878 tokens', stderr)
+        self.assertIn('a 29 GiB tier (~760,217 tokens) next to the GPU pool\'s 569,878 tokens', stderr)
         command, _ = self._extend(128, '--extend-cache')
         self.assertEqual(value(command, '--kv-offloading-size'), '61')
 
