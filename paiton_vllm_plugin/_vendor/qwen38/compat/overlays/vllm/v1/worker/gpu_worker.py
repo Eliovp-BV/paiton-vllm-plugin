@@ -852,6 +852,14 @@ class Worker(WorkerBase):
         # Warmup and tune the kernels used during model execution before
         # cuda graph capture.
         kernel_warmup(self)
+        # --- paiton A11: compile the fp8 block-scale GEMM for every shape class the scheduler can produce, so the
+        # first requests after a start do not stall on Triton JIT compiles (the JIT monitor's warnings).
+        try:
+            from paiton_vllm_plugin.fp8_warmup import fp8_blockscale_warmup
+
+            fp8_blockscale_warmup(self)
+        except Exception as exc:  # noqa: BLE001  (a warm-up must never stop a start)
+            logger.warning("[paiton.warmup] fp8 block-scale warm-up skipped: %r", exc)
 
         cuda_graph_memory_bytes = 0
         if not self.model_config.enforce_eager:

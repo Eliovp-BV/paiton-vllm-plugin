@@ -268,7 +268,22 @@ def launch(
     ]
     if env.get("PAITON_START_READAHEAD", "0") == "1":
         _start_readahead(command, env)
+    if env.get("PAITON_START_WARMUP", "0") == "1":
+        _start_warmup(command, env)
     os.execve(sys.executable, command, env)
+
+
+def _start_warmup(command: list[str], env: dict) -> None:
+    """A11 (opt-in): a detached helper waits for /health and sends the first-request shapes (C1, C8, a 2K prompt and
+    its prefix hit) so their Triton kernels compile before a user arrives. Advisory; outputs unchanged."""
+    import subprocess
+
+    try:
+        port = command[command.index("--port") + 1] if "--port" in command else "18982"
+        child_env = dict(env); child_env["PAITON_PORT"] = port
+        subprocess.Popen([sys.executable, "-m", "paiton_vllm_plugin.start_warmup"], env=child_env, stdin=subprocess.DEVNULL, stdout=sys.stderr, stderr=sys.stderr, start_new_session=True)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _start_readahead(command: list[str], env: dict) -> None:
