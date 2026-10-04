@@ -145,7 +145,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/core/sched/scheduler.py": {
       "overlay": "overlays/vllm/v1/core/sched/scheduler.py",
       "original_sha256": "abca7134821e2fb5cc8572df5c4a0b570ecf702646254327bc786fc452074983",
-      "overlay_sha256": "f7283bfa4acd9405380198f46b8f240d54a060d8c95dbcc9145744e0d4dcee18"
+      "overlay_sha256": "e37d28e9884bb11e6058927836416229f8298c781970409818cc91b308a9f1f0"
     },
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/core.py": {
       "overlay": "overlays/vllm/v1/engine/core.py",
@@ -256,6 +256,11 @@
       "overlay": "overlays/transformers/utils/chat_template_utils.py",
       "original_sha256": "3125114cf05646e7bc526ec30a6838da15bc9aa4591e42527e1012eaca3d276d",
       "overlay_sha256": "6937efd4c9f73eb97ea3893017ffeacf1b2cf594fa4a85eeb21cf824a2e59b0b"
+    },
+    "/usr/local/lib/python3.12/dist-packages/vllm/v1/core/single_type_kv_cache_manager.py": {
+      "overlay": "overlays/vllm/v1/core/single_type_kv_cache_manager.py",
+      "original_sha256": "3038a12b187453a5e1a3b2fd4f5cb4f5be08b23108f8352263032d9179472d55",
+      "overlay_sha256": "96879195d80f3d09d0c20de32b173c86af7b81c99670433a1b0819919f97c336"
     }
   }
 }

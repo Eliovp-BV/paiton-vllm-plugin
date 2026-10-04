@@ -437,6 +437,10 @@ class Scheduler(SchedulerInterface):
         last_cache_position = request.num_tokens - request.num_tokens % block_size
         if self.use_eagle:
             last_cache_position = max(last_cache_position - block_size, 0)
+            if __import__("os").environ.get("PAITON_PC_EAGLE_TAIL", "0") == "1":
+                # PAITON: the follow-up hit of this conversation lands here (EAGLE tail-block drop); sparse prefix-cache
+                # retention keeps it as a reachable boundary (single_type_kv_cache_manager overlay)
+                request.paiton_eagle_ckpt = last_cache_position
 
         end = start + num_new_tokens
         use_internal_checkpoint = (
@@ -449,6 +453,27 @@ class Scheduler(SchedulerInterface):
         # aligned. Exempt: the prompt's last chunk, whose slot decode advances
         # to the boundary. A block too wide for one chunk advances sub-block
         # and re-aligns at the next boundary.
+        # PAITON (PAITON_PC_SPARSE_ALIGN=1): under sparse retention only the states the retention mask keeps are ever
+        # hashed (multiples of the interval, the replay boundary, the EAGLE tail checkpoint, junctions; the partial tail
+        # registers separately), so chunks stop exactly there and otherwise use the whole token budget instead of
+        # ending on every block boundary. A mid-block chunk end leaves an unhashed state column (the worker copies
+        # the running state forward, as for the prompt's last chunk).
+        interval = self.cache_config.prefix_cache_retention_interval or 0
+        if (__import__("os").environ.get("PAITON_PC_SPARSE_ALIGN", "0") == "1" and interval > block_size
+                and not use_internal_checkpoint):
+            prompt = request.num_prompt_tokens
+            spb = request.shared_prefix_boundary
+            tail_boundary = (prompt // self.hash_block_size * self.hash_block_size
+                             if self.mamba_partial_cache_hit else 0)
+            stops = (
+                (start // interval + 1) * interval,                     # retention grid
+                (prompt - 1) // block_size * block_size,                 # replay boundary state
+                last_cache_position,                                     # EAGLE tail checkpoint
+                tail_boundary if last_cache_position < tail_boundary < prompt else 0,
+                spb // block_size * block_size if spb else 0,            # shared-prefix junction (absolute)
+            )
+            end = min((s for s in stops if start < s < end), default=end)
+            return max(end - start, 0)
         if end < prefill_end and not use_internal_checkpoint:
             max_prefill_tokens = self.max_num_scheduled_tokens
             long_prefill_threshold = self.scheduler_config.long_prefill_token_threshold
