@@ -1488,6 +1488,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.overrides['TIER_BYTES_BY_IMAGE_SUFFIX'] = {':dev': (21504, 19000)}
         self.assertEqual(value(self._extend(32, '--extend-cache')[0], '--kv-offloading-size'), '15.5')
 
+    def test_the_published_5_october_image_stores_24_kib_per_token(self):
+        """The final tag name resolves to the rc-next tier bytes; without this entry the launcher falls back to 40 KB/token
+        and 32 GB hosts stay on disk. The dev tag and the GHCR name (with and without a digest) all resolve the same way."""
+        import types
+        for name in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1',
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:' + '0' * 64,
+                     'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1'):
+            self.assertEqual(launcher.tier_bytes_per_token(types.SimpleNamespace(image=name, release='65k')), (24576, 19000), name)
+        older = launcher.tier_bytes_per_token(types.SimpleNamespace(image='ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1', release='65k'))
+        self.assertEqual(older, (launcher.TIER_STORED_BYTES_PER_TOKEN, launcher.TIER_LOADED_BYTES_PER_TOKEN))
+
     def test_extend_cache_capacities_of_the_rcnext_image(self):
         """The rc-next image stores 24,576 B per token in the tiers (TIER_BYTES_BY_IMAGE_SUFFIX, measured 24,371 B/token on a
         disk run); the auto choices follow: 16 GB -> disk behind a 4 GiB staging, 24 GB -> disk, 32 GB -> a 15.5 GiB RAM tier

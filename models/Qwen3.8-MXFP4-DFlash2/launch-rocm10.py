@@ -263,6 +263,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     # rc-next (host-tier stores only the draft-group chunks a hit can use): measured 340 slots for 200,002 new tokens =
     # 24,371 B/token on a disk run, stored rounded up to 24 KiB; loaded unchanged
     'qwen38-rocm10-vllm029-20261005-rcnext-dev1': (24576, 19000),
+    'qwen38-rocm10-vllm029-20261005-r1': (24576, 19000),       # the published 5 October image (same build)
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 EXTEND_CACHE_STAGING_GIB = (4.5, 4.0, 3.5, 3.0, 2.5, 2.0)     # the largest that fits; 4.5 restores a 256K document
