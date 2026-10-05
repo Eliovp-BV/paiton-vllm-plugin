@@ -27,7 +27,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 4 October 2026 (image r1, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1` (`sha256:DIGEST_PENDING_PUSH`)
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1` (`sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d`)
 is the 3 October image with one fix to the prefix-cache connector. Weights, drafter and the serving settings are
 unchanged. Update this repository to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
@@ -189,7 +189,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   -e PAITON_W3_DECODE=0 -e PAITON_W3_PREFILL=0 -e PAITON_W3_A4=0 \
   -e PAITON_KV4=0 -e PAITON_KV4_CAPACITY=0 \
   -e ROCR_VISIBLE_DEVICES -e HIP_VISIBLE_DEVICES -e CUDA_VISIBLE_DEVICES \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:DIGEST_PENDING_PUSH \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d \
   serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --served-model-name Qwen3.8 \

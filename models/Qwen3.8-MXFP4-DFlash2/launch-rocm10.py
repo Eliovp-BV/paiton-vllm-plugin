@@ -16,13 +16,15 @@ import sys
 
 
 IMAGES = {
-    # The coding-mode release: the 2 October image plus the prefix-caching, host-memory and long-context compat
-    # overlays and KV4 bundle kv4-v6. The previous release images (PREVIOUS_IMAGES) stay usable through --image with
-    # their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
+    # The 4 October release: the 3 October coding-mode image plus the connector overlay that ends every 4-bit host-tier
+    # hit on a recurrent-state block (--extend-cache, --host-cache-gib in --mode long-kv4). The previous release images
+    # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 3 October release (coding mode, opt-in 512K); its 4-bit cache refuses the RAM/SSD cache tiers
+    '20261003-r1': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
     # the 29 September r2 image with the new 4-bit KV page format (the 65K preset and --mode long-kv4) and the
     # VRAM-headroom overlay
     '20261002-r1': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1@sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840',

@@ -593,6 +593,7 @@ class Rocm10LauncherTests(unittest.TestCase):
     R2_IMAGE = next(image for image in launcher.KV4_V4_IMAGES if '-20260929-r2@' in image)   # the 29 Sept release
     R1_IMAGE = launcher.PREVIOUS_IMAGES['20261002-r1']        # the 2 October release, before the prefix-cache fix
     R1S_IMAGE = launcher.PREVIOUS_IMAGES['20261002-r1s']      # a rebuild of r1 with the same runtime (rollback image)
+    R3_IMAGE = launcher.PREVIOUS_IMAGES['20261003-r1']        # the 3 October release, before the host-tier alignment fix
 
     def test_kv4_in_the_3bit_long_mode_runs_without_prefix_caching_with_its_own_budget(self):
         w3rot = self.root / 'w3rot directory'
@@ -993,8 +994,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         limit = launcher.host_cache_limit_gib()
         # with the 4-bit cache the host tier needs the alignment fix: refused on the 3 October image and older (a hit can
         # resume without a matching recurrent state), in every spelling of the 4-bit long mode
-        for options in (('--mode', 'long-kv4'), ('--mode', 'long-kv4', '--no-system-memory-weights'),
-                        ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on'),
+        for options in (('--mode', 'long-kv4', '--image', self.R3_IMAGE),
+                        ('--mode', 'long-kv4', '--no-system-memory-weights', '--image', self.R3_IMAGE),
+                        ('--context', '262144', '--kv-cache', 'kv4', '--prefix-caching', 'on', '--image', self.R3_IMAGE),
                         ('--mode', 'long-kv4', '--image', self.R1S_IMAGE)):
             with self.subTest(options=options):
                 self.assertIn('needs an image with the host-tier alignment fix',
@@ -1015,7 +1017,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.environment['PAITON_HOST_PIN_LIMIT_GIB'] = '6'
         self.dry_run('--mode', 'long', '--host-cache-gib', '5.5')
         del self.environment['PAITON_HOST_PIN_LIMIT_GIB']
-        cases = ((('--mode', 'long-kv4', '--prefix-caching', 'off', '--host-cache-gib', '1'), 'the 4-bit KV cache'),
+        cases = ((('--mode', 'long-kv4', '--prefix-caching', 'off', '--host-cache-gib', '1'), 'needs prefix caching'),
+                 (('--mode', 'long-kv4', '--prefix-caching', 'off', '--image', self.R3_IMAGE, '--host-cache-gib', '1'),
+                  'the 4-bit KV cache'),
                  (('--context', '262144', '--kv-cache', 'kv4', '--host-cache-gib', '1'), 'needs prefix caching'),
                  (('--mode', '65k', '--host-cache-gib', '1'), 'needs prefix caching'),
                  # the previous release images have neither the host tier's fixes nor its private pinned memory
@@ -1231,9 +1235,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--no-system-memory-weights')
         self.assertEqual(json.loads(result.stdout), command)
         self.assertNotIn('Note:', result.stderr)
-        # the host KV tier is not offered in the 4-bit modes
+        # the host KV tier is not offered in the 4-bit modes of the 3 October image
         self.assertIn('needs an image with the host-tier alignment fix',
-                      self.refused('--mode', 'long-kv4', '--host-cache-gib', '3'))
+                      self.refused('--mode', 'long-kv4', '--host-cache-gib', '3', '--image', self.R3_IMAGE))
         # on an image with the fix the pinned memory is shared: the tier wins, the embedding stays on the GPU
         result = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--host-cache-gib', '3', '--image',
                                    'paiton-qwen38-local:dev')
