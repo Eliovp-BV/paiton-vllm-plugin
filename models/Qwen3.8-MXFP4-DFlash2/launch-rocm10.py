@@ -326,14 +326,15 @@ def long_prefill_threshold_value(value):
     return 'off' if value == 'off' else positive_integer(value)
 
 
-LONG_PREFILL_THRESHOLD_CODING = 2048   # default of the 4-bit long modes (long-kv4, long-512k): measured 5 Oct 2026
+LONG_PREFILL_THRESHOLD_CODING = 2048   # the tested value for the 4-bit long modes (long-kv4, long-512k), opt-in: measured
+                                       # 5 Oct 2026 on the R9700; off by default, so a long prompt is read in 4,096-token steps
+                                       # and its outputs match the 4 October image (a cap changes the chunking and with it the
+                                       # bits of long-prompt answers; its accuracy gate is a follow-up)
 
 
 def coding_mode_long_prefill_threshold(requested):
-    """The threshold a 4-bit long mode serves with: the user's value, None for 'off', the mode default when unset."""
-    if requested == 'off':
-        return None
-    return LONG_PREFILL_THRESHOLD_CODING if requested is None else requested
+    """The threshold a 4-bit long mode serves with: the user's value, None when unset or 'off'."""
+    return None if requested in (None, 'off') else requested
 
 
 def positive_integer(value):
@@ -660,10 +661,10 @@ def parser():
                                'override it')
     advanced.add_argument('--long-prefill-threshold', type=long_prefill_threshold_value, metavar='TOKENS|off',
                           help='cap the prefill tokens a long prompt takes per step so short requests answer while it '
-                               'is processed. Default 2048 in --mode long-kv4 and long-512k (measured 5 Oct 2026 on the '
-                               'R9700: a 257-token request sent during a 64K prefill answers in 0.8 s instead of 6.2 s; '
-                               'the long prompt costs +0.7%% at 258K tokens and +1-2%% at 64K), off in the other modes; '
-                               '"off" disables it')
+                               'is processed; off by default (a long prompt is read in 4,096-token steps). 2048 is the '
+                               'tested value for --mode long-kv4 and long-512k (5 Oct 2026, R9700: a 257-token request '
+                               'sent during a 64K prefill answers in 0.8 s instead of 6.2 s; the long prompt costs +0.7%% '
+                               'at 258K tokens and +1-2%% at 64K; long-prompt answers change bits with the chunking)')
     advanced.add_argument('--gdn-state', choices=('auto', 'lazy', 'eager'), default='auto',
                           help='recurrent-state snapshots of the linear-attention layers during speculative decoding: '
                                'lazy keeps one stash per request (fewer cache blocks per request, more KV tokens), '
