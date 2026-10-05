@@ -129,13 +129,10 @@ YARN_FACTOR_2 = {'rope_type': 'yarn', 'factor': 2.0, 'original_max_position_embe
 # long modes a prompt's chunks stop only at the states the retention keeps (and the tail checkpoint) instead of every
 # 1,600-token block: fewer, longer prefill steps.
 KV4_SPARSE_ALIGN = True
-# --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the allocator capped as
-# without --vision, 740 pool blocks (496,129 KV tokens with prefix caching). Measured 5 Oct (vision suite with cold and
-# cached images, 1,600-token boundaries, a 200K prompt with a chart, 3 x 8 concurrent image requests; 258K text
-# prompts): 760 blocks peaked at 31.47 GiB on a cold large image (the encoder's activations), above the 31.35 GiB
-# margin to the 31.79 GiB the KFD admits; 674 blocks (the previous budget) and 740 stay below it.
-KV4_LONG_VISION = True
-W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = 740 * 14336000
+# --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the KV cache at the budget of
+# long-kv4 without system memory (674 pool blocks, about 452,000 tokens with prefix caching). Off until qualified.
+KV4_LONG_VISION = False
+W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = W3_LONG_KV4_CACHE_BYTES
 # The host KV tier (--host-cache-gib) with the 4-bit cache needs the connector compat overlay that ends every hit on a
 # recurrent-state block (1,600 tokens); on older images a hit can end on a drafter block (800 tokens) and resume from
 # the wrong state, so there the tier stays with the fp8 cache. --mode long-512k keeps it off.
@@ -623,9 +620,8 @@ def parser():
                              'is set, mxfp4 otherwise')
     choose.add_argument('--mode', choices=tuple(MODES), help=MODE_HELP)
     choose.add_argument('--vision', action='store_true',
-                        help='gives you image input; works with --mode 65k, long (up to 245,000 context) and long-kv4 '
-                             '(262,144 per request, ~496,000 cached tokens, the embedding in system memory), not with '
-                             'long-512k')
+                        help='gives you image input; works with --mode 65k and long (long: up to 245,000 context), '
+                             'not with long-kv4 or long-512k')
     server = result.add_argument_group('Server')
     server.add_argument('--port', type=positive_integer, help='localhost API port (default: 18982)')
     server.add_argument('--name', help='Docker container name (run-3bit.sh and run-mxfp4.sh: paiton-qwen38)')
@@ -1411,7 +1407,7 @@ def docker_command(args, environment):
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'
-        if weights == 'w3a4' and (not args.vision or (kv_mode == 'kv4' and args.profile == 'chat')):   # long-kv4 --vision: measured capped
+        if weights == 'w3a4' and not args.vision:
             allocator += f',per_process_memory_fraction:{W3_MEMORY_FRACTION}'
         command += ['-e', 'PYTORCH_ALLOC_CONF=' + allocator]
     if weights == 'mxfp4' and args.release in W3_RELEASES:

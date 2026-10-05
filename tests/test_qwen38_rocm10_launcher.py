@@ -810,6 +810,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         refusals = ((('--image', self.R2_IMAGE), 'needs an image with KV4 bundle kv4-v5'),
                     (('--image', next(iter(launcher.KV4_V4_IMAGES - {self.R2_IMAGE}))),
                      'needs an image with KV4 bundle kv4-v5'),
+                    (('--vision',), 'is not qualified with --vision'),
                     (('--weights', 'mxfp4'), 'needs the 3-bit W3A4 weights'),
                     (('--image', self.R1_IMAGE, '--prefix-caching', 'on'), 'runs without prefix caching'))
         for spelling, subject in spellings:
@@ -1051,7 +1052,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         cases = (
             (('--mode', 'long-kv4', '--prefix-caching', 'on', '--image', self.R1_IMAGE), 'without prefix caching'),
             (('--mode', 'long-kv4', '--kv-cache', 'fp8'), 'use --mode long'),
-            (('--mode', 'long-kv4', '--vision', '--no-system-memory-weights'), '--vision'),
+            (('--mode', 'long-kv4', '--vision'), '--vision'),
             (('--mode', 'long-kv4', '--image', self.R2_IMAGE), 'kv4-v5'),
             (('--mode', 'long-kv4', '--profile', 'release'), '--profile release'),
             (('--mode', 'long', '--kv-cache', 'kv4'), 'use --mode long-kv4'),
@@ -1799,10 +1800,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         stderr = self.refused('--mode', 'long', '--gdn-state', 'lazy')
         self.assertIn('drop --gdn-state lazy, or use --mode long-kv4 --prefix-caching off', stderr)
         self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off', '--gdn-state', 'lazy')
-        # --vision in long-kv4 needs the embedding in system memory: a host that cannot pin it is refused for that
+        # --vision in long-kv4 is refused as not qualified, whatever the host can pin
         (self.root / 'meminfo').write_text('MemTotal:       12582912 kB\nMemAvailable:   9000000 kB\n')
         stderr = self.refused('--mode', 'long-kv4', '--vision')
-        self.assertIn('needs 2.4 GiB of pinned system memory', stderr)
+        self.assertIn('is not qualified with --vision', stderr)
+        self.assertNotIn('pinned', stderr)
         # the low-memory warning offers the fallback only where it exists
         (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:    4194304 kB\n')
         self.assertIn('or with --mode long-kv4 add --no-system-memory-weights',
@@ -1811,19 +1813,13 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('--mode long-512k needs the embedding in system memory', stderr)
         self.assertNotIn('add --no-system-memory-weights', stderr)
 
-    def test_vision_in_long_kv4_follows_its_switch(self):
+    def test_vision_in_long_kv4_stays_behind_its_switch(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        self.overrides['KV4_LONG_VISION'] = False
         self.assertIn('is not qualified with --vision', self.refused('--mode', 'long-kv4', '--vision'))
-        del self.overrides['KV4_LONG_VISION']                 # on by default since 5 Oct: 740 blocks, measured capped
+        self.overrides['KV4_LONG_VISION'] = True
         command = self.dry_run('--mode', 'long-kv4', '--vision')
-        self.assertEqual(launcher.W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES, 740 * 14336000)
-        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
-        # the legacy spelling keeps the embedding on the GPU and stays refused with --vision
-        self.assertIn('keeps the embedding and the vision encoder in system memory',
-                      self.refused('--context', '200000', '--kv-cache', 'kv4', '--vision'))
         self.assertIn('PAITON_HOST_EMBED=1', command)          # the embedding in system memory, the encoder on the GPU
         self.assertFalse([item for item in command if 'PAITON_HOST_VISION' in item])
         self.assertNotIn('--language-model-only', command)
@@ -2079,9 +2075,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                        'long-512k: experimental, up to 524,288 context per request (long-context position scaling)',
                        'needs 2.4 GiB of free system memory and an image with KV4 bundle kv4-v6',
                        'mxfp4 gives you the most accurate weights', 'w3a4 the 3-bit weights, fastest with the most context',
-                       'gives you image input; works with --mode 65k, long (up to 245,000 context) and long-kv4 '
-                       '(262,144 per request, ~496,000 cached tokens, the embedding in system memory), not with '
-                       'long-512k'):
+                       'gives you image input; works with --mode 65k and long (long: up to 245,000 context), not with '
+                       'long-kv4 or long-512k'):
             self.assertIn(phrase, text)
 
     def test_long_prefill_threshold_is_off_by_default_in_every_mode(self):
