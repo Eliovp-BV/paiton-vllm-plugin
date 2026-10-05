@@ -65,7 +65,7 @@ def verify_source(module):
         if hashlib.sha256(source).hexdigest()!=expected or hashlib.sha256(effective).hexdigest()!=expected:raise RuntimeError('Speculator capture source changed')
         return
     if hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()!='51d2b55f883d34393e9b732952fc866ae0308b2a39cfcc58243e0990802afcfd':raise RuntimeError('Original context source changed')
-    if hashlib.sha256(''.join(linecache.getlines(module.__file__)).encode()).hexdigest()!='4e98732973aed543d605ce128ece361f35518ec82ac7809614ef5f915da634d2':raise RuntimeError('Effective context source changed')
+    if hashlib.sha256(''.join(linecache.getlines(module.__file__)).encode()).hexdigest()!='93f59fb15b5d203637f9bbb197dc2eada71ba0f6775e80ddd1b878a987cf56fb':raise RuntimeError('Effective context source changed')
 
 def wrap(module):
     if module.__name__==SPECULATOR:

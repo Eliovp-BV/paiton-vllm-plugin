@@ -91,8 +91,8 @@
       "sha256": "9485ea01e8663892755ca757507faa28d1e98db9519e2e89d6d07b4352e0f4e9"
     },
     "compat/overlays/vllm/model_executor/models/qwen3_dflash.py": {
-      "size_bytes": 40189,
-      "sha256": "4e98732973aed543d605ce128ece361f35518ec82ac7809614ef5f915da634d2"
+      "size_bytes": 42552,
+      "sha256": "93f59fb15b5d203637f9bbb197dc2eada71ba0f6775e80ddd1b878a987cf56fb"
     },
     "compat/overlays/vllm/model_executor/models/qwen3_dflash2.py": {
       "size_bytes": 10239,
@@ -191,8 +191,8 @@
       "sha256": "34d02ba7d1dc826f48eca189fcdce14defd68267ae473f5c4fecbad244d9581e"
     },
     "compat/overlays/vllm/v1/worker/gpu/spec_decode/dflash/utils.py": {
-      "size_bytes": 3519,
-      "sha256": "0ff13c1c2b01e015ef976304d4d7c5675303ddcb70ef4912424eb31abaafaa53"
+      "size_bytes": 4185,
+      "sha256": "0cce5666516c86d5b10e86b0ed5d4ae9423906b701c577191dcb1b927e801215"
     },
     "compat/overlays/vllm/v1/worker/gpu/spec_decode/dflash2/speculator.py": {
       "size_bytes": 7766,
