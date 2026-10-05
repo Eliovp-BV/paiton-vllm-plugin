@@ -2011,5 +2011,33 @@ class Rocm10LauncherTests(unittest.TestCase):
                        'long-kv4 or long-512k'):
             self.assertIn(phrase, text)
 
+    def test_long_prefill_threshold_defaults_to_2048_in_the_4bit_long_modes(self):
+        # measured 5 Oct 2026: a short request during a 64K prefill answers in 0.8 s instead of 6.2 s for +0.7 % at 258K
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        for mode in ('long-kv4', 'long-512k'):
+            command = self.dry_run('--mode', mode)
+            self.assertEqual(value(command, '--long-prefill-token-threshold'), '2048', mode)
+        for args in (('--mode', '65k'), ('--mode', 'long'), ()):
+            self.assertNotIn('--long-prefill-token-threshold', self.dry_run(*args), args)
+
+    def test_long_prefill_threshold_explicit_value_and_off(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.assertEqual(value(self.dry_run('--mode', 'long-kv4', '--long-prefill-threshold', '3072'), '--long-prefill-token-threshold'), '3072')
+        self.assertNotIn('--long-prefill-token-threshold', self.dry_run('--mode', 'long-kv4', '--long-prefill-threshold', 'off'))
+        self.assertEqual(value(self.dry_run('--mode', '65k', '--long-prefill-threshold', '2048'), '--long-prefill-token-threshold'), '2048')
+        self.assertNotEqual(self.run_launcher('--mode', 'long-kv4', '--long-prefill-threshold', '0').returncode, 0)
+        self.assertEqual(launcher.coding_mode_long_prefill_threshold(None), 2048)
+        self.assertIsNone(launcher.coding_mode_long_prefill_threshold('off'))
+        self.assertEqual(launcher.coding_mode_long_prefill_threshold(3072), 3072)
+
+    def test_help_states_the_measured_threshold_cost(self):
+        text = ' '.join(self.run_launcher('--help').stdout.split())    # argparse wraps the help text
+        for phrase in ('Default 2048 in --mode long-kv4 and long-512k', '0.8 s instead of 6.2 s', '+0.7% at 258K'):
+            self.assertIn(phrase, text)
+
 if __name__ == '__main__':
     unittest.main()

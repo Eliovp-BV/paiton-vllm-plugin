@@ -373,7 +373,7 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | --- | --- |
 | `--context TOKENS` | A smaller context than the row's (input plus output). Only MXFP4 `--mode long` goes higher: up to 220,000, the largest tested. |
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
-| `--long-prefill-threshold 2048` | 3-bit long rows shared by several users: short requests are answered within seconds while a long prompt is processed. The long prompt takes about 16 % longer (`--mode long`: 146 s instead of 126 s at 258K). |
+| `--long-prefill-threshold TOKENS|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. Default 2048 in `--mode long-kv4` and `--mode long-512k` (measured 5 October 2026 on the R9700: a 257-token request sent during a 64K-token prefill answers in 0.8 s instead of 6.2 s; the long prompt costs +0.7 % at 258K tokens and +1-2 % at 64K), off in the other modes; `off` disables it. |
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |

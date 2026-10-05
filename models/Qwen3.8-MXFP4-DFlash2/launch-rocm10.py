@@ -302,6 +302,21 @@ def release_command(release):
     ]
 
 
+def long_prefill_threshold_value(value):
+    """--long-prefill-threshold: a positive token count, or 'off' (no cap even where the mode has a default)."""
+    return 'off' if value == 'off' else positive_integer(value)
+
+
+LONG_PREFILL_THRESHOLD_CODING = 2048   # default of the 4-bit long modes (long-kv4, long-512k): measured 5 Oct 2026
+
+
+def coding_mode_long_prefill_threshold(requested):
+    """The threshold a 4-bit long mode serves with: the user's value, None for 'off', the mode default when unset."""
+    if requested == 'off':
+        return None
+    return LONG_PREFILL_THRESHOLD_CODING if requested is None else requested
+
+
 def positive_integer(value):
     try:
         result = int(value)
@@ -608,10 +623,12 @@ def parser():
     advanced.add_argument('--thinking', choices=('on', 'off'),
                           help='server default for enable_thinking (off in the long modes); individual requests may '
                                'override it')
-    advanced.add_argument('--long-prefill-threshold', type=positive_integer, metavar='TOKENS',
-                          help='cap the prefill tokens a long prompt takes per step so short requests answer within '
-                               'seconds while it is processed (measured: 3072 or 2048 cost the long prompt about 16%% '
-                               'more time to first token); off by default')
+    advanced.add_argument('--long-prefill-threshold', type=long_prefill_threshold_value, metavar='TOKENS|off',
+                          help='cap the prefill tokens a long prompt takes per step so short requests answer while it '
+                               'is processed. Default 2048 in --mode long-kv4 and long-512k (measured 5 Oct 2026 on the '
+                               'R9700: a 257-token request sent during a 64K prefill answers in 0.8 s instead of 6.2 s; '
+                               'the long prompt costs +0.7%% at 258K tokens and +1-2%% at 64K), off in the other modes; '
+                               '"off" disables it')
     advanced.add_argument('--gdn-state', choices=('auto', 'lazy', 'eager'), default='auto',
                           help='recurrent-state snapshots of the linear-attention layers during speculative decoding: '
                                'lazy keeps one stash per request (fewer cache blocks per request, more KV tokens), '
@@ -1155,8 +1172,11 @@ def engine_command(args, weights='mxfp4'):
                     json.dumps({'enable_thinking': thinking == 'on'})]
     if chat:
         command.append('--enable-prompt-tokens-details')
-    if args.long_prefill_threshold is not None:
-        command += ['--long-prefill-token-threshold', str(args.long_prefill_threshold)]
+    # the 4-bit long modes (long-kv4, long-512k, and their legacy spellings) default to the measured threshold
+    threshold = (coding_mode_long_prefill_threshold(args.long_prefill_threshold) if (args.kv_cache == 'kv4' and chat)
+                 else (None if args.long_prefill_threshold == 'off' else args.long_prefill_threshold))
+    if threshold is not None:
+        command += ['--long-prefill-token-threshold', str(threshold)]
     if context is not None and context > KV4_MAX_CONTEXT:
         command += ['--hf-overrides', json.dumps({'text_config': {'rope_parameters': YARN_FACTOR_2}})]
     if getattr(args, 'host_cache_gib', None):
