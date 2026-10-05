@@ -275,6 +275,68 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('not a 32 GiB R9700', result.stderr)
         self.assertFalse(self.record.exists())
 
+    def container_gpus(self, command, gpus):
+        """The GPUs a container started with this argv would see (ROCr then HIP filtering; an absent variable keeps the
+        image default 0, a bare name deletes it). gpus: [(ordinal, uuid, name)] in runtime order."""
+        image = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
+        env = {'ROCR_VISIBLE_DEVICES': '0', 'HIP_VISIBLE_DEVICES': '0'}
+        for i in range(image):
+            if command[i] == '-e' and 'VISIBLE_DEVICES' in command[i + 1]:
+                name, _, value = command[i + 1].partition('=')
+                if '=' in command[i + 1]:
+                    env[name] = value
+                else:
+                    env.pop(name, None)
+        listed = list(gpus)
+        if 'ROCR_VISIBLE_DEVICES' in env:
+            picked = []
+            for token in env['ROCR_VISIBLE_DEVICES'].split(','):
+                picked += [g for g in gpus if (token.startswith('GPU-') and g[1] == token) or token == str(g[0])]
+            listed = picked
+        hip = env.get('HIP_VISIBLE_DEVICES', env.get('CUDA_VISIBLE_DEVICES'))
+        if hip is not None:
+            listed = [listed[int(t)] for t in hip.split(',') if t and int(t) < len(listed)]
+        return [g[2] for g in listed]
+
+    def apu_host(self):
+        """A Ryzen APU's integrated Radeon (gfx1036, KFD node 1, render 128) plus an R9700 (node 2, render 129)."""
+        import shutil
+        for d in (self.drm, self.kfd):
+            shutil.rmtree(d)
+            d.mkdir()
+        (self.kfd / '0').mkdir()
+        (self.kfd / '0' / 'properties').write_text('cpu_cores_count 16\nsimd_count 0\ngfx_target_version 0\n'
+                                                    'drm_render_minor 0\n')
+        self.device(128, 0x1002, 0x164e, 100306, 512 * 1024**2, node=1, unique_id=0)
+        self.device(129, 0x1002, 0x7551, 120001, 32 * 1024**3, node=2, unique_id=5752170827923136638)
+        return [(0, None, 'igpu-gfx1036'), (1, 'GPU-4fd3d0e445b9207e', 'r9700')]
+
+    def test_apu_igpu_plus_r9700_runs_on_the_r9700(self):
+        gpus = self.apu_host()
+        command = self.command()
+        self.assertEqual(self.visibility(command), ['ROCR_VISIBLE_DEVICES=GPU-4fd3d0e445b9207e',
+                                                    'HIP_VISIBLE_DEVICES=0', 'CUDA_VISIBLE_DEVICES=0'])
+        self.assertEqual(self.container_gpus(command, gpus), ['r9700'])
+        result = self.run_launcher('--list-gpus')
+        self.assertIn('GPU 0', result.stdout)
+        self.assertIn('AMD (not supported', result.stdout)
+
+    @unittest.skipUnless(os.environ.get('PAITON_RELEASED_LAUNCHER'), 'PAITON_RELEASED_LAUNCHER=<launch-rocm10.py> not set')
+    def test_released_launcher_shows_both_gpus_on_an_apu_host(self):
+        """Evidence for the TP-0 fix: the released launcher's bare names delete the image default, so the container
+        sees the iGPU and the R9700 and the one-GPU guards refuse to start."""
+        gpus = self.apu_host()
+        harness = ('import importlib.util, pathlib, sys\n'
+                   f's = importlib.util.spec_from_file_location("launch", {os.environ['PAITON_RELEASED_LAUNCHER']!r})\n'
+                   'm = importlib.util.module_from_spec(s); s.loader.exec_module(m)\n'
+                   f'm.SYS_DRM = pathlib.Path({str(self.drm)!r})\n'
+                   f'm.SYS_KFD = pathlib.Path({str(self.kfd)!r})\n'
+                   'sys.exit(m.main(sys.argv[1:]))\n')
+        result = subprocess.run([sys.executable, '-c', harness], env=self.environment, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = ['docker', *json.loads(self.record.read_text())]
+        self.assertEqual(self.container_gpus(command, gpus), ['igpu-gfx1036', 'r9700'])
+
     def test_uuid_selects_the_gpu_where_kfd_reports_one(self):
         (self.kfd / '128' / 'properties').write_text('drm_render_minor 128\ngfx_target_version 120001\n'
                                                       'simd_count 128\nunique_id 5752170827923136638\n')
