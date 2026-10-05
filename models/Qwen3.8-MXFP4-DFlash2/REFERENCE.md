@@ -3,12 +3,13 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements, advanced setup and release history.
 
-- [Release notes](#release-notes-3-october-2026) (earlier: [2 October](#release-notes-2-october-2026),
-  [28 September](#release-notes-28-september-2026))
+- [Release notes](#release-notes-4-october-2026) (earlier: [3 October](#release-notes-3-october-2026),
+  [2 October](#release-notes-2-october-2026), [28 September](#release-notes-28-september-2026))
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
 - [Long context and prefix caching](#long-context-200k-and-220k)
-- [Coding mode (`--mode long-kv4`)](#coding-mode), [524,288 tokens (`--mode long-512k`)](#mode-long-512k) and
+- [Coding mode (`--mode long-kv4`)](#coding-mode), [RAM and SSD cache tiers (`--extend-cache`)](#cache-tiers),
+  [524,288 tokens (`--mode long-512k`)](#mode-long-512k) and
   [system-memory options](#system-memory-and-experimental-options)
 - [Vision measurements](#images-and-vision)
 - [3-bit weights and quality](#faster-decode-and-prefill-3-bit-w3a4-weights-optional)
@@ -22,9 +23,36 @@ The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
 
+<a id="release-notes-4-october-2026"></a>
+
+### Release notes: 4 October 2026 (image r1, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1` (`sha256:DIGEST_PENDING_PUSH`)
+is the 3 October image with one fix to the prefix-cache connector. Weights, drafter and the serving settings are
+unchanged. Update this repository to get the launcher that selects it; `--dry-run` prints the full Docker command.
+
+- **Fixed: the RAM and SSD cache tiers with the 4-bit cache.** With the 4-bit cache, a hit from system RAM or disk
+  now always resumes on a recurrent-state block. That is why the 3 October image refused these tiers in
+  `--mode long-kv4`. Every reopened document gives output bit-identical to the same document served from the GPU
+  cache, at every length tested (32K to about 258K tokens). A hit the server cannot place is read again instead.
+- **New, opt-in: `--extend-cache [auto|ram|disk]`** for `--mode long-kv4`. It keeps prefix-cache blocks that leave
+  the GPU in system RAM or on an NVMe/SSD and sizes the tiers for the host. On a 16 GB host with a SATA SSD, after a
+  full server restart, a 130K-token document came back in 6.8 s instead of 46.9 s cold, a 200K-token document in
+  9.0 s instead of 86.4 s, both with the same output as a fresh read. See [Cache tiers](#cache-tiers).
+- **Launcher: memory checks for the tiers.** On a 16 GB host it refuses a RAM tier with the embedding table in
+  system RAM (that needs 32 GB) and moves the table to the GPU instead. With a tier it refuses to start when free
+  memory is short, naming the shortfall, and warns when memory is tight. With a disk tier the container gets its own
+  `/dev/shm`, so a crash never leaves the tier behind.
+- **Unchanged:** without a cache tier, outputs are identical to the 3 October image. `--mode 65k`, `--mode long`,
+  `--mode long-kv4`, `--mode long-512k`, `--vision` and the MXFP4 weights produce the same serving command as there;
+  only the image differs. `--host-cache-gib` and `--disk-cache-dir` still work.
+- **Earlier images** stay runnable with `--image` and keep their behaviour. The 3 October image and older refuse the
+  4-bit cache tiers, whether given by tag or by digest; see
+  [Run an earlier release](README.md#run-an-earlier-release).
+
 <a id="release-notes-3-october-2026"></a>
 
-### Release notes: 3 October 2026 (image r1, current)
+### Release notes: 3 October 2026 (image r1)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1` (`sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53`)
 is the 2 October image (r1s) with the changes below. Weights, drafter and the other serving
@@ -150,7 +178,7 @@ For a cache on another drive, replace the first export with
 
 ```bash
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261003"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"
 mkdir -p "$PAITON_CACHE_DIR"
 
 docker run --rm --name paiton-qwen38-65k-cached --network host \
@@ -161,7 +189,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   -e PAITON_W3_DECODE=0 -e PAITON_W3_PREFILL=0 -e PAITON_W3_A4=0 \
   -e PAITON_KV4=0 -e PAITON_KV4_CAPACITY=0 \
   -e ROCR_VISIBLE_DEVICES -e HIP_VISIBLE_DEVICES -e CUDA_VISIBLE_DEVICES \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53 \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:DIGEST_PENDING_PUSH \
   serve /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --tokenizer /hf-hub/models--unsloth--Qwen3.8-27B-NVFP4/snapshots/f0b7c9e722f5565102fff8481c99e4d86ae099c7 \
   --served-model-name Qwen3.8 \
@@ -213,7 +241,8 @@ The checkpoint's configured ceiling is 262,144 tokens: the 3-bit weights serve i
 see [below](#mode-long-512k).
 
 The launcher exposes `/dev/kfd` and all of `/dev/dri`, adds the `video` group,
-and uses host IPC. Select the GPU with your usual ROCm environment variables.
+and uses host IPC (with a disk cache tier, a private IPC namespace; see [Cache tiers](#cache-tiers)).
+Select the GPU with your usual ROCm environment variables.
 For example, if the R9700 is ROCm GPU 1:
 
 ```bash
@@ -285,6 +314,9 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long        # the same as -
 
 # 3-bit weights, coding mode: the same 262,144 tokens per request, a 2x larger shared 4-bit cache, prefix caching
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
+
+# the coding mode with more prefix cache in system RAM or on an NVMe/SSD (opt-in)
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache
 
 # 3-bit weights, experimental: up to 524,288 tokens per request (long-context scaling on every request)
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-512k
@@ -419,7 +451,8 @@ the 4-bit cache is within ±0.007 nats per token of the FP8 cache in every posit
 pre-release builds of this configuration).
 
 **Without pinnable system RAM.** The launcher pins the table only where the host allows 2.4 GiB: total RAM less
-11 GiB, at most the GPU driver's pinned-memory (TTM) limit less 0.5 GiB, so 16 GB of RAM is enough
+about 11.75 GiB (the server's own memory and a 7 GiB reserve), at most the GPU driver's pinned-memory (TTM) limit
+less 0.5 GiB, so 16 GB of RAM is enough
 (`PAITON_HOST_PIN_LIMIT_GIB` overrides the limit for a host whose memory is known to be free). Otherwise it keeps
 the table on the GPU, the cache holds 451,879 tokens (one full-length request plus short ones), prefix caching stays
 on, and the launcher prints one note. `--no-system-memory-weights` selects this form on purpose. With less than
@@ -429,22 +462,75 @@ much.
 **What it gives up.**
 
 - **Reading a new prompt is slower.** With prefix caching a prefill step ends where a later request can resume
-  from the cache. On the published image cold prefill is 3,641 / 3,856 / 3,769 / 3,824 / 3,536 tok/s at
+  from the cache. On the 3 October image cold prefill is 3,641 / 3,856 / 3,769 / 3,824 / 3,536 tok/s at
   2K / 8K / 16K / 32K / 64K, against 4,167 / 4,165 / 4,102 / 3,954 / 3,633 on the 2 October image: about 3 % slower
   for long prompts and 7 to 13 % for short ones.
 - **Only repeats are fast.** A new 258K-token document still takes about 2 minutes to read. When the cache is full,
-  the least recently used prefixes are dropped, and reading them again costs a full read.
+  the least recently used prefixes are dropped, and reading them again costs a full read, unless
+  [`--extend-cache`](#cache-tiers) keeps them in system RAM or on an SSD.
 - **2.4 GiB of system RAM** stays pinned while the server runs.
 - **No images:** `--vision` is refused; use `--mode long --vision` (up to 245,000 tokens).
 - **3-bit weights only:** the 4-bit cache is qualified with them; MXFP4 is refused.
 
-**On earlier images.** The 2 October image (`--image`) runs the previous form of the mode: no prefix caching, the
+**On earlier images.** The 3 October image (`--image`) runs this mode as described here, but refuses the RAM and
+SSD cache tiers (`--extend-cache`, `--host-cache-gib`). The 2 October image runs the previous form of the mode: no prefix caching, the
 table on the GPU and a 458,922-token cache (1.63 times `--mode long`'s 281,665). Every request re-reads its full
 prompt, including the earlier turns of its conversation: a repeated 32K-token prompt took 10.2 s instead of 2.9 s
 from the FP8 cache, a 258K-token prompt about 2 minutes every time. An explicit `--prefix-caching on` is refused
 there, and `--context 262144 --kv-cache kv4` starts the same form on the current and the 2 October images. Its
 BetterBench and accuracy are the "2 October image" columns of the [quickstart's tables](README.md#coding-mode-results)
 (peak VRAM 30.92 GiB). The 29 September image refuses both spellings.
+
+<a id="cache-tiers"></a>
+
+#### RAM and SSD cache tiers: `--extend-cache`
+
+`--extend-cache [auto|ram|disk]` (`--mode long-kv4` only, opt-in) keeps prefix-cache blocks that leave the GPU in
+system RAM, or on an NVMe/SSD behind a small RAM staging tier, and restores them on the next hit instead of reading
+the document again. It needs the 4 October image: with the 4-bit cache, a hit from RAM or disk must resume on a
+recurrent-state block, and this image's prefix-cache connector makes sure it does.
+
+| Choice | Where the cache goes | Sized by the launcher |
+| --- | --- | --- |
+| `auto` (also the flag alone) | System RAM when a RAM tier would hold at least 1.25 times the GPU cache's tokens; otherwise the NVMe/SSD folder | the tier, the embedding table's placement and the disk cap, from the host's RAM and free space |
+| `ram` | System RAM | the largest tier the host can pin |
+| `disk` | `PAITON_CACHE_DIR/kv-disk`, or `--disk-cache-dir DIR`, on NVMe/SSD, behind a RAM staging tier (4 GiB on a 16 GB host, 4.5 GiB from 24 GB) | up to 64 GiB or a quarter of the free space, whichever is smaller |
+
+One `Note: --extend-cache …` line at start states the choice, the GPU cache, the tier and disk capacities and the
+largest document a disk restore covers. What `auto` picks for each host size is in the
+[quickstart](README.md#extend-cache).
+
+**Measured** on a 16 GB host with a SATA SSD, `--extend-cache` (auto: 4 GiB staging, the embedding table on the
+GPU), after a full server restart: a 130K-token document came back in 6.8 s instead of 46.9 s cold, a 200K-token
+document in 9.0 s instead of 86.4 s, both identical to a fresh read. NVMe should be faster; we have not measured it.
+
+- **Correctness.** Every reopened document gives output bit-identical to the same document served from the GPU
+  cache, at every length tested (32K to about 258K tokens). A safety fallback recomputes any hit it cannot place.
+  Without a cache tier, outputs are identical to the 3 October image.
+- **The RAM tier copies the GPU cache.** It keeps a copy of what the GPU cache holds, so the reusable cache is about
+  the size of the larger of the two, not their sum; RAM adds capacity only when its tier is bigger than the GPU
+  cache. A RAM tier of N GiB restores a recently read document of up to about N × 55K tokens (4 GiB: about
+  220K); with several large documents competing, older ones are recomputed, correctly, just not faster. With
+  `--host-cache-gib` and `--mode long` (FP8 cache) the limit per GiB is lower, since that cache takes more bytes per
+  token.
+- **The disk tier.** One folder per image, weights and cache format, kept across restarts. It stores about 40 KB per
+  newly read prompt token (64 GiB holds about 1.7M new tokens); tokens served from the cache are not stored again.
+  The cap is checked at start and the folder can grow past it while the server runs; a folder over its cap is
+  removed at the next start. Every restore passes through the RAM staging tier: documents up to about 220K tokens
+  with 4 GiB of staging, about 250K with 4.5 GiB. Spinning disks are refused (`--disk-cache-allow-hdd` overrides
+  that, with slow restores).
+- **System memory.** The tier is pinned system memory. On a 16 GB host the launcher refuses a RAM tier with the
+  embedding table in system RAM (that needs 32 GB) and, with a tier, moves the table to the GPU (GPU cache 451,879
+  tokens). It refuses to start when available memory is short, naming the shortfall, and warns when it is tight.
+- **Running the image by hand with the disk tier:** give the container `--ipc private --shm-size <tier + 1 GiB>`
+  (for example `--shm-size 5g` with 4 GiB of staging). The disk tier keeps its RAM part in `/dev/shm`; in the host's
+  IPC namespace a crashed server would leave it there. The launcher does this itself, so a crash never leaves the
+  tier behind.
+- **Setting the tiers by hand:** `--host-cache-gib` and `--disk-cache-dir` still work; see
+  [System memory and experimental options](#system-memory-and-experimental-options). `--extend-cache` sets them
+  itself and refuses `--host-cache-gib`.
+- **Refused:** in `--mode long`, `--mode long-512k` and the 65,536-token mode, with the MXFP4 weights, and on the
+  3 October image and older (given by tag or by digest).
 
 <a id="mode-long-512k"></a>
 
@@ -491,15 +577,16 @@ raises the per-token log-loss by at most 0.004 nats against `--mode long-kv4` at
 #### System memory and experimental options
 
 The modes above set everything; these options are for tuning and testing. Pinned system memory is bounded per
-host: the embedding table and `--host-cache-gib` together stay within total RAM less 11 GiB and the TTM limit less
-0.5 GiB (`PAITON_HOST_PIN_LIMIT_GIB` overrides it). `--help` describes each option.
+host: the embedding table and `--host-cache-gib` together stay within total RAM less the server's own memory
+(4.75 GiB with the embedding table in system RAM, 4.5 GiB with it on the GPU) and a 7 GiB reserve, and within the
+TTM limit less 0.5 GiB (`PAITON_HOST_PIN_LIMIT_GIB` overrides it). `--help` describes each option.
 
 | Option | What it does | Status |
 | --- | --- | --- |
 | `--no-system-memory-weights` | `--mode long-kv4` with the embedding table on the GPU: nothing pinned, a 451,879-token cache, prefix caching kept. | Measured; the same form as the automatic fallback |
 | `--system-memory-weights` | `--mode long` (3-bit, without `--vision`) with the embedding table in pinned system RAM and the freed VRAM in the FP8 cache (KV budget 12.7 GB instead of 10.2 GB). Refused with `--vision`; `--mode long --vision` serves up to 245,000 tokens. | Experimental, not measured end to end |
-| `--host-cache-gib GIB` | Keeps up to GIB of prefix-cache blocks that leave the GPU in pinned system RAM, so a document read earlier comes back over PCIe instead of being read again. Needs prefix caching. `--mode long` (FP8 cache) only: the 4-bit long modes refuse it, because a hit there can resume where no matching recurrent state was kept. | Experimental. `--mode long`, pre-release build: a 64K-token document came back in 0.87 s instead of 19.4 s, with the same output as a cold read |
-| `--disk-cache-dir DIR`, `--disk-cache-gib GIB`, `--wipe-disk-cache` | A file tier behind `--host-cache-gib` (so `--mode long` only), one folder per image, weights and cache format, kept across restarts. The launcher refuses to start when the folder exceeds `--disk-cache-gib` (default 64). | Experimental, not yet measured with `--mode long` |
+| `--host-cache-gib GIB` | Keeps up to GIB of prefix-cache blocks that leave the GPU in pinned system RAM, so a document read earlier comes back over PCIe instead of being read again. Needs prefix caching. `--mode long` (FP8 cache), and `--mode long-kv4` on the 4 October image; refused in `--mode long-512k` and, with the 4-bit cache, on the 3 October image and older. `--extend-cache` sizes it for you. | Experimental. `--mode long`, pre-release build: a 64K-token document came back in 0.87 s instead of 19.4 s, with the same output as a cold read. `--mode long-kv4`: see [Cache tiers](#cache-tiers) |
+| `--disk-cache-dir DIR`, `--disk-cache-gib GIB`, `--wipe-disk-cache` | A file tier behind `--host-cache-gib` (the same modes), one folder per image, weights and cache format, kept across restarts. Set by hand, the launcher refuses to start when the folder exceeds `--disk-cache-gib` (default 64); with `--extend-cache` it removes an over-full folder instead. With a disk tier the container gets a private IPC namespace (`--ipc private --shm-size` the tier plus 1 GiB). | Measured with `--mode long-kv4` ([Cache tiers](#cache-tiers)); not yet measured with `--mode long` |
 | `--gdn-state lazy` | One recurrent-state stash per request instead of one snapshot per draft token: more cache tokens without prefix caching (2 October form of `--mode long-kv4`: 506,260 instead of 458,922). | Experimental in the long modes; refused with prefix caching; decode numerics differ from the default |
 
 ### Images and vision

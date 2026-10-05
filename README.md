@@ -6,7 +6,8 @@ runtimes, integrated with vLLM, Diffusers and ComfyUI.
 **Using Qwen3.8? Start with its [MXFP4 or 3-bit quickstart](models/Qwen3.8-MXFP4-DFlash2/README.md).**
 Download the weights, then [pick how to run it](models/Qwen3.8-MXFP4-DFlash2/README.md#pick-how-to-run-it):
 MXFP4 for the highest accuracy, 3-bit for speed, `--mode long` for one long document, `--mode long-kv4` for coding
-agents (prefix caching, about 570K tokens of cache), opt-in `--mode long-512k` for up to 524K, `--vision` for images.
+agents (prefix caching, about 570K tokens of cache; add `--extend-cache` to keep more in system RAM or on an SSD),
+opt-in `--mode long-512k` for up to 524K, `--vision` for images.
 
 Prefer a desktop app? [Paiton Studio](https://github.com/Eliovp-BV/paiton-studio)
 provides chat, image and video tools for the supported models.
@@ -50,7 +51,7 @@ These models serve an OpenAI-compatible API through vLLM.
 | Model and setup | Use | Benchmark |
 | --- | --- | --- |
 | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools · 8K | [Results](models/MiniCPM5-2B/BENCHMARKS.md) |
-| [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding · MXFP4 (most accurate) or 3-bit (fastest) · 65K by default; 262K with `--mode long` (one long document, fast follow-ups) or `--mode long-kv4` (coding agents, about 570K tokens of reusable cache); 524K opt-in (`--mode long-512k`) · `--vision` for images · [Pick how to run it](models/Qwen3.8-MXFP4-DFlash2/README.md#pick-how-to-run-it) | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
+| [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding · MXFP4 (most accurate) or 3-bit (fastest) · 65K by default; 262K with `--mode long` (one long document, fast follow-ups) or `--mode long-kv4` (coding agents, about 570K tokens of reusable cache, more in system RAM or on an SSD with `--extend-cache`); 524K opt-in (`--mode long-512k`) · `--vision` for images · [Pick how to run it](models/Qwen3.8-MXFP4-DFlash2/README.md#pick-how-to-run-it) | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
 | [Qwen3.8 27B Qronos](models/Qwen3.8/README.md) | Chat, coding and optional reasoning · 8K · text | [Results](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) |
 | [Qwen3.8 NEO CODER MAX 27B](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat · 8K · text plus one image | [Results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [Qwen3-Coder 30B A3B](models/Qwen3-Coder-30B/README.md) | Code writing, review, testing and tools · 4K | [Results](models/Qwen3-Coder-30B/BENCHMARKS.md) |

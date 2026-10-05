@@ -17,7 +17,8 @@ Download the weights, then [pick how to run it](#pick-how-to-run-it).
 - Linux x86-64, Python 3, [Hugging Face CLI (`hf`)](https://huggingface.co/docs/huggingface_hub/guides/cli), and Docker usable without `sudo`.
 - One R9700 with 32 GB VRAM that does not drive your desktop (for a shared card, see `--profile desktop` in
   [Advanced options](#advanced-options)), and AMD device access (`/dev/kfd` and `/dev/dri`).
-- About **75 GB free disk**, including the container, target, drafter and optional 3-bit weights.
+- About **75 GB free disk**, including the container, target, drafter and optional 3-bit weights; the optional
+  [`--extend-cache`](#extend-cache) SSD folder takes up to 64 GiB more.
 - **16 GB of system RAM** is enough for every row (tested). Two rows pin 2.4 GiB of it; see
   [system RAM](#system-ram).
 
@@ -28,9 +29,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **3 October r1** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-3-october-2026)). The previous release stays runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **4 October r1** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:DIGEST_PENDING_PUSH`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-4-october-2026)). The previous release stays runnable:
 [run an earlier release](#run-an-earlier-release).
 
 ## Model weights and existing downloads
@@ -43,7 +44,7 @@ the downloads and the runtime cache are reused.
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261003"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"
 mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
 
 hf download unsloth/Qwen3.8-27B-NVFP4 \
@@ -95,6 +96,7 @@ what you give up. Run **one** at a time.
 | **Recommended:** fast everyday chat, coding questions and tools (for coding agents see `--mode long-kv4`) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh` | 65,536 | up to 8 requests, 393,216 tokens in total | no | yes | a little accuracy (MMLU-Pro 60.6 instead of 62.6) |
 | One long document, many follow-up questions, also with images (screenshots) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long` | 262,144 | up to 8 requests, 281,665 tokens in total: one full-length document at a time plus short requests | yes | yes, with the context lowered to 245,000 | about 3 to 4 % speed on short requests (against the recommended row); half the cache of `--mode long-kv4` |
 | **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 569,878 tokens in total: two full-length requests | yes | no | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
+| Coding agents that return to more documents than the GPU cache holds, also after a restart | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | as the row above, or 451,879 tokens where the launcher moves the embedding table to the GPU (it says so at start) | yes, plus system RAM or an NVMe/SSD | no | system RAM, or up to 64 GiB of NVMe/SSD space, sized by the launcher for your host ([more cache](#extend-cache)) |
 | One request longer than 262,144 tokens (experimental) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-512k` | 524,288 | up to 8 requests, 594,290 tokens in total: one full-length request plus short ones | yes | no | the model's long-context position scaling on every request; 2.4 GiB of pinned system RAM, no fallback; a cold 500K-token read takes about 6 minutes |
 
 - **Context** counts prompt plus output: keep the prompt plus `max_tokens` within it, or the request is refused
@@ -114,7 +116,7 @@ what you give up. Run **one** at a time.
 - <a id="system-ram"></a>**System RAM.** `--mode long-kv4` and `--mode long-512k` keep the 2.4 GiB embedding table
   in pinned RAM. The launcher warns when less than 6 GiB of RAM is available at start (the server and the table
   need about that much): close programs, or with `--mode long-kv4` add `--no-system-memory-weights`
-  (`--mode long-512k` needs the RAM and refuses that flag). A host with less than about 13.5 GiB
+  (`--mode long-512k` needs the RAM and refuses that flag). A host with less than about 14.25 GiB
   of RAM in total cannot pin the table: there `--mode long-kv4` keeps it on the GPU and prints a `Note:` line at
   start. Requests still get 262,144 tokens and the prefix cache, but the cache holds 451,879 tokens (one
   full-length request plus short ones); `--no-system-memory-weights` chooses the same on purpose. `--mode long-512k`
@@ -133,9 +135,78 @@ sharing a 100K-token repository each started in 2.6 to 2.7 s ([measurements](#co
 need an unchanged start of the prompt: the same system prompt and earlier turns, no timestamp at the top. Each
 response's `usage.prompt_tokens_details.cached_tokens` shows how many prompt tokens came from the cache. For MXFP4
 accuracy with one agent, `run-mxfp4.sh --mode long` also keeps the prefix cache (200,000 tokens, one request at a
-time, no images).
+time, no images). To keep more documents than the GPU cache holds, also across restarts, add
+[`--extend-cache`](#extend-cache).
 
 Each row sets its own limits; to change them, see [Advanced options](#advanced-options).
+
+<a id="extend-cache"></a>
+
+### More cache for coding agents: `--extend-cache`
+
+`--mode long-kv4` keeps its prefix cache on the GPU. When that is full, the oldest documents are dropped and the
+next question about them reads them again. Add `--extend-cache` to keep them in system RAM or on an NVMe/SSD
+instead: a document comes back from there in seconds, with the same output.
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache
+```
+
+| Option | What it does |
+| --- | --- |
+| `--extend-cache` (the same as `--extend-cache auto`) | Uses system RAM when the host has enough of it for RAM to add capacity beyond the GPU cache; otherwise an NVMe/SSD folder behind a small RAM staging tier. |
+| `--extend-cache ram` | Always system RAM, also where it adds little capacity (the start line then says so). |
+| `--extend-cache disk` | Always the NVMe/SSD folder: the most capacity (about 1.7M tokens at the 64 GiB cap), somewhat slower restores. |
+
+What `auto` picks:
+
+| Host RAM | `auto` picks | What you get |
+| --- | --- | --- |
+| 16 GB | NVMe/SSD with 4 GiB of RAM staging; the embedding table moves to the GPU (GPU cache 451,879 tokens) | documents up to about 220K tokens restore from disk |
+| 24 to 32 GB | NVMe/SSD with 4.5 GiB of RAM staging | documents up to about 250K tokens restore from disk |
+| 48 GB | RAM, a tier of about 22.5 GiB | about 590K tokens of cache |
+| 64 GB | RAM, about 28 GiB | about 734K tokens |
+| 96 GB | RAM | about 1.15M tokens |
+| 128 GB | RAM | about 1.56M tokens |
+
+One line at start states the choice and the capacities.
+
+**Measured** on a 16 GB host with a SATA SSD, `--extend-cache` (auto), after a full server restart:
+
+| Document | Read cold | Restored from the SSD |
+| --- | ---: | ---: |
+| 130K tokens | 46.9 s | **6.8 s** |
+| 200K tokens | 86.4 s | **9.0 s** |
+
+Both outputs were identical to a fresh read. NVMe should be faster; we have not measured it.
+
+In a session that keeps more documents than the GPU cache holds (six 100K-token documents asked in turn, twice,
+16 GB host), every re-read came back from the SSD: 4.3 s to the first token instead of 33.5 s, all 12 answers
+identical to a fresh read.
+
+- **Same output.** A reopened document gives output bit-identical to the same document served from the GPU cache,
+  at every length tested (32K to about 258K tokens). A hit the server cannot place is read again instead. Without
+  `--extend-cache`, outputs are identical to the 3 October image.
+- **RAM copies the GPU cache.** The RAM tier keeps a copy of what the GPU cache holds, so it adds capacity only when
+  it is bigger than the GPU cache; `auto` accounts for that. A RAM tier of N GiB restores a recently read document
+  of up to about N × 55K tokens; with several large documents competing, older ones are read again, correctly,
+  just not faster.
+- **The disk folder** is `PAITON_CACHE_DIR/kv-disk`, or `--disk-cache-dir DIR`. It is capped at 64 GiB or a quarter
+  of the free space, whichever is smaller, checked at start; a folder that grew past its cap is removed at the next
+  start. It stores about 40 KB per newly read prompt token (64 GiB holds about 1.7M new tokens); tokens served from
+  the cache are not stored again. A restore passes through the RAM staging tier, which sets the largest document it
+  restores (the table above); longer ones are read again. The staging tier also limits how many big documents come
+  back at the same moment (4 GiB stages about two 100K-token documents at once); concurrent re-reads beyond that are
+  read again. Spinning disks are refused.
+- **First reads are a little slower.** With a cache tier, every new prompt block is also written to the tier, so
+  the first read of a long prompt takes longer: about 8 % for a 131K-token prompt in our test (one run). Decode
+  speed without a concurrent long prompt is unchanged within noise.
+- **16 GB hosts.** A RAM tier with the embedding table in system RAM needs 32 GB, so the launcher refuses it there;
+  with a tier it moves the table to the GPU. It refuses to start when free memory is short, naming the shortfall,
+  and warns when memory is tight.
+- **Only with `--mode long-kv4`** and the 4 October image. Older images refuse it.
+
+More: [cache tiers in the reference](REFERENCE.md#cache-tiers).
 
 ## Start the server
 
@@ -306,6 +377,7 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |
+| `--extend-cache [auto\|ram\|disk]` | `--mode long-kv4`: keep prefix-cache blocks that leave the GPU in system RAM or on an NVMe/SSD; see [more cache](#extend-cache). |
 | `--kv-cache-memory-bytes BYTES` / `--gpu-memory-utilization FRACTION` | Your own KV budget instead of the measured one, also with `--vision`. |
 | `--profile desktop` | For an R9700 that also drives your desktop: 32,768 context, one request, 2 GiB KV. |
 | `--port PORT` / `--name NAME` / `--detach` | API port (default 18982), container name, run in the background. |
@@ -320,7 +392,7 @@ Command lines from earlier releases still start the same server:
 | `run-3bit.sh --context 262144 --kv-cache kv4` | the 2 October `--mode long-kv4`: no prefix caching, 458,922 tokens (the launcher prints a note) |
 | `run-rocm10.sh` | `run-3bit.sh` when `PAITON_W3ROT_DIR` is set, `run-mxfp4.sh` otherwise |
 
-Experimental options, such as a system-RAM tier for the prefix cache (`--host-cache-gib`, `--mode long` only), are in
+Experimental options, such as setting the cache tiers by hand (`--host-cache-gib`, `--disk-cache-dir`), are in
 the [reference](REFERENCE.md#system-memory-and-experimental-options); no row needs them.
 See the reference for [GPU selection and memory budgets](REFERENCE.md#gpu-context-and-memory-controls) and
 [long-context details](REFERENCE.md#long-context-200k-and-220k).
@@ -333,14 +405,20 @@ benchmarks, long-context checks, KV tuning and older releases.
 ### Run an earlier release
 
 Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
-its own runtime cache folder. With the 2 October reference, the launcher builds the Docker command of the 2 October
-release; `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261002-r1s`,
-`…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag; an image under any
-other tag or an image ID counts as the current image.
+its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
+`--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
+Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261003-r1`,
+`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
+and by its digest alone; an image under any other tag or an image ID counts as the current image.
 
 ```bash
-# 2 October (r1s), the previous release: every row except --mode long-512k
+# 3 October r1, the previous release: every row; refuses --extend-cache
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261003"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53
+
+# 2 October (r1s): every row except --mode long-512k
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261002"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh \
@@ -353,8 +431,12 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
   --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
 ```
 
-To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261003"` again
+To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"` again
 and drop `--image`.
+
+The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
+(`--extend-cache`, and `--host-cache-gib` with `--mode long-kv4`): there a cache hit could resume from the wrong
+recurrent state. `--host-cache-gib` with `--mode long` (FP8 cache) works there as before.
 
 On the 2 October image, `--mode long-kv4` runs as it was released: no prefix caching, the embedding table on the
 GPU, a 458,922-token cache. The 29 September image refuses `--mode long-kv4`; both refuse `--mode long-512k` and
