@@ -256,7 +256,11 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 EXTEND_CACHE_RAM_FACTOR = 1.25
 TIER_STORED_BYTES_PER_TOKEN = 40960
 TIER_LOADED_BYTES_PER_TOKEN = 19000
-TIER_BYTES_BY_IMAGE_SUFFIX = {}      # image name suffix: (stored, loaded) bytes per token, for images that store less
+TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes per token, for images that store less
+    # rc-next (host-tier stores only the draft-group chunks a hit can use): measured 340 slots for 200,002 new tokens =
+    # 24,371 B/token on a disk run, stored rounded up to 24 KiB; loaded unchanged
+    'qwen38-rocm10-vllm029-20261005-rcnext-dev1': (24576, 19000),
+}
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 EXTEND_CACHE_STAGING_GIB = (4.5, 4.0, 3.5, 3.0, 2.5, 2.0)     # the largest that fits; 4.5 restores a 256K document
 EXTEND_CACHE_DISK_MAX_GIB = 64.0

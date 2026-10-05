@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import re
 import unittest
 from unittest.mock import patch
 
@@ -1488,6 +1489,34 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.overrides['TIER_BYTES_BY_IMAGE_SUFFIX'] = {':dev': (21504, 19000)}
         self.assertEqual(value(self._extend(32, '--extend-cache')[0], '--kv-offloading-size'), '15.5')
 
+    def test_extend_cache_capacities_of_the_rcnext_image(self):
+        """The rc-next image stores 24,576 B per token in the tiers (TIER_BYTES_BY_IMAGE_SUFFIX, measured 24,371 B/token on a
+        disk run); the auto choices follow: 16 GB -> disk behind a 4 GiB staging, 24 GB -> disk, 32 GB -> a 15.5 GiB RAM tier
+        with the embedding on the GPU (~677K tokens), 48 GB -> 21 GiB with the embedding in system memory (~917K), 64 GB -> 29 GiB
+        (~1.27M); the disk cap's token count follows the same bytes per token (64 GiB ~ 2.8M)."""
+        self._w3rot()
+        image = ('--image', 'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1')
+        tokens = lambda gib: int(gib * 2 ** 30 / 24576)
+        command, stderr = self._extend(15.5, '--extend-cache', *image)        # a 16 GB host
+        self.assertEqual(value(command, '--kv-offloading-size'), '4')
+        self.assertTrue(any(x.endswith(':/kvdisk:rw') for x in command))
+        cap, n = re.search(r'up to (\d+(?:\.\d+)?) GiB \(~([\d,]+) tokens', stderr).groups()
+        self.assertEqual(int(n.replace(',', '')), tokens(float(cap)))          # 64 GiB -> 2,796,202
+        command, _ = self._extend(24, '--extend-cache', *image)
+        self.assertTrue(any(x.endswith(':/kvdisk:rw') for x in command))
+        command, stderr = self._extend(32, '--extend-cache', *image)
+        self.assertEqual(value(command, '--kv-offloading-size'), '15.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
+        self.assertIn(f'a 15.5 GiB tier (~{tokens(15.5):,} tokens)', stderr)   # ~677K
+        command, stderr = self._extend(48, '--extend-cache', *image)
+        self.assertEqual(value(command, '--kv-offloading-size'), '21')
+        self.assertIn('PAITON_HOST_EMBED=1', command)
+        self.assertIn(f'a 21 GiB tier (~{tokens(21):,} tokens)', stderr)         # ~917K
+        command, stderr = self._extend(64, '--extend-cache', *image)
+        self.assertEqual(value(command, '--kv-offloading-size'), '29')
+        self.assertIn(f'a 29 GiB tier (~{tokens(29):,} tokens)', stderr)         # ~1.27M
+
     def test_extend_cache_forced_choices_and_placement(self):
         self._w3rot()
         command, stderr = self._extend(15.5, '--extend-cache', 'ram')       # forced: the largest RAM tier, a caveat
@@ -2069,20 +2098,3 @@ class Rocm10LauncherTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
-class RcNextTierBytesPlaceholder(unittest.TestCase):
-    """rc-next images store ~29 % less per token in the host/disk tiers (Phase B); the launcher's TIER_BYTES_BY_IMAGE_SUFFIX
-    must carry the rc-next image suffix with OFFLOAD's measured (stored, loaded) bytes per token. Placeholder until the
-    measured value lands: the entry's presence and shape are checked, nothing is guessed."""
-    SUFFIX = 'qwen38-rocm10-vllm029-20261005-rcnext-dev1'
-
-    def test_rcnext_tier_bytes_entry(self):
-        import importlib.util, pathlib
-        spec = importlib.util.spec_from_file_location('launch_rocm10_rcnext', pathlib.Path(__file__).resolve().parents[1] / 'models' / 'Qwen3.8-MXFP4-DFlash2' / 'launch-rocm10.py')
-        mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
-        entry = mod.TIER_BYTES_BY_IMAGE_SUFFIX.get(self.SUFFIX)
-        if entry is None:
-            self.skipTest('awaiting the measured rc-next tier bytes per token from the disk-run file count (OFFLOAD)')
-        stored, loaded = entry
-        self.assertTrue(0 < loaded <= stored < 40 * 1024, entry)
