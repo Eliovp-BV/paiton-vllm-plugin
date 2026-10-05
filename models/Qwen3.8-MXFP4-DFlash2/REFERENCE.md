@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements, advanced setup and release history.
 
-- [Release notes](#release-notes-4-october-2026) (earlier: [3 October](#release-notes-3-october-2026),
+- [Release notes](#release-notes-5-october-2026) (earlier: [6 October launcher update](#launcher-update-6-october-2026), [4 October](#release-notes-4-october-2026), [3 October](#release-notes-3-october-2026),
   [2 October](#release-notes-2-october-2026), [28 September](#release-notes-28-september-2026))
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
@@ -23,9 +23,54 @@ The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
 
-<a id="release-notes-4-october-2026"></a>
+<a id="release-notes-5-october-2026"></a>
 
-### Launcher update: 6 October 2026 (the 4 October image stays pinned)
+### Release notes: 5 October 2026 (image r1, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1` (`sha256:DIGEST_PENDING_PUSH`)
+is the 4 October image with a faster start, native long-prompt attention and 4-bit decode kernels, images in the
+coding mode and larger cache tiers. Weights, drafter and every mode's limits are unchanged. Update this repository to
+get the launcher that selects it; `--dry-run` prints the full Docker command.
+
+- **Faster, reproducible start.** The image carries a seeded compile cache and warms its kernels before it answers:
+  `--mode long-kv4` reaches healthy in about 180 s on its first start and in about 120 s on later starts (3-bit, one
+  R9700, measured on the same host). The 4 October image needs about 305 s on its first start (it ships no seed) and
+  about 150 s with an already warm cache directory. The
+  seed also holds the compiled kernels of our validation runs: a compile cache built from scratch compiles a few
+  runtime kernels differently, and on the 4 October image (which ships no seed) a cold start can therefore answer a few
+  prompts differently from our validated outputs. With this image the first start answers exactly as validated. The start-up log prints one
+  `[paiton.cache]` line with what the seed covered.
+- **Native kernels, same answers.** The long-prompt attention of `--mode long` and `--mode long-kv4` and the
+  4-bit cache's decode kernels are Paiton's own. On the same host, outputs match the 4 October image at the default
+  settings: greedy answers, GSM8K texts, 65K-mode answers and long prompts up to 258K tokens. One long coding-mode
+  prompt's first token differs between hosts for both images (its compile cache decides a near tie); the paired
+  check on long coding prompts shows no accuracy change. First token on a 258K-token prompt: 122.2 s instead of 126.0 s
+  (65K: 18.9 instead of 19.7 s); decode speed unchanged within noise.
+- **New: images in the coding mode.** `--mode long-kv4 --vision` adds image input to the long-context coding mode:
+  496,129 cached tokens with images, 262,144 per request. Images up to 4K are read at full resolution; larger ones
+  are downscaled. `--mode long-512k` stays text-only. See [Images and vision](#images-and-vision).
+- **Known item:** with the FP8 KV cache (`--mode long --vision`) the model can misread single characters of tiny text
+  (about 15 px) in 4K screenshots; the coding mode (`--mode long-kv4 --vision`) reads the same text exactly. Prefer the
+  coding mode for screenshots of code.
+- **`--vision` modes handle large images more steadily:** images up to 4K (3840 x 2160) are read at full resolution,
+  larger ones are downscaled, and memory stays clear of the card's limit (first answer on a 4096² image about 4.6 s
+  instead of about 12 s).
+- **Cache tiers hold more.** With this image a cached token takes about 24 KB in the RAM or SSD tier (was about
+  40 KB). `--extend-cache auto` therefore picks system memory on a 32 GB host (a tier of about 677K tokens; 48 GB
+  about 917K, 64 GB about 1.27M; these sizes are computed from the bytes per token, only the 16 GB SSD restores were
+  measured), and the SSD on 16 to 24 GB hosts, whose default 64 GiB cap holds about 2.8M tokens.
+  The disk tier grows while the server runs; an over-full folder is removed at the next start, and
+  `--wipe-disk-cache` clears it by hand. See [Cache tiers](#cache-tiers).
+- **Includes the 6 October launcher update** (one GPU by default, the pinned-memory default, the VRAM check before a
+  start, the small-RAM-tier warning).
+- **Unchanged except the vision caps:** every mode's context, cache and request limits; the MXFP4 and 3-bit weights;
+  `--host-cache-gib` and `--disk-cache-dir`.
+- **Earlier images** stay runnable with `--image` and keep their behaviour; the 4 October image remains the
+  reference for these outputs. See [Run an earlier release](README.md#run-an-earlier-release).
+
+<a id="launcher-update-6-october-2026"></a>
+
+### Launcher update: 6 October 2026 (launcher only)
 
 `git pull` in your checkout gets a launcher update; images, weights and every mode's limits are unchanged.
 
@@ -48,7 +93,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 <a id="release-notes-4-october-2026"></a>
 
-### Release notes: 4 October 2026 (image r1, current)
+### Release notes: 4 October 2026 (image r1)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1` (`sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d`)
 is the 3 October image with one fix to the prefix-cache connector. Weights, drafter and the serving settings are
@@ -647,7 +692,10 @@ planted codename and a chart answered both after 87 s (1.3 s when reused), and
 eight concurrent image requests all answered within 9 s; four repetitions of the
 200K-plus-chart prompt with fresh text each time stayed within 0.2% on the cold first
 token (86.8 to 87.0 s) and reused the cache in about 1.3 s. With MXFP4 the
-long-context mode refuses `--vision`, and so do `--mode long-kv4` and `--mode long-512k`.
+long-context mode refuses `--vision`, and so does `--mode long-512k`; `--mode long-kv4 --vision` (the coding mode) reads
+images with 496,129 cached tokens and 262,144 per request. Images up to 4K are read at full resolution, larger ones
+are downscaled. Known item: with the FP8 KV cache (`--mode long --vision`) single characters of tiny text (about 15 px)
+in 4K screenshots can be misread; the coding mode reads them exactly.
 Video input is not tested. An explicit
 `--kv-cache-memory-bytes` or `--gpu-memory-utilization` replaces the vision budget.
 

@@ -29,9 +29,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **4 October r1** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-4-october-2026)). The previous release stays runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **5 October r1** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-5-october-2026)). The previous release stays runnable:
 [run an earlier release](#run-an-earlier-release).
 
 ## Model weights and existing downloads
@@ -95,7 +95,7 @@ what you give up. Run **one** at a time.
 | --- | --- | ---: | --- | --- | --- | --- |
 | **Recommended:** fast everyday chat, coding questions and tools (for coding agents see `--mode long-kv4`) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh` | 65,536 | up to 8 requests, 393,216 tokens in total | no | yes | a little accuracy (MMLU-Pro 60.6 instead of 62.6) |
 | One long document, many follow-up questions, also with images (screenshots) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long` | 262,144 | up to 8 requests, 281,665 tokens in total: one full-length document at a time plus short requests | yes | yes, with the context lowered to 245,000 | about 3 to 4 % speed on short requests (against the recommended row); half the cache of `--mode long-kv4` |
-| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 569,878 tokens in total: two full-length requests | yes | no | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
+| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 569,878 tokens in total: two full-length requests | yes | yes (496,129 tokens cached) | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
 | Coding agents that return to more documents than the GPU cache holds, also after a restart | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | as the row above, or 451,879 tokens where the launcher moves the embedding table to the GPU (it says so at start) | yes, plus system RAM or an NVMe/SSD | no | system RAM, or up to 64 GiB of NVMe/SSD space, sized by the launcher for your host ([more cache](#extend-cache)) |
 | One request longer than 262,144 tokens (experimental) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-512k` | 524,288 | up to 8 requests, 594,290 tokens in total: one full-length request plus short ones | yes | no | the model's long-context position scaling on every request; 2.4 GiB of pinned system RAM, no fallback; a cold 500K-token read takes about 6 minutes |
 
@@ -106,8 +106,9 @@ what you give up. Run **one** at a time.
   new question about a document the server has already read starts in a few seconds (1.2 to 4.4 s in our runs)
   instead of 1.5 to 6 minutes, and the next turn of a conversation reads only its new part. **No:** every request
   reads its whole prompt again.
-- **Images:** add `--vision` to a row with "yes"; not with MXFP4 `--mode long`, `--mode long-kv4` or
-  `--mode long-512k`. For example
+- **Images:** add `--vision` to a row with "yes"; not with MXFP4 `--mode long` or `--mode long-512k`. Images up to 4K are
+  read at full resolution, larger ones are downscaled. For screenshots of code prefer `--mode long-kv4 --vision`: the
+  FP8-cache `--mode long --vision` can misread single characters of tiny (about 15 px) text in 4K screenshots. For example
   `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long --vision`. The vision encoder's 0.88 GiB comes out of
   the shared cache (the "At once" figures above are without it): with `--vision` the cache holds 278,050 (3-bit,
   65,536-token row), 120,277 (MXFP4, 65,536-token row) or 253,298 (`--mode long`) tokens. Send images as
@@ -156,18 +157,21 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache
 | --- | --- |
 | `--extend-cache` (the same as `--extend-cache auto`) | Uses system RAM when the host has enough of it for RAM to add capacity beyond the GPU cache; otherwise an NVMe/SSD folder behind a small RAM staging tier. |
 | `--extend-cache ram` | Always system RAM, also where it adds little capacity (the start line then says so). |
-| `--extend-cache disk` | Always the NVMe/SSD folder: the most capacity (about 1.7M tokens at the 64 GiB cap), somewhat slower restores. |
+| `--extend-cache disk` | Always the NVMe/SSD folder: the most capacity (about 2.8M tokens at the 64 GiB cap), somewhat slower restores. |
 
 What `auto` picks:
 
 | Host RAM | `auto` picks | What you get |
 | --- | --- | --- |
 | 16 GB | NVMe/SSD with 4 GiB of RAM staging; the embedding table moves to the GPU (GPU cache 451,879 tokens) | documents up to about 220K tokens restore from disk |
-| 24 to 32 GB | NVMe/SSD with 4.5 GiB of RAM staging | documents up to about 250K tokens restore from disk |
-| 48 GB | RAM, a tier of about 22.5 GiB | about 590K tokens of cache |
-| 64 GB | RAM, about 28 GiB | about 734K tokens |
-| 96 GB | RAM | about 1.15M tokens |
-| 128 GB | RAM | about 1.56M tokens |
+| 24 GB | NVMe/SSD with 4.5 GiB of RAM staging | documents up to about 250K tokens restore from disk |
+| 32 GB | RAM, a tier of about 15.5 GiB; the embedding table moves to the GPU | about 677K tokens of cache |
+| 48 GB | RAM, a tier of about 21 GiB | about 917K tokens |
+| 64 GB | RAM, about 29 GiB | about 1.27M tokens |
+| 96 GB and more | RAM | about 1.9M tokens and up |
+
+The token counts are computed from the 24 KB a cached token takes in a tier; only the 16 GB SSD restores below were
+measured.
 
 One line at start states the choice and the capacities.
 
@@ -193,7 +197,7 @@ identical to a fresh read.
   just not faster.
 - **The disk folder** is `PAITON_CACHE_DIR/kv-disk`, or `--disk-cache-dir DIR`. It is capped at 64 GiB or a quarter
   of the free space, whichever is smaller, checked at start; a folder that grew past its cap is removed at the next
-  start. It stores about 40 KB per newly read prompt token (64 GiB holds about 1.7M new tokens); tokens served from
+  start. It stores about 24 KB per newly read prompt token (64 GiB holds about 2.8M new tokens); tokens served from
   the cache are not stored again. A restore passes through the RAM staging tier, which sets the largest document it
   restores (the table above); longer ones are read again. The staging tier also limits how many big documents come
   back at the same moment (4 GiB stages about two 100K-token documents at once); concurrent re-reads beyond that are
@@ -204,15 +208,18 @@ identical to a fresh read.
 - **16 GB hosts.** A RAM tier with the embedding table in system RAM needs 32 GB, so the launcher refuses it there;
   with a tier it moves the table to the GPU. It refuses to start when free memory is short, naming the shortfall,
   and warns when memory is tight.
-- **Only with `--mode long-kv4`** and the 4 October image. Older images refuse it.
+- **A RAM tier smaller than the GPU cache** (chosen with `--extend-cache ram` or `--host-cache-gib`) gets a warning at
+  start: it keeps a copy of what the GPU already holds, so it rarely helps with several large documents in turn;
+  `--extend-cache disk` keeps them across the session.
+- **Only with `--mode long-kv4`** and the 4 October image or later. Older images refuse it.
 
 More: [cache tiers in the reference](REFERENCE.md#cache-tiers).
 
 ## Start the server
 
 Run the command you picked. The server runs in the foreground; add `--detach` to run it in the background
-(`docker logs -f paiton-qwen38` follows its log). The first start with an empty runtime cache takes about
-**seven minutes**; wait for `/health` to succeed.
+(`docker logs -f paiton-qwen38` follows its log). The first start takes about **three minutes** on our reference host (the image ships a
+seeded compile cache; later starts about two minutes); wait for `/health` to succeed.
 
 **API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8` · **API key:** none (enter any value if a client asks)
 
@@ -373,7 +380,7 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | --- | --- |
 | `--context TOKENS` | A smaller context than the row's (input plus output). Only MXFP4 `--mode long` goes higher: up to 220,000, the largest tested. |
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
-| `--long-prefill-threshold TOKENS|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. Default 2048 in `--mode long-kv4` and `--mode long-512k` (measured 5 October 2026 on the R9700: a 257-token request sent during a 64K-token prefill answers in 0.8 s instead of 6.2 s; the long prompt costs +0.7 % at 258K tokens and +1-2 % at 64K), off in the other modes; `off` disables it. |
+| `--long-prefill-threshold TOKENS|off` | Experimental: cap on the prefill tokens a long prompt takes per step so short requests from other users are answered while it is processed. Off by default; it changes long-prompt outputs slightly and its accuracy is not yet validated. |
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |
