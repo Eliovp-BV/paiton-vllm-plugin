@@ -470,9 +470,6 @@ def extend_cache_settings(args, environment):
                              '--extend-cache disk')
         note = (f'--extend-cache {choice}: system memory, a {tier[e]:g} GiB tier (~{tokens(tier[e]):,} tokens) next to '
                 f'the GPU pool\'s {gpu[e]:,} tokens, the embedding {where(e)}; no disk tier')
-        if not adds:
-            note += (f'. The tier keeps a copy of what the GPU pool holds, so below {EXTEND_CACHE_RAM_FACTOR:g}x the '
-                     'pool it adds little; --extend-cache disk holds more')
         return {'extend_cache': None, 'host_cache_gib': tier[e], 'system_memory_weights': e,
                 'no_system_memory_weights': not e}, note
     for staging in EXTEND_CACHE_STAGING_GIB:         # the staging tier every disk hit passes through
@@ -515,6 +512,22 @@ def extend_cache_settings(args, environment):
                else ''))
     return {'extend_cache': None, 'host_cache_gib': staging, 'disk_cache_dir': folder, 'disk_cache_gib': cap,
             'disk_cache_auto_wipe': True, 'system_memory_weights': e, 'no_system_memory_weights': not e}, note
+
+
+def small_ram_tier_warning(args):
+    """The warning for an explicit RAM-only tier (--extend-cache ram, or --host-cache-gib without --disk-cache-dir) in the
+    4-bit coding mode that holds less than 1.25x the GPU pool: the tier keeps a copy of what the pool holds, so with
+    several large documents in turn it rarely serves a hit (5 x 120K documents, 3 GiB tier: none), while the disk
+    tier served every re-read. None otherwise (the fp8 tier's space per token is not measured)."""
+    if not getattr(args, 'host_cache_gib', None) or getattr(args, 'disk_cache_dir', None) or args.kv_cache != 'kv4':
+        return None
+    embedding_in_ram = bool(getattr(args, 'system_memory_weights', False))
+    tokens = int(args.host_cache_gib * 2 ** 30 / tier_bytes_per_token(args)[0])
+    pool = KV4_POOL_TOKENS[embedding_in_ram]
+    if tokens >= EXTEND_CACHE_RAM_FACTOR * pool:
+        return None
+    return (f'a RAM tier smaller than the GPU cache rarely helps with several large documents (this one holds '
+            f'~{tokens:,} tokens next to the GPU pool\'s {pool:,}); --extend-cache disk keeps them across the session')
 
 
 def cache_bytes(value):
@@ -1339,6 +1352,9 @@ def main(argv=None):
                           KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
+    warning = small_ram_tier_warning(args)
+    if warning:
+        print('Warning: ' + warning + '.', file=sys.stderr)
     available = mem_available_gib()
     if getattr(args, 'host_cache_gib', None) and available is not None:
         embedding_in_ram = bool(getattr(args, 'system_memory_weights', False))

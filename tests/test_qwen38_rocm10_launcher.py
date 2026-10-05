@@ -1471,7 +1471,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         command, stderr = self._extend(15.5, '--extend-cache', 'ram')       # forced: the largest RAM tier, a caveat
         self.assertEqual(value(command, '--kv-offloading-size'), '4')
         self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
-        self.assertIn('adds little; --extend-cache disk holds more', stderr)
+        self.assertIn('Warning: a RAM tier smaller than the GPU cache rarely helps with several large documents', stderr)
         command, _ = self._extend(64, '--extend-cache', 'disk')
         self.assertEqual(value(command, '--kv-offloading-size'), '4.5')
         self.assertIn('PAITON_HOST_EMBED=1', command)
@@ -1534,6 +1534,25 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2, result.stderr)
         self.assertIn('remove it with --wipe-disk-cache', result.stderr)
 
+    def test_a_small_explicit_ram_tier_is_warned_about(self):
+        self._w3rot()
+        self._host(15.5, 13.5)
+        image = ('--image', 'paiton-qwen38-local:dev')
+        warning = 'Warning: a RAM tier smaller than the GPU cache rarely helps with several large documents'
+        manual = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib',
+                                   '2', *image)
+        self.assertEqual(manual.returncode, 0, manual.stderr)
+        self.assertIn(warning, manual.stderr)
+        self.assertIn('(this one holds ~52,428 tokens next to the GPU pool\'s 451,879)', manual.stderr)
+        # a disk tier, the large RAM tier auto picks, and the fp8 long mode stay quiet
+        disk = self.run_launcher('--dry-run', '--mode', 'long-kv4', '--no-system-memory-weights', '--host-cache-gib',
+                                 '2', '--disk-cache-dir', str(self.root / 'kvdisk'), *image)
+        self.assertNotIn(warning, disk.stderr)
+        self.assertNotIn(warning, self._extend(64, '--extend-cache')[1])
+        fp8 = self.run_launcher('--dry-run', '--mode', 'long', '--host-cache-gib', '2', *image)
+        self.assertEqual(fp8.returncode, 0, fp8.stderr)
+        self.assertNotIn(warning, fp8.stderr)
+
     def test_extend_cache_refusals(self):
         self._w3rot()
         self._host(15.5, 13.5)
@@ -1574,7 +1593,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('should leave 3.5 GiB free (2.0 GiB short)', result.stderr)
         self._host(15.5, 10.0)                                 # enough: no warning
-        self.assertNotIn('Warning', self.run_launcher('--dry-run', *tier).stderr)
+        self.assertNotIn('Warning: only', self.run_launcher('--dry-run', *tier).stderr)    # (the small-tier warning stays)
         # the shipped coding mode without a tier is never refused for available memory, only warned below 6 GiB
         self._host(15.5, 4.0)
         result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
