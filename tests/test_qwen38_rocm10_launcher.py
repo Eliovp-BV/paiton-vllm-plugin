@@ -2069,3 +2069,20 @@ class Rocm10LauncherTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class RcNextTierBytesPlaceholder(unittest.TestCase):
+    """rc-next images store ~29 % less per token in the host/disk tiers (Phase B); the launcher's TIER_BYTES_BY_IMAGE_SUFFIX
+    must carry the rc-next image suffix with OFFLOAD's measured (stored, loaded) bytes per token. Placeholder until the
+    measured value lands: the entry's presence and shape are checked, nothing is guessed."""
+    SUFFIX = 'qwen38-rocm10-vllm029-20261005-rcnext-dev1'
+
+    def test_rcnext_tier_bytes_entry(self):
+        import importlib.util, pathlib
+        spec = importlib.util.spec_from_file_location('launch_rocm10_rcnext', pathlib.Path(__file__).resolve().parents[1] / 'models' / 'Qwen3.8-MXFP4-DFlash2' / 'launch-rocm10.py')
+        mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+        entry = mod.TIER_BYTES_BY_IMAGE_SUFFIX.get(self.SUFFIX)
+        if entry is None:
+            self.skipTest('awaiting the measured rc-next tier bytes per token from the disk-run file count (OFFLOAD)')
+        stored, loaded = entry
+        self.assertTrue(0 < loaded <= stored < 40 * 1024, entry)
