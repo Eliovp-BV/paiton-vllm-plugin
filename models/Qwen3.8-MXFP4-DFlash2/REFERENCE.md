@@ -27,7 +27,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 5 October 2026 (image r1, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1` (`sha256:DIGEST_PENDING_PUSH`)
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1` (`sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`)
 is the 4 October image with a faster start, native long-prompt attention and 4-bit decode kernels, images in the
 coding mode and larger cache tiers. Weights, drafter and every mode's limits are unchanged. Update this repository to
 get the launcher that selects it; `--dry-run` prints the full Docker command.
