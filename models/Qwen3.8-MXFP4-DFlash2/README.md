@@ -96,7 +96,7 @@ what you give up. Run **one** at a time.
 | --- | --- | ---: | --- | --- | --- | --- |
 | **Recommended:** fast everyday chat, coding questions and tools (for coding agents see `--mode long-kv4`) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh` | 65,536 | up to 8 requests, 393,216 tokens in total | no | yes | a little accuracy (MMLU-Pro 60.6 instead of 62.6) |
 | One long document, many follow-up questions, also with images (screenshots) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long` | 262,144 | up to 8 requests, 281,665 tokens in total: one full-length document at a time plus short requests | yes | yes, with the context lowered to 245,000 | about 3 to 4 % speed on short requests (against the recommended row); half the cache of `--mode long-kv4` |
-| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 628,877 tokens in total: two full-length requests and a third of 100K | yes | yes (496,129 tokens cached) | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
+| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 628,877 tokens in total: two full-length requests and a third of 100K | yes | yes (555,128 tokens cached) | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
 | Coding agents that return to more documents than the GPU cache holds, also after a restart | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | as the row above, or 451,879 tokens where the launcher moves the embedding table to the GPU (it says so at start) | yes, plus system RAM or an NVMe/SSD | no | system RAM, or up to 64 GiB of NVMe/SSD space, sized by the launcher for your host ([more cache](#extend-cache)) |
 | One request longer than 262,144 tokens (experimental) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-512k` | 524,288 | up to 8 requests, 594,290 tokens in total: one full-length request plus short ones | yes | no | the model's long-context position scaling on every request; 2.4 GiB of pinned system RAM, no fallback; a cold 500K-token read takes about 6 minutes |
 
@@ -110,6 +110,7 @@ what you give up. Run **one** at a time.
 - **Short questions during a long read** (`--mode long-kv4`): the server reads a long prompt in 2,048-token steps, so
   a short request from another user is answered meanwhile, in about 0.7 s instead of about 5.9 s during a 64K
   read; the long read itself takes about 1 % longer. `--long-prefill-threshold off` restores the previous behaviour.
+  With images (`--vision`) the long read keeps its previous steps.
 - **Images:** add `--vision` to a row with "yes"; not with MXFP4 `--mode long` or `--mode long-512k`. Images up to 4K are
   read at full resolution, larger ones are downscaled. For screenshots of code prefer `--mode long-kv4 --vision`: the
   FP8-cache `--mode long --vision` can misread single characters of tiny (about 15 px) text in 4K screenshots. For example

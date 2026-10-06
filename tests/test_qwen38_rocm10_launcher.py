@@ -1872,6 +1872,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('--enable-prefix-caching', command)
         self.assertEqual(value(command, '--max-model-len'), '262144')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'),
+                         str(launcher.W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES))   # gate V (6 Oct): the FP8 head's blocks
+        self.assertEqual(launcher.W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES, (740 + 88) * 14336000)
+        self.assertEqual(value(self.dry_run('--mode', 'long-kv4', '--vision', '--lm-head', 'bf16'), '--kv-cache-memory-bytes'),
                          str(launcher.W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES))
         self.assertIn('memory', self.refused('--mode', 'long-kv4', '--vision', '--no-system-memory-weights'))
         self.assertIn('is not qualified with --vision', self.refused('--mode', 'long-512k', '--vision'))
@@ -2091,8 +2094,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))
         # the other modes keep the bf16 head (not measured there), also --mode long-kv4 --vision and long-512k
-        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long'), ('--mode', '65k')):
+        for options in (('--mode', 'long'), ('--mode', '65k')):
             self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run(*options), options)
+        command = self.dry_run('--mode', 'long-kv4', '--vision')        # gate V (6 Oct): the same head with images
+        self.assertIn('PAITON_LMHEAD_W8=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str((740 + 88) * block))
         # earlier pinned images: bf16 head, the measured budget, no flag; an explicit fp8 needs an explicit image
         self.overrides['IMAGES'] = {**launcher.IMAGES, '65k': launcher.IMAGES['65k'].replace('20261005-r1', '20261004-r1')}
         command = self.dry_run('--mode', 'long-kv4')

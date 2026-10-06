@@ -47,7 +47,7 @@ get the launcher that selects it; `--dry-run` prints the full Docker command.
   check on long coding prompts shows no accuracy change. First token on a 258K-token prompt: 122.2 s instead of 126.0 s
   (65K: 18.9 instead of 19.7 s); decode speed unchanged within noise.
 - **New: images in the coding mode.** `--mode long-kv4 --vision` adds image input to the long-context coding mode:
-  496,129 cached tokens with images, 262,144 per request. Images up to 4K are read at full resolution; larger ones
+  555,128 cached tokens with images, 262,144 per request. Images up to 4K are read at full resolution; larger ones
   are downscaled. `--mode long-512k` stays text-only. See [Images and vision](#images-and-vision).
 - **Known item:** with the FP8 KV cache (`--mode long --vision`) the model can misread single characters of tiny text
   (about 15 px) in 4K screenshots; the coding mode (`--mode long-kv4 --vision`) reads the same text exactly. Prefer the
@@ -85,8 +85,13 @@ get the launcher that selects it; `--dry-run` prints the full Docker command.
   setting: 131K NLL equal on every bucket, needles 4/4, GSM8K and HumanEval identical, the first tokens of a 20-turn
   coding session identical. `--long-prefill-threshold off` restores the previous read behaviour; together with
   `--lm-head bf16` the start command is exactly the previous launcher's.
-- **Unchanged:** `--mode long-kv4 --vision`, `--mode long`, `--mode long-512k`, `--mode 65k` and the MXFP4 rows keep
-  their settings and outputs (their start commands are byte-identical).
+- **`--mode long-kv4 --vision` gets the same FP8 head** (555,128 cached tokens with images, was 496,129; the 29-case
+  image set, eight concurrent image requests and the repeated cold 4K reads passed with no cache evictions). The
+  2,048-token read steps stay off with images: under them the 15 px code string of the 4K screenshot misread one
+  character ('Kq7-' for 'kq7-'),
+  so a long read with an image keeps its 4,096-token steps (`--long-prefill-threshold 2048` is still accepted).
+- **Unchanged:** `--mode long`, `--mode long-512k`, `--mode 65k` and the MXFP4 rows keep their settings and outputs
+  (their start commands are byte-identical).
 - **`--extend-cache auto` with the larger pool:** it still picks system memory only where the RAM tier holds at least
   1.25 times the GPU pool (a tier only slightly larger than the pool serves almost nothing to a cycling working set; the
   SSD tier's 2.8M tokens catch it). On this image the choice per host size is unchanged: 16 and 24 GB hosts get the SSD

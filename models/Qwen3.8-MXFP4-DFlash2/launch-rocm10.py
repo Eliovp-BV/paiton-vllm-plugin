@@ -141,6 +141,7 @@ KV4_SPARSE_ALIGN = True
 # evicted on every repeat; the default 4 GiB processor cache held each distinct large image in host memory.
 KV4_LONG_VISION = True
 W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = 740 * 14336000
+W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES = (740 + 88) * 14336000   # the FP8 head's freed VRAM as pool blocks (gate V, 6 Oct: 555,128 tokens)
 # Image limits of every --vision mode: a 4K UHD screenshot (3840 x 2160) is read at full resolution, larger images
 # are downscaled to that many pixels (the checkpoint allows 4096 x 4096); the multimodal processor cache keeps 1 GiB of
 # preprocessed images in host memory instead of vLLM's 4 GiB (hosts with 16-32 GB). The native drafter FP8 GEMM (T2,
@@ -375,12 +376,13 @@ def coding_mode_long_prefill_threshold(requested, default=None):
 
 
 def text_long_kv4(args):
-    """--mode long-kv4 without --vision (and the same settings spelled out): 4-bit cache, prefix caching, up to 262,144 per
-    request; the long-512k mode (context above 262,144) and the vision modes are not it."""
+    """--mode long-kv4, with or without --vision (and the same settings spelled out): 4-bit cache, prefix caching, up to
+    262,144 per request; the long-512k mode (context above 262,144) is not it. (Named for the text mode it started with;
+    gate V on 6 Oct 2026 qualified the same defaults with images.)"""
     mode = getattr(args, 'mode', None)
     if mode is not None:                      # before apply_mode merged the preset's flags (the tier sizing runs there)
-        return mode == 'long-kv4' and not args.vision
-    return (args.profile == 'chat' and args.kv_cache == 'kv4' and not args.vision
+        return mode == 'long-kv4'
+    return (args.profile == 'chat' and args.kv_cache == 'kv4'
             and (args.context is None or args.context <= 262144))
 
 
@@ -751,8 +753,8 @@ def parser():
     advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',
                           help='fp8: keep the checkpoint\'s FP8 output head (1.19 GiB instead of a 2.37 GiB bf16 '
                                'copy; --mode long-kv4 gives the difference to the KV cache: 628,877 instead of 569,878 '
-                               'tokens); needs an image with the native FP8 head. auto: fp8 in --mode long-kv4 without '
-                               '--vision on such images (the 5 October image and later), bf16 otherwise')
+                               'tokens); needs an image with the native FP8 head. auto: fp8 in --mode long-kv4 (with or without --vision) '
+                               'on such images (the 5 October image and later), bf16 otherwise')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -1219,7 +1221,8 @@ def engine_command(args, weights='mxfp4'):
         if args.gpu_memory_utilization is not None:
             cache = 'auto'
         elif args.vision and long_w3 and sysmem and kv_cache_mode(args, weights) == 'kv4':
-            cache = W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES
+            cache = (W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES if lm_head_mode(args) == 'fp8'
+                     else W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES)
         elif args.vision and long_w3:
             cache = W3_LONG_VISION_KV_CACHE_BYTES
         elif chat and long_w3 and sysmem and context is not None and context > KV4_MAX_CONTEXT:
@@ -1280,7 +1283,7 @@ def engine_command(args, weights='mxfp4'):
         command.append('--enable-prompt-tokens-details')
     # --mode long-kv4 (text) defaults to the measured threshold; long-512k and the vision modes only take an explicit one
     threshold = (coding_mode_long_prefill_threshold(args.long_prefill_threshold,
-                                                    LONG_PREFILL_THRESHOLD_CODING if text_long_kv4(args) else None)
+                                                    LONG_PREFILL_THRESHOLD_CODING if (text_long_kv4(args) and not args.vision) else None)
                  if (args.kv_cache == 'kv4' and chat)
                  else (None if args.long_prefill_threshold == 'off' else args.long_prefill_threshold))
     if threshold is not None:
