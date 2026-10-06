@@ -915,16 +915,28 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertIn(reason, result.stderr)
                 self.assertFalse(self.record.exists())
 
-    def test_long_prefill_threshold_is_an_opt_in_passthrough(self):
+    def test_long_prefill_threshold_defaults_to_2048_in_the_text_coding_mode_only(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         engine = self.engine(self.command('--context', '262144', '--long-prefill-threshold', '3072'))
         self.assertEqual(value(engine, '--long-prefill-token-threshold'), '3072')
-        engine = self.engine(self.command('--context', '262144'))
+        engine = self.engine(self.command('--context', '262144'))          # --mode long (fp8 cache): no default
         self.assertNotIn('--long-prefill-token-threshold', engine)
         engine = self.engine(self.command('--long-prefill-threshold', '2048'))
         self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
+        # --mode long-kv4 (text): 2048 by default (gate L, 6 Oct 2026); off restores the 4,096-token steps; a value wins
+        engine = self.engine(self.command('--mode', 'long-kv4'))
+        self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
+        engine = self.engine(self.command('--mode', 'long-kv4', '--long-prefill-threshold', 'off'))
+        self.assertNotIn('--long-prefill-token-threshold', engine)
+        engine = self.engine(self.command('--mode', 'long-kv4', '--long-prefill-threshold', '3072'))
+        self.assertEqual(value(engine, '--long-prefill-token-threshold'), '3072')
+        # not in long-512k, nor with --vision, nor in 65k (unchanged settings)
+        engine = self.engine(self.command('--mode', 'long-kv4', '--vision'))
+        self.assertNotIn('--long-prefill-token-threshold', engine)
+        engine = self.engine(self.command())
+        self.assertNotIn('--long-prefill-token-threshold', engine)
 
     def test_allocator_cap_in_the_3bit_profiles(self):
         w3rot = self.root / 'w3rot directory'
@@ -1020,7 +1032,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         # fp8 with its budget, or the 4-bit cache with the embedding in system memory and its own budget
         image = launcher.IMAGES['65k']
         for mode, kv4, prefix, budget in (('long', '0', '--enable-prefix-caching', launcher.W3_LONG_KV_CACHE_BYTES),
-                                          ('long-kv4', '1', '--enable-prefix-caching', 850 * 14336000)):
+                                          ('long-kv4', '1', '--enable-prefix-caching', (850 + launcher.LMHEAD_W8_POOL_BLOCKS) * 14336000)):
             with self.subTest(mode=mode):
                 command = self.dry_run('--mode', mode)
                 environment = command[:command.index(image)]
@@ -1168,7 +1180,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.dry_run('--mode', 'long-kv4', '--system-memory-weights')
         self.assertIn('PAITON_HOST_EMBED=1', command)
         self.assertNotIn('PAITON_HOST_VISION=1', command)
-        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * 14336000))
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str((850 + launcher.LMHEAD_W8_POOL_BLOCKS) * 14336000))
+        self.assertEqual(value(self.dry_run('--mode', 'long-kv4', '--system-memory-weights', '--lm-head', 'bf16'),
+                               '--kv-cache-memory-bytes'), str(850 * 14336000))
         self.assertEqual(value(self.dry_run('--mode', 'long', '--system-memory-weights'), '--kv-cache-memory-bytes'),
                          str(launcher.W3_LONG_SYSMEM_CACHE_BYTES))
         # --vision: the vision encoder stays on the GPU (its streamed form is not qualified), so not with system memory
@@ -1472,6 +1486,18 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('pinning it adds about 19 s to every start (--host-cache-gib for a smaller tier)', stderr)
         command, _ = self._extend(128, '--extend-cache')
         self.assertEqual(value(command, '--kv-offloading-size'), '61')
+        # the pinned 5 October image (FP8 head, 24 KB of tier per token): the pool is 628,877 tokens; 64 GB keeps its
+        # RAM tier (~1.27M tokens >= 1.25 x 628,877), 32 GB keeps its 15.5 GiB tier with the embedding on the GPU
+        pinned = 'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1'
+        command, stderr = self._extend(64, '--extend-cache', '--image', pinned)
+        self.assertEqual(value(command, '--kv-offloading-size'), '29')
+        self.assertIn('PAITON_LMHEAD_W8=1', command)
+        self.assertIn('a 29 GiB tier (~1,267,029 tokens) next to the GPU pool\'s 628,877 tokens', stderr)
+        # 32 GB on this image: a 15.5 GiB tier (~677K tokens) with the embedding on the GPU passes 1.25 x 451,879 -> RAM
+        command, stderr = self._extend(32, '--extend-cache', '--image', pinned)
+        self.assertEqual(value(command, '--kv-offloading-size'), '15.5')
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertIn('451,879', stderr)
 
     def test_extend_cache_capacity_follows_the_image_bytes_per_token(self):
         self._w3rot()
@@ -2056,11 +2082,24 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         block = 14336000
-        # released images: bf16 head, the measured budget, no flag; an explicit fp8 needs an explicit image
+        # the pinned 5 October image carries the bundle: --mode long-kv4 (text) takes the FP8 head and the larger
+        # budget by default (gate D, 6 Oct 2026); --lm-head bf16 restores the bf16 head and the 850-block budget
+        command = self.dry_run('--mode', 'long-kv4')
+        self.assertIn('PAITON_LMHEAD_W8=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str((850 + launcher.LMHEAD_W8_POOL_BLOCKS) * block))
+        command = self.dry_run('--mode', 'long-kv4', '--lm-head', 'bf16')
+        self.assertNotIn('PAITON_LMHEAD_W8=1', command)
+        self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))
+        # the other modes keep the bf16 head (not measured there), also --mode long-kv4 --vision and long-512k
+        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long'), ('--mode', '65k')):
+            self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run(*options), options)
+        # earlier pinned images: bf16 head, the measured budget, no flag; an explicit fp8 needs an explicit image
+        self.overrides['IMAGES'] = {**launcher.IMAGES, '65k': launcher.IMAGES['65k'].replace('20261005-r1', '20261004-r1')}
         command = self.dry_run('--mode', 'long-kv4')
         self.assertNotIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))
         self.assertIn('--lm-head fp8 needs an image', self.refused('--mode', 'long-kv4', '--lm-head', 'fp8'))
+        del self.overrides['IMAGES']
         image = 'paiton-qwen38-local:kernel-b1-test'
         command = self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'fp8')
         self.assertIn('PAITON_LMHEAD_W8=1', command)
@@ -2090,7 +2129,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                        'long: 262,144 context (MXFP4: 200,000, one request), fp8 KV cache with prefix caching',
                        'one long document at a time, fast follow-ups',
                        'long-kv4: 262,144 context per request, 4-bit KV cache with prefix caching',
-                       'about 570,000 tokens of reusable cache, for coding agents and many long conversations '
+                       'about 629,000 tokens of reusable cache, for coding agents and many long conversations '
                        '(3-bit weights only)',
                        'long-512k: experimental, up to 524,288 context per request (long-context position scaling)',
                        'needs 2.4 GiB of free system memory and an image with KV4 bundle kv4-v6',
@@ -2101,15 +2140,16 @@ class Rocm10LauncherTests(unittest.TestCase):
                        'downscaled to that many pixels'):
             self.assertIn(phrase, text)
 
-    def test_long_prefill_threshold_is_off_by_default_in_every_mode(self):
-        """The per-step cap on a long prompt's prefill is opt-in: without the flag no mode passes --long-prefill-token-threshold,
-        so a long prompt is read in 4,096-token steps and its answers match the 4 October image bit for bit (a cap changes
-        the chunking and with it the bits; 2048 is the tested value, its accuracy gate is a follow-up)."""
+    def test_long_prefill_threshold_is_off_by_default_outside_the_text_coding_mode(self):
+        """The per-step cap on a long prompt's prefill is the default of --mode long-kv4 (text) only (gate L, 6 Oct 2026:
+        accuracy unchanged, a short request answers in 0.7 s instead of 5.9 s during a 64K read); every other mode reads a
+        long prompt in 4,096-token steps unless the flag is given."""
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        for args in (('--mode', 'long-kv4'), ('--mode', 'long-512k'), ('--mode', '65k'), ('--mode', 'long'), ()):
+        for args in (('--mode', 'long-512k'), ('--mode', '65k'), ('--mode', 'long'), ()):
             self.assertNotIn('--long-prefill-token-threshold', self.dry_run(*args), args)
+        self.assertEqual(value(self.dry_run('--mode', 'long-kv4'), '--long-prefill-token-threshold'), '2048')
         self.assertEqual(launcher.LONG_PREFILL_THRESHOLD_CODING, 2048)
 
     def test_long_prefill_threshold_explicit_value_and_off(self):
@@ -2126,7 +2166,7 @@ class Rocm10LauncherTests(unittest.TestCase):
 
     def test_help_states_the_measured_threshold_cost(self):
         text = ' '.join(self.run_launcher('--help').stdout.split())    # argparse wraps the help text
-        for phrase in ('off by default', '2048 is the tested value for --mode long-kv4 and long-512k', '0.8 s instead of 6.2 s', '+0.7% at 258K'):
+        for phrase in ('2048 by default in --mode long-kv4 without --vision', '0.7 s instead of 5.9 s', 'about 1% longer', 'off elsewhere'):
             self.assertIn(phrase, text)
 
 if __name__ == '__main__':

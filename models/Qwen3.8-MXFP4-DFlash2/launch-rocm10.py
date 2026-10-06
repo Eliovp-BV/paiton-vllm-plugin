@@ -190,7 +190,7 @@ MODE_HELP = (
     'long: 262,144 context (MXFP4: 200,000, one request), fp8 KV cache with prefix caching: one long document at a '
     'time, fast follow-ups\n'
     'long-kv4: 262,144 context per request, 4-bit KV cache with prefix caching and the embedding in system memory: '
-    'about 570,000 tokens of reusable cache, for coding agents and many long conversations (3-bit weights only)\n'
+    'about 629,000 tokens of reusable cache, for coding agents and many long conversations (3-bit weights only)\n'
     'long-512k: experimental, up to 524,288 context per request (long-context position scaling), otherwise as long-kv4; needs 2.4 GiB '
     'of free system memory and an image with KV4 bundle kv4-v6')
 # VRAM left unclaimed by PyTorch's caching allocator after warm-up in the 3-bit profiles (worker compat overlay; it
@@ -236,9 +236,11 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # Measured 4 Oct 2026 on one R9700 (20261003-r1 image + bundle, --mode long-kv4, 938 blocks): 628,877 KV4 tokens
 # (+59,000), idle 4.09 GiB free (the release: 1.71; the fp8 head also drops the startup zero check's 2.37 GiB
 # temporary), peak 30.84 GiB, GSM8K-200 188/200 as the release, DFlash2 acceptance unchanged; sampled C1 decode +6.9 %,
-# C8 +14.5 % (those take the full-vocab head). Images that carry the bundle select it by default (--lm-head auto);
-# others keep the bf16 head and refuse fp8.
-LMHEAD_W8_IMAGE_SUFFIXES = ()
+# C8 +14.5 % (those take the full-vocab head). Since the 6 October launcher update --mode long-kv4 (text) selects it by
+# default on the images that carry the bundle (--lm-head auto; gate D, 6 Oct 2026, published 5 October image: 131K NLL
+# equal on every bucket, needles 131K/258K 4/4, pool 569,878 -> 628,877 tokens); --lm-head bf16 restores the bf16 head
+# and the 850-block budget. The other modes keep the bf16 head (not measured there); images without the bundle refuse fp8.
+LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1',)
 LMHEAD_W8_POOL_BLOCKS = 88
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
 W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
@@ -258,7 +260,9 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 # --extend-cache [auto|ram|disk] (experimental, --mode long-kv4, off unless given): sizes the prefix-cache tiers itself.
 # The host tier is inclusive (it keeps a copy of what the GPU pool holds), so system memory adds capacity only when its
 # tier holds clearly more than the GPU pool: auto picks system memory when the tier holds at least 1.25 x the pool's
-# tokens, otherwise NVMe/SSD behind a staging tier that restores a whole 256K document (4.5 GiB, the embedding on the
+# tokens (a RAM tier only slightly larger than the pool serves almost nothing to a cycling working set: 64 GiB vs 1.92M
+# tokens gave 0 of 32 re-asks a hit on 6 Oct, while the SSD tier's capacity caught it; with the FP8 head's 628,877-token
+# pool the 5 October image's 24 KB per token still puts 32 GB hosts and up on system memory), otherwise NVMe/SSD behind a staging tier that restores a whole 256K document (4.5 GiB, the embedding on the
 # GPU where needed) or the largest that fits down to 2 GiB (4 GiB: documents up to ~220K tokens, 2 GiB: ~110K).
 # Token capacities use the tier space a stored token takes and the bytes a restored token loads (~19 KB), per image
 # (TIER_BYTES_BY_IMAGE_SUFFIX), so an image that stores less per token gets the larger capacities without other changes.
@@ -288,6 +292,12 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm10-vllm029-20261005-r1': (24576, 19000),       # the published 5 October image (same build)
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
+KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
+
+
+def kv4_pool_tokens(args):
+    """The long-kv4 GPU pool in tokens, keyed by the embedding placement, for the head the start will use."""
+    return KV4_POOL_TOKENS_LMHEAD_W8 if lm_head_mode(args) == 'fp8' else KV4_POOL_TOKENS
 EXTEND_CACHE_STAGING_GIB = (4.5, 4.0, 3.5, 3.0, 2.5, 2.0)     # the largest that fits; 4.5 restores a 256K document
 EXTEND_CACHE_DISK_MAX_GIB = 64.0
 EXTEND_CACHE_DISK_FREE_SHARE = 0.25
@@ -348,15 +358,30 @@ def long_prefill_threshold_value(value):
     return 'off' if value == 'off' else positive_integer(value)
 
 
-LONG_PREFILL_THRESHOLD_CODING = 2048   # the tested value for the 4-bit long modes (long-kv4, long-512k), opt-in: measured
-                                       # 5 Oct 2026 on the R9700; off by default, so a long prompt is read in 4,096-token steps
-                                       # and its outputs match the 4 October image (a cap changes the chunking and with it the
-                                       # bits of long-prompt answers; its accuracy gate is a follow-up)
+LONG_PREFILL_THRESHOLD_CODING = 2048   # the default of --mode long-kv4 (text) since the 6 October launcher update: a long
+                                       # prompt is read in 2,048-token steps, so a short request from another user is
+                                       # answered in ~0.7 s instead of ~5.9 s during a 64K read, and the long read takes
+                                       # about 1 % longer (gate L, 6 Oct 2026, R9700, published 5 October image: 131K NLL
+                                       # equal on every bucket, needles 4/4, GSM8K/HumanEval identical, 20-turn coding
+                                       # session first tokens 20/20). 'off' restores the previous launcher's 4,096-token
+                                       # steps; long-512k and --vision keep their settings (not measured).
 
 
-def coding_mode_long_prefill_threshold(requested):
-    """The threshold a 4-bit long mode serves with: the user's value, None when unset or 'off'."""
-    return None if requested in (None, 'off') else requested
+def coding_mode_long_prefill_threshold(requested, default=None):
+    """The threshold a 4-bit long mode serves with: the user's value, None for 'off', the mode's default when unset."""
+    if requested == 'off':
+        return None
+    return default if requested is None else requested
+
+
+def text_long_kv4(args):
+    """--mode long-kv4 without --vision (and the same settings spelled out): 4-bit cache, prefix caching, up to 262,144 per
+    request; the long-512k mode (context above 262,144) and the vision modes are not it."""
+    mode = getattr(args, 'mode', None)
+    if mode is not None:                      # before apply_mode merged the preset's flags (the tier sizing runs there)
+        return mode == 'long-kv4' and not args.vision
+    return (args.profile == 'chat' and args.kv_cache == 'kv4' and not args.vision
+            and (args.context is None or args.context <= 262144))
 
 
 def positive_integer(value):
@@ -438,7 +463,7 @@ def lm_head_mode(args):
     if choice == 'fp8' and not image_has_lmhead_w8(args) and not args.image:
         raise ValueError('--lm-head fp8 needs an image with the native FP8 head (pass it with --image)')
     if choice == 'auto':
-        return 'fp8' if image_has_lmhead_w8(args) else 'bf16'
+        return 'fp8' if image_has_lmhead_w8(args) and text_long_kv4(args) else 'bf16'
     return choice
 
 
@@ -557,7 +582,7 @@ def extend_cache_settings(args, environment):
 
     def where(embedding_in_ram):
         return 'in system memory' if embedding_in_ram else 'on the GPU'
-    gpu = KV4_POOL_TOKENS
+    gpu = kv4_pool_tokens(args)
     adds = [e for e in placements if tokens(tier[e]) >= EXTEND_CACHE_RAM_FACTOR * gpu[e]]
     if choice == 'ram' or (choice == 'auto' and adds):
         # the embedding stays in system memory (the larger GPU pool) whenever the tier adds capacity that way; a forced
@@ -623,7 +648,7 @@ def small_ram_tier_warning(args):
         return None
     embedding_in_ram = bool(getattr(args, 'system_memory_weights', False))
     tokens = int(args.host_cache_gib * 2 ** 30 / tier_bytes_per_token(args)[0])
-    pool = KV4_POOL_TOKENS[embedding_in_ram]
+    pool = kv4_pool_tokens(args)[embedding_in_ram]
     if tokens >= EXTEND_CACHE_RAM_FACTOR * pool:
         return None
     return (f'a RAM tier smaller than the GPU cache rarely helps with several large documents (this one holds '
@@ -692,10 +717,11 @@ def parser():
                                'override it')
     advanced.add_argument('--long-prefill-threshold', type=long_prefill_threshold_value, metavar='TOKENS|off',
                           help='cap the prefill tokens a long prompt takes per step so short requests answer while it '
-                               'is processed; off by default (a long prompt is read in 4,096-token steps). 2048 is the '
-                               'tested value for --mode long-kv4 and long-512k (5 Oct 2026, R9700: a 257-token request '
-                               'sent during a 64K prefill answers in 0.8 s instead of 6.2 s; the long prompt costs +0.7%% '
-                               'at 258K tokens and +1-2%% at 64K; long-prompt answers change bits with the chunking)')
+                               'is processed. 2048 by default in --mode long-kv4 without --vision (6 Oct 2026, R9700: a '
+                               'short request sent during a 64K read answers in 0.7 s instead of 5.9 s, the long read '
+                               'takes about 1%% longer, accuracy unchanged); off elsewhere (a long prompt is read in '
+                               '4,096-token steps); off restores the previous read behaviour (with --lm-head bf16 the '
+                               'start command of the previous launcher)')
     advanced.add_argument('--gdn-state', choices=('auto', 'lazy', 'eager'), default='auto',
                           help='recurrent-state snapshots of the linear-attention layers during speculative decoding: '
                                'lazy keeps one stash per request (fewer cache blocks per request, more KV tokens), '
@@ -724,8 +750,9 @@ def parser():
                           help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
     advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',
                           help='fp8: keep the checkpoint\'s FP8 output head (1.19 GiB instead of a 2.37 GiB bf16 '
-                               'copy; --mode long-kv4 gives the difference to the KV cache); needs an image with the '
-                               'native FP8 head. auto: fp8 on such images, bf16 otherwise')
+                               'copy; --mode long-kv4 gives the difference to the KV cache: 628,877 instead of 569,878 '
+                               'tokens); needs an image with the native FP8 head. auto: fp8 in --mode long-kv4 without '
+                               '--vision on such images (the 5 October image and later), bf16 otherwise')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -1251,8 +1278,10 @@ def engine_command(args, weights='mxfp4'):
                     json.dumps({'enable_thinking': thinking == 'on'})]
     if chat:
         command.append('--enable-prompt-tokens-details')
-    # the 4-bit long modes (long-kv4, long-512k, and their legacy spellings) default to the measured threshold
-    threshold = (coding_mode_long_prefill_threshold(args.long_prefill_threshold) if (args.kv_cache == 'kv4' and chat)
+    # --mode long-kv4 (text) defaults to the measured threshold; long-512k and the vision modes only take an explicit one
+    threshold = (coding_mode_long_prefill_threshold(args.long_prefill_threshold,
+                                                    LONG_PREFILL_THRESHOLD_CODING if text_long_kv4(args) else None)
+                 if (args.kv_cache == 'kv4' and chat)
                  else (None if args.long_prefill_threshold == 'off' else args.long_prefill_threshold))
     if threshold is not None:
         command += ['--long-prefill-token-threshold', str(threshold)]
