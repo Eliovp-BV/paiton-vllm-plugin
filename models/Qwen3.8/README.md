@@ -1,5 +1,10 @@
 # Qwen3.8 27B Qronos on RDNA4
 
+> **Superseded (6 October 2026).** Use [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](../Qwen3.8-MXFP4-DFlash2/README.md)
+> instead: more accurate, much faster and up to 262,144 tokens of context, with images. This release's fast decode
+> path uses approximations that cost about 7 HumanEval points (85.4 % against 92.7 % for the same checkpoint served
+> without them, measured on 6 October 2026). The instructions below stay for reproducibility.
+
 ## Model weights and existing downloads
 
 Run these examples from the repository root. Use
