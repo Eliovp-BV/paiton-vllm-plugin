@@ -926,21 +926,19 @@ class Rocm10LauncherTests(unittest.TestCase):
         engine = self.engine(self.command('--long-prefill-threshold', '2048'))
         self.assertEqual(value(engine, '--long-prefill-token-threshold'), '2048')
 
-    def test_allocator_cap_in_the_3bit_profiles_without_vision(self):
+    def test_allocator_cap_in_the_3bit_profiles(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         # the 262K mode and the 65K default (which reached the KFD eviction edge under BetterBench uncapped, 2 Oct)
-        for options in (('--context', '262144'), ()):
+        # and, since 6 Oct, the 3-bit --vision modes (long --vision reached the edge uncapped under 8 concurrent image
+        # requests); the post-warm-up VRAM headroom stays without --vision, where it was measured
+        for options in (('--context', '262144'), (), ('--context', '245000', '--vision'), ('--vision',)):
             with self.subTest(options=options):
                 command = self.command(*options)
                 capped = [item for item in command if item.startswith('PYTORCH_ALLOC_CONF=')]
                 self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95'])
-                self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', command)
-        for options in (('--context', '245000', '--vision'), ('--vision',)):
-            with self.subTest(options=options):
-                setting = [item for item in self.command(*options) if item.startswith('PYTORCH_ALLOC_CONF=')]
-                self.assertEqual(setting, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
+                self.assertEqual('PAITON_VRAM_HEADROOM_MIB=1024' in command, '--vision' not in options)
         del self.environment['PAITON_W3ROT_DIR']
         setting = [item for item in self.command('--context', '200000') if item.startswith('PYTORCH_ALLOC_CONF=')]
         self.assertEqual(setting, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64'])   # MXFP4 long mode: not measured
@@ -953,7 +951,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         for options in (('--context', str(limit), '--vision'), ('--profile', 'chat', '--vision')):
             with self.subTest(options=options):
                 command = self.command(*options)
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 engine = self.engine(command)
                 self.assertNotIn('--language-model-only', engine)
                 self.assertIn('--enable-prefix-caching', engine)

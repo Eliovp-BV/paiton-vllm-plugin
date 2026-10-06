@@ -93,8 +93,9 @@ W3_LONG_KV4_CACHE_BYTES = 9662464000
 # process's buffers are then evicted into system memory (2 Oct 2026, 4-bit long mode, two ~199K documents:
 # evict/restore loops, then the KV pool in GTT and the 16 GB host out of memory). 95 % leaves ~1 GiB for memory
 # outside PyTorch (runtime, code objects, scratch) plus ~0.5 GiB headroom; hipMemGetInfo is no guide (it reported
-# 327 MiB free with ~1.6 GiB of the card unused). Not yet measured with --vision or the MXFP4 weights, which keep the
-# previous setting.
+# 327 MiB free with ~1.6 GiB of the card unused). The 3-bit --vision modes are capped too (6 Oct: without the cap,
+# --mode long --vision on the 5 October image evicted under 8 concurrent image requests followed by a large image and
+# did not start with the drafter FP8 GEMM; capped: no eviction); the MXFP4 weights keep the previous setting.
 W3_MEMORY_FRACTION = 0.95
 # 3 Oct 2026: in the 4-bit long-context mode a prefix-cache hit on a shared-prefix (junction) checkpoint ended in a
 # GDN-norm nonfinite engine error (a repeated 32,758-token request after related requests). Until that is fixed the
@@ -1428,7 +1429,7 @@ def docker_command(args, environment):
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'
-        if weights == 'w3a4' and (not args.vision or (kv_mode == 'kv4' and args.profile == 'chat')):   # long-kv4 --vision: measured capped
+        if weights == 'w3a4':                                   # every 3-bit mode, --vision included (6 Oct)
             allocator += f',per_process_memory_fraction:{W3_MEMORY_FRACTION}'
         command += ['-e', 'PYTORCH_ALLOC_CONF=' + allocator]
     if weights == 'mxfp4' and args.release in W3_RELEASES:
