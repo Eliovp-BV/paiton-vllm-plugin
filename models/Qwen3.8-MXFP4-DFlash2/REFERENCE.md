@@ -246,7 +246,7 @@ For a cache on another drive, replace the first export with
 
 ```bash
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"
 mkdir -p "$PAITON_CACHE_DIR"
 
 docker run --rm --name paiton-qwen38-65k-cached --network host \
