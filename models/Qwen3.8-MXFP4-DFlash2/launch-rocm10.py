@@ -273,6 +273,12 @@ DISK_TIER_SHM_HEADROOM_GIB = 1.0
 # fills it in minutes, a coding session in hours), so a run can overshoot the cap: the next start removes an over-full
 # folder of its configuration. A full disk is safe for the tier: a failed store is logged and skipped (atomic files).
 EXTEND_CACHE_RAM_FACTOR = 1.25
+# Pinning the RAM tier at start costs ~0.65 s per GiB (6 Oct, Threadripper 3960X, 251 GiB: 64 GiB +40 s, the 122.5 GiB auto
+# tier +80 s over 110.7 s). Auto keeps the whole pinnable tier: a working set that exceeds the tier even slightly gets no
+# hits when it cycles (64 GiB with 14 % too many tokens: 0 of 32 re-asks), one inside it re-reads a 120K prompt in 1.2 s
+# instead of ~41 s, so the larger tier pays for its start after about two re-asked large documents. The note says what
+# the start costs; --host-cache-gib sets a smaller tier.
+HOST_PIN_SECONDS_PER_GIB = 0.65
 TIER_STORED_BYTES_PER_TOKEN = 40960
 TIER_LOADED_BYTES_PER_TOKEN = 19000
 TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes per token, for images that store less
@@ -562,7 +568,8 @@ def extend_cache_settings(args, environment):
                              f'({pin_limit_text(e)}), less than {EXTEND_CACHE_STAGING_GIB[-1]:g} GiB; use '
                              '--extend-cache disk')
         note = (f'--extend-cache {choice}: system memory, a {tier[e]:g} GiB tier (~{tokens(tier[e]):,} tokens) next to '
-                f'the GPU pool\'s {gpu[e]:,} tokens, the embedding {where(e)}; no disk tier')
+                f'the GPU pool\'s {gpu[e]:,} tokens, the embedding {where(e)}; no disk tier; pinning it adds about '
+                f'{round(HOST_PIN_SECONDS_PER_GIB * tier[e])} s to every start (--host-cache-gib for a smaller tier)')
         return {'extend_cache': None, 'host_cache_gib': tier[e], 'system_memory_weights': e,
                 'no_system_memory_weights': not e}, note
     for staging in EXTEND_CACHE_STAGING_GIB:         # the staging tier every disk hit passes through
@@ -712,7 +719,7 @@ def parser():
                                'flag alone) uses system memory where the host has enough of it to add capacity, '
                                'otherwise NVMe/SSD under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir); ram or disk '
                                'force one. Sizes the host tier, the disk cap and the embedding placement itself and '
-                               'prints its choice; off by default')
+                               'prints its choice; a RAM tier adds ~0.65 s per GiB to the start; off by default')
     advanced.add_argument('--disk-cache-allow-hdd', action='store_true',
                           help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
     advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',

@@ -1469,6 +1469,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--ipc'), 'host')
         self.assertFalse(any(x.endswith(':/kvdisk:rw') for x in command))
         self.assertIn('a 29 GiB tier (~760,217 tokens) next to the GPU pool\'s 569,878 tokens', stderr)
+        self.assertIn('pinning it adds about 19 s to every start (--host-cache-gib for a smaller tier)', stderr)
         command, _ = self._extend(128, '--extend-cache')
         self.assertEqual(value(command, '--kv-offloading-size'), '61')
 
