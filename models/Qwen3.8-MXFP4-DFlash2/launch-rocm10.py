@@ -374,6 +374,14 @@ def mem_available_gib():
         return None
 
 
+def gtt_limit_gib():
+    """The smallest GTT size of the AMD GPUs (mem_info_gtt_total, GiB), or None when no AMD GPU reports one."""
+    sizes = [read_number(path / 'device' / 'mem_info_gtt_total') for path in sorted(SYS_DRM.glob('renderD*'))
+             if read_number(path / 'device' / 'vendor') == 0x1002]
+    sizes = [size for size in sizes if size > 0]
+    return min(sizes) / 2 ** 30 if sizes else None
+
+
 def host_cache_limit_gib(embedding_in_ram=True):
     """Largest total of pinned system memory (embedding and host KV tier, 0.5 GiB steps) this host allows, or None
     when it cannot be determined: MemTotal less the server's unpinned peak and the reserve, at most the TTM (GTT) limit
@@ -387,7 +395,11 @@ def host_cache_limit_gib(embedding_in_ram=True):
         try:
             ttm = int(TTM_PAGES_LIMIT.read_text()) * 4096 / 2 ** 30
         except (OSError, ValueError):
-            ttm = total / 2           # the kernel's default
+            ttm = 0.0
+        # 0 is the kernel default (half of system memory): newer kernels report the default as 0 instead of the
+        # computed limit. The amdgpu driver's GTT size is the limit for the GPU's pinned buffers; take the smaller
+        limits = [limit for limit in (ttm, gtt_limit_gib()) if limit and limit > 0]
+        ttm = min(limits) if limits else total / 2
     except (OSError, StopIteration, ValueError):
         return None
     room = total - SERVER_UNPINNED_PEAK_GIB[embedding_in_ram] - HOST_RESERVE_GIB

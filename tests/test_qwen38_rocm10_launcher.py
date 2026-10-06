@@ -1376,6 +1376,28 @@ class Rocm10LauncherTests(unittest.TestCase):
                                            f'MemAvailable: {int(available_gib * 2 ** 20)} kB\n')
         (self.root / 'ttm_pages_limit').write_text(f'{int(total_gib * 2 ** 30 / 2 / 4096)}\n')   # the kernel default
 
+    def test_pin_limit_reads_the_kernel_default_ttm_limit(self):
+        # newer kernels report the TTM default (half of system memory) as pages_limit 0; the amdgpu GTT size applies
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        fixed = ('--image', 'paiton-qwen38-local:dev')
+        self._host(251.6, 246)
+        (self.root / 'ttm_pages_limit').write_text('0\n')
+        (self.drm / 'renderD128' / 'device' / 'mem_info_gtt_total').write_text(str(int(125.8 * 2 ** 30)))
+        self.assertIn('PAITON_HOST_EMBED=1', self.dry_run('--mode', 'long-kv4', *fixed))   # the embedding fits again
+        tier = ('--mode', 'long-kv4', '--no-system-memory-weights', *fixed)
+        self.assertEqual(value(self.dry_run(*tier, '--host-cache-gib', '125'), '--kv-offloading-size'), '125')
+        self.assertIn('exceeds what this host can pin safely', self.refused(*tier, '--host-cache-gib', '125.5'))
+        # without a GTT size: half of system memory
+        (self.drm / 'renderD128' / 'device' / 'mem_info_gtt_total').unlink()
+        self.assertEqual(value(self.dry_run(*tier, '--host-cache-gib', '125'), '--kv-offloading-size'), '125')
+        self.assertIn('exceeds what this host can pin safely', self.refused(*tier, '--host-cache-gib', '126'))
+        # an explicit pages_limit below the GTT size still wins
+        (self.drm / 'renderD128' / 'device' / 'mem_info_gtt_total').write_text(str(int(125.8 * 2 ** 30)))
+        (self.root / 'ttm_pages_limit').write_text(f'{int(16 * 2 ** 30 / 4096)}\n')
+        self.assertIn('exceeds what this host can pin safely', self.refused(*tier, '--host-cache-gib', '16'))
+
     def test_pin_limit_follows_the_server_footprint(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
