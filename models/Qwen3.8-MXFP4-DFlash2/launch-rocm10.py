@@ -141,10 +141,11 @@ W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = 740 * 14336000
 # Image limits of --mode long-kv4 --vision: a 4K UHD screenshot (3840 x 2160) is read at full resolution, larger images
 # are downscaled to that many pixels (the checkpoint allows 4096 x 4096); the multimodal processor cache keeps 1 GiB of
 # preprocessed images in host memory instead of vLLM's 4 GiB (hosts with 16-32 GB). The native drafter FP8 GEMM (T2,
-# bit-identical, ~240 MiB at the startup peak) stays on unless KV4_LONG_VISION_DRAFT_FP8_GEMM is False.
+# bit-identical, ~240 MiB at the startup peak) stays on unless KV4_LONG_VISION_DRAFT_FP8_GEMM is False (measured at 740
+# blocks: 29/29 cases, five cold 4K-capped images without new eviction, card peak 31.17 GiB).
 VISION_MAX_PIXELS = 3840 * 2160
 VISION_MM_CACHE_GIB = 1
-KV4_LONG_VISION_DRAFT_FP8_GEMM = False
+KV4_LONG_VISION_DRAFT_FP8_GEMM = True
 # The host KV tier (--host-cache-gib) with the 4-bit cache needs the connector compat overlay that ends every hit on a
 # recurrent-state block (1,600 tokens); on older images a hit can end on a drafter block (800 tokens) and resume from
 # the wrong state, so there the tier stays with the fp8 cache. --mode long-512k keeps it off.
