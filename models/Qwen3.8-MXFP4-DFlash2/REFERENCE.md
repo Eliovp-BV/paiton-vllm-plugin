@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements, advanced setup and release history.
 
-- [Release notes](#release-notes-5-october-2026) (earlier: [6 October launcher update](#launcher-update-6-october-2026), [4 October](#release-notes-4-october-2026), [3 October](#release-notes-3-october-2026),
+- [Release notes](#release-notes-5-october-2026) (earlier: [6 October evening launcher update](#launcher-update-6-october-2026-evening), [6 October launcher update](#launcher-update-6-october-2026), [4 October](#release-notes-4-october-2026), [3 October](#release-notes-3-october-2026),
   [2 October](#release-notes-2-october-2026), [28 September](#release-notes-28-september-2026))
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
@@ -68,6 +68,31 @@ get the launcher that selects it; `--dry-run` prints the full Docker command.
 - **Earlier images** stay runnable with `--image` and keep their behaviour; the 4 October image remains the
   reference for these outputs. See [Run an earlier release](README.md#run-an-earlier-release).
 
+<a id="launcher-update-6-october-2026-evening"></a>
+
+### Launcher update: 6 October 2026, evening (launcher only)
+
+`git pull` in your checkout gets a launcher update; the image, weights and every other mode's limits are unchanged.
+
+- **`--mode long-kv4` holds 628,877 tokens** (569,878 before): the coding mode now keeps the checkpoint's FP8 output head
+  instead of a bf16 copy (`--lm-head fp8`, the default on the 5 October image and later) and gives the freed VRAM to
+  the shared cache. Measured against the bf16 head on the same host: 131K-token NLL equal on every bucket, needles at
+  131K and 258K found 4/4. Decode at long context: one request 120 tok/s at 120K tokens of context and 100 at 228K, eight requests 165 and 147 tok/s in total (bf16 head: 113 / 99 and 166 / 150; our decode load, a shared prompt the drafter predicts well). `--lm-head bf16` restores the previous head and
+  budget.
+- **Short questions are answered during a long read.** `--mode long-kv4` reads a long prompt in 2,048-token steps
+  (`--long-prefill-threshold 2048`, the default now): a short request sent during a 64K read gets its first token in
+  about 0.7 s instead of about 5.9 s, and the long read takes about 1 % longer. Paired against the previous
+  setting: 131K NLL equal on every bucket, needles 4/4, GSM8K and HumanEval identical, the first tokens of a 20-turn
+  coding session identical. `--long-prefill-threshold off` restores the previous read behaviour; together with
+  `--lm-head bf16` the start command is exactly the previous launcher's.
+- **Unchanged:** `--mode long-kv4 --vision`, `--mode long`, `--mode long-512k`, `--mode 65k` and the MXFP4 rows keep
+  their settings and outputs (their start commands are byte-identical).
+- **`--extend-cache auto` with the larger pool:** it still picks system memory only where the RAM tier holds at least
+  1.25 times the GPU pool (a tier only slightly larger than the pool serves almost nothing to a cycling working set; the
+  SSD tier's 2.8M tokens catch it). On this image the choice per host size is unchanged: 16 and 24 GB hosts get the SSD
+  tier, a 32 GB host a 15.5 GiB RAM tier with the embedding on the GPU, 48 GB and up a RAM tier with the embedding in
+  system memory. `--extend-cache ram` or `disk` forces one.
+
 <a id="launcher-update-6-october-2026"></a>
 
 ### Launcher update: 6 October 2026 (launcher only)
@@ -128,7 +153,8 @@ settings are unchanged. Update this repository to get the launcher that selects 
 Docker command.
 
 - **`--mode long-kv4` is now the coding mode.** It adds prefix caching and keeps the input embedding table
-  (2.4 GiB) in pinned system RAM, which gives the shared 4-bit cache 569,878 tokens instead of 458,922: two
+  (2.4 GiB) in pinned system RAM, which gives the shared 4-bit cache 569,878 tokens instead of 458,922 (628,877 since
+  the 6 October evening launcher update, with the FP8 output head): two
   full-length requests at once. A coding conversation growing to 253K tokens and three agents sharing a repository
   ran 6.1 and 5.9 times faster end to end. Decode is unchanged; reading a new long prompt is about 3 % slower (7 to 13 %
   for short prompts). Without pinnable system RAM it keeps the table on the GPU (451,879 tokens). See
@@ -508,7 +534,7 @@ mode's 4,096-token prefill budget and allocator cap and the attention cache in t
   In our 20-turn coding session this found the same cache hits as keeping every state.
 - **The embedding table in system RAM.** The 2.4 GiB input embedding moves into one pinned system-memory buffer
   that the GPU reads directly (a few rows per step), and the freed VRAM goes to the KV cache: 569,878 tokens, 2.17
-  times a full-length request. Two 261,000-token requests ran together without preemption. Decode speed is
+  times a full-length request (628,877 with the FP8 output head, the default since the 6 October evening launcher update). Two 261,000-token requests ran together without preemption. Decode speed is
   unchanged (BetterBench −0.5 %).
 
 Measured on one R9700, 3 October: [capacity, speed, coding workloads and accuracy](README.md#coding-mode-results).

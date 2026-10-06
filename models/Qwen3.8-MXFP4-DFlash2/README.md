@@ -31,7 +31,8 @@ cd paiton-vllm-plugin
 
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **5 October r1** image,
 `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-5-october-2026)). The previous release stays runnable:
+start ([what changed](REFERENCE.md#release-notes-5-october-2026); the launcher's own updates since:
+[6 October](REFERENCE.md#launcher-update-6-october-2026-evening)). The previous release stays runnable:
 [run an earlier release](#run-an-earlier-release).
 
 ## Model weights and existing downloads
@@ -95,7 +96,7 @@ what you give up. Run **one** at a time.
 | --- | --- | ---: | --- | --- | --- | --- |
 | **Recommended:** fast everyday chat, coding questions and tools (for coding agents see `--mode long-kv4`) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh` | 65,536 | up to 8 requests, 393,216 tokens in total | no | yes | a little accuracy (MMLU-Pro 60.6 instead of 62.6) |
 | One long document, many follow-up questions, also with images (screenshots) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long` | 262,144 | up to 8 requests, 281,665 tokens in total: one full-length document at a time plus short requests | yes | yes, with the context lowered to 245,000 | about 3 to 4 % speed on short requests (against the recommended row); half the cache of `--mode long-kv4` |
-| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 569,878 tokens in total: two full-length requests | yes | yes (496,129 tokens cached) | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
+| **Coding agents**, or several long conversations at once | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262,144 | up to 8 requests, 628,877 tokens in total: two full-length requests and a third of 100K | yes | yes (496,129 tokens cached) | 2.4 GiB of pinned system RAM; reading a new long prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
 | Coding agents that return to more documents than the GPU cache holds, also after a restart | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | as the row above, or 451,879 tokens where the launcher moves the embedding table to the GPU (it says so at start) | yes, plus system RAM or an NVMe/SSD | no | system RAM, or up to 64 GiB of NVMe/SSD space, sized by the launcher for your host ([more cache](#extend-cache)) |
 | One request longer than 262,144 tokens (experimental) | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-512k` | 524,288 | up to 8 requests, 594,290 tokens in total: one full-length request plus short ones | yes | no | the model's long-context position scaling on every request; 2.4 GiB of pinned system RAM, no fallback; a cold 500K-token read takes about 6 minutes |
 
@@ -106,6 +107,9 @@ what you give up. Run **one** at a time.
   new question about a document the server has already read starts in a few seconds (1.2 to 4.4 s in our runs)
   instead of 1.5 to 6 minutes, and the next turn of a conversation reads only its new part. **No:** every request
   reads its whole prompt again.
+- **Short questions during a long read** (`--mode long-kv4`): the server reads a long prompt in 2,048-token steps, so
+  a short request from another user is answered meanwhile, in about 0.7 s instead of about 5.9 s during a 64K
+  read; the long read itself takes about 1 % longer. `--long-prefill-threshold off` restores the previous behaviour.
 - **Images:** add `--vision` to a row with "yes"; not with MXFP4 `--mode long` or `--mode long-512k`. Images up to 4K are
   read at full resolution, larger ones are downscaled. For screenshots of code prefer `--mode long-kv4 --vision`: the
   FP8-cache `--mode long --vision` can misread single characters of tiny (about 15 px) text in 4K screenshots. For example
@@ -170,6 +174,8 @@ What `auto` picks:
 | 64 GB | RAM, about 29 GiB | about 1.27M tokens |
 | 96 GB and more | RAM | about 1.9M tokens and up |
 
+With the 628,877-token GPU cache of the 6 October launcher the choices above are unchanged: `auto` takes RAM only where
+the tier holds at least 1.25 times the GPU cache (a tier only slightly larger serves little to a cycling working set).
 The token counts are computed from the 24 KB a cached token takes in a tier; only the 16 GB SSD restores below were
 measured.
 
@@ -320,6 +326,14 @@ BetterBench, the full 20-pass run with the same tool and settings as the tables 
 | Time to first token p50 at 1 / 2 / 4 / 8 requests (short prompts) | 86.7 / 126.3 / 134.3 / 149.7 ms | 87.1 / 124.8 / 132.4 / 147.8 ms | 86.9 / 126.9 / 135.9 / 152.8 ms |
 | Cold prefill at 2K / 8K / 16K / 32K / 64K depth | 4,167 / 4,165 / 4,102 / 3,954 / 3,633 tok/s | 3,641 / 3,856 / 3,769 / 3,824 / 3,536 tok/s | 3,638 / 3,846 / 3,959 / 3,829 / 3,541 tok/s |
 
+**Decode at long context, `--mode long-kv4`** (our decode load: a shared prompt the drafter predicts well, so these are
+an upper range; real text at 258K decodes at 72 to 76 tok/s, see the `--extend-cache` table above):
+
+| Context already in the cache | One request | Eight requests, aggregate |
+| --- | ---: | ---: |
+| 120K tokens | 120 tok/s | 165 tok/s |
+| 228K tokens | 100 tok/s | 147 tok/s |
+
 
 With prefix caching the server stops each prefill step where a later request can resume from the cache. On long
 prompts that costs about 3 % (32K to 64K); short prompts pay a fixed 7 to 13 % (a 2K-token prompt takes two steps
@@ -380,7 +394,8 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | --- | --- |
 | `--context TOKENS` | A smaller context than the row's (input plus output). Only MXFP4 `--mode long` goes higher: up to 220,000, the largest tested. |
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
-| `--long-prefill-threshold TOKENS|off` | Experimental: cap on the prefill tokens a long prompt takes per step so short requests from other users are answered while it is processed. Off by default; it changes long-prompt outputs slightly and its accuracy is not yet validated. |
+| `--long-prefill-threshold TOKENS|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. 2048 by default in `--mode long-kv4` (without `--vision`), off elsewhere; `off` restores the previous read behaviour. |
+| `--lm-head bf16` | `--mode long-kv4`: the bf16 output head instead of the checkpoint's FP8 head (the default on the 5 October image and later); the shared cache then holds 569,878 instead of 628,877 tokens. |
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |
