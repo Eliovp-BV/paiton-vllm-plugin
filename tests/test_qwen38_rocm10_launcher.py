@@ -1824,6 +1824,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(json.loads(value(command, '--mm-processor-kwargs')), {'max_pixels': 3840 * 2160})
         self.assertEqual(value(command, '--mm-processor-cache-gb'), '1')
         self.assertEqual('PAITON_DRAFT_FP8_GEMM=0' in command, not launcher.KV4_LONG_VISION_DRAFT_FP8_GEMM)
+        for mode in (('--mode', '65k', '--vision'), ('--mode', 'long', '--vision')):     # every vision mode caps images
+            other = self.dry_run(*mode)
+            self.assertEqual(json.loads(value(other, '--mm-processor-kwargs')), {'max_pixels': 3840 * 2160})
+            self.assertEqual(value(other, '--mm-processor-cache-gb'), '1')
+            self.assertNotIn('PAITON_DRAFT_FP8_GEMM=0', other)
         text = self.dry_run('--mode', 'long-kv4')                  # text-only long-kv4 is unchanged
         self.assertNotIn('--mm-processor-kwargs', text)
         self.assertNotIn('PAITON_DRAFT_FP8_GEMM=0', text)
@@ -2088,7 +2093,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                        'mxfp4 gives you the most accurate weights', 'w3a4 the 3-bit weights, fastest with the most context',
                        'gives you image input; works with --mode 65k, long (up to 245,000 context) and long-kv4 '
                        '(262,144 per request, ~496,000 cached tokens, the embedding in system memory), not with '
-                       'long-512k'):
+                       'long-512k. Images up to 3840 x 2160 (4K UHD) are read at full resolution, larger ones are '
+                       'downscaled to that many pixels'):
             self.assertIn(phrase, text)
 
     def test_long_prefill_threshold_is_off_by_default_in_every_mode(self):

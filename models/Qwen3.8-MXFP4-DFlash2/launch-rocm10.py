@@ -138,7 +138,7 @@ KV4_SPARSE_ALIGN = True
 # evicted on every repeat; the default 4 GiB processor cache held each distinct large image in host memory.
 KV4_LONG_VISION = True
 W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES = 740 * 14336000
-# Image limits of --mode long-kv4 --vision: a 4K UHD screenshot (3840 x 2160) is read at full resolution, larger images
+# Image limits of every --vision mode: a 4K UHD screenshot (3840 x 2160) is read at full resolution, larger images
 # are downscaled to that many pixels (the checkpoint allows 4096 x 4096); the multimodal processor cache keeps 1 GiB of
 # preprocessed images in host memory instead of vLLM's 4 GiB (hosts with 16-32 GB). The native drafter FP8 GEMM (T2,
 # bit-identical, ~240 MiB at the startup peak) stays on unless KV4_LONG_VISION_DRAFT_FP8_GEMM is False (measured at 740
@@ -635,7 +635,8 @@ def parser():
     choose.add_argument('--vision', action='store_true',
                         help='gives you image input; works with --mode 65k, long (up to 245,000 context) and long-kv4 '
                              '(262,144 per request, ~496,000 cached tokens, the embedding in system memory), not with '
-                             'long-512k')
+                             'long-512k. Images up to 3840 x 2160 (4K UHD) are read at full resolution, larger ones are '
+                             'downscaled to that many pixels')
     server = result.add_argument_group('Server')
     server.add_argument('--port', type=positive_integer, help='localhost API port (default: 18982)')
     server.add_argument('--name', help='Docker container name (run-3bit.sh and run-mxfp4.sh: paiton-qwen38)')
@@ -1215,9 +1216,10 @@ def engine_command(args, weights='mxfp4'):
         replace_value(command, '--kv-cache-memory-bytes', cache)
     if args.vision:
         command.remove('--language-model-only')
-        if long_w3 and sysmem and kv_cache_mode(args, weights) == 'kv4':
-            command += ['--mm-processor-kwargs', json.dumps({'max_pixels': VISION_MAX_PIXELS}),
-                        '--mm-processor-cache-gb', f'{VISION_MM_CACHE_GIB:g}']
+        # every vision mode: a cold 4096^2 image (65,536 patches in one encoder pass) took the card to the KFD edge
+        # in 65k and long-kv4 alike; 4K UHD screenshots stay at full resolution
+        command += ['--mm-processor-kwargs', json.dumps({'max_pixels': VISION_MAX_PIXELS}),
+                    '--mm-processor-cache-gb', f'{VISION_MM_CACHE_GIB:g}']
     if prefix_caching_enabled(args):
         command[command.index('--no-enable-prefix-caching')] = '--enable-prefix-caching'
         replace_value(command, '--mamba-cache-mode', 'align')
