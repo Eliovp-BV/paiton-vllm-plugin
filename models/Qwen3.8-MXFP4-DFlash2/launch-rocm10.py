@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 
 IMAGES = {
@@ -188,6 +189,13 @@ VRAM_HEADROOM_MIB = 1024
 VISION_RELEASES = frozenset(('65k',))
 VISION_KV_CACHE_BYTES = {('mxfp4', 'fp8'): 4500000000, ('w3a4', 'fp8'): 6760000000, ('w3a4', 'kv4'): 6264832000}
 SYS_DRM = Path('/sys/class/drm')
+# VRAM preflight (a real start only): the mode budgets assume an idle card. VRAM already in use above the idle
+# allowance (a display server, a container that is still releasing, another server) made allocate_kv_cache fail with
+# torch.OutOfMemoryError although the free figure looked sufficient (Hugging Face report, 5 Oct 2026). The launcher waits a
+# little for a just-stopped container, then refuses with the figures; --ignore-vram-check skips it.
+VRAM_PREFLIGHT_IDLE_BYTES = 1 * 1024**3
+VRAM_PREFLIGHT_WAIT_S = 30.0
+VRAM_PREFLIGHT_POLL_S = 2.0
 SYS_KFD = Path('/sys/class/kfd/kfd/topology/nodes')
 # --host-cache-gib (experimental, opt-in): evicted prefix-cache blocks kept in pinned system memory (vLLM's
 # OffloadingConnector). The launcher sets PAITON_HOST_KV_PRIVATE=1: the tier is private hipHostMalloc (GTT) memory, as in
@@ -573,6 +581,9 @@ def parser():
     server.add_argument('--detach', action='store_true', help='run Docker in the background')
     server.add_argument('--dry-run', action='store_true',
                         help='print Docker argv as JSON; do not pull or start the image')
+    server.add_argument('--ignore-vram-check', action='store_true',
+                        help='start even when VRAM is already in use on the selected GPU (the launcher otherwise '
+                             'waits up to 30 s for a stopped container to release it and then refuses)')
     server.add_argument('--list-gpus', action='store_true',
                         help='list physical render devices and their GPU numbers without starting Docker')
     server.add_argument('--devices', type=device_list, metavar='GPU',
@@ -743,6 +754,62 @@ def device_list(value):
     return result
 
 
+def selected_gpus(requested, devices):
+    """The GPUs a start runs on: --devices N, else the first qualified R9700 ([] when the topology has none)."""
+    numbered = {gpu['ordinal']: gpu for gpu in devices if gpu.get('ordinal') is not None}
+    if requested is None:
+        qualified = [numbered[ordinal] for ordinal in sorted(numbered) if numbered[ordinal]['supported']]
+        return qualified[:1]
+    for ordinal in requested:
+        if ordinal not in numbered:
+            raise ValueError(f'--devices {ordinal}: no such GPU; --list-gpus prints the GPU numbers')
+        if not numbered[ordinal]['supported']:
+            raise ValueError(f'--devices {ordinal}: {numbered[ordinal]["path"]} is not a 32 GiB R9700 / gfx1201')
+    if len(requested) != 1:
+        raise ValueError('--devices takes one GPU: this launcher runs one GPU per server')
+    return [numbered[ordinal] for ordinal in requested]
+
+
+def vram_in_use_bytes(gpu):
+    """Bytes of VRAM in use on the GPU per sysfs (mem_info_vram_used of its DRM render device), None when unreadable."""
+    try:
+        return int(read_text(SYS_DRM / Path(gpu['path']).name / 'device' / 'mem_info_vram_used').strip())
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
+
+
+def vram_preflight(args, environment, command, devices=None, sleep=time.sleep, now=time.monotonic):
+    """None when the selected GPU is idle enough for this mode's budget, else the refusal text (after waiting up to
+    VRAM_PREFLIGHT_WAIT_S for a just-stopped container to release its memory, announced once on stderr). Skipped when
+    the selection follows the visibility environment (no sysfs mapping), when no qualified GPU is known, when sysfs does
+    not report the figure, and with --ignore-vram-check."""
+    if getattr(args, 'ignore_vram_check', False) or any(v in environment for v in VISIBILITY_VARIABLES):
+        return None
+    selected = selected_gpus(getattr(args, 'devices', None), discover_gpus() if devices is None else devices)
+    if len(selected) != 1:
+        return None
+    gpu = selected[0]
+    used = vram_in_use_bytes(gpu)
+    if used is None or used <= VRAM_PREFLIGHT_IDLE_BYTES:
+        return None
+    print(f"Waiting up to {VRAM_PREFLIGHT_WAIT_S:.0f} s for {used / 1024**3:.1f} GiB of VRAM in use on GPU {gpu['ordinal']} "
+          f"({gpu['path']}) to be released (a container that just stopped?)", file=sys.stderr, flush=True)
+    deadline = now() + VRAM_PREFLIGHT_WAIT_S
+    while now() < deadline:
+        sleep(VRAM_PREFLIGHT_POLL_S)
+        used = vram_in_use_bytes(gpu)
+        if used is None or used <= VRAM_PREFLIGHT_IDLE_BYTES:
+            return None
+    budget = int(command[command.index('--kv-cache-memory-bytes') + 1]) if '--kv-cache-memory-bytes' in command else None
+    if budget is not None:
+        fix = (f'pass --kv-cache-memory-bytes {max(budget - used, 0)} (about {used / 1024**3:.1f} GiB less than the '
+               f'{budget / 1024**3:.1f} GiB this mode assumes)')
+    else:
+        fix = 'lower --gpu-memory-utilization'
+    return (f"{used / 1024**3:.1f} GiB of VRAM is in use by another process on GPU {gpu['ordinal']} ({gpu['path']}): a display "
+            f"or another container? This mode expects an idle card. Stop it, {fix}, or add --ignore-vram-check")
+
+
 def gpu_selection(args, environment, devices=None):
     """(Docker -e arguments, stderr note) that make exactly the GPUs this server runs on visible in the container.
 
@@ -764,22 +831,9 @@ def gpu_selection(args, environment, devices=None):
         for variable in VISIBILITY_VARIABLES:
             result += ['-e', variable + '=' + environment[variable] if variable in environment else variable]
         return result, 'GPU selection follows your visibility environment and runtime.'
-    devices = discover_gpus() if devices is None else devices
-    numbered = {gpu['ordinal']: gpu for gpu in devices if gpu.get('ordinal') is not None}
-    if requested is None:
-        qualified = [numbered[ordinal] for ordinal in sorted(numbered) if numbered[ordinal]['supported']]
-        if not qualified:
-            return [], 'No qualified R9700 found in the KFD topology; the image default (runtime GPU 0) applies.'
-        selected = qualified[:1]
-    else:
-        for ordinal in requested:
-            if ordinal not in numbered:
-                raise ValueError(f'--devices {ordinal}: no such GPU; --list-gpus prints the GPU numbers')
-            if not numbered[ordinal]['supported']:
-                raise ValueError(f'--devices {ordinal}: {numbered[ordinal]["path"]} is not a 32 GiB R9700 / gfx1201')
-        if len(requested) != 1:
-            raise ValueError('--devices takes one GPU: this launcher runs one GPU per server')
-        selected = [numbered[ordinal] for ordinal in requested]
+    selected = selected_gpus(requested, discover_gpus() if devices is None else devices)
+    if not selected:
+        return [], 'No qualified R9700 found in the KFD topology; the image default (runtime GPU 0) applies.'
     uuids = all(gpu['uuid'] for gpu in selected)
     rocr = ','.join(gpu['uuid'] if uuids else str(gpu['ordinal']) for gpu in selected)
     hip = ','.join(str(index) for index in range(len(selected)))
@@ -1393,6 +1447,9 @@ def main(argv=None):
     if args.dry_run:
         print(json.dumps(command, indent=2))
         return 0
+    problem = vram_preflight(args, os.environ, command)
+    if problem:
+        arguments.error(problem)
     try:
         os.execvp(command[0], command)
     except FileNotFoundError:

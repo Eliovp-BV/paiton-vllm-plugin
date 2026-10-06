@@ -1900,6 +1900,67 @@ class Rocm10LauncherTests(unittest.TestCase):
         for reason in ('--mode long --vision serves up to --context 245000', 'vision encoder', 'Drop --context'):
             self.assertIn(reason, stderr)
 
+    def vram_used(self, minor, used):
+        (self.drm / f'renderD{minor}' / 'device' / 'mem_info_vram_used').write_text(str(used))
+
+    def test_vram_preflight_lets_an_idle_card_start(self):
+        """Below the idle allowance (1 GiB) a real start proceeds and the Docker argv is unchanged."""
+        self.vram_used(128, 400 * 1024**2)
+        expected = self.dry_run('--mode', '65k')          # a dry run first: it must not touch Docker
+        self.assertEqual(self.command('--mode', '65k'), expected)
+
+    def test_vram_preflight_refuses_a_busy_card_with_the_figures(self):
+        """VRAM in use above the allowance that does not drop within the wait: no Docker start, a message with the GiB in use,
+        the GPU, the lower --kv-cache-memory-bytes that fits, and the escape hatch."""
+        self.vram_used(128, 3 * 1024**3)
+        self.overrides['VRAM_PREFLIGHT_WAIT_S'] = 0.3
+        self.overrides['VRAM_PREFLIGHT_POLL_S'] = 0.1
+        result = self.run_launcher('--mode', '65k')
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertFalse(self.record.exists(), 'Docker must not be started')
+        self.assertIn('Waiting up to 0 s for 3.0 GiB of VRAM in use on GPU 0 (/dev/dri/renderD128)', result.stderr)
+        self.assertIn('3.0 GiB of VRAM is in use by another process on GPU 0 (/dev/dri/renderD128)', result.stderr)
+        budget = int(value(self.dry_run('--mode', '65k'), '--kv-cache-memory-bytes'))
+        self.assertIn(f'pass --kv-cache-memory-bytes {budget - 3 * 1024**3} (about 3.0 GiB less than the {budget / 1024**3:.1f} GiB', result.stderr)
+        self.assertIn('or add --ignore-vram-check', result.stderr)
+
+    def test_vram_preflight_waits_for_a_stopping_container(self):
+        """VRAM that is released during the wait (a container that just stopped) lets the start proceed."""
+        import subprocess
+        self.vram_used(128, 3 * 1024**3)
+        self.overrides['VRAM_PREFLIGHT_WAIT_S'] = 10.0
+        self.overrides['VRAM_PREFLIGHT_POLL_S'] = 0.2
+        path = self.drm / 'renderD128' / 'device' / 'mem_info_vram_used'
+        releaser = subprocess.Popen([sys.executable, '-c', f'import time; time.sleep(0.8); open({str(path)!r}, "w").write("0")'])
+        try:
+            result = self.run_launcher('--mode', '65k')
+        finally:
+            releaser.wait()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('Waiting up to 10 s for 3.0 GiB of VRAM', result.stderr)
+        self.assertTrue(self.record.exists(), 'Docker starts once the VRAM is released')
+
+    def test_vram_preflight_escape_hatch_and_dry_run(self):
+        """--ignore-vram-check starts regardless; --dry-run never reads the card and prints the same argv."""
+        self.vram_used(128, 3 * 1024**3)
+        self.overrides['VRAM_PREFLIGHT_WAIT_S'] = 0.3
+        self.overrides['VRAM_PREFLIGHT_POLL_S'] = 0.1
+        argv = self.dry_run('--mode', '65k')
+        self.assertNotIn('--ignore-vram-check', argv)
+        self.assertEqual(self.command('--mode', '65k', '--ignore-vram-check'), argv)
+
+    def test_vram_preflight_is_skipped_without_a_sysfs_figure_or_with_visibility_variables(self):
+        """No mem_info_vram_used (the fixture default) or a host visibility environment: no preflight, the start proceeds."""
+        expected = self.dry_run('--mode', '65k')
+        self.assertEqual(self.command('--mode', '65k'), expected)
+        self.record.unlink()
+        self.vram_used(128, 3 * 1024**3)
+        self.environment['HIP_VISIBLE_DEVICES'] = '0'
+        self.overrides['VRAM_PREFLIGHT_WAIT_S'] = 0.3
+        result = self.run_launcher('--mode', '65k')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('VRAM', result.stderr)
+
     def test_help_puts_the_choices_first_in_groups(self):
         result = self.run_launcher('--help')
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -1913,7 +1974,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual([name for name in sections if name not in ('options', 'optional arguments')],
                          ['Choose how to run', 'Server', 'Advanced tuning'])
         self.assertEqual(sections['Choose how to run'], ['--weights', '--mode', '--vision'])
-        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--list-gpus', '--devices',
+        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--ignore-vram-check', '--list-gpus', '--devices',
                                                     '--image'])
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
