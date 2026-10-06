@@ -153,8 +153,11 @@ KV4_LONG_VISION_DRAFT_FP8_GEMM = True
 # recurrent-state block (1,600 tokens); on older images a hit can end on a drafter block (800 tokens) and resume from
 # the wrong state, so there the tier stays with the fp8 cache. --mode long-512k keeps it off.
 KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
+# --mode long-kv4 --vision was qualified on the 5 October image only (VRAM headroom and the vision suite under load).
+KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261004-r1': 'sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d',
     '20261003-r1': 'sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
     '20261002-r1s': 'sha256:a1c1025052f84a009428709bfe7e9431281ab5d5c0f723a49d79eecafe519dad',
     '20261002-r1': 'sha256:82a24a1926bc01a134b106401390650b9e0ddb0aa8cf6a613ba3a615ce46b840',
@@ -402,6 +405,13 @@ def image_predates_kv4_host_fix(args):
     name, digest = _image_parts(args)
     return (image_predates_prefix_fix(args) or name.endswith(KV4_HOST_CACHE_UNFIXED_SUFFIXES)
             or digest in _released_digests('20261003-r1'))
+
+
+def image_predates_kv4_long_vision(args):
+    """Images on which --mode long-kv4 --vision was never qualified: the 4 October image and older."""
+    name, digest = _image_parts(args)
+    return (image_predates_kv4_host_fix(args) or name.endswith(KV4_LONG_VISION_UNQUALIFIED_SUFFIXES)
+            or digest in _released_digests('20261004-r1'))
 
 
 def image_predates_prefix_fix(args):
@@ -987,7 +997,7 @@ def apply_mode(args, environment):
         notes.append(note)
     if getattr(args, 'host_cache_gib', None) and weights == 'w3a4' and image_predates_kv4_host_fix(args):
         raise ValueError(f'{name}: {KV4_HOST_CACHE_REFUSAL}')
-    if args.vision and not (KV4_LONG_VISION and not old_image) and weights == 'w3a4':
+    if args.vision and not (KV4_LONG_VISION and not image_predates_kv4_long_vision(args)) and weights == 'w3a4':
         raise ValueError(f'{name} is not qualified with --vision; for images use --mode long --vision (up to '
                          f'{W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
     sysmem = getattr(args, 'system_memory_weights', False)
@@ -1069,7 +1079,7 @@ def long_kv4_refusal(args, weights):
     if args.prefix_caching == 'on' and image_predates_prefix_fix(args):
         return ('runs without prefix caching on this image: it predates the prefix-cache-hit fix of that mode; drop '
                 '--prefix-caching on (--mode long keeps prefix caching), or use an image with the fix')
-    if args.vision and not (KV4_LONG_VISION and not image_predates_prefix_fix(args)):
+    if args.vision and not (KV4_LONG_VISION and not image_predates_kv4_long_vision(args)):
         return (f'is not qualified with --vision; for images use --mode long --vision (up to '
                 f'{W3_LONG_VISION_MAX_CONTEXT:,} tokens)')
     if args.vision and not getattr(args, 'system_memory_weights', False):

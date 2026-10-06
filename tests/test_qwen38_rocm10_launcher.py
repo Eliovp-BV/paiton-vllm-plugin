@@ -1816,6 +1816,11 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.overrides['KV4_LONG_VISION'] = False
         self.assertIn('is not qualified with --vision', self.refused('--mode', 'long-kv4', '--vision'))
         del self.overrides['KV4_LONG_VISION']                 # on by default since 5 Oct: 740 blocks, measured capped
+        # qualified on the 5 October image only: the 4 October image (by tag or by digest alone) is refused
+        for reference in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1',
+                          'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261004-r1']):
+            self.assertIn('is not qualified with --vision',
+                          self.refused('--mode', 'long-kv4', '--vision', '--image', reference))
         command = self.dry_run('--mode', 'long-kv4', '--vision')
         self.assertEqual(launcher.W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES, 740 * 14336000)
         # images up to 4K UHD at full resolution, a 1 GiB processor cache, the drafter FP8 GEMM per its switch
