@@ -25,6 +25,29 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 <a id="release-notes-4-october-2026"></a>
 
+### Launcher update: 6 October 2026 (the 4 October image stays pinned)
+
+`git pull` in your checkout gets a launcher update; images, weights and every mode's limits are unchanged.
+
+- **Fixed: `--mode long-kv4` kept the embedding table on the GPU on hosts whose kernel reports the default pinned-memory
+  limit as 0** (`/sys/module/ttm/parameters/pages_limit`), so the cache held 451,879 instead of 569,878 tokens and
+  `--extend-cache` / `--host-cache-gib` were refused there. The launcher now reads the kernel's default (half the RAM).
+- **Fixed: `torch.OutOfMemoryError` at start when VRAM is already in use** (a display on the R9700, or a container that is
+  still stopping). Before a real start the launcher reads the selected card's VRAM in use; above 1 GiB it waits up to 30 s
+  for a stopping container, then refuses with the amount in use and the `--kv-cache-memory-bytes` that would fit.
+  `--ignore-vram-check` skips the check; `--dry-run` never reads the card.
+- **One GPU by default.** The server runs on exactly one R9700: the first qualified one, or `--devices N` (`--list-gpus`
+  shows the numbers). Hosts with an integrated GPU no longer expose it to the container. A `HIP_VISIBLE_DEVICES` /
+  `ROCR_VISIBLE_DEVICES` environment still applies as before.
+- **Warning for a RAM tier smaller than the GPU cache** (`--extend-cache ram` or `--host-cache-gib` on a 16 to 24 GB host):
+  such a tier keeps a copy of what the GPU already holds, so it rarely helps with several large documents in turn;
+  `--extend-cache disk` keeps them across the session.
+- **Unchanged:** outputs, modes and limits; `--dry-run` prints the same Docker command as before except for the three
+  GPU-selection variables and, on hosts affected by the pinned-memory fix, the restored embedding placement and cache
+  size.
+
+<a id="release-notes-4-october-2026"></a>
+
 ### Release notes: 4 October 2026 (image r1, current)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1` (`sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d`)
@@ -250,9 +273,10 @@ export ROCR_VISIBLE_DEVICES=1
 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10.sh
 ```
 
-Use the index or GPU UUID appropriate to your system. `--list-gpus` lists physical
-render devices and PCI addresses for identification; render-device numbers are
-not ROCm visibility indices. The launcher does not choose a GPU automatically.
+By default the launcher runs the server on exactly one GPU: the first qualified R9700 it finds, or the one given with
+`--devices N` (`--list-gpus` prints the numbers, render devices and PCI addresses). A `HIP_VISIBLE_DEVICES` /
+`ROCR_VISIBLE_DEVICES` environment is forwarded as before and replaces the automatic choice (not together with
+`--devices`).
 
 The launcher forwards your `ROCR_VISIBLE_DEVICES`, `HIP_VISIBLE_DEVICES` and
 `CUDA_VISIBLE_DEVICES` values unchanged. If a variable is unset on the host, it
@@ -579,7 +603,8 @@ raises the per-token log-loss by at most 0.004 nats against `--mode long-kv4` at
 The modes above set everything; these options are for tuning and testing. Pinned system memory is bounded per
 host: the embedding table and `--host-cache-gib` together stay within total RAM less the server's own memory
 (4.75 GiB with the embedding table in system RAM, 4.5 GiB with it on the GPU) and a 7 GiB reserve, and within the
-TTM limit less 0.5 GiB (`PAITON_HOST_PIN_LIMIT_GIB` overrides it). `--help` describes each option.
+kernel's pinned-memory limit less 0.5 GiB (`/sys/module/ttm/parameters/pages_limit`, or the kernel's default of half the RAM
+when it reads 0; `PAITON_HOST_PIN_LIMIT_GIB` overrides it). `--help` describes each option.
 
 | Option | What it does | Status |
 | --- | --- | --- |

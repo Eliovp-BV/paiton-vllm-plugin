@@ -381,6 +381,8 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | `--kv-cache-memory-bytes BYTES` / `--gpu-memory-utilization FRACTION` | Your own KV budget instead of the measured one, also with `--vision`. |
 | `--profile desktop` | For an R9700 that also drives your desktop: 32,768 context, one request, 2 GiB KV. |
 | `--port PORT` / `--name NAME` / `--detach` | API port (default 18982), container name, run in the background. |
+| `--devices N` / `--list-gpus` | The GPU to run on (default: the first R9700) and the list to choose from. |
+| `--ignore-vram-check` | Start although VRAM is already in use on the selected GPU (the launcher otherwise waits up to 30 s for a stopping container, then refuses with the amount in use). |
 
 Command lines from earlier releases still start the same server:
 
