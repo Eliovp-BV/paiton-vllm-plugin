@@ -125,7 +125,7 @@ a larger reasoning model. [Selection and alternatives](SELECTION.md). [Quantizat
 The versioned GHCR image is published. [Compiled artifacts and manifests](https://huggingface.co/EliovpAI/MiniCPM5-2B-W4A16-Paiton-RDNA4/tree/v1.0.0) are also available on Hugging Face; weights download from the pinned upstream checkpoint.
 
 ```bash
-./serve-docker.sh
+./models/MiniCPM5-2B/serve-docker.sh
 ```
 
 The server listens on `0.0.0.0:8036`. Downloads are pinned and SHA-256 verified.
@@ -134,10 +134,10 @@ Use `PAITON_CACHE` to choose another directory, or `PAITON_PORT` to change the
 published port. Do not run competing GPU workloads during benchmarking.
 
 ```bash
-./serve-docker.sh --download-only     # download and verify ahead of time
-./serve-docker.sh --offline           # reuse the prepared checkpoint
-./serve-docker.sh --offline --stock   # same checkpoint, native vLLM projections
-python3 chat.py
+./models/MiniCPM5-2B/serve-docker.sh --download-only     # download and verify ahead of time
+./models/MiniCPM5-2B/serve-docker.sh --offline           # reuse the prepared checkpoint
+./models/MiniCPM5-2B/serve-docker.sh --offline --stock   # same checkpoint, native vLLM projections
+python3 models/MiniCPM5-2B/chat.py
 ```
 
 ```bash

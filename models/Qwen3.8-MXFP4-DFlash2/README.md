@@ -148,8 +148,8 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 ```
 
 The server runs in the foreground; add `--detach` to run it in the background (`docker logs -f paiton-qwen38`
-follows its log). The first start takes about **three minutes** on our reference host (the image ships a seeded
-compile cache; later starts about two minutes); wait for `/health` to succeed.
+follows its log). The first start takes about **three to four minutes** (the image ships a seeded compile cache; later starts about
+two minutes); wait for `/health` to succeed.
 
 **API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8` · **API key:** none (enter any value if a client asks)
 

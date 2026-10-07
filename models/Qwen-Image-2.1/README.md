@@ -94,7 +94,7 @@ overwritten. For direct edits, place the input in that directory and use
 
 ## API
 
-`GET /health` reports readiness and `native_fusions: active (bf16-regions, attention, normfuse)`; `GET /v1/models`
+`GET /health` reports readiness and the active native fusions (`native_fusions: active (bf16-regions, attention, normfuse, …)`; the default profile also lists its low-precision kernels); `GET /v1/models`
 lists the supported tasks. Generation returns a PNG in `data[0].b64_json`:
 
 ```sh
