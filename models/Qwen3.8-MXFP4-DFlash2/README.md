@@ -6,11 +6,53 @@ Two weight choices:
 - **MXFP4**: the most accurate, from the base download alone. Up to 200,000 tokens of context, one request at a
   time in that mode; images only in the default 65,536-token mode.
 - **3-bit W3A4**: the fastest, with room for more and longer requests: up to 262,144 tokens of context (524,288
-  experimental); images up to 245,000 tokens (not in the coding or 512K modes). Slightly less accurate; an extra
-  9.55 GB download.
+  experimental), with images up to 262,144 tokens in the coding mode. Two to three MMLU-Pro points below MXFP4;
+  an extra 9.55 GB download.
 
-Download the weights, then [pick how to run it](#pick-how-to-run-it).
-[Measured speed and accuracy](#current-benchmark-results).
+<a id="what-you-get"></a>
+
+## What you get
+
+Each row is one command (all of them start with `bash models/Qwen3.8-MXFP4-DFlash2/`); run one at a time.
+**Per request** is the longest prompt plus output one request may have. **Cache** is the KV cache that all running
+requests share: it sets how many long requests fit together and, with **prefix caching**, how much already-read
+text stays ready, so a follow-up question about it starts in seconds instead of minutes.
+
+| You run | Per request | Cache (text) | Cache with `--vision` | Full-length requests that fit together | Prefix caching |
+| --- | ---: | ---: | ---: | --- | --- |
+| `run-3bit.sh --mode long-kv4`: **coding agents, long documents, screenshots** | 262,144 | **628,877** | **555,128** | 2 (plus one of 100K) | yes |
+| `run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | 628,877 on the GPU, plus about 0.7M to 2.8M in system RAM or on an NVMe/SSD | – | 2 | yes, also after a restart |
+| `run-3bit.sh --mode long` | 262,144 (245,000 with images) | 281,665 | 253,298 | 1, plus short ones | yes |
+| `run-3bit.sh --mode long-512k` (experimental) | 524,288 | 594,290 | – | 1, plus short ones | yes |
+| `run-3bit.sh`: fast everyday chat | 65,536 | 393,216 | 278,050 | 6 | no |
+| `run-mxfp4.sh --mode long`: most accurate, one long document | 200,000 | one request | – | 1 | yes |
+| `run-mxfp4.sh`: most accurate | 65,536 | 174,634 | 120,277 | 2 | no |
+
+Every row except MXFP4 `--mode long` takes up to 8 requests at once; short requests share the cache with the long
+ones. On hosts with 16 or 32 GB of RAM, `--extend-cache` keeps the embedding table on the GPU, so the GPU part holds
+451,879 tokens there ([what each host gets](#extend-cache)). Images up to 4K are read at full resolution.
+
+**Speed and accuracy at a glance** (one R9700, thinking off; details in [benchmark results](#current-benchmark-results)):
+
+| | `run-mxfp4.sh` | `run-3bit.sh` | `run-3bit.sh --mode long-kv4` |
+| --- | ---: | ---: | ---: |
+| Decode, one request, short prompts | 156 tok/s | 180 tok/s | 173 tok/s |
+| Eight requests at once, total output | 428 tok/s | 489 tok/s | 479 tok/s |
+| Decode with 120K / 228K tokens of context, one request | – | – | 120 / 100 tok/s |
+| New question about a 258K-token document already read | – | – | 2.7 s to the first token (134 s for the first read) |
+| GSM8K / HumanEval / MMLU-Pro | 95.68 / 95.12 / 62.57 | 95.22 / 94.51 / 60.57 | 95.45 / 92.68 / 59.93 |
+
+The coding mode's short-prompt speed, accuracy and cached-document rows were measured before its FP8 output head
+became the default (6 October); the FP8 head measured the same text prediction and the same or faster decode. The
+long-context decode row is an upper range (a prompt the drafter predicts well); long real text decodes at about
+72 to 76 tok/s at 258K.
+
+**Long coding sessions** (6 October): in 20-turn sessions that grow from 100K to 181K tokens, with a new coding task
+every turn, `--mode long-kv4` solved **87.5 %** of the tasks with **no decline from the first turns to the last**,
+started cached turns in 3.1 to 4.1 s and decoded code at about 210 tok/s (MXFP4 `--mode long`: 83.75 %, 3.3 to 4.4 s,
+about 165 tok/s). [The full table](#long-coding-sessions).
+
+Download the weights, then [pick how to run it](#pick-how-to-run-it) for what each row gives up.
 
 ## Before you start
 
@@ -354,6 +396,28 @@ the mode (no prefix caching, the embedding table on the GPU):
 | Prompt tokens served from the cache | 0 % | 91–92 % | |
 | New question about a 258K-token document already read | cold read 134 s | **2.7 s** (the same output as a cold read) | 49× |
 
+<a id="long-coding-sessions"></a>
+
+**Long coding sessions, 6 October** (5 October image and launcher, thinking off). Eight sessions of 20 turns per
+mode, identical prompts in both: each session starts from about 95K tokens of real source code, and every turn adds
+one more source file and a new HumanEval+ task, so the prompt grows from about 100K to 181K tokens. Each turn's
+answer runs against the task's tests.
+
+| | `run-mxfp4.sh --mode long` | `run-3bit.sh --mode long-kv4` |
+| --- | ---: | ---: |
+| Tasks passed (HumanEval+ base and extra tests) | 83.75 % | **87.5 %** |
+| Tasks passed (base tests) | 90.0 % | 92.5 % |
+| Change per turn over the 20 turns | −0.51 points (95 % interval −1.47 to +0.48) | **0.00** (−0.71 to +0.64) |
+| Last five turns against the first five | −15.0 points | −2.5 points |
+| First token, first turn (100K tokens, cold) | 40.7 s | 32.1 s |
+| First token, later turns (100K to 185K, 95 to 97 % from the cache) | 3.3 to 4.4 s | 3.1 to 4.1 s |
+| Decode, code | 172 to 160 tok/s | 217 to 207 tok/s |
+
+The 3-bit coding mode keeps its pass rate over all 20 turns; its lead over MXFP4 (+3.75 points, 95 % interval
++0.62 to +7.50) is small with 160 tasks per mode. The tasks are independent of each other, so this measures how well
+each mode works deep into a long context, not errors that carry over from turn to turn. Decode includes DFlash2 on
+code, which the drafter predicts well.
+
 Accuracy with standard-length questions, greedy, paired per question:
 
 | Benchmark | `run-mxfp4.sh` | 2 October image | `--mode long-kv4` | `--mode long-512k` |
@@ -395,7 +459,7 @@ to tune; the launcher refuses flags that contradict the chosen `--mode`. `--help
 | --- | --- |
 | `--context TOKENS` | A smaller context than the row's (input plus output). Only MXFP4 `--mode long` goes higher: up to 220,000, the largest tested. |
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
-| `--long-prefill-threshold TOKENS|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. 2048 by default in `--mode long-kv4` (without `--vision`), off elsewhere; `off` restores the previous read behaviour. |
+| `--long-prefill-threshold TOKENS\|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. 2048 by default in `--mode long-kv4` (without `--vision`), off elsewhere; `off` restores the previous read behaviour. |
 | `--lm-head bf16` | `--mode long-kv4`: the bf16 output head instead of the checkpoint's FP8 head (the default on the 5 October image and later); the shared cache then holds 569,878 instead of 628,877 tokens. |
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
