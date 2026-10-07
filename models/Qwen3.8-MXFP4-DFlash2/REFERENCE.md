@@ -1047,6 +1047,155 @@ also works. The source checkpoint is preserved. See the
 for exactly what was tested.
 
 
+<a id="earlier-releases-and-comparisons"></a>
+
+## Earlier releases and comparisons with earlier images
+
+Moved from the quickstart on 7 October 2026; the quickstart keeps only current results.
+
+<a id="run-an-earlier-release"></a>
+
+### Run an earlier release
+
+Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
+its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
+`--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
+Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261004-r1`, `…-20261003-r1`,
+`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
+and by its digest alone; an image under any other tag or an image ID counts as the current image.
+
+```bash
+# 4 October r1, the previous release: every row except images in the coding mode (--mode long-kv4 --vision)
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d
+
+# 3 October r1: every row; refuses --extend-cache
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261003"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261003-r1@sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53
+
+# 2 October (r1s): every row except --mode long-512k
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261002"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261002-r1s@sha256:a1c1025052f84a009428709bfe7e9431281ab5d5c0f723a49d79eecafe519dad
+
+# 29 September r2: the 65,536-token rows and --mode long, also with --vision
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20260929"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
+```
+
+To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"` again
+and drop `--image`.
+
+The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
+(`--extend-cache`, and `--host-cache-gib` with `--mode long-kv4`): there a cache hit could resume from the wrong
+recurrent state. `--host-cache-gib` with `--mode long` (FP8 cache) works there as before.
+
+On the 2 October image, `--mode long-kv4` runs as it was released: no prefix caching, the embedding table on the
+GPU, a 458,922-token cache. The 29 September image refuses `--mode long-kv4`; both refuse `--mode long-512k` and
+`--host-cache-gib`.
+
+Command lines from earlier releases still start the same server:
+
+| Earlier command | Same as |
+| --- | --- |
+| `run-3bit.sh --context 262144` | `run-3bit.sh --mode long` |
+| `run-3bit.sh --context 245000 --vision` | `run-3bit.sh --mode long --vision` |
+| `run-mxfp4.sh --context 200000` | `run-mxfp4.sh --mode long` |
+| `run-3bit.sh --context 262144 --kv-cache kv4` | the 2 October `--mode long-kv4`: no prefix caching, 458,922 tokens (the launcher prints a note) |
+| `run-rocm10.sh` | `run-3bit.sh` when `PAITON_W3ROT_DIR` is set, `run-mxfp4.sh` otherwise |
+
+<a id="mode-long-short-requests"></a>
+
+### `--mode long` against `run-3bit.sh` on short requests (1 October)
+
+Short requests in `--mode long` against `run-3bit.sh`, 1 October: the full 20-pass BetterBench, cold prefix cache,
+fresh processes, the same tool and settings as the September tables.
+
+| BetterBench row | `--mode long` | `run-3bit.sh` |
+|---|---:|---:|
+| Weighted single-stream decode | 174.3 tok/s | 178.9 tok/s |
+| Gap between stream updates, p99 | 29.3 ms | 28.0 ms |
+| Time to first token, p50 (short prompts) | 85 ms | 86 ms |
+| Eight concurrent requests, aggregate output | 458.9 tok/s | 478.8 tok/s |
+| Prefill at 47K input tokens (64K depth) | 3,549 tok/s | 3,481 tok/s |
+| Prefill at 94K / 184K input tokens | 3,040 / 2,395 tok/s | – |
+
+[Reports and numbers](benchmarks/2026-10-01-262k/README.md).
+
+<a id="earlier-coding-mode-comparisons"></a>
+
+### Coding mode against the 2 October image (3 October)
+
+Measured 3 October against the same mode on the 2 October image, which ran without prefix caching and with the
+embedding table on the GPU. 3-bit weights, thinking off. The cache sizes are those of the 3 October release; the
+6 October launcher raised `--mode long-kv4` to 628,877 tokens (see the quickstart's [What you get](README.md#what-you-get)).
+
+| Capacity | 2 October image | `--mode long-kv4` | `--mode long-512k` |
+| --- | ---: | ---: | ---: |
+| Tokens per request | 262,144 | 262,144 | 524,288 |
+| Shared KV cache | 458,922 tokens | **569,878 tokens** | **594,290 tokens** |
+| Full-length requests at once | 1, plus short ones | **2** (two 261K-token requests, none preempted) | 1, plus short ones |
+| Prefix cache | no | yes | yes |
+| Embedding table in system RAM | – | 2.4 GiB | 2.4 GiB |
+
+BetterBench, the full 20-pass run with the same tool and settings as the tables above:
+
+| BetterBench row | 2 October image | `--mode long-kv4` | `--mode long-512k` |
+| --- | ---: | ---: | ---: |
+| Weighted single-stream decode | 174.3 tok/s | 173.4 tok/s (−0.5 %) | 173.3 tok/s (−0.6 %) |
+| Speculative acceptance length | 4.098 | 4.103 | 4.132 |
+| Aggregate output at 1 / 2 / 4 / 8 requests | 144.5 / 247.3 / 364.6 / 462.4 tok/s | 143.9 / 246.2 / 355.4 / 478.5 tok/s | 144.6 / 247.5 / 360.7 / 463.5 tok/s |
+| Time to first token p50 at 1 / 2 / 4 / 8 requests (short prompts) | 86.7 / 126.3 / 134.3 / 149.7 ms | 87.1 / 124.8 / 132.4 / 147.8 ms | 86.9 / 126.9 / 135.9 / 152.8 ms |
+| Cold prefill at 2K / 8K / 16K / 32K / 64K depth | 4,167 / 4,165 / 4,102 / 3,954 / 3,633 tok/s | 3,641 / 3,856 / 3,769 / 3,824 / 3,536 tok/s | 3,638 / 3,846 / 3,959 / 3,829 / 3,541 tok/s |
+
+With prefix caching the server stops each prefill step where a later request can resume from the cache. On long
+prompts that costs about 3 % (32K to 64K); short prompts pay a fixed 7 to 13 % (a 2K-token prompt takes two steps
+instead of one). Decode and short-prompt latency are unchanged.
+
+What the prefix cache buys in coding workloads. Both columns ran on a pre-release build of these configurations,
+before the release cut the number of prefill steps with prefix caching; the left column is the 2 October form of
+the mode (no prefix caching, the embedding table on the GPU):
+
+| Workload | 2 October form (no prefix caching) | `--mode long-kv4` | Faster |
+| --- | ---: | ---: | ---: |
+| One conversation growing from 50K to 253K tokens over 20 turns: whole session | 1,237 s | **204 s** | **6.1×** |
+| … mean time to first token (turns 2 to 20) / at turn 20 | 63.6 s / 120.8 s | **7.8 s / 11.2 s** | 8–11× |
+| Three agents sharing a 100K-token repository prefix, 5 turns each: whole session | 655 s | **111 s** | **5.9×** |
+| … first reply of each agent | 33 / 68 / 101 s | **2.6–2.7 s** | up to 38× |
+| … later turns, mean time to first token | 84 s | **7.0 s** | 12× |
+| Prompt tokens served from the cache | 0 % | 91–92 % | |
+| New question about a 258K-token document already read | cold read 134 s | **2.7 s** (the same output as a cold read) | 49× |
+
+Accuracy with standard-length questions, greedy, paired per question:
+
+| Benchmark | `run-mxfp4.sh` | 2 October image | `--mode long-kv4` | `--mode long-512k` |
+| --- | ---: | ---: | ---: | ---: |
+| GSM8K 5-shot (1,319) | 95.68 | 95.53 | 95.45 | 95.53 |
+| HumanEval pass@1 (164) | 95.12 | 92.07 | 92.68 | 94.51 |
+| MMLU-Pro subset, 0-shot (14 × 100) | 62.57 | 60.57 | 59.93 | 60.64 |
+| Needle at 61,440 tokens (80) | 80/80 | 80/80 | 80/80 | 80/80 |
+| Needles at 300K / 500K tokens (4 facts each) | – | – | – | 4/4 / 4/4 |
+
+Each 3 October column is within noise of the column to its left (paired, p > 0.05 for every benchmark), and an
+answer from the cache scores like a cold read (log-likelihood difference +0.008 nats per token, 95 % interval
+−0.055 to +0.083; the same top token at 59 of 60 positions). The 3 October columns and this cache check ran on
+pre-release builds of these configurations. The MMLU-Pro gap to MXFP4 is the 3-bit weights' own gap, as in the
+65,536-token rows. Over five 131K-token documents the 4-bit cache predicts the text as well as the FP8 cache at
+every depth (pre-release build).
+
+`--mode long-512k`: reading a 300K-token document cold took 158 s, a 500K-token one 361 s; follow-up questions
+took 2.8 to 2.9 s and 4.2 to 4.4 s with 297,600 and 497,600 tokens from the cache. Its weighted BetterBench decode
+matches `--mode long-kv4`, but the chat category decoded 16 % slower than on the 2 October image (116.1 against
+137.9 tok/s, one run).
+[Coding mode details](#coding-mode) · [`--mode long-512k` details](#mode-long-512k).
+
 ## Historical releases and comparisons
 
 The sections below describe earlier images, checkpoints, launchers and benchmark
