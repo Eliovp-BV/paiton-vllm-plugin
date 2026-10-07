@@ -70,11 +70,15 @@ if docker container inspect "$container" >/dev/null 2>&1; then
         printf 'Container %s uses a different port or cache. Reuse those settings or choose another container name.\n' "$container" >&2
         exit 1
     fi
+    if ! docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container" | grep -qx 'GPU_MAX_HW_QUEUES=1'; then
+        printf 'Note: container %s was created by an older launcher without GPU_MAX_HW_QUEUES=1 and decodes about 3.6x slower. Run "docker rm -f %s" once to recreate it.\n' "$container" "$container" >&2
+    fi
     if [[ "$(docker inspect -f '{{.State.Running}}' "$container")" != true ]]; then
         docker start "$container" >/dev/null
     fi
 else
-    docker run -d --name "$container" --device /dev/kfd --device /dev/dri \
+    # GPU_MAX_HW_QUEUES=1 keeps RDNA4 decode in its fast mode (decode is about 3.6x slower without it).
+    docker run -d --name "$container" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
         --group-add video --ipc=host --label "dev.paiton.qwen3-coder.mode=$mode" \
         -p "127.0.0.1:$port:8010" -v "$cache_dir:/models/cache" "$image" "${server_args[@]}" >/dev/null
 fi

@@ -9,5 +9,6 @@ extra=()
 if [[ -n "${PAITON_HF_CACHE:-}" ]]; then
   extra+=(-v "$PAITON_HF_CACHE:/models/cache/huggingface:ro")
 fi
-exec docker run --rm --name "$name" --device /dev/kfd --device /dev/dri \
+# GPU_MAX_HW_QUEUES=1 keeps RDNA4 decode in its fast mode (decode is about 4x slower without it).
+exec docker run --rm --name "$name" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
   --ipc=host -p "$port:8020" -v "$cache:/models/cache" "${extra[@]}" "$image" "$@"

@@ -99,7 +99,7 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd pa
 After the server is ready, run the same client workload:
 
 ```bash
-docker run --rm --network host \
+docker run --rm --network host --device /dev/kfd --device /dev/dri \
   --mount type=volume,src=paiton-ornith-cache,dst=/models/cache,readonly \
   --entrypoint /opt/venv/bin/vllm \
   ghcr.io/eliovp/paiton-vllm-plugin:ornith15-mxfp4-rdna4-v1.0.0 \

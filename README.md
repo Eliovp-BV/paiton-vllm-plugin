@@ -95,6 +95,7 @@ Activate the [preset's supported environment](docs/NATIVE_EXECUTION.md#qualified
 ```bash
 python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
 paiton doctor
+export GPU_MAX_HW_QUEUES=1   # RDNA4: keeps decode in its fast mode (about 4x faster)
 paiton serve minicpm5
 ```
 
