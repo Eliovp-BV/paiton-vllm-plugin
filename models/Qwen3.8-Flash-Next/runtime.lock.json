@@ -1,0 +1,43 @@
+{
+ "image": {
+  "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1",
+  "digest": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191",
+  "local_build_id": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191",
+  "size_bytes": 41344124404,
+  "base": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80",
+  "pushed": "10 Oct 2026, manifest size 14800 (verified with docker buildx imagetools inspect)"
+ },
+ "plugin_commit": "8582563",
+ "bundles": {
+  "tp-collective": "tp-collective-m27h-981f701e",
+  "moe-grouped": "moe-grouped-71dad0d2",
+  "fn-mixers": "fn-mixers-9f92291e"
+ },
+ "release_scan": "PASS (10 Oct 2026)",
+ "start_tests": {
+  "decode": "PASS 09 (seeded cache; two completions, 0 errors)",
+  "prefill-long": "PASS 09 (seeded cache; two completions, 0 errors)",
+  "decode-nopf": "PASS 09 (seeded cache; two completions, 0 errors)",
+  "decode --prefix-caching": "PASS 09 (seeded cache; two completions, 0 errors)"
+ },
+ "official_numbers": {
+  "measured_on": "the shipped image through the launcher, 10 Oct 2026 09:40-10:10 UTC",
+  "decode_weighted": 216.3,
+  "c8": 565.1,
+  "ladder_1_2_4_8": [
+   204.6,
+   315.1,
+   449.2,
+   565.1
+  ],
+  "prefill_64k_default": 8161,
+  "prefill_64k_exact_tokens": 8212,
+  "prefill_64k_exact_path_dev_stack": 7607,
+  "ttft_ms": 117,
+  "p99_ms": 13.9
+ },
+ "checkpoint": {
+  "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
+  "requires": "mtp/mtp-draft-e4m3.safetensors"
+ }
+}
