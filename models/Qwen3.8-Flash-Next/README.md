@@ -50,6 +50,8 @@ we keep optimizing.
 - `python3` 3.10 or newer and the Hugging Face hub package: `pip install huggingface_hub` (the launcher downloads the weights and the base
   model's tokenizer files through it; the `hf` / `huggingface-cli` binaries are only a fallback).
 - Disk: about 116 GB for the weights plus a few MB for the runtime view and ~0.3 GB per mode of compile cache; the image is 41 GB.
+- 4-bit modes only: about 49 GiB of free RAM (the expert host tier pins about 41 GiB of expert copies across both GPUs, plus a margin);
+  `--host-pool off` lowers it to the experts that do not fit in VRAM (about 18 GiB at `--expert-vram-gib 20`).
 - `launch-flashnext.py --dry-run` checks these prerequisites and prints exactly what is missing.
 
 ## Set up
@@ -81,6 +83,17 @@ first start of a mode copies the baked compile cache and takes about **five to s
 
 **API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8-Flash-Next` · **API key:** none (enter any value if a client asks)
 
+**4-bit experts (more accurate, slower; uses system RAM):**
+
+```bash
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh        # 4-bit experts with the expert host tier: 98,304-token window, speculative decoding on
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 4-bit experts, 200,000-token window, speculative decoding off
+```
+
+They download the 4-bit weights (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`, about 127 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8`.
+About 21.6 GiB of experts per GPU stay in VRAM; the rest are read from pinned system memory when a token needs them
+(`--expert-vram-gib` and `--host-pool on|off` change the split; the launcher checks the RAM before it starts).
+
 From another terminal:
 
 ```bash
@@ -95,11 +108,11 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   takes about 25 s to read in the 200K mode).
 
 ## Options
-`--mode decode|prefill-long|decode-nopf|prefill-long-nopf`, `--prefix-caching`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
+`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k`, `--prefix-caching`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
 `--served-model-name`, `--detach`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
 
 ## Files
-`run-flashnext*.sh` (the four wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
+`run-flashnext*.sh` (the wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
 per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release was built from and tested with),
 `Dockerfile` + `prepare_image_context.py` + `build-context.lock.json` (rebuild the image from locked inputs, see REPRODUCE.md), `release-audit.json`,
 `deployment-check.json`, `metrics.json` and `benchmarks/` (the raw BetterBench outputs of the published run).
