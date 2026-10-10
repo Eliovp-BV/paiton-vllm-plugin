@@ -69,7 +69,8 @@ about 165 tok/s). [The full table](#long-coding-sessions).
 
 You need:
 
-- Linux x86-64, Python 3, [Hugging Face CLI (`hf`)](https://huggingface.co/docs/huggingface_hub/guides/cli), and Docker usable without `sudo`.
+- Linux x86-64, Python 3, the [Hugging Face CLI (`hf`)](https://huggingface.co/docs/huggingface_hub/guides/cli) or only
+  its Python package (`huggingface_hub`, see [without `hf`](#download-without-hf)), and Docker usable without `sudo`.
 - One R9700 with 32 GB VRAM that does not drive your desktop (for a shared card, see `--profile desktop` in
   [Options](#advanced-options)), and AMD device access (`/dev/kfd` and `/dev/dri`).
 - About **75 GB free disk**, including the container, target, drafter and optional 3-bit weights; the optional
@@ -113,6 +114,17 @@ hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
   --local-dir "$PAITON_DRAFT_DIR"
 ```
 
+<a id="download-without-hf"></a>
+
+**Without `hf` on your PATH** (`pip install --user huggingface_hub` puts the `hf` command in `~/.local/bin`, which
+some shells do not search), the Python package downloads the same pinned revisions into the same folders:
+
+```bash
+python3 -c 'import os; from huggingface_hub import snapshot_download as get
+get("unsloth/Qwen3.8-27B-NVFP4", revision="f0b7c9e722f5565102fff8481c99e4d86ae099c7", local_dir=os.environ["PAITON_TARGET_DIR"])
+get("tcclaviger/Qwen3.8-27B-DFlash2-FP8", revision="ee0cb26a8279b7910cc28d82a8a3e15e4728d56f", local_dir=os.environ["PAITON_DRAFT_DIR"])'
+```
+
 Already downloaded these revisions? Set the variables to your complete local
 folders instead. Each needs its own `config.json` and weights; keep the target's
 tokenizer too. For linked Hugging Face cache snapshots, use the
@@ -133,6 +145,13 @@ hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
   --revision 7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
+```
+
+Without `hf`, replace the `hf download` command with:
+
+```bash
+python3 -c 'import os; from huggingface_hub import snapshot_download as get
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>
