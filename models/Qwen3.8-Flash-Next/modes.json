@@ -548,8 +548,10 @@
     "PAITON_FN_EXPERT_DYN_NATIVE": "1",
     "PAITON_FN_EXPERT_DYN_NATIVE_LIB": "/opt/paiton/runtime/expert-tier/libpaiton_expert_tier.so",
     "PAITON_FN_EXPERT_DYN_START_STEP": "64",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.6,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
     "PAITON_FN_GDN_ANCHOR": "1",
+    "PAITON_FN_GDN_PF_FUSED": "1",
+    "PAITON_FN_GDN_PF_NATIVE": "1",
     "PAITON_FN_GDN_RS_FMA": "0",
     "PAITON_FN_GDN_RS_NATIVE": "1",
     "PAITON_FN_HC_CHAIN": "1",
@@ -577,10 +579,12 @@
     "PAITON_FN_QSA_FP8": "tok",
     "PAITON_FN_RECOVERSSM": "1",
     "PAITON_FN_ROUTE_PLAN": "1",
+    "PAITON_FN_SCORE_LAYOUT": "3",
     "PAITON_FN_SPEC_STATE_FIX": "1",
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
+    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -645,10 +649,12 @@
    "note": "4-bit experts with the expert host tier (route 1): decode, MTP 3, 98,304-token window",
    "image_key": "image_4bit",
    "weights_key": "weights_4bit",
-   "requires": [],
+   "requires": [
+    "mtp/mtp-draft-e4m3.safetensors"
+   ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.6,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "default": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
@@ -669,8 +675,10 @@
     "PAITON_FN_EXPERT_DYN_NATIVE": "1",
     "PAITON_FN_EXPERT_DYN_NATIVE_LIB": "/opt/paiton/runtime/expert-tier/libpaiton_expert_tier.so",
     "PAITON_FN_EXPERT_DYN_START_STEP": "64",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.6,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
     "PAITON_FN_GDN_ANCHOR": "1",
+    "PAITON_FN_GDN_PF_FUSED": "1",
+    "PAITON_FN_GDN_PF_NATIVE": "1",
     "PAITON_FN_GDN_RS_FMA": "0",
     "PAITON_FN_GDN_RS_NATIVE": "1",
     "PAITON_FN_HC_CHAIN": "1",
@@ -698,10 +706,12 @@
     "PAITON_FN_QSA_FP8": "tok",
     "PAITON_FN_RECOVERSSM": "1",
     "PAITON_FN_ROUTE_PLAN": "1",
+    "PAITON_FN_SCORE_LAYOUT": "3",
     "PAITON_FN_SPEC_STATE_FIX": "1",
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
+    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -725,7 +735,7 @@
     "--max-num-batched-tokens",
     "2048",
     "--kv-cache-memory-bytes",
-    "3221225472",
+    "2147483648",
     "--no-enable-prefix-caching",
     "--language-model-only",
     "--seed",
@@ -762,10 +772,12 @@
    "note": "4-bit experts with the expert host tier (route 1): 200,000-token window, MTP off",
    "image_key": "image_4bit",
    "weights_key": "weights_4bit",
-   "requires": [],
+   "requires": [
+    "mtp/mtp-draft-e4m3.safetensors"
+   ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.6,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "default": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
