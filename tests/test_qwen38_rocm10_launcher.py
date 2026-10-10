@@ -2074,7 +2074,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
-            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache', '--lm-head', '--capture-sizes',
+            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache', '--lm-head', '--capture-sizes', '--host-pools',
             '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
             '--gpu-memory-utilization',
             '--max-num-batched-tokens')))
@@ -2156,6 +2156,39 @@ class Rocm10LauncherTests(unittest.TestCase):
                                '--kv-cache-memory-bytes', '9000000000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9000000000')
         self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'bf16'))
+
+    def test_host_pools_become_gtt_buffers_when_the_gtt_size_holds_them(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        gtt_file = self.drm / 'renderD128' / 'device' / 'mem_info_gtt_total'
+        env = '='.join(launcher.HOST_POOLS_ENV)
+        self.assertEqual(env, 'HSA_USERPTR_FOR_PAGED_MEM=0')
+        # unknown GTT size (no sysfs figure): ROCm's default everywhere, no note
+        self.assertNotIn(env, self.dry_run('--mode', 'long-kv4'))
+        gtt_file.write_text(str(8 * 1024 ** 3))        # a 16 GB host's default GTT size
+        command = self.dry_run('--mode', 'long-kv4')    # the 2.4 GiB embedding in system memory
+        self.assertIn(env, command)
+        self.assertEqual(command[command.index(env) - 1], '-e')
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        self.assertIn('as GTT buffers (HSA_USERPTR_FOR_PAGED_MEM=0; GTT size 8.0 GiB)', result.stderr)
+        # modes without pinned host tables keep ROCm's default (their commands are unchanged)
+        for options in ((), ('--mode', 'long'), ('--mode', 'long-kv4', '--no-system-memory-weights'), ('--vision',)):
+            with self.subTest(options=options):
+                self.assertNotIn(env, self.dry_run(*options))
+        # the host KV tier counts as a pinned table too
+        self.assertIn(env, self.dry_run('--mode', 'long', '--host-cache-gib', '2'))
+        # --host-pools userptr keeps the default; gtt forces it (also without tables)
+        self.assertNotIn(env, self.dry_run('--mode', 'long-kv4', '--host-pools', 'userptr'))
+        self.assertIn(env, self.dry_run('--host-pools', 'gtt'))
+        # a GTT size that cannot hold the tables plus the margin: auto keeps the default and says so; gtt is refused
+        gtt_file.write_text(str(3 * 1024 ** 3))
+        command = self.dry_run('--mode', 'long-kv4', '--ignore-vram-check')
+        self.assertNotIn(env, command)
+        result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
+        self.assertIn('as ROCm user pointers (GTT size 3.0 GiB', result.stderr)
+        self.assertIn('does not hold the 2.4 GiB of pinned host tables', self.refused('--mode', 'long-kv4',
+                                                                                     '--host-pools', 'gtt'))
 
     def test_wrappers_dry_run_from_a_clean_environment(self):
         # the README's commands as a new user runs them: env -i, a minimal PATH (no ~/.local/bin), only the PAITON_*

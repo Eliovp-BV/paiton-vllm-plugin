@@ -330,6 +330,16 @@ HOST_CACHE_SHM_MARGIN_GIB = 0.5
 LAUNCH_REFUSE_MARGIN_GIB = 1.0
 LAUNCH_WARN_MARGIN_GIB = 3.5
 RAM_TIER_WITH_EMBEDDING_MIN_GB = 32
+# --host-pools (the pinned host tables: the embedding with --system-memory-weights, the host KV tier). ROCm allocates host
+# memory as user pointers by default; the kernel's host-memory compaction can move such pages, which invalidates them and
+# pauses the process's GPU queues until they are restored (KFD evictions: short stalls under load; 2.7 s over a 3-minute
+# 8-request run on the two-GPU Flash Next image, 0.07 s with the setting below, speed unchanged, 10 Oct 2026).
+# HSA_USERPTR_FOR_PAGED_MEM=0 makes them driver-owned GTT buffers, which compaction leaves alone. They count against the
+# GPU's GTT size (the pin limit above already keeps the tables under it), so auto sets it only when that size holds the
+# pinned tables plus HOST_POOLS_GTT_MARGIN_GIB (runtime buffers that move along: staging, queues); without host tables,
+# or with an unknown GTT size, ROCm's default stays.
+HOST_POOLS_ENV = ('HSA_USERPTR_FOR_PAGED_MEM', '0')
+HOST_POOLS_GTT_MARGIN_GIB = 2.0
 
 
 # Graph capture sizes (--capture-sizes). The image's command captures steps of up to 64 tokens: eight requests decoding
@@ -543,6 +553,22 @@ def host_cache_limit_gib(embedding_in_ram=True):
         return None
     room = total - SERVER_UNPINNED_PEAK_GIB[embedding_in_ram] - HOST_RESERVE_GIB
     return max(0.0, math.floor(2 * min(room, ttm - HOST_CACHE_SHM_MARGIN_GIB)) / 2)
+
+
+def host_pools(args):
+    """(choice 'gtt' | 'userptr', GTT size GiB or None, pinned host tables GiB) for --host-pools; raises ValueError for
+    an explicit gtt that this host's GTT size cannot hold."""
+    pinned = ((SYSTEM_MEMORY_EMBEDDING_BYTES / 2 ** 30 if getattr(args, 'system_memory_weights', False) else 0.0)
+              + (getattr(args, 'host_cache_gib', None) or 0.0))
+    choice = getattr(args, 'host_pools', 'auto') or 'auto'
+    gtt = gtt_limit_gib()
+    fits = gtt is not None and gtt >= pinned + HOST_POOLS_GTT_MARGIN_GIB
+    if choice == 'auto':
+        choice = 'gtt' if pinned > 0 and fits else 'userptr'
+    elif choice == 'gtt' and gtt is not None and not fits:
+        raise ValueError(f'--host-pools gtt: the GPU\'s GTT size ({gtt:.1f} GiB) does not hold the {pinned:.1f} GiB of pinned '
+                         f'host tables plus {HOST_POOLS_GTT_MARGIN_GIB:g} GiB; use --host-pools userptr or a smaller tier')
+    return choice, gtt, pinned
 
 
 def pin_limit_text(embedding_in_ram):
@@ -775,6 +801,11 @@ def parser():
                                'prints its choice; a RAM tier adds ~0.65 s per GiB to the start; off by default')
     advanced.add_argument('--disk-cache-allow-hdd', action='store_true',
                           help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
+    advanced.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto',
+                          help='pinned host tables (the embedding in system memory, the host KV tier): gtt allocates them '
+                               'as driver-owned GTT memory, which host-memory compaction cannot move (no brief GPU '
+                               'pauses under load); userptr keeps ROCm\'s default. auto: gtt when the GPU\'s GTT size '
+                               'holds them')
     advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',
                           help='fp8: keep the checkpoint\'s FP8 output head (1.19 GiB instead of a 2.37 GiB bf16 '
                                'copy; --mode long-kv4 and --mode long give the difference to the KV cache, long-kv4: '
@@ -1507,6 +1538,8 @@ def docker_command(args, environment):
         ipc = command.index('--ipc')
         command[ipc + 1:ipc + 2] = ['private', '--shm-size',
                                     f'{math.ceil(args.host_cache_gib + DISK_TIER_SHM_HEADROOM_GIB)}g']
+    if host_pools(args)[0] == 'gtt':
+        command += ['-e', '='.join(HOST_POOLS_ENV)]      # pinned host tables as GTT buffers (host-memory compaction)
     if args.vision and kv_mode == 'kv4' and args.profile == 'chat' and not KV4_LONG_VISION_DRAFT_FP8_GEMM:
         command += ['-e', 'PAITON_DRAFT_FP8_GEMM=0']          # --mode long-kv4 --vision: ~240 MiB more headroom
     if kv_mode == 'kv4' and args.profile == 'chat' and prefix_caching_enabled(args):
@@ -1600,6 +1633,13 @@ def main(argv=None):
                           KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
+    pools, gtt, pinned = host_pools(args)
+    if pinned > 0 and gtt is not None:      # unknown GTT size: ROCm's default, silently (no amdgpu sysfs to read)
+        print(f'Note: host pools: {pinned:.1f} GiB of pinned host tables as '
+              + (f'GTT buffers (HSA_USERPTR_FOR_PAGED_MEM=0; GTT size {gtt:.1f} GiB)' if pools == 'gtt' else
+                 f'ROCm user pointers (GTT size {gtt:.1f} GiB, under the tables plus {HOST_POOLS_GTT_MARGIN_GIB:g} '
+                 'GiB); host-memory compaction can pause the GPU briefly'),
+              file=sys.stderr)
     warning = small_ram_tier_warning(args)
     if warning:
         print('Warning: ' + warning + '.', file=sys.stderr)
