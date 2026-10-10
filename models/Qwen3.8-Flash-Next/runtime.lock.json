@@ -38,6 +38,7 @@
  },
  "checkpoint": {
   "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
-  "requires": "mtp/mtp-draft-e4m3.safetensors"
+  "hf_revision": "829b089bf6636af9ffed1f333b103e4e383f7b48",
+  "requires": "mtp/mtp-draft-e4m3.safetensors (shipped in the repo)"
  }
 }

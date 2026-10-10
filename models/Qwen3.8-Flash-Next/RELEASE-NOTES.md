@@ -31,10 +31,10 @@ wire).
 ## Next release
 - RAM and SSD KV-cache tier (prefix-cache offload outside the VRAM, as on the 27B release) and the 4-bit container.
 
-## Checkpoint repo requirement
-- All rc8 modes load the W8 drafter file `mtp/mtp-draft-e4m3.safetensors` (102,479,504 bytes, sha256 706ced76...). It is NOT yet in
-  EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4: the upload (file + SHA256SUMS line) needs the user's approval; the launcher refuses an rc8
-  mode when the file is missing from the local checkpoint copy.
+## Checkpoint repo
+- All modes load the W8 drafter file `mtp/mtp-draft-e4m3.safetensors` shipped in EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 (verified by
+  SHA256SUMS together with the other files on the first start).
+- Both released modes use the bf16 KV cache; no released mode uses fp8 KV (measured, not adopted).
 
 ## Prerequisites
 - Docker with GPU device access, python3 >= 3.10, `pip install huggingface_hub` (downloads go through the Python API; the `hf` command is only a

@@ -49,7 +49,7 @@
  "checkpoint_download": {
   "repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
   "sha256sums_verified": true,
-  "note": "mtp/mtp-draft-e4m3.safetensors is required by every mode and is uploaded with the release"
+  "note": "mtp/mtp-draft-e4m3.safetensors is required by every mode and is in the repo (verified by SHA256SUMS)"
  },
  "frameworks": "regular vLLM 0.29 with the Paiton plugin and native kernels; no separate engine"
 }

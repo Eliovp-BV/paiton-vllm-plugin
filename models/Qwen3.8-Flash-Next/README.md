@@ -22,7 +22,7 @@ tuning, we keep optimizing. No custom engine was built: this is regular vLLM wit
 Per-category decode (tok/s): chat 202.1, code 214.3, file_edit 236.0, json 259.2, math 255.5, prose 183.3, reasoning 190.1,
 summarization 239.8. Prefill by depth (tok/s): 2K 7,925 / 8K 8,321 / 16K 8,311 / 32K 8,232 / 64K 8,161 / 128K 7,928.
 Decode and concurrency: `--mode decode` (MTP depth 3, 98,304-token window). Prefill: `--mode prefill-long` (200,000-token window,
-MTP off). Both modes also exist with exact-arithmetic prefill, about 7 % slower (`--mode decode-nopf`, `--mode prefill-long-nopf`;
+MTP off). Both modes use the bf16 KV cache (no released mode uses fp8 KV). Both modes also exist with exact-arithmetic prefill, about 7 % slower (`--mode decode-nopf`, `--mode prefill-long-nopf`;
 prefill @64K 7,607 measured on the development stack, not re-run on the image). Served long-context needles: 40/40 at 131K and at 200K.
 
 **Prefix caching (opt-in, `--prefix-caching`)**: align-mode caching of the recurrent state per 2,048-token block. A repeated 64K-token

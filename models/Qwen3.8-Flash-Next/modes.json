@@ -25,7 +25,7 @@
    "fn_mixers": "/opt/paiton/runtime/fn-mixers"
   },
   "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
-  "hf_revision": "e557a4a729150546f5a5c00675d6f5949ae52c5d",
+  "hf_revision": "829b089bf6636af9ffed1f333b103e4e383f7b48",
   "image": {
    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1",
    "digest": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191"
@@ -37,7 +37,7 @@
    "fn-mixers": "fn-mixers-9f92291e"
   },
   "plugin_snapshot": "plugin commit 8582563",
-  "note": "All modes use the W8A16 drafter view (needs mtp/mtp-draft-e4m3.safetensors in the checkpoint repo). Default modes decode / prefill-long run W8A8 prompt rows on the native GDN prefill path; the -nopf modes drop the two native-prefill flags (exact-arithmetic prefill, about 7 % slower). Numbers in README.md / BENCHMARKS.md were measured on the shipped image through launch-flashnext.py.",
+  "note": "All modes use the W8A16 drafter view (mtp/mtp-draft-e4m3.safetensors, shipped in the checkpoint repo). Default modes decode / prefill-long run W8A8 prompt rows on the native GDN prefill path; the -nopf modes drop the two native-prefill flags (exact-arithmetic prefill, about 7 % slower). Numbers in README.md / BENCHMARKS.md were measured on the shipped image through launch-flashnext.py.",
   "base_model": "Qwen/Qwen3.8-Flash-Next",
   "base_model_revision": "de4b8e4d43b917e7706784d8bb445c9af86a3540",
   "base_cfg_files": [
