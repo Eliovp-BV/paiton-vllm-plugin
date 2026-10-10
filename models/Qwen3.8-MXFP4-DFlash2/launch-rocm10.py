@@ -332,6 +332,18 @@ LAUNCH_WARN_MARGIN_GIB = 3.5
 RAM_TIER_WITH_EMBEDDING_MIN_GB = 32
 
 
+# Graph capture sizes (--capture-sizes). The image's command captures steps of up to 64 tokens: eight requests decoding
+# with seven draft tokens each fill 64, so a step that also admits a new request (its prompt, ~50-250 tokens for a chat
+# turn, plus the running requests' 8 tokens each) or reads a short prompt alone ran without a graph. wide adds
+# piecewise graphs up to 256 tokens (mixed steps pad to the next size); one-request profiles keep [1, 2, 4, 8] and the
+# --vision modes the release sizes (their VRAM budgets were measured with them). The image's compile-cache seed does
+# not depend on the sizes (vLLM compiles one graph for every step size up to --max-num-batched-tokens); the opt-in
+# --compile-cache keys its saved graphs on them, so its first start with wide compiles once.
+CAPTURE_SIZES_RELEASE = [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64]
+CAPTURE_SIZES_WIDE = CAPTURE_SIZES_RELEASE + [96, 128, 160, 192, 256]
+CAPTURE_SIZES_WIDE_DEFAULT = False       # auto: release sizes until the wide set is measured on the selected image
+
+
 def release_command(release):
     """Exact Config.Cmd of each immutable image; Docker overrides replace CMD."""
     context, sequences, cache, capture, mamba = {
@@ -769,6 +781,10 @@ def parser():
                                '628,877 instead of 569,878 tokens; the other modes keep it as headroom); needs an image '
                                'with the native FP8 head. auto: fp8 with the 3-bit weights on such images (the 5 '
                                'October image and later), bf16 otherwise')
+    advanced.add_argument('--capture-sizes', choices=('auto', 'release', 'wide'), default='auto',
+                          help='step sizes that run as captured graphs: release up to 64 tokens (the image\'s '
+                               'setting); wide up to 256, so a step that admits a new request runs captured too '
+                               '(multi-request text modes). auto: release')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -1273,10 +1289,22 @@ def engine_command(args, weights='mxfp4'):
         speculative = json.loads(command[index])
         speculative['max_model_len'] = context
         command[index] = json.dumps(speculative)
+    capture = getattr(args, 'capture_sizes', 'auto') or 'auto'
+    if capture == 'wide' and compact_graphs:
+        raise ValueError('--capture-sizes wide is for the multi-request modes; this one-request profile captures steps '
+                         'of up to 8 tokens')
+    if capture == 'wide' and args.vision:
+        raise ValueError('--capture-sizes wide is not qualified with --vision (the vision budgets were measured with the '
+                         'release sizes); drop one of them')
     if compact_graphs:
         index = command.index('--compilation-config') + 1
         compilation = json.loads(command[index])
         compilation['cudagraph_capture_sizes'] = [1, 2, 4, 8]
+        command[index] = json.dumps(compilation)
+    elif capture == 'wide' or (capture == 'auto' and CAPTURE_SIZES_WIDE_DEFAULT and not args.vision):
+        index = command.index('--compilation-config') + 1
+        compilation = json.loads(command[index])
+        compilation['cudagraph_capture_sizes'] = CAPTURE_SIZES_WIDE
         command[index] = json.dumps(compilation)
     if cache == 'auto':
         index = command.index('--kv-cache-memory-bytes')

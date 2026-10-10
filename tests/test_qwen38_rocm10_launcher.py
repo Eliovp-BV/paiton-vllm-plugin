@@ -2074,7 +2074,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',
-            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache', '--lm-head',
+            '--extend-cache', '--disk-cache-allow-hdd', '--compile-cache', '--lm-head', '--capture-sizes',
             '--system-memory-weights', '--no-system-memory-weights', '--profile', '--kv-cache-memory-bytes',
             '--gpu-memory-utilization',
             '--max-num-batched-tokens')))
@@ -2156,6 +2156,38 @@ class Rocm10LauncherTests(unittest.TestCase):
                                '--kv-cache-memory-bytes', '9000000000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9000000000')
         self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'bf16'))
+
+    def test_capture_sizes_wide_adds_admission_steps_to_the_captured_graphs(self):
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+
+        def sizes(*options):
+            engine = self.engine(self.dry_run(*options))
+            return json.loads(value(engine, '--compilation-config'))['cudagraph_capture_sizes']
+        release = [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64]
+        self.assertEqual(launcher.CAPTURE_SIZES_RELEASE, release)
+        self.assertEqual(launcher.CAPTURE_SIZES_WIDE, release + [96, 128, 160, 192, 256])
+        for mode in ('65k', 'long', 'long-kv4', 'long-512k'):
+            with self.subTest(mode=mode):
+                default = self.dry_run('--mode', mode)
+                self.assertEqual(sizes('--mode', mode, '--capture-sizes', 'release'), release)
+                self.assertEqual(sizes('--mode', mode, '--capture-sizes', 'wide'), launcher.CAPTURE_SIZES_WIDE)
+                # wide changes nothing but the capture sizes
+                wide = self.dry_run('--mode', mode, '--capture-sizes', 'wide')
+                index = default.index('--compilation-config') + 1
+                self.assertEqual(wide[:index] + wide[index + 1:], default[:index] + default[index + 1:])
+                expected = launcher.CAPTURE_SIZES_WIDE if launcher.CAPTURE_SIZES_WIDE_DEFAULT else release
+                self.assertEqual(sizes('--mode', mode), expected)
+        # one-request profiles keep [1, 2, 4, 8]; vision modes keep the release sizes; wide is refused there
+        self.assertEqual(sizes('--profile', 'desktop'), [1, 2, 4, 8])
+        for options in (('--mode', '65k', '--vision'), ('--mode', 'long', '--vision'), ('--mode', 'long-kv4', '--vision')):
+            with self.subTest(options=options):
+                self.assertEqual(sizes(*options), release)
+                self.assertIn('not qualified with --vision', self.refused(*options, '--capture-sizes', 'wide'))
+        self.assertIn('one-request profile', self.refused('--profile', 'desktop', '--capture-sizes', 'wide'))
+        self.environment.pop('PAITON_W3ROT_DIR')
+        self.assertIn('one-request profile', self.refused('--mode', 'long', '--capture-sizes', 'wide'))   # MXFP4 long
 
     def test_help_describes_each_mode_on_its_own_line(self):
         result = self.run_launcher('--help')
