@@ -1,0 +1,22 @@
+{
+ "image": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191",
+ "status": "PASS",
+ "scope": "Integration validation on the shipped image through launch-flashnext.py; not an additional performance measurement",
+ "server_module": "vllm.entrypoints.openai.api_server",
+ "modes_started": [
+  "decode",
+  "prefill-long",
+  "decode-nopf",
+  "decode --prefix-caching"
+ ],
+ "requests_completed": {
+  "start_tests": 8,
+  "benchmark_decode": 160,
+  "benchmark_concurrency": 720,
+  "benchmark_prefill": 48,
+  "all_completed": true
+ },
+ "long_prompt_in_decode_mode": "7,861-token prompt answered in every mode",
+ "health_endpoint": "/health",
+ "served_model_name": "Qwen3.8-Flash-Next"
+}

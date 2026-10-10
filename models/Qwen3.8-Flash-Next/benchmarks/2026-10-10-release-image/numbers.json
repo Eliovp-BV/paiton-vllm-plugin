@@ -1,0 +1,73 @@
+{
+ "date": "2026-10-10",
+ "tool": "BetterBench 0.6.0, standard profile (20 passes per category, 48 requests per concurrency level, prefill depths 2K-128K x 8)",
+ "launch": "run-flashnext.sh (decode, concurrency) / run-flashnext-200k.sh (prefill)",
+ "note": "measured on the shipped image through launch-flashnext.py (seeded caches); the published numbers",
+ "combined": {
+  "decode_weighted_tps": 216.27103222155637,
+  "ttft_p50_ms": 116.76312214840436,
+  "update_p99_ms": 13.895738962193715
+ },
+ "decode_categories": {
+  "chat": {},
+  "code": {},
+  "file_edit": {},
+  "json": {},
+  "math": {},
+  "prose": {},
+  "reasoning": {},
+  "summarization": {}
+ },
+ "concurrency": [
+  {
+   "level": 1,
+   "aggregate_tps": 204.5834800207807,
+   "ok": 48
+  },
+  {
+   "level": 2,
+   "aggregate_tps": 315.09077481847737,
+   "ok": 48
+  },
+  {
+   "level": 4,
+   "aggregate_tps": 449.22280358532265,
+   "ok": 48
+  },
+  {
+   "level": 8,
+   "aggregate_tps": 565.0625870124828,
+   "ok": 48
+  }
+ ],
+ "prefill": [
+  {
+   "depth": 2000,
+   "pp_tps_median": 7924.743281028197
+  },
+  {
+   "depth": 8000,
+   "pp_tps_median": 8321.405877475425
+  },
+  {
+   "depth": 16000,
+   "pp_tps_median": 8310.581841760586
+  },
+  {
+   "depth": 32000,
+   "pp_tps_median": 8232.45400522267
+  },
+  {
+   "depth": 64000,
+   "pp_tps_median": 8161.224632147421
+  },
+  {
+   "depth": 128000,
+   "pp_tps_median": 7927.547300636448
+  }
+ ],
+ "prefill_exact_64000": {
+  "tok_s_full_median": 8212.2,
+  "tok_s_steady_median": 8204.0
+ }
+}

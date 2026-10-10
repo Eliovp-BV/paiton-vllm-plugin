@@ -50,24 +50,53 @@ we keep optimizing.
 - `pip install -U huggingface_hub` for the `hf` download command; ~110 GB of disk for the weights.
 - `docker pull ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1` (digest `sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191`, pinned in modes.json; the launcher pulls it by digest).
 
-## Run
+## Ways to run
+
+### Start the server
+
+Pick a row in [What you get](#what-you-get) and run its wrapper with the weights downloaded (the first run downloads and verifies them):
+
 ```bash
-./launch-flashnext.py                      # decode mode on port 18982, downloads + verifies the weights on first use
-./launch-flashnext.py --mode prefill-long  # 200K-token prompts
-./launch-flashnext.py --mode decode-nopf   # exact GDN prefill path (also prefill-long-nopf)
-./launch-flashnext.py --prefix-caching     # opt-in prefix caching (any mode)
-./launch-flashnext.py --dry-run            # print the docker command only
+bash models/Qwen3.8-Flash-Next/run-flashnext.sh            # decode mode (default): 98,304-token window, speculative decoding on
+bash models/Qwen3.8-Flash-Next/run-flashnext-200k.sh       # 200,000-token mode (prefill-long): speculative decoding off
+bash models/Qwen3.8-Flash-Next/run-flashnext-exact.sh      # exact-arithmetic prefill, about 7 % slower
+bash models/Qwen3.8-Flash-Next/run-flashnext-cached.sh     # decode mode with the prefix-caching opt-in
 ```
-The OpenAI-compatible API serves model name `Qwen3.8-Flash-Next` at `http://127.0.0.1:18982/v1`. First start of a mode copies the
-baked compile cache (no cold compile); starts take ~3-5 minutes (weight load dominates).
+
+The wrappers call the launcher; the same thing by hand:
+
+```bash
+python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode decode|prefill-long|decode-nopf|prefill-long-nopf [--prefix-caching] [--dry-run]
+```
+
+The server runs in the foreground; add `--detach` to run it in the background (`docker logs -f paiton-flashnext` follows its log). The
+first start of a mode copies the baked compile cache and takes about **five to six minutes** (weight loading dominates); wait for
+`/health` to succeed.
+
+**API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8-Flash-Next` · **API key:** none (enter any value if a client asks)
+
+From another terminal:
+
+```bash
+curl --fail http://127.0.0.1:18982/health
+curl --fail http://127.0.0.1:18982/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"Qwen3.8-Flash-Next","messages":[{"role":"user","content":"Write a Python function to remove duplicates from a list."}],"max_tokens":256,"stream":true}'
+```
+
+- **Stop** with `docker stop paiton-flashnext` (or the name of the wrapper you started) before switching to another mode.
+- **Long prompts:** send prompts of 100K+ tokens from a file (`-d @request.json`) with a client timeout of a few minutes (a 190K-token prompt
+  takes about 25 s to read in the 200K mode).
 
 ## Options
 `--mode decode|prefill-long|decode-nopf|prefill-long-nopf`, `--prefix-caching`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
 `--served-model-name`, `--detach`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
 
 ## Files
-`launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
-per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release was built from and tested with).
+`run-flashnext*.sh` (the four wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
+per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release was built from and tested with),
+`Dockerfile` + `prepare_image_context.py` + `build-context.lock.json` (rebuild the image from locked inputs, see REPRODUCE.md), `release-audit.json`,
+`deployment-check.json`, `metrics.json` and `benchmarks/` (the raw BetterBench outputs of the published run).
 
 ## Limitations (draft)
 - 98,304-token window in decode mode (MTP pool); 200,000 in prefill-long mode with MTP off; vision not validated; prefix caching is an

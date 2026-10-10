@@ -1,0 +1,55 @@
+{
+ "tokens": 64000,
+ "chunk": 2048,
+ "chunk_runs": [
+  {
+   "prompt_tokens": 2048,
+   "ttft_s": 0.2599
+  },
+  {
+   "prompt_tokens": 2048,
+   "ttft_s": 0.2593
+  }
+ ],
+ "runs": [
+  {
+   "prompt_tokens": 64000,
+   "exact": true,
+   "ttft_s": 8.34,
+   "tok_s_full": 7673.5,
+   "tok_s_steady": 7666.6,
+   "warmup": false
+  },
+  {
+   "prompt_tokens": 64000,
+   "exact": true,
+   "ttft_s": 8.345,
+   "tok_s_full": 7669.5,
+   "tok_s_steady": 7662.4,
+   "warmup": false
+  },
+  {
+   "prompt_tokens": 64000,
+   "exact": true,
+   "ttft_s": 8.339,
+   "tok_s_full": 7675.0,
+   "tok_s_steady": 7668.1,
+   "warmup": false
+  },
+  {
+   "prompt_tokens": 64000,
+   "exact": true,
+   "ttft_s": 8.341,
+   "tok_s_full": 7673.2,
+   "tok_s_steady": 7666.3,
+   "warmup": false
+  }
+ ],
+ "summary": {
+  "t_chunk_s": 0.2596,
+  "ttft_median_s": 8.34,
+  "tok_s_full_median": 7673.4,
+  "tok_s_steady_median": 7666.5,
+  "all_exact": true
+ }
+}

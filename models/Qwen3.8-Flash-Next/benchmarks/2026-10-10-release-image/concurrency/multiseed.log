@@ -1,0 +1,13 @@
+[multiseed] seed 11 prompt 0: ttft 0.106 s, 256 tokens, decode 247.5 tok/s
+[multiseed] seed 11 prompt 1: ttft 0.083 s, 256 tokens, decode 219.9 tok/s
+[multiseed] seed 11 prompt 2: ttft 0.078 s, 256 tokens, decode 196.0 tok/s
+[multiseed] seed 11 prompt 3: ttft 0.093 s, 256 tokens, decode 199.4 tok/s
+[multiseed] seed 22 prompt 0: ttft 0.086 s, 256 tokens, decode 260.7 tok/s
+[multiseed] seed 22 prompt 1: ttft 0.087 s, 256 tokens, decode 207.2 tok/s
+[multiseed] seed 22 prompt 2: ttft 0.093 s, 256 tokens, decode 198.2 tok/s
+[multiseed] seed 22 prompt 3: ttft 0.100 s, 256 tokens, decode 215.1 tok/s
+[multiseed] seed 33 prompt 0: ttft 0.091 s, 256 tokens, decode 258.8 tok/s
+[multiseed] seed 33 prompt 1: ttft 0.088 s, 256 tokens, decode 213.9 tok/s
+[multiseed] seed 33 prompt 2: ttft 0.083 s, 256 tokens, decode 197.8 tok/s
+[multiseed] seed 33 prompt 3: ttft 0.075 s, 256 tokens, decode 198.0 tok/s
+[multiseed] summary {"seeds": [11, 22, 33], "tokens": 256, "prompts": 4, "per_seed_median_tok_s": {"11": 209.65, "22": 211.14999999999998, "33": 205.95}, "overall_median_tok_s": 210.55, "overall_min_tok_s": 196.0, "overall_max_tok_s": 260.7, "ttft_median_s": 0.08781567100959364}

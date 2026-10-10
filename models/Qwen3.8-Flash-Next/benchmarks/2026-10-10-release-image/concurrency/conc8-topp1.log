@@ -1,0 +1,1 @@
+[conc8] round 0: ok 8/8, wall 3.3 s, aggregate 615.5 tok/s, max in flight 8, all first tokens by 0.474 s, earliest finish 2.852 s, TTFT ms [246.0, 344.8, 470.1, 470.2, 471.6, 471.8, 472.8, 473.2], per-request decode tok/s [85.5, 89.4, 89.7, 90.7, 96.1, 97.1, 105.9, 107.2], gap p50 (median) 29.67 ms, gap p99 (max) 100.23 ms

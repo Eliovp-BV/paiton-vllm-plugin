@@ -1,0 +1,1 @@
+{"baseline_gib": 0.06, "peak_gib": 31.53, "samples": 2286, "cards": ["/sys/class/drm/renderD128/device/mem_info_vram_used", "/sys/class/drm/renderD129/device/mem_info_vram_used"], "baseline_per_card_gib": [0.06, 0.06], "peak_per_card_gib": [31.47, 31.53], "peak_sum_gib": 62.97, "guard": "per card > 31.6 GiB x4 samples"}

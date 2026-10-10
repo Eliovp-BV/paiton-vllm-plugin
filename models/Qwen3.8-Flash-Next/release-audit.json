@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "status": "PASS",
+ "image_id": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191",
+ "registry_image": "ghcr.io/eliovp/paiton-vllm-plugin@sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191",
+ "registry_manifest_digest_equals_image_id": true,
+ "base_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80",
+ "release_scan": {
+  "status": "PASS",
+  "checks": [
+   "canary",
+   "manifest_keys",
+   "seed_manifest",
+   "so_symtab",
+   "so_path_strings",
+   "source_files",
+   "forbidden_files",
+   "grep rules"
+  ],
+  "allowed_hits": {
+   "so_path_strings": 3,
+   "grep:isa_": 236,
+   "grep:source_sha256": 9,
+   "grep:/home/": 1
+  }
+ },
+ "runtime_bundles": {
+  "count": 3,
+  "code_sections_identical_to_benchmarked": true,
+  "symbol_tables_stripped": true,
+  "manifests_pinned_to_shipped_files": true
+ },
+ "plugin_package": {
+  "commit": "8582563",
+  "identical_to_benchmarked": true,
+  "docstrings_stripped": true
+ },
+ "start_tests_on_image": {
+  "decode": "PASS, health 351 s (seeded fresh cache), two completions, 0 errors",
+  "prefill-long": "PASS, health 280 s",
+  "decode-nopf": "PASS, health 316 s",
+  "decode --prefix-caching": "PASS, health 315 s"
+ },
+ "benchmark_on_image": {
+  "status": "PASS",
+  "rule": "every published line within 2 % of the preceding development-stack run",
+  "folder": "benchmarks/2026-10-10-release-image"
+ },
+ "checkpoint_download": {
+  "repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
+  "sha256sums_verified": true,
+  "note": "mtp/mtp-draft-e4m3.safetensors is required by every mode and is uploaded with the release"
+ },
+ "frameworks": "regular vLLM 0.29 with the Paiton plugin and native kernels; no separate engine"
+}

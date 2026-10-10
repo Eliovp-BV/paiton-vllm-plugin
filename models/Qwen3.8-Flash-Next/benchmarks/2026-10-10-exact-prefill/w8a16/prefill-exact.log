@@ -1,0 +1,6 @@
+[exact 64000] warm-up tokens 64000 TTFT 8.664 s full 7387.3 tok/s steady 7377.8 tok/s
+[exact 64000] run tokens 64000 TTFT 8.654 s full 7395.8 tok/s steady 7386.6 tok/s
+[exact 64000] run tokens 64000 TTFT 8.64 s full 7407.4 tok/s steady 7398.5 tok/s
+[exact 64000] run tokens 64000 TTFT 8.658 s full 7391.8 tok/s steady 7382.4 tok/s
+[exact 64000] run tokens 64000 TTFT 8.666 s full 7385.0 tok/s steady 7375.5 tok/s
+summary {'t_chunk_s': 0.2664, 'ttft_median_s': 8.656, 'tok_s_full_median': 7393.8, 'tok_s_steady_median': 7384.5, 'all_exact': True}
