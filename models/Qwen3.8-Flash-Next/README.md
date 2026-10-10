@@ -45,10 +45,16 @@ activations on the wire (no compressed wire); 20 passes per category after warm-
 The RAM and SSD KV-cache tier (prefix-cache offload outside the VRAM, as on the 27B release), then the 4-bit container. We keep tuning,
 we keep optimizing.
 
+## Prerequisites
+- Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`; groups `video`, `render`).
+- `python3` 3.10 or newer and the Hugging Face hub package: `pip install huggingface_hub` (the launcher downloads the weights and the base
+  model's tokenizer files through it; the `hf` / `huggingface-cli` binaries are only a fallback).
+- Disk: about 116 GB for the weights plus a few MB for the runtime view and ~0.3 GB per mode of compile cache; the image is 41 GB.
+- `launch-flashnext.py --dry-run` checks these prerequisites and prints exactly what is missing.
+
 ## Set up
-- Two AMD Radeon AI PRO R9700 (32 GiB each), ROCm 10 host driver, Docker with `/dev/kfd` and `/dev/dri` access (groups `video`, `render`).
-- `pip install -U huggingface_hub` for the `hf` download command; ~110 GB of disk for the weights.
-- `docker pull ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1` (digest `sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191`, pinned in modes.json; the launcher pulls it by digest).
+- `pip install huggingface_hub`; the first start downloads and verifies the weights (SHA256SUMS) into `--weights` (default `~/paiton-models/Qwen3.8-Flash-Next-W3A8`).
+- `docker pull ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1` (digest `sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191`, pinned in modes.json; the launcher pulls it by digest if missing).
 
 ## Ways to run
 

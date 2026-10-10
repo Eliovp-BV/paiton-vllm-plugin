@@ -36,6 +36,10 @@ wire).
   EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4: the upload (file + SHA256SUMS line) needs the user's approval; the launcher refuses an rc8
   mode when the file is missing from the local checkpoint copy.
 
+## Prerequisites
+- Docker with GPU device access, python3 >= 3.10, `pip install huggingface_hub` (downloads go through the Python API; the `hf` command is only a
+  fallback), two AMD GPUs visible, ~116 GB of disk for the weights. `launch-flashnext.py --dry-run` prints what is missing.
+
 ## Launcher behaviour
 - The checkpoint repo (EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4) is the Paiton container export: a descriptor `config.json`,
   `manifest.json`, `layers/`, `common/`, `mtp/`, `SHA256SUMS`. It carries no base-model config or tokenizer.

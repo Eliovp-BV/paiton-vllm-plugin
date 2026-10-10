@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Qwen3.8 Flash Next on two AMD R9700 (ROCm 10, vLLM 0.29, tensor parallel 2) with the Paiton plugin image.
 
-Modes (modes.json, generated from the measured benchmark runs):
-  decode        default: MTP depth 3, 98,304-token window, KV 1.6 GiB per card, graph mode   (decode / concurrency numbers)
-  prefill-long  200,000-token window, MTP off, 3 GiB KV per card, sequence-parallel prefill   (prefill numbers)
-Usage: launch-flashnext.py [--mode decode|prefill-long] [--port 18982] [--name paiton-flashnext] [--detach] [--dry-run]
+Modes (modes.json, from the measured runs on this image):
+  decode             default: MTP depth 3, 98,304-token window, KV 1.6 GiB per card              (decode / concurrency numbers)
+  prefill-long       200,000-token window, MTP off, 3 GiB KV per card                            (prefill numbers)
+  decode-nopf / prefill-long-nopf   the same with exact-arithmetic prefill (about 7 % slower)
+  --prefix-caching   opt-in on any mode: align-mode prefix caching (byte-identical hits)
+Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
+  (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
+Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--name paiton-flashnext] [--detach] [--dry-run]
        [--weights DIR] [--cache DIR] [--image REF] [--devices GPU-xxx,GPU-yyy] [--served-model-name Qwen3.8-Flash-Next]
 Weights: downloaded once from the Hugging Face repo in modes.json (pinned revision, SHA256SUMS verified) into --weights.
 """
@@ -28,14 +32,44 @@ def render_gid():
     try: return subprocess.run(['getent', 'group', 'render'], capture_output=True, text=True).stdout.split(':')[2]
     except Exception: return None
 
+def hf_download(repo, revision, dest, patterns=None, dry=False):
+    """Download repo files (all, or the allow_patterns) at a pinned revision into dest: huggingface_hub API first, the hf /
+    huggingface-cli binaries as a fallback, otherwise one clear line instead of a traceback."""
+    what = f'{repo}@{revision[:12]}' + (f' ({len(patterns)} files)' if patterns else ' (all files)')
+    if dry: print(f'download (dry run): {what} -> {dest}'); return
+    try:
+        from huggingface_hub import snapshot_download
+    except ImportError:
+        exe = shutil.which('hf') or shutil.which('huggingface-cli')
+        if not exe: sys.exit('missing dependency: the huggingface_hub Python package (pip install huggingface_hub) or the hf command on PATH')
+        cmd = [exe, 'download', repo, '--revision', revision, '--local-dir', str(dest)] + sum((['--include', f] for f in (patterns or [])), [])
+        print('download:', ' '.join(cmd)); subprocess.run(cmd, check=True); return
+    print(f'download: {what} -> {dest}')
+    snapshot_download(repo_id=repo, revision=revision, local_dir=str(dest), allow_patterns=patterns)
+
+def sha256_file(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 24), b''): h.update(chunk)
+    return h.hexdigest()
+
+def verify_sums(d):
+    bad, n = [], 0
+    for line in (d / 'SHA256SUMS').read_text().splitlines():
+        parts = line.split(None, 1)
+        if len(parts) != 2: continue
+        want, rel = parts[0], parts[1].strip().lstrip('*'); n += 1
+        if not (d / rel).exists() or sha256_file(d / rel) != want: bad.append(rel)
+    if bad: sys.exit(f'weights: {len(bad)} of {n} files fail SHA256SUMS in {d}: {bad[:5]}')
+    print(f'weights: SHA256SUMS verified ({n} files)')
+
 def ensure_weights(d, dry):
     d = pathlib.Path(d)
     if (d / 'SHA256SUMS').exists() and (d / 'model.safetensors').exists():
-        print(f'weights: {d} (present; run `sha256sum -c SHA256SUMS` there to re-verify)'); return d
-    cmd = ['hf', 'download', COMMON['hf_repo'], '--revision', COMMON['hf_revision'], '--local-dir', str(d)]
-    print('weights: downloading:', ' '.join(cmd))
-    if not dry:
-        subprocess.run(cmd, check=True); subprocess.run(['sha256sum', '--quiet', '-c', 'SHA256SUMS'], cwd=d, check=True); print('weights: SHA256SUMS verified')
+        print(f'weights: {d} (present; delete SHA256SUMS to force a re-download, or re-verify with `sha256sum -c SHA256SUMS` there)'); return d
+    hf_download(COMMON['hf_repo'], COMMON['hf_revision'], d, dry=dry)
+    if not dry: verify_sums(d)
     return d
 
 
@@ -43,10 +77,25 @@ def ensure_base_cfg(d, dry):
     """Base model's config + tokenizer files (pinned revision) next to the weights; the container export does not carry them."""
     d = pathlib.Path(d)
     if all((d / f).exists() for f in COMMON['base_cfg_files']): return d
-    cmd = ['hf', 'download', COMMON['base_model'], '--revision', COMMON['base_model_revision'], '--local-dir', str(d)] + sum((['--include', f] for f in COMMON['base_cfg_files']), [])
-    print('base model files: downloading:', ' '.join(cmd))
-    if not dry: subprocess.run(cmd, check=True)
+    hf_download(COMMON['base_model'], COMMON['base_model_revision'], d, patterns=list(COMMON['base_cfg_files']), dry=dry)
     return d
+
+def prerequisites(tp):
+    """What a user needs; prints exactly what is missing (also in --dry-run) and stops unless everything is there."""
+    missing = []
+    if sys.version_info < (3, 10): missing.append(f'python3 >= 3.10 (this is {sys.version.split()[0]})')
+    if not shutil.which('docker'): missing.append('docker (the docker command is not on PATH)')
+    else:
+        r = subprocess.run(['docker', 'info', '--format', '{{.ServerVersion}}'], capture_output=True, text=True)
+        if r.returncode != 0: missing.append('docker daemon access (`docker info` failed: ' + (r.stderr.strip().splitlines() or ['no details'])[-1][:100] + ')')
+    try: import huggingface_hub  # noqa: F401
+    except ImportError:
+        if not (shutil.which('hf') or shutil.which('huggingface-cli')): missing.append('the huggingface_hub Python package: pip install huggingface_hub')
+    if not os.path.exists('/dev/kfd'): missing.append('/dev/kfd (ROCm kernel driver not loaded)')
+    gpus = amd_gpus()
+    if len(gpus) < tp: missing.append(f'{tp} AMD GPUs visible (found {len(gpus)}: {gpus})')
+    print('prerequisites:', 'all present' if not missing else 'MISSING -> ' + '; '.join(missing))
+    return missing
 
 def ensure_view(weights, view, base_cfg, dry):
     """Runtime view for vLLM (as the benchmarks used): base config with the Paiton quantization block + tokenizer files, and links
@@ -60,6 +109,7 @@ def ensure_view(weights, view, base_cfg, dry):
     for k, rel in COMMON.get('view_links_optional', {}).items():   # files some modes need (checked per mode via 'requires')
         if (weights / rel).exists(): links[k] = f'{ck}/{rel}'
     missing = [tgt for tgt in links.values() if not (weights / tgt[len(ck) + 1:]).exists()]
+    if missing and dry: print(f'view (dry run): built after the download ({len(missing)} files not present yet)'); return view
     if missing: sys.exit(f'weights incomplete, missing: {missing[:4]}')
     if (view / 'config.json').exists() and all((view / k).is_symlink() for k in links): print(f'view: {view} (present)'); return view
     print(f'view: building {view} ({len(layers)} layers)')
@@ -82,10 +132,12 @@ def main():
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
     ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
+    missing = prerequisites(COMMON['tp'])
+    if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
     for rel in m.get('requires', []):
         if not (pathlib.Path(a.weights) / rel).exists() and not a.dry_run: sys.exit(f'mode {a.mode} needs {rel} in the checkpoint dir (not in this copy of the repo)')
     gpus = a.devices.split(',') if a.devices else amd_gpus()
-    if len(gpus) < COMMON['tp']: sys.exit(f'need {COMMON["tp"]} AMD GPUs, found {gpus}')
+    if len(gpus) < COMMON['tp'] and not a.dry_run: sys.exit(f'need {COMMON["tp"]} AMD GPUs, found {gpus}')
     gpus = gpus[:COMMON['tp']]
     image = a.image or (COMMON['image']['tag'] + ('@' + COMMON['image']['digest'] if COMMON['image']['digest'] != 'PIN-ME' else ''))
     weights = ensure_weights(a.weights, a.dry_run)
