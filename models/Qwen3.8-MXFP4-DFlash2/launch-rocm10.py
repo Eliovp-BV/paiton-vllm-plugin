@@ -240,11 +240,20 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # C8 +14.5 % (those take the full-vocab head). Since the 6 October launcher update --mode long-kv4 (text) selects it by
 # default on the images that carry the bundle (--lm-head auto; gate D, 6 Oct 2026, published 5 October image: 131K NLL
 # equal on every bucket, needles 131K/258K 4/4, pool 569,878 -> 628,877 tokens); --lm-head bf16 restores the bf16 head
-# and the 850-block budget. The other modes keep the bf16 head (not measured there); images without the bundle refuse fp8.
+# and the 850-block budget. Images without the bundle refuse fp8.
+# Since the 10 October launcher update every 3-bit mode selects it by default on those images (--lm-head auto): the head
+# is the checkpoint's own FP8 tensor in both forms (the bf16 copy is its dequantized form), so the change is the kernel
+# that applies it. --mode long (text) gives the freed VRAM to its fp8 KV cache like long-kv4 (W3_LONG_LMHEAD_W8_POOL_BYTES);
+# the other 3-bit modes keep their measured KV budgets and gain the 1.18 GiB as headroom (65k with and without --vision,
+# --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
 LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1',)
 LMHEAD_W8_POOL_BLOCKS = 88
+LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
 W3_LONG_SYSMEM_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + 2500000000
+# --mode long (text, 3-bit, fp8 KV, embedding on the GPU) with the FP8 head: the release budget plus the freed bytes
+# (gate q27head, 10 Oct 2026; see REFERENCE.md for the measured pool, VRAM peak and BetterBench rows).
+W3_LONG_LMHEAD_W8_KV_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + LMHEAD_W8_POOL_BYTES
 # --disk-cache-dir (experimental, with --host-cache-gib): evicted host-tier blocks also go to files under DIR (vLLM's
 # TieringOffloadingSpec, file-system tier; every block passes through the host tier first). vLLM names its folder
 # after the served model path, dtype and cache groups only, which are the same for both weight sets of this launcher,
@@ -460,12 +469,16 @@ def image_has_lmhead_w8(args):
     return bool(LMHEAD_W8_IMAGE_SUFFIXES) and name.endswith(LMHEAD_W8_IMAGE_SUFFIXES)
 
 
-def lm_head_mode(args):
+def lm_head_mode(args, weights=None):
+    """'fp8' or 'bf16'. auto: fp8 with the 3-bit weights on images that carry the native FP8 head, bf16 otherwise.
+    weights: the resolved weights ('w3a4' or 'mxfp4'); callers without it are the 4-bit cache's paths, which serve the
+    3-bit weights only."""
     choice = getattr(args, 'lm_head', 'auto') or 'auto'
     if choice == 'fp8' and not image_has_lmhead_w8(args) and not args.image:
         raise ValueError('--lm-head fp8 needs an image with the native FP8 head (pass it with --image)')
     if choice == 'auto':
-        return 'fp8' if image_has_lmhead_w8(args) and text_long_kv4(args) else 'bf16'
+        three_bit = weights == 'w3a4' if weights is not None else (text_long_kv4(args) or args.kv_cache == 'kv4')
+        return 'fp8' if image_has_lmhead_w8(args) and three_bit else 'bf16'
     return choice
 
 
@@ -752,9 +765,10 @@ def parser():
                           help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
     advanced.add_argument('--lm-head', choices=('auto', 'bf16', 'fp8'), default='auto',
                           help='fp8: keep the checkpoint\'s FP8 output head (1.19 GiB instead of a 2.37 GiB bf16 '
-                               'copy; --mode long-kv4 gives the difference to the KV cache: 628,877 instead of 569,878 '
-                               'tokens); needs an image with the native FP8 head. auto: fp8 in --mode long-kv4 (with or without --vision) '
-                               'on such images (the 5 October image and later), bf16 otherwise')
+                               'copy; --mode long-kv4 and --mode long give the difference to the KV cache, long-kv4: '
+                               '628,877 instead of 569,878 tokens; the other modes keep it as headroom); needs an image '
+                               'with the native FP8 head. auto: fp8 with the 3-bit weights on such images (the 5 '
+                               'October image and later), bf16 otherwise')
     advanced.add_argument('--compile-cache', action='store_true',
                           help='keep compiled graphs under PAITON_CACHE_DIR so later starts of the same image, weights '
                                'and settings skip compilation; off by default')
@@ -1221,7 +1235,7 @@ def engine_command(args, weights='mxfp4'):
         if args.gpu_memory_utilization is not None:
             cache = 'auto'
         elif args.vision and long_w3 and sysmem and kv_cache_mode(args, weights) == 'kv4':
-            cache = (W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES if lm_head_mode(args) == 'fp8'
+            cache = (W3_LONG_KV4_VISION_SYSMEM_LMHEAD_W8_CACHE_BYTES if lm_head_mode(args, weights) == 'fp8'
                      else W3_LONG_KV4_VISION_SYSMEM_CACHE_BYTES)
         elif args.vision and long_w3:
             cache = W3_LONG_VISION_KV_CACHE_BYTES
@@ -1230,14 +1244,19 @@ def engine_command(args, weights='mxfp4'):
         elif chat and long_w3 and sysmem:
             if kv_cache_mode(args, weights) != 'kv4':
                 cache = W3_LONG_SYSMEM_CACHE_BYTES
-            elif lm_head_mode(args) == 'fp8':
+            elif lm_head_mode(args, weights) == 'fp8':
                 cache = W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES
             else:
                 cache = W3_LONG_KV4_SYSMEM_CACHE_BYTES
         elif desktop:
             cache = 2 * 1024**3          # the desktop profile keeps its 2 GiB budget, with or without --vision
         elif chat and long_w3:
-            cache = W3_LONG_KV4_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4' else W3_LONG_KV_CACHE_BYTES
+            if kv_cache_mode(args, weights) == 'kv4':
+                cache = W3_LONG_KV4_CACHE_BYTES
+            elif lm_head_mode(args, weights) == 'fp8':      # --mode long (text): the FP8 head's freed VRAM as KV cache
+                cache = W3_LONG_LMHEAD_W8_KV_CACHE_BYTES
+            else:
+                cache = W3_LONG_KV_CACHE_BYTES
         elif chat:
             cache = 8 * 1024**3
         elif args.vision:
@@ -1493,7 +1512,7 @@ def docker_command(args, environment):
             command += ['-e', variable + '=' + state]
     if weights == 'w3a4' and not args.vision:
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
-    if lm_head_mode(args) == 'fp8':
+    if lm_head_mode(args, weights) == 'fp8':
         command += ['-e', 'PAITON_LMHEAD_W8=1']
     if args.detach:
         command.append('--detach')

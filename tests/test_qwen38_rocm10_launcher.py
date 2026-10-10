@@ -536,7 +536,10 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(json.loads(value(engine, '--speculative-config'))['max_model_len'], int(context))
                 self.assertEqual(value(engine, '--max-num-seqs'), '8')
                 self.assertEqual(value(engine, '--max-num-batched-tokens'), '4096')
-                self.assertEqual(value(engine, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV_CACHE_BYTES))
+                # the FP8 head (the default with the 3-bit weights on the release image) frees its VRAM to the cache
+                self.assertIn('PAITON_LMHEAD_W8=1', command)
+                self.assertEqual(value(engine, '--kv-cache-memory-bytes'),
+                                 str(launcher.W3_LONG_LMHEAD_W8_KV_CACHE_BYTES))
                 self.assertEqual(json.loads(value(engine, '--compilation-config'))['cudagraph_capture_sizes'],
                                  [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64])
                 self.assertEqual(value(engine, '--mamba-cache-mode'), 'align')
@@ -1031,7 +1034,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         # what the two long presets stand for: one pinned image, eight requests, the capped allocator, prefix caching;
         # fp8 with its budget, or the 4-bit cache with the embedding in system memory and its own budget
         image = launcher.IMAGES['65k']
-        for mode, kv4, prefix, budget in (('long', '0', '--enable-prefix-caching', launcher.W3_LONG_KV_CACHE_BYTES),
+        for mode, kv4, prefix, budget in (('long', '0', '--enable-prefix-caching',
+                                           launcher.W3_LONG_KV_CACHE_BYTES + launcher.LMHEAD_W8_POOL_BLOCKS * 14336000),
                                           ('long-kv4', '1', '--enable-prefix-caching', (850 + launcher.LMHEAD_W8_POOL_BLOCKS) * 14336000)):
             with self.subTest(mode=mode):
                 command = self.dry_run('--mode', mode)
@@ -1711,7 +1715,8 @@ class Rocm10LauncherTests(unittest.TestCase):
 
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
-        # MXFP4 and the 3-bit weights outside --mode long-kv4: the same serving command on every image
+        # MXFP4 and the 3-bit weights outside --mode long-kv4: the same serving command on every image (the 3-bit weights
+        # on the current image with --lm-head bf16: older images have no FP8 head)
         for w3, options in ((False, ()), (False, ('--mode', 'long')), (False, ('--vision',)),
                             (False, ('--mode', '65k', '--vision')), (True, ()), (True, ('--mode', 'long')),
                             (True, ('--mode', 'long', '--vision')), (True, ('--vision',))):
@@ -1720,7 +1725,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
             for old in (self.R1_IMAGE, self.R2_IMAGE):
                 with self.subTest(w3=w3, options=options, old=old):
-                    self.assertEqual(self.dry_run(*options, '--image', old), on(old, options))
+                    self.assertEqual(self.dry_run(*options, '--image', old),
+                                     on(old, options + (('--lm-head', 'bf16') if w3 else ())))
         # --mode long-kv4 on the 2 October image: as released, without prefix caching and with the embedding on the GPU
         command = self.dry_run('--mode', 'long-kv4', '--image', self.R1_IMAGE)
         self.assertIn('--no-enable-prefix-caching', command)
@@ -2093,9 +2099,33 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.dry_run('--mode', 'long-kv4', '--lm-head', 'bf16')
         self.assertNotIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))
-        # the other modes keep the bf16 head (not measured there), also --mode long-kv4 --vision and long-512k
-        for options in (('--mode', 'long'), ('--mode', '65k')):
+        # since the 10 October update every 3-bit mode takes the FP8 head; --mode long gives its freed VRAM to the fp8
+        # cache, the others keep their budgets (headroom); --lm-head bf16 restores each mode's previous command
+        for options, budget in ((('--mode', 'long'), launcher.W3_LONG_KV_CACHE_BYTES + 88 * block),
+                                (('--mode', '65k'), launcher.W3_KV4_CACHE_BYTES),
+                                (('--mode', '65k', '--kv-cache', 'fp8'), launcher.W3_KV_CACHE_BYTES),
+                                (('--mode', '65k', '--vision'), launcher.VISION_KV_CACHE_BYTES['w3a4', 'kv4']),
+                                (('--mode', 'long', '--vision'), launcher.W3_LONG_VISION_KV_CACHE_BYTES),
+                                (('--mode', 'long-512k'), launcher.W3_LONG_KV4_YARN_CACHE_BYTES),
+                                (('--profile', 'desktop'), 2 * 1024 ** 3)):
+            with self.subTest(options=options):
+                command = self.dry_run(*options)
+                self.assertIn('PAITON_LMHEAD_W8=1', command)
+                self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(budget))
+                previous = self.dry_run(*options, '--lm-head', 'bf16')
+                self.assertNotIn('PAITON_LMHEAD_W8=1', previous)
+                # the same command without the head's variable (and, in --mode long, with the previous budget)
+                stripped = list(command)
+                index = stripped.index('PAITON_LMHEAD_W8=1')
+                del stripped[index - 1:index + 1]
+                if options == ('--mode', 'long'):
+                    stripped[stripped.index('--kv-cache-memory-bytes') + 1] = str(launcher.W3_LONG_KV_CACHE_BYTES)
+                self.assertEqual(stripped, previous)
+        # the MXFP4 weights keep the bf16 head
+        self.environment.pop('PAITON_W3ROT_DIR')
+        for options in ((), ('--mode', 'long'), ('--vision',)):
             self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run(*options), options)
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         command = self.dry_run('--mode', 'long-kv4', '--vision')        # gate V (6 Oct): the same head with images
         self.assertIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str((740 + 88) * block))
@@ -2112,12 +2142,15 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--kv-cache-memory-bytes'),
                          str((850 + launcher.LMHEAD_W8_POOL_BLOCKS) * block))
         self.assertEqual(launcher.LMHEAD_W8_POOL_BLOCKS, 88)
-        # other modes keep their budgets (the freed VRAM stays headroom there); an explicit budget still wins
-        for mode in ('65k', 'long'):
+        # on an image without the bundle an explicit fp8 head: 65k keeps its budget (headroom), --mode long takes the
+        # freed VRAM as cache; an explicit budget still wins
+        for mode, extra in (('65k', 0), ('long', 88 * block)):
             with self.subTest(mode=mode):
                 plain = self.dry_run('--mode', mode, '--image', image)
                 fp8 = self.dry_run('--mode', mode, '--image', image, '--lm-head', 'fp8')
-                self.assertEqual(value(plain, '--kv-cache-memory-bytes'), value(fp8, '--kv-cache-memory-bytes'))
+                self.assertNotIn('PAITON_LMHEAD_W8=1', plain)
+                self.assertEqual(int(value(plain, '--kv-cache-memory-bytes')) + extra,
+                                 int(value(fp8, '--kv-cache-memory-bytes')))
                 self.assertIn('PAITON_LMHEAD_W8=1', fp8)
         command = self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'fp8',
                                '--kv-cache-memory-bytes', '9000000000')
