@@ -9,6 +9,8 @@ MXFP4 for the highest accuracy, 3-bit for speed, `--mode long` for one long docu
 agents (prefix caching, about 629K tokens of cache, 555K with images; add `--extend-cache` to keep more in system
 RAM or on an SSD), opt-in `--mode long-512k` for up to 524K, `--vision` for images.
 
+**Have two R9700? [Qwen3.8 Flash Next in 3-bit](models/Qwen3.8-Flash-Next/README.md): tensor parallel, 216 tok/s single stream, 565 tok/s at 8 streams, 8,161 tok/s prefill at 64K.**
+
 Prefer a desktop app? [Paiton Studio](https://github.com/Eliovp-BV/paiton-studio)
 provides chat, image and video tools for the supported models.
 
@@ -52,6 +54,7 @@ These models serve an OpenAI-compatible API through vLLM.
 | --- | --- | --- |
 | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools · 8K | [Results](models/MiniCPM5-2B/BENCHMARKS.md) |
 | [Qwen3.8 27B MXFP4 / 3-bit + DFlash2](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding · MXFP4 (most accurate) or 3-bit (fastest) · 65K by default; 262K with `--mode long` (one long document, fast follow-ups) or `--mode long-kv4` (coding agents, about 629K tokens of reusable cache, 555K with images, more in system RAM or on an SSD with `--extend-cache`); 524K opt-in (`--mode long-512k`) · `--vision` for images · [What you get](models/Qwen3.8-MXFP4-DFlash2/README.md#what-you-get) | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#current-benchmark-results) |
+| [Qwen3.8 Flash Next 3-bit (two R9700)](models/Qwen3.8-Flash-Next/README.md) | Chat and coding · mixed 3-bit, tensor parallel over two cards · 98K with speculative decoding by default; 200K with `run-flashnext-200k.sh`; prefix caching opt-in · text · [What you get](models/Qwen3.8-Flash-Next/README.md#what-you-get) · [Results](models/Qwen3.8-Flash-Next/BENCHMARKS.md) |
 | [Qwen3.8 27B Qronos](models/Qwen3.8/README.md) (superseded) | Superseded by Qwen3.8 27B MXFP4 / 3-bit above · 8K · text | [Results](https://eliovp.com/blog/paiton-qwen38-radeon-ai-pro-r9700) |
 | [Qwen3.8 NEO CODER MAX 27B](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat · 8K · text plus one image | [Results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [Qwen3-Coder 30B A3B](models/Qwen3-Coder-30B/README.md) | Code writing, review, testing and tools · 4K | [Results](models/Qwen3-Coder-30B/BENCHMARKS.md) |
@@ -112,7 +115,7 @@ to download its pinned weights or reuse an existing copy. See
 
 ## Requirements
 
-- **Tested GPU:** one Radeon AI PRO R9700, 32 GB, RDNA4 / `gfx1201`. Other GPUs have not been qualified.
+- **Tested GPU:** one Radeon AI PRO R9700, 32 GB, RDNA4 / `gfx1201`; Qwen3.8 Flash Next needs two of them (tensor parallel). Other GPUs have not been qualified.
 - **Containers:** Linux, Docker and AMD device access through `/dev/kfd` and `/dev/dri`; ComfyUI launchers also need Docker Compose.
 - **Native plugin:** the preset's exact supported environment, listed in [native execution](docs/NATIVE_EXECUTION.md).
 - **Memory and storage:** depend on the model, context, concurrency and image/video settings; check the model guide before downloading.
