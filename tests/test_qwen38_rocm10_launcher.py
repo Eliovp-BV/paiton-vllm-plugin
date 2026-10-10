@@ -2157,6 +2157,36 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '9000000000')
         self.assertNotIn('PAITON_LMHEAD_W8=1', self.dry_run('--mode', 'long-kv4', '--image', image, '--lm-head', 'bf16'))
 
+    def test_wrappers_dry_run_from_a_clean_environment(self):
+        # the README's commands as a new user runs them: env -i, a minimal PATH (no ~/.local/bin), only the PAITON_*
+        # folders; --dry-run right after the wrapper; the Docker stand-in must never be called
+        system = [d for d in ('/usr/bin', '/bin') if (Path(d) / 'python3').exists()]
+        if not system:
+            self.skipTest('no python3 in /usr/bin or /bin')
+        w3rot = self.root / 'w3rot directory'
+        w3rot.mkdir()
+        folders = {name: self.environment[name] for name in ('PAITON_TARGET_DIR', 'PAITON_DRAFT_DIR', 'PAITON_CACHE_DIR')}
+        repo = MODEL_DIR.parents[1]
+        rel = MODEL_DIR.relative_to(repo)
+        cases = (('run-3bit.sh', ()), ('run-3bit.sh', ('--mode', 'long')), ('run-3bit.sh', ('--mode', 'long-kv4')),
+                 ('run-3bit.sh', ('--kv-cache', 'fp8')), ('run-mxfp4.sh', ()), ('run-mxfp4.sh', ('--mode', 'long')),
+                 ('run-rocm10.sh', ()), ('run-rocm10-65k.sh', ()), ('run-rocm10-200k.sh', ()))
+        for wrapper, options in cases:
+            with self.subTest(wrapper=wrapper, options=options):
+                self.record.unlink(missing_ok=True)
+                env = {'HOME': self.environment.get('HOME', str(self.root)),
+                       'PATH': os.pathsep.join([str(self.root / 'bin'), '/usr/bin', '/bin']), **folders,
+                       'DOCKER_ARGV_RECORD': str(self.record)}
+                if wrapper == 'run-3bit.sh':
+                    env['PAITON_W3ROT_DIR'] = str(w3rot)
+                result = subprocess.run(['env', '-i', *[f'{k}={v}' for k, v in env.items()],
+                                         'bash', str(rel / wrapper), '--dry-run', *options],
+                                        cwd=repo, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                argv = json.loads(result.stdout)
+                self.assertEqual(argv[:2], ['docker', 'run'])
+                self.assertFalse(self.record.exists())
+
     def test_capture_sizes_wide_adds_admission_steps_to_the_captured_graphs(self):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
