@@ -6,6 +6,8 @@ Modes (modes.json, from the measured runs on this image):
   prefill-long       200,000-token window, MTP off, 3 GiB KV per card                            (prefill numbers)
   decode-nopf / prefill-long-nopf   the same with exact-arithmetic prefill (about 7 % slower)
   --prefix-caching   opt-in on any mode: align-mode prefix caching (byte-identical hits)
+Host pools: the host-resident tables (~55 GiB, both ranks) are allocated as driver-owned GTT memory (HSA_USERPTR_FOR_PAGED_MEM=0)
+  when the GPUs' GTT size holds them, so host memory compaction cannot stall the GPU queues; --host-pools userptr keeps ROCm's default.
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
 Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--name paiton-flashnext] [--detach] [--dry-run]
@@ -80,6 +82,26 @@ def ensure_base_cfg(d, dry):
     hf_download(COMMON['base_model'], COMMON['base_model_revision'], d, patterns=list(COMMON['base_cfg_files']), dry=dry)
     return d
 
+def gtt_total_gib(rocr_ids):
+    """Smallest GTT size (GiB) among the given GPUs, from sysfs by unique id; None when unreadable."""
+    want = {g.lower().replace('gpu-', '') for g in rocr_ids}; sizes = []
+    for dev in pathlib.Path('/sys/class/drm').glob('card[0-9]*/device'):
+        try:
+            if (dev / 'unique_id').read_text().strip().lower().replace('0x', '') in want:
+                sizes.append(int((dev / 'mem_info_gtt_total').read_text()) / (1 << 30))
+        except (OSError, ValueError): continue
+    return min(sizes) if sizes else None
+
+def host_pool_env(choice, gpus):
+    """auto: GTT-backed host pools when the GTT size holds them (+ margin), else ROCm's default user-pointer pools."""
+    hp = COMMON['host_pools']; need = hp['gtt_need_gib'] + hp['gtt_margin_gib']; gtt = gtt_total_gib(gpus)
+    if choice == 'auto': choice = 'gtt' if gtt is not None and gtt >= need else 'userptr'
+    if choice == 'gtt' and gtt is not None and gtt < need:
+        sys.exit(f'host pools: --host-pools gtt needs a GTT size of {need:g} GiB per GPU, this host has {gtt:.0f} GiB (use --host-pools userptr)')
+    print(f'host pools: {choice} (GTT size {"unknown" if gtt is None else f"{gtt:.0f} GiB"}, needed {need:g} GiB for GTT pools)'
+          + ('' if choice == 'gtt' else '; user-pointer pools can stall briefly when the kernel compacts host memory'))
+    return dict(hp['env']) if choice == 'gtt' else {}
+
 def prerequisites(tp):
     """What a user needs; prints exactly what is missing (also in --dry-run) and stops unless everything is there."""
     missing = []
@@ -130,7 +152,7 @@ def main():
     ap.add_argument('--weights', default=os.path.expanduser('~/paiton-models/Qwen3.8-Flash-Next-W3A8')); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
-    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory (auto when the GTT size holds them) or ROCm user-pointer memory'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
     missing = prerequisites(COMMON['tp'])
     if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
@@ -149,6 +171,7 @@ def main():
         pc = COMMON['prefix_caching']; engine_args = [x for x in engine_args if x not in pc['engine_args_drop']] + pc['engine_args_add']; env.update(pc['env'])
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
+    env.update(host_pool_env(a.host_pools, gpus))
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []

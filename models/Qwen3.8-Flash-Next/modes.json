@@ -68,6 +68,14 @@
     "VLLM_USE_V2_MODEL_RUNNER": "1"
    },
    "note": "opt-in (launcher --prefix-caching): align-mode prefix caching on the recurrent state, block 2048 = mamba block; served gates 10 Oct 2026: 64K repeat 9.6 s -> 0.35 s TTFT with identical output; needles 131K + 200K 40/40"
+  },
+  "host_pools": {
+   "env": {
+    "HSA_USERPTR_FOR_PAGED_MEM": "0"
+   },
+   "gtt_need_gib": 55,
+   "gtt_margin_gib": 5,
+   "note": "HSA_USERPTR_FOR_PAGED_MEM=0: ROCm allocates the host tables as GTT buffers instead of registered user pointers, so host memory compaction no longer invalidates them (KFD eviction stalls under load 2.7 s -> 0.07 s over a 3-minute run at 8 requests, speed unchanged). They count against the first GPU's GTT size: 56,116 MiB above the idle baseline at ready (decode mode, 10 Oct)."
   }
  },
  "modes": {

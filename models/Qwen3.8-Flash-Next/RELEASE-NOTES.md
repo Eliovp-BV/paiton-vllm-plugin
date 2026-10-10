@@ -24,6 +24,13 @@ optimizing). No custom engine was built: regular vLLM with the Paiton plugin and
   20 s -> 0.41 s TTFT); prefill measured to 128K; single-stream decode in the 200K mode (prefill-long, speculation off):
   105.3 / 100.6 / 99.9 tok/s after 32K / 100K / 190K-token prompts (TTFT 24.8 s at 190K); 200K with speculation does not fit the stock pool.
 
+## Host memory
+- The host-resident tables (about 55 GiB over both GPUs) are allocated as driver-owned GTT memory (`HSA_USERPTR_FOR_PAGED_MEM=0`, set by the
+  launcher) when the GPUs' GTT size holds them; the default GTT size is half the system RAM, so this needs about 120 GiB of RAM or more.
+  ROCm's default user-pointer memory can be moved when the kernel compacts host memory, which paused the GPU queues briefly under load
+  (2.7 s in total over a 3-minute run at 8 concurrent requests; 0.07 s with GTT memory, speed unchanged). On smaller hosts the launcher keeps
+  the default and says so; `--host-pools userptr` keeps it everywhere.
+
 ## How the numbers were taken
 BetterBench 0.6.0 standard profile on this machine against our OpenAI-compatible server; prefill with exact bf16 activations (no compressed
 wire).
