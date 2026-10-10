@@ -1634,12 +1634,16 @@ def main(argv=None):
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
     pools, gtt, pinned = host_pools(args)
-    if pinned > 0 and gtt is not None:      # unknown GTT size: ROCm's default, silently (no amdgpu sysfs to read)
-        print(f'Note: host pools: {pinned:.1f} GiB of pinned host tables as '
-              + (f'GTT buffers (HSA_USERPTR_FOR_PAGED_MEM=0; GTT size {gtt:.1f} GiB)' if pools == 'gtt' else
-                 f'ROCm user pointers (GTT size {gtt:.1f} GiB, under the tables plus {HOST_POOLS_GTT_MARGIN_GIB:g} '
-                 'GiB); host-memory compaction can pause the GPU briefly'),
-              file=sys.stderr)
+    # a note only when GTT buffers are chosen or the GTT size is known to be too small for them (unknown size or an
+    # explicit --host-pools userptr: ROCm's default, silently)
+    too_small = gtt is not None and pinned > 0 and gtt < pinned + HOST_POOLS_GTT_MARGIN_GIB
+    if pools == 'gtt':
+        print(f'Note: host pools: {pinned:.1f} GiB of pinned host tables as GTT buffers (HSA_USERPTR_FOR_PAGED_MEM=0; '
+              f'GTT size {"unknown" if gtt is None else f"{gtt:.1f} GiB"})', file=sys.stderr)
+    elif too_small:
+        print(f'Note: host pools: {pinned:.1f} GiB of pinned host tables stay ROCm user pointers (GTT size {gtt:.1f} GiB, '
+              f'under the tables plus {HOST_POOLS_GTT_MARGIN_GIB:g} GiB); host-memory compaction can pause the GPU '
+              'briefly', file=sys.stderr)
     warning = small_ram_tier_warning(args)
     if warning:
         print('Warning: ' + warning + '.', file=sys.stderr)

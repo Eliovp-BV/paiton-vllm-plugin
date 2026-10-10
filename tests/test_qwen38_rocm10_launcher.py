@@ -2178,15 +2178,17 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertNotIn(env, self.dry_run(*options))
         # the host KV tier counts as a pinned table too
         self.assertIn(env, self.dry_run('--mode', 'long', '--host-cache-gib', '2'))
-        # --host-pools userptr keeps the default; gtt forces it (also without tables)
+        # --host-pools userptr keeps the default (silently); gtt forces it (also without tables)
         self.assertNotIn(env, self.dry_run('--mode', 'long-kv4', '--host-pools', 'userptr'))
+        self.assertNotIn('host pools', self.run_launcher('--dry-run', '--mode', 'long-kv4', '--host-pools', 'userptr').stderr)
+        self.assertNotIn('host pools', self.run_launcher('--dry-run', '--mode', 'long').stderr)
         self.assertIn(env, self.dry_run('--host-pools', 'gtt'))
         # a GTT size that cannot hold the tables plus the margin: auto keeps the default and says so; gtt is refused
         gtt_file.write_text(str(3 * 1024 ** 3))
         command = self.dry_run('--mode', 'long-kv4', '--ignore-vram-check')
         self.assertNotIn(env, command)
         result = self.run_launcher('--dry-run', '--mode', 'long-kv4')
-        self.assertIn('as ROCm user pointers (GTT size 3.0 GiB', result.stderr)
+        self.assertIn('stay ROCm user pointers (GTT size 3.0 GiB', result.stderr)
         self.assertIn('does not hold the 2.4 GiB of pinned host tables', self.refused('--mode', 'long-kv4',
                                                                                      '--host-pools', 'gtt'))
 
