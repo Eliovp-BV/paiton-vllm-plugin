@@ -632,7 +632,7 @@
     "--speculative-config",
     "{\"method\": \"mtp\", \"num_speculative_tokens\": 3}",
     "--compilation-config",
-    "{cudagraph_capture_sizes:[4,8,16,24,32]}"
+    "{\"cudagraph_capture_sizes\":[4,8,16,24,32]}"
    ],
    "disabled_pth": [
     "/usr/local/lib/python3.12/dist-packages/000_paiton_runtime_compat.pth",
