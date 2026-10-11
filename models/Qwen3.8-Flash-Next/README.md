@@ -140,6 +140,7 @@ per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.j
 `deployment-check.json`, `metrics.json` and `benchmarks/` (the raw BetterBench outputs of the published run).
 
 ## Limitations (draft)
+- Known issue (3-bit, draft for approval): In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.
 - 98,304-token window in decode mode (MTP pool); 200,000 in prefill-long mode with MTP off; vision not validated; prefix caching is an
   opt-in flag (official numbers measured without it). The prompt rows run W8A8; accuracy numbers are in the model card's table. The `-nopf` modes use
   exact-arithmetic prefill, about 7 % slower.

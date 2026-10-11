@@ -12,6 +12,8 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   What changes is the launcher: the host memory pools below (no GPU pauses from host memory compaction under load), a short settle wait
   before it reports READY, and the peer-to-peer and GTT preflight checks. [[PREFIX-CACHING: the --prefix-caching recommendation for
   agents and coding tools, if approved]]
+- **Known issue (3-bit, draft for approval):** In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use
+  `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.
 - **Images**: the 4-bit modes run the new image `qwen38-flashnext-rocm10-vllm029-20261011-r1`; the 3-bit modes stay on the published
   `qwen38-flashnext-rocm10-vllm029-20261010-r1` (the launcher picks the right one per mode).
 - **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
