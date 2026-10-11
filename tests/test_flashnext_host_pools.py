@@ -78,3 +78,28 @@ def test_wait_ready_false_when_server_exits(lf):
     import subprocess as sp
     proc = sp.Popen(['true']); proc.wait()
     assert lf.wait_ready(1, proc, 'x', settle_s=0, weights=None) is False
+
+
+def dry_cmd(lf, monkeypatch, tmp_path, capsys, kv_tier):
+    """main() --dry-run for --mode 4bit with the host checks stubbed; returns the printed docker command."""
+    import copy, sys
+    modes = copy.deepcopy(lf.MODES)
+    if kv_tier: modes['4bit']['env']['PAITON_FN_KV_TIER'] = '1'
+    monkeypatch.setattr(lf, 'MODES', modes)
+    monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', lambda *a, **k: [])
+    monkeypatch.setattr(lf, 'render_gid', lambda: None)
+    monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (200.0, 200.0))
+    monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w')
+    monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
+    monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit', '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache')])
+    lf.main()
+    return capsys.readouterr().out
+
+
+def test_kv_tier_hook_mounted_only_with_kv_tier(lf, monkeypatch, tmp_path, capsys):
+    target = '/usr/local/lib/python3.12/dist-packages/zz_paiton_fn_kv_tier.pth:ro'
+    assert target not in dry_cmd(lf, monkeypatch, tmp_path, capsys, False)
+    out = dry_cmd(lf, monkeypatch, tmp_path, capsys, True)
+    assert f'{tmp_path}/cache-kv-tier.pth:{target}' in out
+    assert "PAITON_FN_KV_TIER', '0') == '1'" in lf.KV_TIER_PTH   # the hook stays a no-op without the env

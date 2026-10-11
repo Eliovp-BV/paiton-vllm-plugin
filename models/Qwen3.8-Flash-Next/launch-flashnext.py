@@ -21,6 +21,11 @@ import argparse, json, os, pathlib, re, shlex, shutil, subprocess, sys
 HERE = pathlib.Path(__file__).resolve().parent
 CFG = json.loads((HERE / 'modes.json').read_text()); COMMON = CFG['common']; MODES = CFG['modes']
 
+SITE_PACKAGES = '/usr/local/lib/python3.12/dist-packages'
+# verbatim copy of paiton_vllm_plugin/flashnext/zz_paiton_fn_kv_tier.pth (a no-op unless PAITON_FN_KV_TIER=1)
+KV_TIER_PTH = ("import os; os.environ.get('PAITON_FN_KV_TIER', '0') == '1' and os.path.exists('/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/flashnext/kv_tier_boot.py') "
+               "and __import__('runpy').run_path('/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/flashnext/kv_tier_boot.py', run_name='paiton_fn_kv_tier_boot')['install']()")
+
 def amd_gpus():
     """ROCR ids of every AMD GPU (vendor 0x1002) from sysfs; no card numbers or PCI addresses are assumed."""
     out = []
@@ -347,6 +352,13 @@ def main():
     if a.detach: cmd += ['-d']
     for k, v in sorted(env.items()): cmd += ['-e', f'{k}={v}']
     cmd += ['-v', f'{weights}:{COMMON["mounts"]["checkpoint"]}:ro', '-v', f'{view}:{COMMON["mounts"]["view"]}:ro', '-v', f'{cache}:{COMMON["mounts"]["cache"]}']
+    if env.get('PAITON_FN_KV_TIER') == '1':
+        # RAM prefix tier: its boot hook must sit in site-packages at interpreter start (every engine and worker process), or stock
+        # vLLM offloading rejects the route-1 scratch ring group at init. The container runs as the host uid and cannot write there,
+        # so the launcher writes the one-line hook next to the cache dir (not inside it: an empty cache gets the seed) and mounts it.
+        hook = cache.with_name(cache.name + '-kv-tier.pth')
+        if not a.dry_run: hook.write_text(KV_TIER_PTH + '\n')
+        cmd += ['-v', f'{hook}:{SITE_PACKAGES}/zz_paiton_fn_kv_tier.pth:ro']
     # first start of a mode: copy the baked compile-cache seed into the (empty) cache, then serve
     inner = (f'if [ -d /opt/paiton/cache-seed/{m.get("seed", a.mode)} ] && [ -z "$(ls -A {COMMON["mounts"]["cache"]} 2>/dev/null)" ]; then cp -a /opt/paiton/cache-seed/{m.get("seed", a.mode)}/. {COMMON["mounts"]["cache"]}/; fi; '
              f'exec python3 -m vllm.entrypoints.openai.api_server --model {COMMON["mounts"]["view"]} --tokenizer {COMMON["mounts"]["view"]} '
