@@ -84,6 +84,10 @@
    "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4",
    "hf_revision": "PIN-ME",
    "default_dir": "~/paiton-models/Qwen3.8-Flash-Next-W4A8"
+  },
+  "image_4bit": {
+   "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r1",
+   "digest": "PIN-ME"
   }
  },
  "modes": {
@@ -133,6 +137,7 @@
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
+    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -144,10 +149,7 @@
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
     "VLLM_ROCM_USE_AITER": "0",
-    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0",
-    "PAITON_FN_GDN_RS_FOLD": "1",
-    "PAITON_FN_INT6_GEMV_MAX_M": "32",
-    "PAITON_FN_INT6_EXTRA": "core"
+    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
    },
    "engine_args": [
     "--dtype",
@@ -197,12 +199,11 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
-   "seed": "rc9b",
+   "seed": "a8",
    "requires": [
-    "mtp/mtp-draft-e4m3.safetensors",
-    "trunk-int6/layers/L47.safetensors"
+    "mtp/mtp-draft-e4m3.safetensors"
    ],
-   "note": "Decode stack (native GDN prefill, W16 prompt rows): INT6 g128 trunk for the core sites (q/o + GDN projections, int8-g128 prompt rows) read from trunk-int6/, the rest of the trunk E4M3; GDN fold-on-load; INT6 GEMV up to M 32. Numbers: [[REL3]]"
+   "note": "RC8-a8 stack (W8A8 prompt rows + native GDN prefill): decode rows are W8A16, the shipped image measured 216.3 weighted / 565.1 @8"
   },
   "prefill-long": {
    "source_run": "official prefill block, 10 Oct 2026 03:24-03:38 UTC",
@@ -358,6 +359,7 @@
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
+    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -369,10 +371,7 @@
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
     "VLLM_ROCM_USE_AITER": "0",
-    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0",
-    "PAITON_FN_GDN_RS_FOLD": "1",
-    "PAITON_FN_INT6_GEMV_MAX_M": "32",
-    "PAITON_FN_INT6_EXTRA": "core"
+    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
    },
    "engine_args": [
     "--dtype",
@@ -422,12 +421,11 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
-   "seed": "rc9b-nopf",
+   "seed": "a8-nopf",
    "requires": [
-    "mtp/mtp-draft-e4m3.safetensors",
-    "trunk-int6/layers/L47.safetensors"
+    "mtp/mtp-draft-e4m3.safetensors"
    ],
-   "note": "The decode stack without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); INT6 g128 trunk for the core sites (q/o + GDN projections, int8-g128 prompt rows) read from trunk-int6/, the rest of the trunk E4M3; GDN fold-on-load; INT6 GEMV up to M 32"
+   "note": "RC8-a8 without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); prefill on this path measured 7,607 @64K (W8A8) / 7,368 (W8A16)"
   },
   "prefill-long-nopf": {
    "source_run": "exact-prefill-path prefill block, 10 Oct 2026 08:15-08:32 UTC",
@@ -662,7 +660,7 @@
    "seed": "4bit",
    "gtt_pinned_gib": 95.5,
    "note": "4-bit experts with the expert host tier (route 1): decode, MTP 3, 98,304-token window",
-   "image_key": "image",
+   "image_key": "image_4bit",
    "weights_key": "weights_4bit",
    "requires": [
     "mtp/mtp-draft-e4m3.safetensors"
@@ -795,7 +793,7 @@
    "seed": "4bit",
    "gtt_pinned_gib": 93.0,
    "note": "4-bit experts with the expert host tier (route 1): 200,000-token window, MTP off",
-   "image_key": "image",
+   "image_key": "image_4bit",
    "weights_key": "weights_4bit",
    "requires": [
     "mtp/mtp-draft-e4m3.safetensors"
