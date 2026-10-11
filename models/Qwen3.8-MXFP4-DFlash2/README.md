@@ -22,7 +22,7 @@ text stays ready, so a follow-up question about it starts in seconds instead of 
 | --- | ---: | ---: | ---: | --- | --- |
 | `run-3bit.sh --mode long-kv4`: **coding agents, long documents, screenshots** | 262,144 | **628,877** | **555,128** | 2 (plus one of 100K) | yes |
 | `run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | 628,877 on the GPU, plus about 0.7M to 2.8M in system RAM or on an NVMe/SSD | – | 2 | yes, also after a restart |
-| `run-3bit.sh --mode long` | 262,144 (245,000 with images) | 281,665 | 253,298 | 1, plus short ones | yes |
+| `run-3bit.sh --mode long` | 262,144 (245,000 with images) | 316,325 | 253,298 | 1, plus short ones | yes |
 | `run-3bit.sh --mode long-512k` (experimental) | 524,288 | 594,290 | – | 1, plus short ones | yes |
 | `run-3bit.sh`: fast everyday chat | 65,536 | 393,216 | 278,050 | 6 | no |
 | `run-mxfp4.sh --mode long`: most accurate, one long document | 200,000 | one request | – | 1 | yes |
@@ -88,7 +88,8 @@ cd paiton-vllm-plugin
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **5 October r1** image,
 `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`, and Docker pulls it on the first
 start ([what changed](REFERENCE.md#release-notes-5-october-2026); the launcher's own updates since:
-[6 October](REFERENCE.md#launcher-update-6-october-2026-evening)). Earlier releases stay runnable:
+[6 October](REFERENCE.md#launcher-update-6-october-2026-evening),
+[11 October](REFERENCE.md#launcher-update-11-october-2026)). Earlier releases stay runnable:
 [run an earlier release](REFERENCE.md#run-an-earlier-release).
 
 <a id="model-weights-and-existing-downloads"></a>
@@ -305,7 +306,8 @@ starting it.
 | `--context TOKENS` | A smaller context than the row's (input plus output). Only MXFP4 `--mode long` goes higher: up to 220,000, the largest tested. |
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
 | `--long-prefill-threshold TOKENS\|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. 2048 by default in `--mode long-kv4` (without `--vision`), off elsewhere; `off` restores the previous read behaviour. |
-| `--lm-head bf16` | `--mode long-kv4`: the bf16 output head instead of the checkpoint's FP8 head (the default on the 5 October image and later); the shared cache then holds 569,878 instead of 628,877 tokens. |
+| `--lm-head bf16` | 3-bit rows: the bf16 output head instead of the checkpoint's FP8 head (the default on the 5 October image and later); `--mode long-kv4` then holds 569,878 instead of 628,877 tokens, `--mode long` 281,665 instead of 316,325, and the start command is the previous launcher's (in `--mode long-kv4` and `long-512k` together with `--host-pools userptr`). |
+| `--host-pools userptr` | `--mode long-kv4` and `long-512k`: ROCm's default user-pointer memory for the pinned embedding table instead of GTT memory (the default where the GPU's GTT size holds it; [why](REFERENCE.md#launcher-update-11-october-2026)). |
 | `--thinking on` / `--thinking off` | The server default for thinking (on in the 65,536-token rows, off in the `--mode long*` rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |

@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements, advanced setup and release history.
 
-- [Release notes](#release-notes-5-october-2026) (earlier: [6 October evening launcher update](#launcher-update-6-october-2026-evening), [6 October launcher update](#launcher-update-6-october-2026), [4 October](#release-notes-4-october-2026), [3 October](#release-notes-3-october-2026),
+- [Release notes](#release-notes-5-october-2026) (since: [11 October launcher update](#launcher-update-11-october-2026); earlier: [6 October evening launcher update](#launcher-update-6-october-2026-evening), [6 October launcher update](#launcher-update-6-october-2026), [4 October](#release-notes-4-october-2026), [3 October](#release-notes-3-october-2026),
   [2 October](#release-notes-2-october-2026), [28 September](#release-notes-28-september-2026))
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
@@ -67,6 +67,57 @@ get the launcher that selects it; `--dry-run` prints the full Docker command.
   `--host-cache-gib` and `--disk-cache-dir`.
 - **Earlier images** stay runnable with `--image` and keep their behaviour; the 4 October image remains the
   reference for these outputs. See [Run an earlier release](README.md#run-an-earlier-release).
+
+<a id="launcher-update-11-october-2026"></a>
+
+### Launcher update: 11 October 2026 (launcher only)
+
+`git pull` in your checkout gets a launcher update. The image (5 October r1), the weights and the MXFP4 rows stay the
+same.
+
+- **The FP8 output head in every 3-bit mode.** Every `run-3bit.sh` row now keeps the checkpoint's FP8 output head
+  (1.19 GiB) instead of a bf16 copy of it (2.37 GiB), as `--mode long-kv4` has since 6 October. Both forms hold the
+  same weights; only the kernel that applies them changes. `--mode long` gives the freed VRAM to its cache: it now holds
+  **316,325 tokens** instead of 281,665. Measured against the bf16 head on the same host and image, fresh servers,
+  BetterBench with the published rows' settings:
+
+  | `run-3bit.sh --mode long` | bf16 head (before) | FP8 head (now) |
+  | --- | ---: | ---: |
+  | Weighted single-stream decode | 174.5 tok/s | 173.6 tok/s |
+  | Aggregate output at 1 / 2 / 4 / 8 requests | 145.7 / 250.8 / 369.7 / 477.6 tok/s | 145.4 / 252.9 / 369.4 / 490.2 tok/s |
+  | Time to first token p50 at 1 / 2 / 4 / 8 requests | 68 / 104 / 112 / 141 ms | 68 / 104 / 112 / 139 ms |
+  | Prefill at 2K / 8K / 16K / 32K / 64K depth | 4,253 / 4,155 / 4,142 / 3,945 / 3,635 tok/s | 4,281 / 4,170 / 4,142 / 3,937 / 3,637 tok/s |
+  | Needles found at 131K / 258K tokens | 4/4 / 3/4 | 4/4 / 4/4 |
+  | Cache | 281,665 tokens | 316,325 tokens |
+
+  The other 3-bit rows (`run-3bit.sh`, `run-3bit.sh --vision`, `--mode long --vision`, `--mode long-512k`) keep their
+  cache sizes and gain 1.18 GiB of headroom; each started with its previous cache size and passed its smoke probes
+  (greedy text, a short chat, two images with `--vision`). `--lm-head bf16` restores the previous head, cache and
+  allocator cap (with `--host-pools userptr` in `--mode long-kv4` and `long-512k`, the start command is exactly the
+  previous launcher's).
+- **A lower allocator cap with the FP8 head.** The head's native code runs outside PyTorch and adds about 0.28 GiB
+  there, so the start's kernel warm-up, which fills PyTorch's allocator up to its cap, peaked 0.28 GiB higher
+  (31,975 MiB against 31,693 MiB in `--mode long`). Every 3-bit mode with the FP8 head now caps PyTorch at 94 % of the
+  card instead of 95 %. Start peaks with the new launcher: `--mode long` 31,587 MiB (31,693 with the previous
+  launcher), `--mode long-kv4` 31,407 MiB, `run-3bit.sh` 31,767 MiB, `run-3bit.sh --vision` 31,397 MiB,
+  `--mode long --vision` 31,340 MiB, `--mode long-512k` 31,460 MiB. Under load `--mode long` peaked at 30,138 MiB and
+  `--mode long-kv4` at 30,113 MiB; at eight requests they gave 493.3 and 486.7 tok/s, and both found 4 of 4 needles in
+  a 258K-token prompt.
+- **The pinned host tables as GTT memory.** The embedding table that `--mode long-kv4` and `--mode long-512k` keep in
+  system RAM (and a RAM cache tier) is now allocated as driver-owned GTT memory (`HSA_USERPTR_FOR_PAGED_MEM=0`) when the
+  GPU's GTT size holds it with 2 GiB to spare (the default GTT size is half the RAM: 16 GB hosts and up). ROCm's default
+  user-pointer memory can be moved when the kernel compacts host memory, which pauses the GPU briefly under load (seen
+  on the two-GPU Flash Next release). On this model and host both kinds measured the same: the same speed and greedy
+  outputs, and no GPU pauses after the start with either. `--host-pools userptr` keeps ROCm's default; the start prints
+  which one it uses.
+- **`--capture-sizes wide` (opt-in).** Runs steps of up to 256 tokens (a new request's prompt next to running ones)
+  as captured graphs instead of up to 64. Measured in `--mode long-kv4`: aggregate output at 1 / 2 / 4 / 8 requests
+  143.3 / 254.5 / 366.2 / 487.5 against 143.4 / 254.4 / 359.5 / 486.7 tok/s, time to first token within 3 ms, a start
+  1 s longer: no clear gain, so the default keeps the release sizes.
+- **Download without `hf`.** The set-up steps also give the pinned downloads through the `huggingface_hub` Python
+  package, for systems where `pip install --user` put `hf` in a folder the shell does not search.
+- **Unchanged:** the image, the weights, the MXFP4 rows (their start commands are byte-identical) and every cache size
+  except `--mode long`'s.
 
 <a id="launcher-update-6-october-2026-evening"></a>
 
@@ -427,7 +478,8 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh --mode long       # the same as -
 
 With the **3-bit weights**, `--mode long` runs the release engine shape: up to
 eight scheduled requests, a 4,096-token prefill budget, the release graph set, an
-FP8 KV pool of 10.2 GB (281,665 cached tokens, so one full-context conversation
+FP8 KV pool of 11.46 GB (316,325 cached tokens with the FP8 output head since the 11 October launcher update,
+281,665 before; one full-context conversation
 plus short concurrent requests), prefix caching, and thinking disabled
 (`--mode long-kv4`: a 4-bit pool with prefix caching and the embedding table in system RAM, see
 [below](#coding-mode)). With
@@ -468,7 +520,7 @@ for eight 32K prompts). While a cold full-context prompt is being processed, oth
 requests wait for it by default (126 s in the measurement). Add
 `--long-prefill-threshold 2048` to serve short requests within seconds beside a
 long prompt; the long prompt then takes about 16% longer to its first token
-(146 s instead of 126 s at 258K). The 281,665-token pool holds one full-length
+(146 s instead of 126 s at 258K). The 316,325-token pool holds one full-length
 conversation, so concurrent questions about the same ~257K-token document are
 effectively handled one at a time: serve one long document at a time.
 
