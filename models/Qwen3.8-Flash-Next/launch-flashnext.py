@@ -155,6 +155,8 @@ def ensure_view(weights, view, base_cfg, dry, wanted_optional=()):
     links.update({'model.safetensors': f'{ck}/model.safetensors', 'manifest.json': f'{ck}/manifest.json', 'ple-e4m3': f'{ck}/common/ple-e4m3',
                   'mtp-vision.safetensors': f'{ck}/common/bf16-mtp-vision.safetensors', 'mtp-experts.safetensors': f'{ck}/mtp/mtp-experts.safetensors',
                   'mtp-draft-int2/draft-head-int2.safetensors': f'{ck}/mtp/draft-head-int2.safetensors', 'mtp-draft-int2/draft-head-int2.json': f'{ck}/mtp/draft-head-int2.json'})
+    for k, rel in COMMON.get('view_links_if_present', {}).items():   # files of some exports only (the hybrid 4-bit format map)
+        if (weights / rel).exists(): links[k] = f'{ck}/{rel}'
     for k, rel in COMMON.get('view_links_optional', {}).items():   # files only the modes that list them in 'requires' load
         if rel in wanted_optional and (weights / rel).exists(): links[k] = f'{ck}/{rel}'
     missing = [tgt for tgt in links.values() if not (weights / tgt[len(ck) + 1:]).exists()]

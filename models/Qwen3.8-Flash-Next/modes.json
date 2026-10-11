@@ -54,6 +54,9 @@
   "view_links_optional": {
    "mtp-draft-e4m3.safetensors": "mtp/mtp-draft-e4m3.safetensors"
   },
+  "view_links_if_present": {
+   "expert-format-map.json": "expert-format-map.json"
+  },
   "prefix_caching": {
    "engine_args_drop": [
     "--no-enable-prefix-caching"
@@ -537,6 +540,7 @@
    "env": {
     "GPU_MAX_HW_QUEUES": "2",
     "HSA_ENABLE_IPC_MODE_LEGACY": "1",
+    "HSA_USERPTR_FOR_PAGED_MEM": "0",
     "NCCL_PROTO": "Simple",
     "PAITON_FN_A4": "1",
     "PAITON_FN_A4_SAMPLED": "1",
@@ -548,7 +552,10 @@
     "PAITON_FN_EXPERT_DYN_NATIVE": "1",
     "PAITON_FN_EXPERT_DYN_NATIVE_LIB": "/opt/paiton/runtime/expert-tier/libpaiton_expert_tier.so",
     "PAITON_FN_EXPERT_DYN_START_STEP": "64",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "PAITON_FN_EXPERT_STAGE": "102",
+    "PAITON_FN_EXPERT_STAGE_REGION": "lease",
+    "PAITON_FN_EXPERT_STAGE_V": "2",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.6,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "PAITON_FN_GDN_ANCHOR": "1",
     "PAITON_FN_GDN_PF_FUSED": "1",
     "PAITON_FN_GDN_PF_NATIVE": "1",
@@ -557,7 +564,7 @@
     "PAITON_FN_HC_CHAIN": "1",
     "PAITON_FN_HC_FUSE": "1",
     "PAITON_FN_HC_V3A": "1",
-    "PAITON_FN_KV_LEASE": "on",
+    "PAITON_FN_KV_LEASE": "on:stage=102",
     "PAITON_FN_MOE_FIN": "1",
     "PAITON_FN_MOE_FIN_MAX_M": "8",
     "PAITON_FN_MOE_FUSED": "1",
@@ -570,6 +577,7 @@
     "PAITON_FN_NATIVE_QSA_MTP": "1",
     "PAITON_FN_NATIVE_SHARED": "1",
     "PAITON_FN_NATIVE_TRUNK": "2",
+    "PAITON_FN_NOSPEC_ALLOC_FRACTION": "0.925",
     "PAITON_FN_PF_MALL": "2",
     "PAITON_FN_PF_MALL_SET": "all",
     "PAITON_FN_PLACEMENT": "counts:/models/ck/common/routing-counts.json",
@@ -583,6 +591,7 @@
     "PAITON_FN_SPEC_STATE_FIX": "1",
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
+    "PAITON_FN_SUBCHUNK": "4",
     "PAITON_FN_TRUNK_ACT": "bf16",
     "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
@@ -608,7 +617,7 @@
     "--max-num-batched-tokens",
     "2048",
     "--kv-cache-memory-bytes",
-    "2147483648",
+    "1610612736",
     "--no-enable-prefix-caching",
     "--language-model-only",
     "--seed",
@@ -654,7 +663,7 @@
    ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "default": "static:vram_gib=21.6,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
@@ -664,6 +673,7 @@
    "env": {
     "GPU_MAX_HW_QUEUES": "2",
     "HSA_ENABLE_IPC_MODE_LEGACY": "1",
+    "HSA_USERPTR_FOR_PAGED_MEM": "0",
     "NCCL_PROTO": "Simple",
     "PAITON_FN_A4": "1",
     "PAITON_FN_A4_SAMPLED": "1",
@@ -675,7 +685,10 @@
     "PAITON_FN_EXPERT_DYN_NATIVE": "1",
     "PAITON_FN_EXPERT_DYN_NATIVE_LIB": "/opt/paiton/runtime/expert-tier/libpaiton_expert_tier.so",
     "PAITON_FN_EXPERT_DYN_START_STEP": "64",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "PAITON_FN_EXPERT_STAGE": "102",
+    "PAITON_FN_EXPERT_STAGE_REGION": "lease",
+    "PAITON_FN_EXPERT_STAGE_V": "2",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.6,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "PAITON_FN_GDN_ANCHOR": "1",
     "PAITON_FN_GDN_PF_FUSED": "1",
     "PAITON_FN_GDN_PF_NATIVE": "1",
@@ -684,7 +697,7 @@
     "PAITON_FN_HC_CHAIN": "1",
     "PAITON_FN_HC_FUSE": "1",
     "PAITON_FN_HC_V3A": "1",
-    "PAITON_FN_KV_LEASE": "on",
+    "PAITON_FN_KV_LEASE": "on:stage=102",
     "PAITON_FN_MOE_FIN": "1",
     "PAITON_FN_MOE_FIN_MAX_M": "8",
     "PAITON_FN_MOE_FUSED": "1",
@@ -697,6 +710,7 @@
     "PAITON_FN_NATIVE_QSA_MTP": "1",
     "PAITON_FN_NATIVE_SHARED": "1",
     "PAITON_FN_NATIVE_TRUNK": "2",
+    "PAITON_FN_NOSPEC_ALLOC_FRACTION": "0.925",
     "PAITON_FN_PF_MALL": "2",
     "PAITON_FN_PF_MALL_SET": "all",
     "PAITON_FN_PLACEMENT": "counts:/models/ck/common/routing-counts.json",
@@ -710,6 +724,7 @@
     "PAITON_FN_SPEC_STATE_FIX": "1",
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
+    "PAITON_FN_SUBCHUNK": "4",
     "PAITON_FN_TRUNK_ACT": "bf16",
     "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
@@ -733,9 +748,9 @@
     "--max-num-seqs",
     "8",
     "--max-num-batched-tokens",
-    "2048",
+    "8192",
     "--kv-cache-memory-bytes",
-    "2147483648",
+    "1879048192",
     "--no-enable-prefix-caching",
     "--language-model-only",
     "--seed",
@@ -777,7 +792,7 @@
    ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.1,counts=/models/ck/common/routing-counts.json,pool=1,core=0.3",
+    "default": "static:vram_gib=21.6,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
