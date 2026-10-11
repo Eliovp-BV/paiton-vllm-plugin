@@ -1,17 +1,34 @@
 # Qwen3.8 Flash Next on two R9700 (draft, local staging; not published)
 
-Paiton's 3-bit Flash Next package: the mixed 3-bit expert / W8A16 trunk checkpoint
-`EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4` served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin
-(native grouped MoE, native collectives, native hidden-chain and sampled MTP drafts). Model details, accuracy and format:
-the model card (handoffs/release-cards-20261009/README-W3A8.md draft).
+Paiton's Flash Next package, two checkpoints served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin (native grouped
+MoE, native collectives, native hidden-chain and sampled MTP drafts):
+- **3-bit** (`EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4`): the fastest; everything in VRAM.
+- **4-bit** (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): the most accurate (0.12 % of the bf16 log-likelihood lost on long documents,
+  needles 40/40 identical to bf16); part of the experts is served from pinned system RAM, so it needs a host with about 256 GB of RAM.
+Model details, accuracy and format: the two model cards.
 
 ## About this release
-This is the first release of this model on Paiton; more will follow: the RAM/SSD cache tier next, then the 4-bit container. We keep
+The second release of this model on Paiton: the 4-bit container with the expert host tier, and an INT6 trunk for the 3-bit modes. We keep
 tuning, we keep optimizing. No custom engine was built: this is regular vLLM with the Paiton plugin and our own kernels.
 
 ## What you get (official numbers, measured on the shipped image through this launcher; BetterBench 0.6.0 standard profile, exact bf16 wire, cold prefix cache, 2x R9700)
 
-| | this package |
+<!-- [[REL3]] / [[REL4]]: the rows below are replaced by the release-image blocks rel3 (3-bit rc9a8) and rel4 (4-bit) -->
+
+| 4-bit (`--mode 4bit`, `--mode 4bit-200k`) | |
+|---|---:|
+| Weighted single-stream decode | 191.9 tok/s |
+| Eight concurrent requests, aggregate | 423.1 tok/s (48/48) |
+| Prefill, 64K-token prompt | 7,002 tok/s (exactly 64,000 tokens: 7,145) |
+| TTFT p50, short prompts | 132 ms |
+| Update p99 | 17.3 ms per stream update |
+
+4-bit per-category decode (tok/s): chat 172.4, code 188.7, file_edit 209.7, json 223.2, math 221.1, prose 172.3, reasoning 171.3,
+summarization 207.5. Prefill by depth (tok/s): 2K 5,533 / 8K 6,808 / 16K 6,646 / 32K 7,056 / 64K 7,002 / 128K 6,853. The 4-bit modes use
+an fp8 (E4M3) KV cache; `--mode 4bit` (MTP depth 3, 98,304-token window) also uses the INT6 trunk shipped in the 4-bit repository,
+`--mode 4bit-200k` (200,000-token window, MTP off) the 8-bit trunk. Measured on a PCIe 4.0 x16 host with 251 GiB of RAM.
+
+| 3-bit (`--mode decode`, `--mode prefill-long`) | |
 |---|---:|
 | Weighted single-stream decode | 216.3 tok/s |
 | Eight concurrent requests, aggregate | 565.1 tok/s (48/48; ladder 1/2/4/8 = 204.6 / 315.1 / 449.2 / 565.1) |
@@ -42,16 +59,19 @@ activations on the wire (no compressed wire); 20 passes per category after warm-
 1/2/4/8 x 48 requests, prefill depths 2K-128K.
 
 ## Next release
-The RAM and SSD KV-cache tier (prefix-cache offload outside the VRAM, as on the 27B release), then the 4-bit container. We keep tuning,
-we keep optimizing.
+A large prefix cache for the 4-bit modes (RAM tier for coding agents). We keep tuning, we keep optimizing.
 
 ## Prerequisites
 - Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`; groups `video`, `render`).
 - `python3` 3.10 or newer and the Hugging Face hub package: `pip install huggingface_hub` (the launcher downloads the weights and the base
   model's tokenizer files through it; the `hf` / `huggingface-cli` binaries are only a fallback).
 - Disk: about 116 GB for the weights plus a few MB for the runtime view and ~0.3 GB per mode of compile cache; the image is 41 GB.
-- 4-bit modes only: about 49 GiB of free RAM (the expert host tier pins about 41 GiB of expert copies across both GPUs, plus a margin);
-  `--host-pool off` lowers it to the experts that do not fit in VRAM (about 18 GiB at `--expert-vram-gib 20`).
+- 4-bit modes only: about 96 GiB of pinned host memory (the n-gram table and other host tables, about 55 GiB, plus about 41 GiB of expert
+  copies). The benchmarked configuration keeps it in GPU-mapped GTT memory, which needs about 98 GiB of free GTT; the GTT limit is half
+  the RAM by default, so in practice **a host with 256 GB of RAM**. On smaller hosts the launcher falls back to ROCm's user-pointer
+  memory and says so: it runs, but slower (186.0 vs 191.9 tok/s single-stream, 388.9 vs 423.1 at 8 requests in our validation) and can
+  pause for several seconds when the kernel compacts host memory. Raising the GTT limit is a system setting the host's administrator may
+  choose; the launcher never changes it. It also warns when the two GPUs have no direct peer-to-peer link.
 - `launch-flashnext.py --dry-run` checks these prerequisites and prints exactly what is missing.
 
 ## Set up
@@ -90,9 +110,9 @@ bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh        # 4-bit experts with
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 4-bit experts, 200,000-token window, speculative decoding off
 ```
 
-They download the 4-bit weights (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`, about 127 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8`.
-About 21.6 GiB of experts per GPU stay in VRAM; the rest are read from pinned system memory when a token needs them
-(`--expert-vram-gib` and `--host-pool on|off` change the split; the launcher checks the RAM before it starts).
+They download the 4-bit weights (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`, about 133 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8`.
+About 21.9 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system memory when a token needs them
+(`--expert-vram-gib` and `--host-pool on|off` change the split; the launcher checks the RAM and the GTT size before it starts).
 
 From another terminal:
 
