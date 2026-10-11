@@ -94,13 +94,14 @@ def gtt_total_gib(rocr_ids):
         except (OSError, ValueError): continue
     return min(sizes) if sizes else None
 
-def host_pool_env(choice, gpus):
-    """auto: GTT-backed host pools when the GTT size holds them (+ margin), else ROCm's default user-pointer pools."""
-    hp = COMMON['host_pools']; need = hp['gtt_need_gib'] + hp['gtt_margin_gib']; gtt = gtt_total_gib(gpus)
+def host_pool_env(choice, gpus, tier_gib=0.0):
+    """auto: GTT-backed host pools when the GTT size holds them (+ margin), else ROCm's default user-pointer pools. All pools
+    land on the first GPU's GTT: the host tables plus, in the 4-bit modes, the expert host tier (tier_gib, both ranks)."""
+    hp = COMMON['host_pools']; need = hp['gtt_need_gib'] + tier_gib + hp['gtt_margin_gib']; gtt = gtt_total_gib(gpus)
     if choice == 'auto': choice = 'gtt' if gtt is not None and gtt >= need else 'userptr'
     if choice == 'gtt' and gtt is not None and gtt < need:
-        sys.exit(f'host pools: --host-pools gtt needs a GTT size of {need:g} GiB per GPU, this host has {gtt:.0f} GiB (use --host-pools userptr)')
-    print(f'host pools: {choice} (GTT size {"unknown" if gtt is None else f"{gtt:.0f} GiB"}, needed {need:g} GiB for GTT pools)'
+        sys.exit(f'host pools: --host-pools gtt needs a GTT size of {need:.1f} GiB per GPU, this host has {gtt:.0f} GiB (use --host-pools userptr)')
+    print(f'host pools: {choice} (GTT size {"unknown" if gtt is None else f"{gtt:.0f} GiB"}, needed {need:.1f} GiB for GTT pools)'
           + ('' if choice == 'gtt' else '; user-pointer pools can stall briefly when the kernel compacts host memory'))
     return dict(hp['env']) if choice == 'gtt' else {}
 def tier_params(spec):
@@ -122,12 +123,16 @@ def pinned_host_gib(spec, expert_gib_total, ranks):
     else: host = max(0.0, per_rank - float(kv.get('vram_gib', per_rank)))
     return host * ranks
 
-def ram_check(need_gib, margin_gib=8.0):
+def ram_check(tier_gib, margin_gib=8.0):
+    """Pinned host memory of a start: the host tables (every mode) plus the expert host tier (4-bit modes), against MemAvailable."""
+    tables = COMMON['host_pools']['gtt_need_gib']; need_gib = tables + tier_gib
     try: avail = int(re.search(r'MemAvailable:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
     except Exception: print('ram: /proc/meminfo unreadable; not checked'); return []
     ok = avail >= need_gib + margin_gib
-    print(f'ram: expert host tier pins {need_gib:.1f} GiB (both GPUs); available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with an {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
-    return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the expert host tier (have {avail:.0f} GiB; lower it with --expert-vram-gib / --host-pool off)']
+    print(f'ram: pinned host memory {need_gib:.1f} GiB (host tables {tables:g}' + (f' + expert host tier {tier_gib:.1f}' if tier_gib else '') + f', both GPUs); '
+          f'available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with an {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
+    return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the pinned host memory (have {avail:.0f} GiB'
+                          + ('; lower the expert tier with --host-pool off' if tier_gib else '') + ')']
 
 def prerequisites(tp):
     """What a user needs; prints exactly what is missing (also in --dry-run) and stops unless everything is there."""
@@ -189,10 +194,11 @@ def main():
     if a.weights is None: a.weights = os.path.expanduser((wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
     if m.get('status', '').startswith('PENDING') : print(f'mode {a.mode}: {m["status"]}')
     missing = prerequisites(COMMON['tp'])
-    tier = None
+    tier = None; tier_gib = 0.0
     if m.get('expert_tier'):
         et = m['expert_tier']; tier = tier_spec(m['env'].get(et['env'], et['default']), a.expert_vram_gib, a.host_pool)
-        missing += ram_check(pinned_host_gib(tier, et['expert_bytes_gib_both_ranks'], COMMON['tp']))
+        tier_gib = pinned_host_gib(tier, et['expert_bytes_gib_both_ranks'], COMMON['tp'])
+    missing += ram_check(tier_gib)
     if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
     for rel in m.get('requires', []):
         if not (pathlib.Path(a.weights) / rel).exists() and not a.dry_run: sys.exit(f'mode {a.mode} needs {rel} in the checkpoint dir (not in this copy of the repo)')
@@ -218,7 +224,8 @@ def main():
         pc = COMMON['prefix_caching']; engine_args = [x for x in engine_args if x not in pc['engine_args_drop']] + pc['engine_args_add']; env.update(pc['env'])
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
-    env.update(host_pool_env(a.host_pools, gpus))
+    for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
+    env.update(host_pool_env(a.host_pools, gpus, tier_gib))
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
