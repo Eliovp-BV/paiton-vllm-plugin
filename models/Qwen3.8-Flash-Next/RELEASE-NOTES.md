@@ -2,18 +2,18 @@
 
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 
-## Release 20261011 (draft; numbers from the release-image blocks replace the [[REL3]] / [[REL4]] marks)
+## Release 20261011 (draft)
 - **4-bit container** (`--mode 4bit`, `--mode 4bit-200k`; weights `EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): per layer the 410
   most-used experts INT4 (g128) and the 102 least-used in the 3-bit codebook format; about 20.8 GiB of experts per GPU resident in VRAM (the decode mode keeps a 2.5 GiB fp8 KV pool, about 305,000 tokens),
   the rest served from pinned system memory (expert host tier); fp8 KV cache; INT6 trunk in `--mode 4bit`. Accuracy (model card):
-  within 0.16 % of the bf16 log-likelihood on long documents, needles 40/40 identical to bf16 (as served: INT6 trunk, fp8 KV cache). Speed [[REL4]]: decode 191.9 / @8 423.1 /
-  prefill @64K 7,002 / TTFT 132 ms / update p99 17.3 ms.
-- **3-bit decode modes: INT6 trunk**: `--mode decode` and `decode-nopf` run the attention q/o and Gated DeltaNet projections as INT6 g128
-  weights from the new optional `trunk-int6/` directory of the 3-bit repository (int8-g128 prompt rows), fold the GDN state at load time,
-  and cover up to 32 rows with the INT6 decode GEMVs. Their other prompt rows run W8A16: the W8A8 prompt rows gave no prefill gain on
-  the INT6 trunk. The `prefill-long` modes are unchanged (8-bit trunk, W8A8 prompt rows). Same experts, same modes. Accuracy of the decode modes:
-  as accurate as the previous 3-bit release, slightly better on our evaluation set. Speed [[REL3]].
-- **One image** for all six modes (the 4-bit modes select their MoE bundle by path).
+  within 0.16 % of the bf16 log-likelihood on long documents, needles 40/40 identical to bf16 (as served: INT6 trunk, fp8 KV cache). Speed, measured on
+  the shipped image: decode 189.7 / @8 420.7 / prefill @64K 6,991 / TTFT 121 ms / update p99 17.7 ms.
+- **3-bit modes: launcher fixes only.** Same image, same weights, same modes and the same speed and accuracy as the 10 Oct release.
+  What changes is the launcher: the host memory pools below (no GPU pauses from host memory compaction under load), a short settle wait
+  before it reports READY, and the peer-to-peer and GTT preflight checks. [[PREFIX-CACHING: the --prefix-caching recommendation for
+  agents and coding tools, if approved]]
+- **Images**: the 4-bit modes run the new image `qwen38-flashnext-rocm10-vllm029-20261011-r1`; the 3-bit modes stay on the published
+  `qwen38-flashnext-rocm10-vllm029-20261010-r1` (the launcher picks the right one per mode).
 - **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
   automatic fallback to ROCm's user-pointer memory and a warning; the 4-bit modes need about 98 GiB of free GTT (a 256 GB host).
 - **Preflight**: `--dry-run` reports host RAM, the GTT limit and what it chooses, and warns when the GPUs have no peer-to-peer link.

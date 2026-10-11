@@ -8,23 +8,23 @@ MoE, native collectives, native hidden-chain and sampled MTP drafts):
 Model details, accuracy and format: the two model cards.
 
 ## About this release
-The second release of this model on Paiton: the 4-bit container with the expert host tier, and an INT6 trunk for the 3-bit modes. We keep
+The second release of this model on Paiton: the 4-bit container with the expert host tier, and launcher fixes for the 3-bit modes. We keep
 tuning, we keep optimizing. No custom engine was built: this is regular vLLM with the Paiton plugin and our own kernels.
 
 ## What you get (official numbers, measured on the shipped image through this launcher; BetterBench 0.6.0 standard profile, exact bf16 wire, cold prefix cache, 2x R9700)
 
-<!-- [[REL3]] / [[REL4]]: the rows below are replaced by the release-image blocks rel3 (3-bit rc9a8) and rel4 (4-bit) -->
+<!-- [[REL3S]]: the 3-bit rows are the published 10 Oct numbers (same image and config); the morning validation with the new launcher confirms them -->
 
 | 4-bit (`--mode 4bit`, `--mode 4bit-200k`) | |
 |---|---:|
-| Weighted single-stream decode | 191.9 tok/s |
-| Eight concurrent requests, aggregate | 423.1 tok/s (48/48) |
-| Prefill, 64K-token prompt | 7,002 tok/s (exactly 64,000 tokens: 7,145) |
-| TTFT p50, short prompts | 132 ms |
-| Update p99 | 17.3 ms per stream update |
+| Weighted single-stream decode | 189.7 tok/s |
+| Eight concurrent requests, aggregate | 420.7 tok/s (48/48) |
+| Prefill, 64K-token prompt | 6,991 tok/s (exactly 64,000 tokens: 7,162) |
+| TTFT p50, short prompts | 121 ms |
+| Update p99 | 17.7 ms per stream update |
 
-4-bit per-category decode (tok/s): chat 172.4, code 188.7, file_edit 209.7, json 223.2, math 221.1, prose 172.3, reasoning 171.3,
-summarization 207.5. Prefill by depth (tok/s): 2K 5,533 / 8K 6,808 / 16K 6,646 / 32K 7,056 / 64K 7,002 / 128K 6,853. The 4-bit modes use
+4-bit per-category decode (tok/s): chat 171.4, code 187.1, file_edit 207.5, json 217.5, math 217.2, prose 170.4, reasoning 170.0,
+summarization 206.1. Prefill by depth (tok/s): 2K 5,564 / 8K 6,771 / 16K 6,641 / 32K 7,044 / 64K 6,991 / 128K 6,857. The 4-bit modes use
 an fp8 (E4M3) KV cache; `--mode 4bit` (MTP depth 3, 98,304-token window) also uses the INT6 trunk shipped in the 4-bit repository,
 `--mode 4bit-200k` (200,000-token window, MTP off) the 8-bit trunk. Measured on a PCIe 4.0 x16 host with 251 GiB of RAM.
 
@@ -141,5 +141,5 @@ per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.j
 
 ## Limitations (draft)
 - 98,304-token window in decode mode (MTP pool); 200,000 in prefill-long mode with MTP off; vision not validated; prefix caching is an
-  opt-in flag (official numbers measured without it). The prefill-long prompt rows run W8A8, the decode modes W8A16 prompt rows with the INT6 trunk; accuracy numbers are in the model card's table. The `-nopf` modes use
+  opt-in flag (official numbers measured without it). The prompt rows run W8A8; accuracy numbers are in the model card's table. The `-nopf` modes use
   exact-arithmetic prefill, about 7 % slower.
