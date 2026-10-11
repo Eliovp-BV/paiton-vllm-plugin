@@ -528,7 +528,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.command(*options)
                 self.assertIn(image, command)
                 self.assertIn('RADIANCE_GDN_LAZY=0', command)
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command)
                 self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                 engine = self.engine(command)
                 context = options[options.index('--context') + 1]
@@ -608,7 +608,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         # with the allocator setting that budget was measured with (4-bit KV cache budget by default), capped below
         # the VRAM edge.
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_KV4_CACHE_BYTES))
-        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command[:image_index])
+        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command[:image_index])
         command = self.command('--kv-cache-memory-bytes', '7000000000')
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), '7000000000')
         command = self.command('--profile', 'desktop')
@@ -952,7 +952,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 command = self.command(*options)
                 capped = [item for item in command if item.startswith('PYTORCH_ALLOC_CONF=')]
-                self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95'])
+                self.assertEqual(capped, ['PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94'])
                 self.assertEqual('PAITON_VRAM_HEADROOM_MIB=1024' in command, '--vision' not in options)
         del self.environment['PAITON_W3ROT_DIR']
         setting = [item for item in self.command('--context', '200000') if item.startswith('PYTORCH_ALLOC_CONF=')]
@@ -966,7 +966,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         for options in (('--context', str(limit), '--vision'), ('--profile', 'chat', '--vision')):
             with self.subTest(options=options):
                 command = self.command(*options)
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command)
                 engine = self.engine(command)
                 self.assertNotIn('--language-model-only', engine)
                 self.assertIn('--enable-prefix-caching', engine)
@@ -1041,7 +1041,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 command = self.dry_run('--mode', mode)
                 environment = command[:command.index(image)]
                 self.assertEqual(self.kv4_flags(command, image), [f'PAITON_KV4={kv4}', f'PAITON_KV4_CAPACITY={kv4}'])
-                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', environment)
+                self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', environment)
                 self.assertIn('PAITON_VRAM_HEADROOM_MIB=1024', environment)
                 engine = command[command.index(image) + 1:]
                 self.assertIn(prefix, engine)
@@ -1868,7 +1868,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         text = self.dry_run('--mode', 'long-kv4')                  # text-only long-kv4 is unchanged
         self.assertNotIn('--mm-processor-kwargs', text)
         self.assertNotIn('PAITON_DRAFT_FP8_GEMM=0', text)
-        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
+        self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command)
         # the legacy spelling keeps the embedding on the GPU and stays refused with --vision
         self.assertIn('keeps the embedding and the vision encoder in system memory',
                       self.refused('--context', '200000', '--kv-cache', 'kv4', '--vision'))
@@ -2118,6 +2118,9 @@ class Rocm10LauncherTests(unittest.TestCase):
                 stripped = list(command)
                 index = stripped.index('PAITON_LMHEAD_W8=1')
                 del stripped[index - 1:index + 1]
+                # the FP8 head's allocator cap is one point lower (its runtime lives outside PyTorch)
+                stripped = [item.replace('per_process_memory_fraction:0.94', 'per_process_memory_fraction:0.95')
+                            for item in stripped]
                 if options == ('--mode', 'long'):
                     stripped[stripped.index('--kv-cache-memory-bytes') + 1] = str(launcher.W3_LONG_KV_CACHE_BYTES)
                 self.assertEqual(stripped, previous)

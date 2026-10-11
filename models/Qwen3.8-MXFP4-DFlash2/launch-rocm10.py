@@ -99,6 +99,11 @@ W3_LONG_KV4_CACHE_BYTES = 9662464000
 # --mode long --vision on the 5 October image evicted under 8 concurrent image requests followed by a large image and
 # did not start with the drafter FP8 GEMM; capped: no eviction); the MXFP4 weights keep the previous setting.
 W3_MEMORY_FRACTION = 0.95
+# With the FP8 output head the memory outside PyTorch grows by ~0.28 GiB (the native head's runtime), and the start's fp8
+# GEMM warm-up fills the allocator up to its cap: the card peaked at 31,975 MiB in --mode long against 31,693 MiB with
+# the bf16 head (11 Oct 2026, gate q27head; long-kv4 since 6 Oct: 31,969 MiB). One point less (-326 MiB of allocator room)
+# keeps the start peak at the bf16 head's level; serving stays well under it (--mode long peaked at 30,794 MiB).
+W3_MEMORY_FRACTION_LMHEAD_W8 = 0.94
 # 3 Oct 2026: in the 4-bit long-context mode a prefix-cache hit on a shared-prefix (junction) checkpoint ended in a
 # GDN-norm nonfinite engine error (a repeated 32,758-token request after related requests). Until that is fixed the
 # 4-bit long mode runs without prefix caching; measured on one R9700 (repeat of that request):
@@ -1561,7 +1566,8 @@ def docker_command(args, environment):
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'
         if weights == 'w3a4':                                   # every 3-bit mode, --vision included (6 Oct)
-            allocator += f',per_process_memory_fraction:{W3_MEMORY_FRACTION}'
+            fraction = W3_MEMORY_FRACTION_LMHEAD_W8 if lm_head_mode(args, weights) == 'fp8' else W3_MEMORY_FRACTION
+            allocator += f',per_process_memory_fraction:{fraction}'
         command += ['-e', 'PYTORCH_ALLOC_CONF=' + allocator]
     if weights == 'mxfp4' and args.release in W3_RELEASES:
         # All three flags: the runtime rejects W3A4 prefill without W3 decode.
