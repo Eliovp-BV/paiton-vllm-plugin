@@ -3,7 +3,7 @@
 Paiton's Flash Next package, two checkpoints served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin (native grouped
 MoE, native collectives, native hidden-chain and sampled MTP drafts):
 - **3-bit** (`EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4`): the fastest; everything in VRAM.
-- **4-bit** (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): the most accurate (0.12 % of the bf16 log-likelihood lost on long documents,
+- **4-bit** (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): the most accurate (within 0.16 % of the bf16 log-likelihood on long documents,
   needles 40/40 identical to bf16); part of the experts is served from pinned system RAM, so it needs a host with about 256 GB of RAM.
 Model details, accuracy and format: the two model cards.
 
