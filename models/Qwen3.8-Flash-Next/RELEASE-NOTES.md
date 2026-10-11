@@ -31,6 +31,15 @@ optimizing). No custom engine was built: regular vLLM with the Paiton plugin and
   (2.7 s in total over a 3-minute run at 8 concurrent requests; 0.07 s with GTT memory, speed unchanged). On smaller hosts the launcher keeps
   the default and says so; `--host-pools userptr` keeps it everywhere.
 
+## 4-bit modes (preview, not released yet): host memory
+- `--mode 4bit` / `--mode 4bit-200k` keep part of the experts in pinned system memory. With the host tables this pins about 96 GiB
+  (about 55 GiB of tables plus about 41 GiB of experts, both GPUs together); the launcher checks the available RAM first.
+- The benchmarked configuration places all of it in GTT memory (`HSA_USERPTR_FOR_PAGED_MEM=0`), which counts against one GPU's GTT
+  size: about 101 GiB with the margin. The GTT size defaults to half the system RAM, so **the benchmarked 4-bit configuration needs
+  a host with about 200 GiB of RAM or more**.
+- On smaller hosts the launcher keeps ROCm's default user-pointer memory instead and says so; that configuration is being validated
+  separately (start, speed and stall behaviour) before the 4-bit release.
+
 ## How the numbers were taken
 BetterBench 0.6.0 standard profile on this machine against our OpenAI-compatible server; prefill with exact bf16 activations (no compressed
 wire).
