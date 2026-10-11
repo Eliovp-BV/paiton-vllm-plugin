@@ -11,7 +11,8 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
 - **3-bit decode modes: INT6 trunk**: `--mode decode` and `decode-nopf` run the attention q/o and Gated DeltaNet projections as INT6 g128
   weights from the new optional `trunk-int6/` directory of the 3-bit repository (int8-g128 prompt rows), fold the GDN state at load time,
   and cover up to 32 rows with the INT6 decode GEMVs. Their other prompt rows run W8A16: the W8A8 prompt rows gave no prefill gain on
-  the INT6 trunk. The `prefill-long` modes are unchanged (8-bit trunk, W8A8 prompt rows). Same experts, same modes. Speed [[REL3]].
+  the INT6 trunk. The `prefill-long` modes are unchanged (8-bit trunk, W8A8 prompt rows). Same experts, same modes. Accuracy of the decode modes:
+  as accurate as the previous 3-bit release, slightly better on our evaluation set. Speed [[REL3]].
 - **One image** for all six modes (the 4-bit modes select their MoE bundle by path).
 - **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
   automatic fallback to ROCm's user-pointer memory and a warning; the 4-bit modes need about 98 GiB of free GTT (a 256 GB host).
