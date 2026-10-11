@@ -94,10 +94,17 @@ def gtt_total_gib(rocr_ids):
         except (OSError, ValueError): continue
     return min(sizes) if sizes else None
 
-def host_pool_env(choice, gpus, tier_gib=0.0):
+def host_pool_env(choice, gpus, tier_gib=0.0, strict=False, dry=False):
     """auto: GTT-backed host pools when the GTT size holds them (+ margin), else ROCm's default user-pointer pools. All pools
     land on the first GPU's GTT: the host tables plus, in the 4-bit modes, the expert host tier (tier_gib, both ranks)."""
     hp = COMMON['host_pools']; need = hp['gtt_need_gib'] + tier_gib + hp['gtt_margin_gib']; gtt = gtt_total_gib(gpus)
+    if choice == 'auto' and strict and (gtt is None or gtt < need):
+        msg = (f'host pools: this mode was benchmarked with its ~{need - hp["gtt_margin_gib"]:.0f} GiB of pinned host memory in GTT, which needs a GTT size '
+               f'of {need:.0f} GiB per GPU; this host has {"an unknown GTT size" if gtt is None else f"{gtt:.0f} GiB"} (the GTT size is half the system RAM '
+               f'by default, so about {2 * need:.0f} GiB of RAM). On smaller hosts --host-pools userptr runs it with user-pointer memory: same speed '
+               f'in our validation, but GPU pauses of several seconds when the kernel compacts host memory')
+        if dry: print('WOULD REFUSE ->', msg); choice = 'userptr'
+        else: sys.exit(msg)
     if choice == 'auto': choice = 'gtt' if gtt is not None and gtt >= need else 'userptr'
     if choice == 'gtt' and gtt is not None and gtt < need:
         sys.exit(f'host pools: --host-pools gtt needs a GTT size of {need:.1f} GiB per GPU, this host has {gtt:.0f} GiB (use --host-pools userptr)')
@@ -134,6 +141,36 @@ def ram_check(tier_gib, margin_gib=8.0):
     return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the pinned host memory (have {avail:.0f} GiB'
                           + ('; lower the expert tier with --host-pool off' if tier_gib else '') + ')']
 
+def p2p_check(rocr_ids):
+    """Warn (never refuse) when the chosen GPUs have no peer-to-peer link in the KFD topology: tensor-parallel traffic then goes
+    through host memory and decode/prefill run slower than measured. Uses /sys/class/kfd topology (gpu_id per node, p2p_links) and,
+    when readable, the kernel's CONFIG_HSA_AMD_P2P; nothing host-specific is assumed."""
+    import gzip
+    topo = pathlib.Path('/sys/class/kfd/kfd/topology/nodes')
+    try:
+        gpu_nodes = {n.name for n in topo.iterdir() if (n / 'gpu_id').read_text().strip() not in ('', '0')}
+    except OSError:
+        print('p2p: KFD topology unreadable; not checked'); return
+    linked = set()
+    for n in gpu_nodes:
+        for l in (topo / n / 'p2p_links').glob('*/properties'):
+            try:
+                kv = dict(line.split() for line in l.read_text().splitlines() if len(line.split()) == 2)
+                if kv.get('node_to') in gpu_nodes: linked.add(n)
+            except OSError: continue
+    cfg = None
+    for src in (f'/boot/config-{os.uname().release}', '/proc/config.gz'):
+        try:
+            txt = gzip.open(src, 'rt').read() if src.endswith('.gz') else open(src).read()
+            cfg = 'y' if 'CONFIG_HSA_AMD_P2P=y' in txt else 'not set'; break
+        except OSError: continue
+    if len(gpu_nodes) >= 2 and linked >= gpu_nodes:
+        print(f'p2p: GPU peer-to-peer links present ({len(gpu_nodes)} GPU nodes)' + (f'; kernel CONFIG_HSA_AMD_P2P={cfg}' if cfg else ''))
+    else:
+        print(f'p2p: WARNING: no GPU peer-to-peer link between the GPUs in the KFD topology' + (f' (kernel CONFIG_HSA_AMD_P2P={cfg})' if cfg else '')
+              + '; tensor-parallel traffic goes through host memory and both GPUs run slower than our numbers. Check the kernel option, '
+              'the BIOS (Above 4G decoding, Resizable BAR) and that both GPUs share a PCIe root without ACS blocking peer access.')
+
 def prerequisites(tp):
     """What a user needs; prints exactly what is missing (also in --dry-run) and stops unless everything is there."""
     missing = []
@@ -160,6 +197,8 @@ def ensure_view(weights, view, base_cfg, dry, wanted_optional=()):
     links.update({'model.safetensors': f'{ck}/model.safetensors', 'manifest.json': f'{ck}/manifest.json', 'ple-e4m3': f'{ck}/common/ple-e4m3',
                   'mtp-vision.safetensors': f'{ck}/common/bf16-mtp-vision.safetensors', 'mtp-experts.safetensors': f'{ck}/mtp/mtp-experts.safetensors',
                   'mtp-draft-int2/draft-head-int2.safetensors': f'{ck}/mtp/draft-head-int2.safetensors', 'mtp-draft-int2/draft-head-int2.json': f'{ck}/mtp/draft-head-int2.json'})
+    for f in sorted((weights / 'trunk-int6' / 'layers').glob('L[0-9][0-9].safetensors')):   # 4-bit INT6 trunk overlay, read as top-level i6-LNN files
+        links['i6-' + f.name] = f'{ck}/trunk-int6/layers/{f.name}'
     for k, rel in COMMON.get('view_links_if_present', {}).items():   # files of some exports only (the hybrid 4-bit format map)
         if (weights / rel).exists(): links[k] = f'{ck}/{rel}'
     for k, rel in COMMON.get('view_links_optional', {}).items():   # files only the modes that list them in 'requires' load
@@ -199,12 +238,18 @@ def main():
         et = m['expert_tier']; tier = tier_spec(m['env'].get(et['env'], et['default']), a.expert_vram_gib, a.host_pool)
         tier_gib = pinned_host_gib(tier, et['expert_bytes_gib_both_ranks'], COMMON['tp'])
     missing += ram_check(tier_gib)
+    if m.get('expert_tier'):
+        try: tot = int(re.search(r'MemTotal:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
+        except Exception: tot = None
+        print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration needs about 200 GiB '
+              '(about 96 GiB of pinned host memory in one GPU\'s GTT, which is half the RAM by default)')
     if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
     for rel in m.get('requires', []):
         if not (pathlib.Path(a.weights) / rel).exists() and not a.dry_run: sys.exit(f'mode {a.mode} needs {rel} in the checkpoint dir (not in this copy of the repo)')
     gpus = a.devices.split(',') if a.devices else amd_gpus()
     if len(gpus) < COMMON['tp'] and not a.dry_run: sys.exit(f'need {COMMON["tp"]} AMD GPUs, found {gpus}')
     gpus = gpus[:COMMON['tp']]
+    p2p_check(gpus)
     ispec = COMMON[m.get('image_key', 'image')]
     image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
     weights = ensure_weights(a.weights, a.dry_run, *((wspec['hf_repo'], wspec['hf_revision']) if wspec else (None, None)))
@@ -225,7 +270,7 @@ def main():
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
-    env.update(host_pool_env(a.host_pools, gpus, tier_gib))
+    env.update(host_pool_env(a.host_pools, gpus, tier_gib, strict=bool(m.get('expert_tier')), dry=a.dry_run))
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
