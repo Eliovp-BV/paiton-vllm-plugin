@@ -111,7 +111,7 @@ bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 4-bit experts, 200
 ```
 
 They download the 4-bit weights (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`, about 133 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8`.
-About 21.9 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system memory when a token needs them
+About 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system memory when a token needs them
 (`--expert-vram-gib` and `--host-pool on|off` change the split; the launcher checks the RAM and the GTT size before it starts).
 
 From another terminal:

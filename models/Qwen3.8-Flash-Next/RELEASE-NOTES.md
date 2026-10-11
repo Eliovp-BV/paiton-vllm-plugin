@@ -4,7 +4,7 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
 
 ## Release 20261011 (draft; numbers from the release-image blocks replace the [[REL3]] / [[REL4]] marks)
 - **4-bit container** (`--mode 4bit`, `--mode 4bit-200k`; weights `EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): per layer the 410
-  most-used experts INT4 (g128) and the 102 least-used in the 3-bit codebook format; about 21.9 GiB of experts per GPU resident in VRAM,
+  most-used experts INT4 (g128) and the 102 least-used in the 3-bit codebook format; about 20.8 GiB of experts per GPU resident in VRAM (the decode mode keeps a 2.5 GiB fp8 KV pool, about 305,000 tokens),
   the rest served from pinned system memory (expert host tier); fp8 KV cache; INT6 trunk in `--mode 4bit`. Accuracy (model card):
   0.12 % of the bf16 log-likelihood lost on long documents, needles 40/40 identical to bf16. Speed [[REL4]]: decode 191.9 / @8 423.1 /
   prefill @64K 7,002 / TTFT 132 ms / update p99 17.3 ms.

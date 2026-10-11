@@ -551,7 +551,7 @@
     "PAITON_FN_EXPERT_STAGE": "102",
     "PAITON_FN_EXPERT_STAGE_REGION": "lease",
     "PAITON_FN_EXPERT_STAGE_V": "2",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.85,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=20.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "PAITON_FN_GDN_ANCHOR": "1",
     "PAITON_FN_GDN_PF_FUSED": "1",
     "PAITON_FN_GDN_PF_NATIVE": "1",
@@ -616,7 +616,7 @@
     "--max-num-batched-tokens",
     "2048",
     "--kv-cache-memory-bytes",
-    "1503238553",
+    "2684354560",
     "--no-enable-prefix-caching",
     "--language-model-only",
     "--seed",
@@ -663,7 +663,7 @@
    ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.85,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
+    "default": "static:vram_gib=20.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
@@ -688,7 +688,7 @@
     "PAITON_FN_EXPERT_STAGE": "102",
     "PAITON_FN_EXPERT_STAGE_REGION": "lease",
     "PAITON_FN_EXPERT_STAGE_V": "2",
-    "PAITON_FN_EXPERT_TIER": "static:vram_gib=21.85,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
+    "PAITON_FN_EXPERT_TIER": "static:vram_gib=20.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "PAITON_FN_GDN_ANCHOR": "1",
     "PAITON_FN_GDN_PF_FUSED": "1",
     "PAITON_FN_GDN_PF_NATIVE": "1",
@@ -786,7 +786,7 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_attn_pad_rows.pth",
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
-   "seed": "4bit-200k",
+   "seed": "4bit",
    "gtt_pinned_gib": 93.0,
    "note": "4-bit experts with the expert host tier (route 1): 200,000-token window, MTP off",
    "image_key": "image",
@@ -796,7 +796,7 @@
    ],
    "expert_tier": {
     "env": "PAITON_FN_EXPERT_TIER",
-    "default": "static:vram_gib=21.85,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
+    "default": "static:vram_gib=20.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
     "expert_bytes_gib_both_ranks": 58.23
    },
    "status": "PENDING: the 4-bit release image is not built yet"
