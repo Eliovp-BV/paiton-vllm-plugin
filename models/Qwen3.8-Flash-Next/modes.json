@@ -140,7 +140,7 @@
     "PAITON_TP_AR_MAX_ROWS": "2048",
     "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective",
     "PAITON_TP_NATIVE_AR": "1",
-    "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.94",
+    "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.95",
     "VLLM_DISABLE_PAITON_PLATFORM": "1",
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
@@ -203,7 +203,7 @@
     "mtp/mtp-draft-e4m3.safetensors",
     "trunk-int6/layers/L47.safetensors"
    ],
-   "note": "RC8-a8 stack (W8A8 prompt rows + native GDN prefill): decode rows are W8A16, the shipped image measured 216.3 weighted / 565.1 @8 | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32 | rc9a8b: allocator fraction 0.94 (peak <= 31.0)"
+   "note": "RC8-a8 stack (W8A8 prompt rows + native GDN prefill): decode rows are W8A16, the shipped image measured 216.3 weighted / 565.1 @8 | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
   },
   "prefill-long": {
    "source_run": "official prefill block, 10 Oct 2026 03:24-03:38 UTC",
@@ -370,7 +370,7 @@
     "PAITON_TP_AR_MAX_ROWS": "2048",
     "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective",
     "PAITON_TP_NATIVE_AR": "1",
-    "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.94",
+    "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.95",
     "VLLM_DISABLE_PAITON_PLATFORM": "1",
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
@@ -433,7 +433,7 @@
     "mtp/mtp-draft-e4m3.safetensors",
     "trunk-int6/layers/L47.safetensors"
    ],
-   "note": "RC8-a8 without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); prefill on this path measured 7,607 @64K (W8A8) / 7,368 (W8A16) | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32 | rc9a8b: allocator fraction 0.94 (peak <= 31.0)"
+   "note": "RC8-a8 without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); prefill on this path measured 7,607 @64K (W8A8) / 7,368 (W8A16) | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
   },
   "prefill-long-nopf": {
    "source_run": "exact-prefill-path prefill block, 10 Oct 2026 08:15-08:32 UTC",
