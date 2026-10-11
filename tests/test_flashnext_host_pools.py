@@ -49,3 +49,32 @@ def test_3bit_rule_unchanged(lf, monkeypatch):
     assert lf.host_pool_env('auto', ['GPU-0'])[0] == {'HSA_USERPTR_FOR_PAGED_MEM': '0'}
     monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (58.0, 58.0))
     assert lf.host_pool_env('auto', ['GPU-0'])[0] == {}
+
+
+def _health_server():
+    import http.server, threading
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self): self.send_response(200 if self.path == '/health' else 404); self.end_headers()
+        def log_message(self, *a): pass
+    srv = http.server.HTTPServer(('127.0.0.1', 0), H); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def test_wait_ready_settles_after_migration_burst(lf, monkeypatch, tmp_path, capsys):
+    import subprocess as sp
+    srv = _health_server(); proc = sp.Popen(['sleep', '30'])
+    seq = iter([0] + [i * 20000 for i in range(1, 7)] + [120000 + i * 100 for i in range(1, 40)])   # 3 s of 40K pages/s, then quiet
+    monkeypatch.setattr(lf, 'pgmigrate_success', lambda: next(seq))
+    (tmp_path / 'a.safetensors').write_bytes(b'x' * 4096)
+    try:
+        assert lf.wait_ready(srv.server_address[1], proc, 'x', settle_s=12, quiet_s=2, weights=tmp_path)
+    finally:
+        proc.kill(); srv.shutdown()
+    out = capsys.readouterr().out
+    assert 'dropped the page cache of 1 checkpoint files' in out and 'READY on port' in out and 'settle wait' in out
+
+
+def test_wait_ready_false_when_server_exits(lf):
+    import subprocess as sp
+    proc = sp.Popen(['true']); proc.wait()
+    assert lf.wait_ready(1, proc, 'x', settle_s=0, weights=None) is False

@@ -98,8 +98,10 @@ python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode decode|prefill-long
 ```
 
 The server runs in the foreground; add `--detach` to run it in the background (`docker logs -f paiton-flashnext` follows its log). The
-first start of a mode copies the baked compile cache and takes about **five to six minutes** (weight loading dominates); wait for
-`/health` to succeed.
+first start of a mode copies the baked compile cache and takes about **five to six minutes** (weight loading dominates). Wait for the
+launcher's `launcher: READY on port …` line (with `--detach` the command returns at that point): after `/health` answers, the launcher
+drops the checkpoint files from the page cache and waits until the kernel has finished compacting host memory (at most 30 s), because
+that compaction can pause the GPUs for a few seconds right after start. `--settle-s 0` and `--keep-page-cache` turn this off.
 
 **API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8-Flash-Next` · **API key:** none (enter any value if a client asks)
 
@@ -129,7 +131,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
 
 ## Options
 `--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k`, `--prefix-caching`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
-`--served-model-name`, `--detach`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
+`--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
 
 ## Files
 `run-flashnext*.sh` (the wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,

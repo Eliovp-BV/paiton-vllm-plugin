@@ -133,6 +133,52 @@ def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0)
               'Raising the GTT limit (amdgpu.gttsize / ttm.pages_limit) is a system setting you may choose; this launcher never changes it.')
     return (dict(hp['env']) if choice == 'gtt' else {}), rt
 
+def pgmigrate_success():
+    try: return int(re.search(r'^pgmigrate_success (\d+)$', open('/proc/vmstat').read(), re.M).group(1))
+    except Exception: return None
+
+def drop_page_cache(root):
+    """posix_fadvise(DONTNEED) on every checkpoint file: drops their clean page-cache pages after the load (frees host memory, so the
+    kernel compacts less while the server is serving). Read-only, nothing is written; files in use elsewhere are simply re-read."""
+    n = b = 0
+    for p in pathlib.Path(root).rglob('*'):
+        try:
+            if not p.is_file() or p.is_symlink(): continue
+            fd = os.open(p, os.O_RDONLY)
+            try: os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED); n += 1; b += os.fstat(fd).st_size
+            finally: os.close(fd)
+        except (OSError, AttributeError): continue
+    return n, b
+
+def wait_ready(port, proc, name, timeout_s=1800, settle_s=30.0, quiet_s=5.0, rate_max=10000, weights=None, drop_cache=True):
+    """Ready = /health answers, then (after dropping the checkpoint's page cache) the host's page migration rate (/proc/vmstat
+    pgmigrate_success) stays below rate_max pages/s for quiet_s seconds, capped at settle_s: the kernel compacts memory right after
+    the engine is ready, which can pause the GPU queues for seconds; the first requests then land after it. Returns True when ready."""
+    import time, urllib.request
+    t0 = time.time()
+    while True:
+        try:
+            with urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=3) as r:
+                if r.status == 200: break
+        except Exception: pass
+        if proc is not None and proc.poll() is not None: return False
+        if proc is None and subprocess.run(['docker', 'inspect', '-f', '{{.State.Running}}', name], capture_output=True, text=True).stdout.strip() != 'true': return False
+        if time.time() - t0 > timeout_s: print(f'launcher: /health did not answer within {timeout_s} s', flush=True); return False
+        time.sleep(2)
+    t_health = time.time()
+    if drop_cache and weights is not None:
+        n, b = drop_page_cache(weights); print(f'launcher: dropped the page cache of {n} checkpoint files ({b / 2**30:.1f} GiB)', flush=True)
+    if settle_s > 0 and pgmigrate_success() is not None:
+        t1 = time.time(); last = pgmigrate_success(); tl = t1; calm = 0.0; peak = 0.0
+        while time.time() - t1 < settle_s:
+            time.sleep(0.5); now = time.time(); cur = pgmigrate_success(); rate = (cur - last) / max(now - tl, 1e-3); last, tl = cur, now
+            peak = max(peak, rate); calm = calm + 0.5 if rate < rate_max else 0.0
+            if calm >= quiet_s: break
+        print(f'launcher: settle wait {time.time() - t1:.1f} s (host page migration peak {peak:,.0f} pages/s; quiet = below {rate_max:,} pages/s '
+              f'for {quiet_s:g} s, cap {settle_s:g} s)', flush=True)
+    print(f'launcher: READY on port {port} ({time.time() - t0:.0f} s after start, {time.time() - t_health:.0f} s after /health)', flush=True)
+    return True
+
 def tier_params(spec):
     """'static:vram_gib=21.6,counts=...,pool=1,core=0.3' -> (kind, {key: value})"""
     kind, _, rest = spec.partition(':')
@@ -249,7 +295,7 @@ def main():
     ap.add_argument('--expert-vram-gib', type=float, default=None, help='4-bit modes: VRAM per GPU for resident experts (default from modes.json)'); ap.add_argument('--host-pool', choices=('on', 'off'), default=None, help='4-bit modes: keep a pinned host copy of every non-core expert (on, default) or only of the non-resident ones (off)'); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
-    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory (auto when the GTT size holds them) or ROCm user-pointer memory'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory (auto when the GTT size holds them) or ROCm user-pointer memory'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
     wspec = COMMON.get(m['weights_key']) if m.get('weights_key') else None
     if a.weights is None: a.weights = os.path.expanduser((wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
@@ -308,7 +354,19 @@ def main():
     cmd += ['--entrypoint', 'bash', image, '-c', inner]
     print(f'mode {a.mode}: image {image}; GPUs {gpus}; weights {weights}; cache {cache}; port {a.port}' + (f'; expert tier {tier}' if tier else ''))
     if a.dry_run: print(' '.join(shlex.quote(x) for x in cmd)); return
-    os.execvp('docker', cmd)
+    ready = dict(port=a.port, name=a.name, settle_s=a.settle_s, weights=weights, drop_cache=not a.keep_page_cache)
+    if a.detach:
+        rc = subprocess.run(cmd).returncode
+        if rc: sys.exit(rc)
+        sys.exit(0 if wait_ready(proc=None, **ready) else 1)
+    proc = subprocess.Popen(cmd)
+    import signal
+    for sig in (signal.SIGTERM, signal.SIGHUP): signal.signal(sig, lambda n, f: proc.send_signal(n))   # the docker client stops the container
+    try:
+        wait_ready(proc=proc, **ready); sys.exit(proc.wait())
+    except KeyboardInterrupt:
+        try: sys.exit(proc.wait())
+        except KeyboardInterrupt: proc.terminate(); sys.exit(proc.wait())
 
 if __name__ == '__main__':
     main()
