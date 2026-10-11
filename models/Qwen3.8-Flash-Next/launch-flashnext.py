@@ -84,33 +84,53 @@ def ensure_base_cfg(d, dry):
     hf_download(COMMON['base_model'], COMMON['base_model_revision'], d, patterns=list(COMMON['base_cfg_files']), dry=dry)
     return d
 
-def gtt_total_gib(rocr_ids):
-    """Smallest GTT size (GiB) among the given GPUs, from sysfs by unique id; None when unreadable."""
-    want = {g.lower().replace('gpu-', '') for g in rocr_ids}; sizes = []
+def gtt_limits_gib(rocr_ids):
+    """(limit, free) GiB of GTT for the host pools: per chosen AMD GPU (vendor 0x1002, matched by unique id) mem_info_gtt_total, capped
+    by TTM's global page limit (ttm.pages_limit when set, else the kernel default of half of MemTotal); free = limit minus the GTT that
+    is already in use on that GPU (other processes). The smallest over the GPUs; (None, None) when unreadable."""
+    want = {g.lower().replace('gpu-', '') for g in rocr_ids}; devs = []
     for dev in pathlib.Path('/sys/class/drm').glob('card[0-9]*/device'):
         try:
+            if (dev / 'vendor').read_text().strip() != '0x1002': continue
             if (dev / 'unique_id').read_text().strip().lower().replace('0x', '') in want:
-                sizes.append(int((dev / 'mem_info_gtt_total').read_text()) / (1 << 30))
+                devs.append((int((dev / 'mem_info_gtt_total').read_text()), int((dev / 'mem_info_gtt_used').read_text())))
         except (OSError, ValueError): continue
-    return min(sizes) if sizes else None
+    if not devs: return None, None
+    try: ttm = int(pathlib.Path('/sys/module/ttm/parameters/pages_limit').read_text()) * os.sysconf('SC_PAGE_SIZE')
+    except (OSError, ValueError): ttm = 0
+    if ttm <= 0:
+        try: ttm = int(re.search(r'MemTotal:\s+(\d+)', open('/proc/meminfo').read()).group(1)) * 1024 // 2
+        except Exception: ttm = 0
+    lim = [min(t, ttm) if ttm > 0 else t for t, _ in devs]
+    return min(lim) / (1 << 30), min(l - u for l, (_, u) in zip(lim, devs)) / (1 << 30)
 
-def host_pool_env(choice, gpus, tier_gib=0.0, strict=False, dry=False):
-    """auto: GTT-backed host pools when the GTT size holds them (+ margin), else ROCm's default user-pointer pools. All pools
-    land on the first GPU's GTT: the host tables plus, in the 4-bit modes, the expert host tier (tier_gib, both ranks)."""
-    hp = COMMON['host_pools']; need = hp['gtt_need_gib'] + tier_gib + hp['gtt_margin_gib']; gtt = gtt_total_gib(gpus)
-    if choice == 'auto' and strict and (gtt is None or gtt < need):
-        msg = (f'host pools: this mode was benchmarked with its ~{need - hp["gtt_margin_gib"]:.0f} GiB of pinned host memory in GTT, which needs a GTT size '
-               f'of {need:.0f} GiB per GPU; this host has {"an unknown GTT size" if gtt is None else f"{gtt:.0f} GiB"} (the GTT size is half the system RAM '
-               f'by default, so about {2 * need:.0f} GiB of RAM). On smaller hosts --host-pools userptr runs it with user-pointer memory: same speed '
-               f'in our validation, but GPU pauses of several seconds when the kernel compacts host memory')
-        if dry: print('WOULD REFUSE ->', msg); choice = 'userptr'
-        else: sys.exit(msg)
-    if choice == 'auto': choice = 'gtt' if gtt is not None and gtt >= need else 'userptr'
-    if choice == 'gtt' and gtt is not None and gtt < need:
-        sys.exit(f'host pools: --host-pools gtt needs a GTT size of {need:.1f} GiB per GPU, this host has {gtt:.0f} GiB (use --host-pools userptr)')
-    print(f'host pools: {choice} (GTT size {"unknown" if gtt is None else f"{gtt:.0f} GiB"}, needed {need:.1f} GiB for GTT pools)'
-          + ('' if choice == 'gtt' else '; user-pointer pools can stall briefly when the kernel compacts host memory'))
-    return dict(hp['env']) if choice == 'gtt' else {}
+def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0):
+    """Host pools of a start; returns (env, RAM-tier GiB that fits). All pinned host memory of both TP workers is charged to one GPU's GTT
+    when HSA_USERPTR_FOR_PAGED_MEM=0. Modes with a measured pinned_gib (4-bit: host tables + expert host tier, GTT at ready) use the ladder:
+      GTT free >= pinned + RAM tier + 2 GiB -> GTT pools + the RAM tier;  >= pinned + 2 GiB -> GTT pools, RAM tier shrunk to what fits
+      (>= 4 GiB) or off;  less -> ROCm user-pointer pools, no RAM tier, with a warning.
+    Other modes: GTT pools when the host tables (+ margin) fit, else user-pointer pools (the published 3-bit behaviour)."""
+    hp = COMMON['host_pools']; lim, free = gtt_limits_gib(gpus)
+    margin = 2.0 if pinned_gib else hp['gtt_margin_gib']; base = (pinned_gib or hp['gtt_need_gib'] + tier_gib) + margin
+    fits = free is not None and free >= base
+    if choice == 'gtt' and not fits:
+        sys.exit(f'host pools: --host-pools gtt needs {base:.1f} GiB of free GTT on the first GPU, this host has '
+                 f'{"an unknown amount" if free is None else f"{free:.1f} GiB (limit {lim:.1f} GiB)"} (use --host-pools userptr)')
+    if choice == 'auto': choice = 'gtt' if fits else 'userptr'
+    rt = 0.0
+    if choice == 'gtt' and ram_tier_gib:
+        rt = ram_tier_gib if free >= base + ram_tier_gib else (free - base if free - base >= 4.0 else 0.0)
+        if rt < ram_tier_gib: print(f'RAM tier {"shrunk to " + f"{rt:.1f} GiB" if rt else "disabled"}: GTT free {free:.1f} GiB < needed {base + ram_tier_gib:.1f} GiB')
+    print(f'host pools: {choice} (GTT limit {"unknown" if lim is None else f"{lim:.1f} GiB"}, free {"unknown" if free is None else f"{free:.1f} GiB"}, '
+          f'needed {base:.1f} GiB for GTT pools)' + ('' if choice == 'gtt' else '; user-pointer pools can stall when the kernel compacts host memory'))
+    if choice == 'userptr' and pinned_gib:
+        print(f'WARNING host pools: host GTT {"unknown" if free is None else f"{free:.0f} GiB"} < {base:.0f} GiB: this mode was benchmarked with its '
+              f'~{pinned_gib:.0f} GiB of pinned host memory in GTT (by default the GTT limit is half the RAM, so in practice a 256 GB host). Using '
+              'pageable pinned (user-pointer) memory instead, without a RAM tier: it starts and runs, but slower than the benchmark (186 vs 192 tok/s, '
+              '389 vs 423 tok/s at 8 requests in our validation) and expect GPU stalls of up to several seconds when the kernel compacts host memory. '
+              'Raising the GTT limit (amdgpu.gttsize / ttm.pages_limit) is a system setting you may choose; this launcher never changes it.')
+    return (dict(hp['env']) if choice == 'gtt' else {}), rt
+
 def tier_params(spec):
     """'static:vram_gib=21.6,counts=...,pool=1,core=0.3' -> (kind, {key: value})"""
     kind, _, rest = spec.partition(':')
@@ -130,14 +150,14 @@ def pinned_host_gib(spec, expert_gib_total, ranks):
     else: host = max(0.0, per_rank - float(kv.get('vram_gib', per_rank)))
     return host * ranks
 
-def ram_check(tier_gib, margin_gib=8.0):
+def ram_check(tier_gib, margin_gib=8.0, pinned_gib=None):
     """Pinned host memory of a start: the host tables (every mode) plus the expert host tier (4-bit modes), against MemAvailable."""
-    tables = COMMON['host_pools']['gtt_need_gib']; need_gib = tables + tier_gib
+    tables = COMMON['host_pools']['gtt_need_gib']; need_gib = max(tables + tier_gib, pinned_gib or 0.0)
     try: avail = int(re.search(r'MemAvailable:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
     except Exception: print('ram: /proc/meminfo unreadable; not checked'); return []
     ok = avail >= need_gib + margin_gib
     print(f'ram: pinned host memory {need_gib:.1f} GiB (host tables {tables:g}' + (f' + expert host tier {tier_gib:.1f}' if tier_gib else '') + f', both GPUs); '
-          f'available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with an {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
+          f'available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with a {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
     return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the pinned host memory (have {avail:.0f} GiB'
                           + ('; lower the expert tier with --host-pool off' if tier_gib else '') + ')']
 
@@ -237,12 +257,13 @@ def main():
     if m.get('expert_tier'):
         et = m['expert_tier']; tier = tier_spec(m['env'].get(et['env'], et['default']), a.expert_vram_gib, a.host_pool)
         tier_gib = pinned_host_gib(tier, et['expert_bytes_gib_both_ranks'], COMMON['tp'])
-    missing += ram_check(tier_gib)
+    missing += ram_check(tier_gib, 16.0 if m.get('gtt_pinned_gib') else 8.0, m.get('gtt_pinned_gib'))
     if m.get('expert_tier'):
         try: tot = int(re.search(r'MemTotal:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
         except Exception: tot = None
-        print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration needs about 200 GiB '
-              '(about 96 GiB of pinned host memory in one GPU\'s GTT, which is half the RAM by default)')
+        print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration keeps about 96 GiB of pinned '
+              'host memory in one GPU\'s GTT, so it needs about 98 GiB of free GTT (the GTT limit is half the RAM by default: a 256 GB host); '
+              'see the host pools line below')
     if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
     for rel in m.get('requires', []):
         if not (pathlib.Path(a.weights) / rel).exists() and not a.dry_run: sys.exit(f'mode {a.mode} needs {rel} in the checkpoint dir (not in this copy of the repo)')
@@ -270,7 +291,8 @@ def main():
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
-    env.update(host_pool_env(a.host_pools, gpus, tier_gib, strict=bool(m.get('expert_tier')), dry=a.dry_run))
+    hp_env, _ = host_pool_env(a.host_pools, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'))
+    env.update(hp_env)
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []

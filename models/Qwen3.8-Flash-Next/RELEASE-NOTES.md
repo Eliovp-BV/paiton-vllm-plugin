@@ -31,14 +31,18 @@ optimizing). No custom engine was built: regular vLLM with the Paiton plugin and
   (2.7 s in total over a 3-minute run at 8 concurrent requests; 0.07 s with GTT memory, speed unchanged). On smaller hosts the launcher keeps
   the default and says so; `--host-pools userptr` keeps it everywhere.
 
-## 4-bit modes (preview, not released yet): host memory
-- `--mode 4bit` / `--mode 4bit-200k` keep part of the experts in pinned system memory. With the host tables this pins about 96 GiB
-  (about 55 GiB of tables plus about 41 GiB of experts, both GPUs together); the launcher checks the available RAM first.
-- The benchmarked configuration places all of it in GTT memory (`HSA_USERPTR_FOR_PAGED_MEM=0`), which counts against one GPU's GTT
-  size: about 101 GiB with the margin. The GTT size defaults to half the system RAM, so **the benchmarked 4-bit configuration needs
-  a host with about 200 GiB of RAM or more**.
-- On smaller hosts the launcher keeps ROCm's default user-pointer memory instead and says so; that configuration is being validated
-  separately (start, speed and stall behaviour) before the 4-bit release.
+## 4-bit modes: host memory
+- `--mode 4bit` / `--mode 4bit-200k` keep part of the experts in pinned system memory. Together with the host tables this pins about
+  96 GiB (about 55 GiB of tables plus about 41 GiB of experts, both GPUs together; measured 95.5 GiB in the decode mode, 93.0 GiB in the
+  200K mode). The launcher checks the available RAM first (pinned memory plus 16 GiB for the system).
+- The benchmarked configuration places all of it in GTT memory (`HSA_USERPTR_FOR_PAGED_MEM=0`), which is charged to one GPU's GTT. The
+  usable GTT is limited per GPU and by the kernel's TTM page limit, both half the RAM by default, so **the benchmarked 4-bit
+  configuration needs about 98 GiB of free GTT: in practice a host with 256 GB of RAM** (a 200 GB host has about 93 GiB).
+- On hosts with less GTT the launcher keeps ROCm's default user-pointer memory and prints a warning: the model starts and runs, but
+  slower (186.0 vs 191.9 tok/s single-stream, 388.9 vs 423.1 tok/s at 8 requests in our validation run) and the GPUs can pause for
+  several seconds when the kernel compacts host memory. Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting
+  the host's administrator may choose; the launcher never changes it.
+- `--dry-run` prints the host RAM, the GTT limit and what it would choose, and warns when the two GPUs have no peer-to-peer link.
 
 ## How the numbers were taken
 BetterBench 0.6.0 standard profile on this machine against our OpenAI-compatible server; prefill with exact bf16 activations (no compressed

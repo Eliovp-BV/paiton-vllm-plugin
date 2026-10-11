@@ -658,6 +658,7 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "seed": "4bit",
+   "gtt_pinned_gib": 95.5,
    "note": "4-bit experts with the expert host tier (route 1): decode, MTP 3, 98,304-token window",
    "image_key": "image_4bit",
    "weights_key": "weights_4bit",
@@ -790,6 +791,7 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "seed": "4bit-200k",
+   "gtt_pinned_gib": 93.0,
    "note": "4-bit experts with the expert host tier (route 1): 200,000-token window, MTP off",
    "image_key": "image_4bit",
    "weights_key": "weights_4bit",
