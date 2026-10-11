@@ -133,7 +133,6 @@
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
-    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -198,12 +197,12 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
-   "seed": "a8",
+   "seed": "rc9b",
    "requires": [
     "mtp/mtp-draft-e4m3.safetensors",
     "trunk-int6/layers/L47.safetensors"
    ],
-   "note": "RC8-a8 stack (W8A8 prompt rows + native GDN prefill): decode rows are W8A16, the shipped image measured 216.3 weighted / 565.1 @8 | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
+   "note": "Decode stack (native GDN prefill, W16 prompt rows): INT6 g128 trunk for the core sites (q/o + GDN projections, int8-g128 prompt rows) read from trunk-int6/, the rest of the trunk E4M3; GDN fold-on-load; INT6 GEMV up to M 32. Numbers: [[REL3]]"
   },
   "prefill-long": {
    "source_run": "official prefill block, 10 Oct 2026 03:24-03:38 UTC",
@@ -263,10 +262,7 @@
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
     "VLLM_ROCM_USE_AITER": "0",
-    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0",
-    "PAITON_FN_GDN_RS_FOLD": "1",
-    "PAITON_FN_INT6_GEMV_MAX_M": "32",
-    "PAITON_FN_INT6_EXTRA": "core"
+    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
    },
    "engine_args": [
     "--dtype",
@@ -314,10 +310,9 @@
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
    "seed": "a8",
    "requires": [
-    "mtp/mtp-draft-e4m3.safetensors",
-    "trunk-int6/layers/L47.safetensors"
+    "mtp/mtp-draft-e4m3.safetensors"
    ],
-   "note": "prefill on the shipped image: 8,161 tok/s @64K (exact 8,212 / 8,204); W8A8 prompt rows, | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
+   "note": "prefill on the shipped image: 8,161 tok/s @64K (exact 8,212 / 8,204); W8A8 prompt rows,"
   },
   "decode-nopf": {
    "source_run": "decode rows identical to the official decode block (the exact-prefill-path decode server start was tested, not benchmarked)",
@@ -363,7 +358,6 @@
     "PAITON_FN_SPHC": "2",
     "PAITON_FN_STEP_PREP": "1",
     "PAITON_FN_TRUNK_ACT": "bf16",
-    "PAITON_FN_W8A8_PROMPT": "1",
     "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped",
     "PAITON_PLUGIN_MODE": "flashnext",
     "PAITON_RUNTIME_COMPAT_FLOW": "0",
@@ -428,12 +422,12 @@
     "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
    ],
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
-   "seed": "a8-nopf",
+   "seed": "rc9b-nopf",
    "requires": [
     "mtp/mtp-draft-e4m3.safetensors",
     "trunk-int6/layers/L47.safetensors"
    ],
-   "note": "RC8-a8 without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); prefill on this path measured 7,607 @64K (W8A8) / 7,368 (W8A16) | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
+   "note": "The decode stack without the two native-GDN-prefill flags: exact-arithmetic prefill on prompt rows (our long-document control: the native path is not bit-reproducible run to run, the exact path is); INT6 g128 trunk for the core sites (q/o + GDN projections, int8-g128 prompt rows) read from trunk-int6/, the rest of the trunk E4M3; GDN fold-on-load; INT6 GEMV up to M 32"
   },
   "prefill-long-nopf": {
    "source_run": "exact-prefill-path prefill block, 10 Oct 2026 08:15-08:32 UTC",
@@ -491,10 +485,7 @@
     "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
     "VLLM_PLUGINS": "register_paiton_models",
     "VLLM_ROCM_USE_AITER": "0",
-    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0",
-    "PAITON_FN_GDN_RS_FOLD": "1",
-    "PAITON_FN_INT6_GEMV_MAX_M": "32",
-    "PAITON_FN_INT6_EXTRA": "core"
+    "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
    },
    "engine_args": [
     "--dtype",
@@ -542,10 +533,9 @@
    "measured_image": "paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-r1",
    "seed": "a8-nopf",
    "requires": [
-    "mtp/mtp-draft-e4m3.safetensors",
-    "trunk-int6/layers/L47.safetensors"
+    "mtp/mtp-draft-e4m3.safetensors"
    ],
-   "note": "RC8-a8 prefill on the exact GDN prefill path: 7,607 tok/s @64K (exact 7,673 / 7,666); 10 Oct 08:15 block | rc9: INT6 g128 trunk (q/o + GDN, int8-g128 prompt rows) from trunk-int6/, GDN fold-on-load, INT6 GEMV up to M 32"
+   "note": "RC8-a8 prefill on the exact GDN prefill path: 7,607 tok/s @64K (exact 7,673 / 7,666); 10 Oct 08:15 block"
   },
   "4bit": {
    "source_run": "route-1 decode benchmark profile (development stack)",
