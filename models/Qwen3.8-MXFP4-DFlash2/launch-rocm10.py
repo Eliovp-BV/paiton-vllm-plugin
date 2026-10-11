@@ -101,8 +101,9 @@ W3_LONG_KV4_CACHE_BYTES = 9662464000
 W3_MEMORY_FRACTION = 0.95
 # With the FP8 output head the memory outside PyTorch grows by ~0.28 GiB (the native head's runtime), and the start's fp8
 # GEMM warm-up fills the allocator up to its cap: the card peaked at 31,975 MiB in --mode long against 31,693 MiB with
-# the bf16 head (11 Oct 2026, gate q27head; long-kv4 since 6 Oct: 31,969 MiB). One point less (-326 MiB of allocator room)
-# keeps the start peak at the bf16 head's level; serving stays well under it (--mode long peaked at 30,794 MiB).
+# the bf16 head (11 Oct 2026, gate q27head). One point less (-326 MiB of allocator room) keeps the start peak under the bf16
+# head's level (gates q27cap / q27smk, 11 Oct: --mode long 31,587, long-kv4 31,407, 65k 31,767, 65k --vision 31,397,
+# long --vision 31,340 MiB); serving peaked at 30,138 (long) and 30,113 MiB (long-kv4) with 258K needles 4/4.
 W3_MEMORY_FRACTION_LMHEAD_W8 = 0.94
 # 3 Oct 2026: in the 4-bit long-context mode a prefix-cache hit on a shared-prefix (junction) checkpoint ended in a
 # GDN-norm nonfinite engine error (a repeated 32,758-token request after related requests). Until that is fixed the
@@ -342,7 +343,8 @@ RAM_TIER_WITH_EMBEDDING_MIN_GB = 32
 # HSA_USERPTR_FOR_PAGED_MEM=0 makes them driver-owned GTT buffers, which compaction leaves alone. They count against the
 # GPU's GTT size (the pin limit above already keeps the tables under it), so auto sets it only when that size holds the
 # pinned tables plus HOST_POOLS_GTT_MARGIN_GIB (runtime buffers that move along: staging, queues); without host tables,
-# or with an unknown GTT size, ROCm's default stays.
+# or with an unknown GTT size, ROCm's default stays. On the 27B (11 Oct, gate q27cap, long-kv4 with the 2.4 GiB embedding
+# pinned): same speed and greedy outputs, GTT use +2.7 GiB, and no KFD evictions after the start with either setting.
 HOST_POOLS_ENV = ('HSA_USERPTR_FOR_PAGED_MEM', '0')
 HOST_POOLS_GTT_MARGIN_GIB = 2.0
 
@@ -356,7 +358,10 @@ HOST_POOLS_GTT_MARGIN_GIB = 2.0
 # --compile-cache keys its saved graphs on them, so its first start with wide compiles once.
 CAPTURE_SIZES_RELEASE = [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64]
 CAPTURE_SIZES_WIDE = CAPTURE_SIZES_RELEASE + [96, 128, 160, 192, 256]
-CAPTURE_SIZES_WIDE_DEFAULT = False       # auto: release sizes until the wide set is measured on the selected image
+# Measured 11 Oct 2026 (gate q27cap, long-kv4, published 5 October image, BetterBench concurrency): wide against release
+# -0.1 / +0.0 / +1.9 / +0.2 % aggregate at 1 / 2 / 4 / 8 requests, time to first token within 3 ms, graph capture 1 s
+# longer, +0.1 GiB VRAM at health: no clear gain, so auto keeps the release sizes; wide stays an opt-in.
+CAPTURE_SIZES_WIDE_DEFAULT = False
 
 
 def release_command(release):
