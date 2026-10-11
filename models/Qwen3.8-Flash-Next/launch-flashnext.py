@@ -124,7 +124,9 @@ def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0)
     print(f'host pools: {choice} (GTT limit {"unknown" if lim is None else f"{lim:.1f} GiB"}, free {"unknown" if free is None else f"{free:.1f} GiB"}, '
           f'needed {base:.1f} GiB for GTT pools)' + ('' if choice == 'gtt' else '; user-pointer pools can stall when the kernel compacts host memory'))
     if choice == 'userptr' and pinned_gib:
-        print(f'WARNING host pools: host GTT {"unknown" if free is None else f"{free:.0f} GiB"} < {base:.0f} GiB: this mode was benchmarked with its '
+        busy = '' if free is None or lim is None or lim - free < 1 else (f' ({lim - free:.0f} GiB of the {lim:.0f} GiB GTT limit is in use by other '
+                                                                         'processes: stop other GPU servers first if that is not intended)')
+        print(f'WARNING host pools: host GTT {"unknown" if free is None else f"{free:.0f} GiB"} < {base:.0f} GiB{busy}: this mode was benchmarked with its '
               f'~{pinned_gib:.0f} GiB of pinned host memory in GTT (by default the GTT limit is half the RAM, so in practice a 256 GB host). Using '
               'pageable pinned (user-pointer) memory instead, without a RAM tier: it starts and runs, but slower than the benchmark (186 vs 192 tok/s, '
               '389 vs 423 tok/s at 8 requests in our validation) and expect GPU stalls of up to several seconds when the kernel compacts host memory. '
