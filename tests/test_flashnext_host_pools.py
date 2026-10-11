@@ -103,3 +103,19 @@ def test_kv_tier_hook_mounted_only_with_kv_tier(lf, monkeypatch, tmp_path, capsy
     out = dry_cmd(lf, monkeypatch, tmp_path, capsys, True)
     assert f'{tmp_path}/cache-kv-tier.pth:{target}' in out
     assert "PAITON_FN_KV_TIER', '0') == '1'" in lf.KV_TIER_PTH   # the hook stays a no-op without the env
+
+
+def test_int6_overlay_linked_only_for_int6_modes(lf, tmp_path):
+    w = tmp_path / 'w'; (w / 'layers').mkdir(parents=True); (w / 'trunk-int6' / 'layers').mkdir(parents=True); (w / 'common').mkdir(); (w / 'mtp').mkdir()
+    for n in ('L00', 'L01'):
+        (w / 'layers' / f'{n}.safetensors').write_bytes(b'x'); (w / 'trunk-int6' / 'layers' / f'{n}.safetensors').write_bytes(b'x')
+    for rel in ('model.safetensors', 'manifest.json', 'common/ple-e4m3', 'common/bf16-mtp-vision.safetensors', 'mtp/mtp-experts.safetensors',
+                'mtp/draft-head-int2.safetensors', 'mtp/draft-head-int2.json'):
+        (w / rel).write_bytes(b'x')
+    cfg = tmp_path / 'cfg'; cfg.mkdir(); (cfg / 'config.json').write_text('{}')
+    plain = lf.ensure_view(w, tmp_path / 'view', cfg, False)
+    assert not [p for p in plain.iterdir() if p.name.startswith('i6-')]
+    with_int6 = lf.ensure_view(w, tmp_path / 'view', cfg, False, int6=True)   # same dir: rebuilt with the overlay links
+    assert sorted(p.name for p in with_int6.iterdir() if p.name.startswith('i6-')) == ['i6-L00.safetensors', 'i6-L01.safetensors']
+    again = lf.ensure_view(w, tmp_path / 'view', cfg, False)                  # and back: stale overlay links removed
+    assert not [p for p in again.iterdir() if p.name.startswith('i6-')]

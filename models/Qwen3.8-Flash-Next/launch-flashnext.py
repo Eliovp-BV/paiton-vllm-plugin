@@ -261,7 +261,7 @@ def prerequisites(tp):
     print('prerequisites:', 'all present' if not missing else 'MISSING -> ' + '; '.join(missing))
     return missing
 
-def ensure_view(weights, view, base_cfg, dry, wanted_optional=()):
+def ensure_view(weights, view, base_cfg, dry, wanted_optional=(), int6=False):
     """Runtime view for vLLM (as the benchmarks used): base config with the Paiton quantization block + tokenizer files, and links
     to the container's safetensors as the container will see them (/models/ck/...). Written next to the weights, never inside them."""
     weights, view = pathlib.Path(weights), pathlib.Path(view); ck = COMMON['mounts']['checkpoint']; vdir = COMMON['mounts']['view']
@@ -270,7 +270,9 @@ def ensure_view(weights, view, base_cfg, dry, wanted_optional=()):
     links.update({'model.safetensors': f'{ck}/model.safetensors', 'manifest.json': f'{ck}/manifest.json', 'ple-e4m3': f'{ck}/common/ple-e4m3',
                   'mtp-vision.safetensors': f'{ck}/common/bf16-mtp-vision.safetensors', 'mtp-experts.safetensors': f'{ck}/mtp/mtp-experts.safetensors',
                   'mtp-draft-int2/draft-head-int2.safetensors': f'{ck}/mtp/draft-head-int2.safetensors', 'mtp-draft-int2/draft-head-int2.json': f'{ck}/mtp/draft-head-int2.json'})
-    for f in sorted((weights / 'trunk-int6' / 'layers').glob('L[0-9][0-9].safetensors')):   # 4-bit INT6 trunk overlay, read as top-level i6-LNN files
+    # INT6 trunk overlay (top-level i6-LNN files): only for modes that read it (PAITON_FN_INT6_EXTRA). Other modes never see it: a loader
+    # without INT6 support fails on those tensors (11 Oct: the published 3-bit image on a weights dir that also holds trunk-int6/)
+    for f in (sorted((weights / 'trunk-int6' / 'layers').glob('L[0-9][0-9].safetensors')) if int6 else ()):
         links['i6-' + f.name] = f'{ck}/trunk-int6/layers/{f.name}'
     for k, rel in COMMON.get('view_links_if_present', {}).items():   # files of some exports only (the hybrid 4-bit format map)
         if (weights / rel).exists(): links[k] = f'{ck}/{rel}'
@@ -334,7 +336,7 @@ def main():
         msg = f'mode {a.mode} expects the {want_rel} weights, but {weights} holds {got_rel}; pass --weights with the matching download'
         if a.dry_run: print('WARNING:', msg)
         else: sys.exit(msg)
-    base_cfg = ensure_base_cfg(a.base_cfg or str(weights) + '-base-cfg', a.dry_run); view = ensure_view(weights, a.view or str(weights) + '-view', base_cfg, a.dry_run, tuple(m.get('requires', [])))
+    base_cfg = ensure_base_cfg(a.base_cfg or str(weights) + '-base-cfg', a.dry_run); view = ensure_view(weights, a.view or str(weights) + '-view', base_cfg, a.dry_run, tuple(m.get('requires', [])), int6=bool(m['env'].get('PAITON_FN_INT6_EXTRA')))
     cache = pathlib.Path(a.cache or os.path.expanduser(f'~/.cache/paiton/flashnext/{a.mode}')); cache.mkdir(parents=True, exist_ok=True)
     env = dict(m['env']); env['VLLM_CACHE_ROOT'] = COMMON['mounts']['cache']; env['HF_HUB_OFFLINE'] = '1'
     if tier: env[m['expert_tier']['env']] = tier
