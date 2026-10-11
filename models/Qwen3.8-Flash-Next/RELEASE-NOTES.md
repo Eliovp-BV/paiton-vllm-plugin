@@ -8,9 +8,10 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   the rest served from pinned system memory (expert host tier); fp8 KV cache; INT6 trunk in `--mode 4bit`. Accuracy (model card):
   within 0.16 % of the bf16 log-likelihood on long documents, needles 40/40 identical to bf16 (as served: INT6 trunk, fp8 KV cache). Speed [[REL4]]: decode 191.9 / @8 423.1 /
   prefill @64K 7,002 / TTFT 132 ms / update p99 17.3 ms.
-- **3-bit modes: INT6 trunk** (rc9): the attention q/o and Gated DeltaNet projections run INT6 g128 weights from the new optional
-  `trunk-int6/` directory of the 3-bit repository (int8-g128 prompt rows), the GDN state fold happens at load time, and INT6 decode GEMVs
-  cover up to 32 rows. Same experts, same W8A8 prompt rows elsewhere, same modes. Speed [[REL3]].
+- **3-bit decode modes: INT6 trunk**: `--mode decode` and `decode-nopf` run the attention q/o and Gated DeltaNet projections as INT6 g128
+  weights from the new optional `trunk-int6/` directory of the 3-bit repository (int8-g128 prompt rows), fold the GDN state at load time,
+  and cover up to 32 rows with the INT6 decode GEMVs. Their other prompt rows run W8A16: the W8A8 prompt rows gave no prefill gain on
+  the INT6 trunk. The `prefill-long` modes are unchanged (8-bit trunk, W8A8 prompt rows). Same experts, same modes. Speed [[REL3]].
 - **One image** for all six modes (the 4-bit modes select their MoE bundle by path).
 - **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
   automatic fallback to ROCm's user-pointer memory and a warning; the 4-bit modes need about 98 GiB of free GTT (a 256 GB host).

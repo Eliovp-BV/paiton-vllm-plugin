@@ -141,5 +141,5 @@ per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.j
 
 ## Limitations (draft)
 - 98,304-token window in decode mode (MTP pool); 200,000 in prefill-long mode with MTP off; vision not validated; prefix caching is an
-  opt-in flag (official numbers measured without it). The prompt rows run W8A8; accuracy numbers are in the model card's table. The `-nopf` modes use
+  opt-in flag (official numbers measured without it). The prefill-long prompt rows run W8A8, the decode modes W8A16 prompt rows with the INT6 trunk; accuracy numbers are in the model card's table. The `-nopf` modes use
   exact-arithmetic prefill, about 7 % slower.
