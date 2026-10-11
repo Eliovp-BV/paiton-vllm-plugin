@@ -1,7 +1,22 @@
 # Qwen3.8-Flash-Next release notes (DRAFT, local only)
 
-First release of this model on Paiton; more will follow (the RAM/SSD cache tier next, then the 4-bit container; we keep tuning, we keep
-optimizing). No custom engine was built: regular vLLM with the Paiton plugin and our own kernels.
+No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
+
+## Release 20261011 (draft; numbers from the release-image blocks replace the [[REL3]] / [[REL4]] marks)
+- **4-bit container** (`--mode 4bit`, `--mode 4bit-200k`; weights `EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): per layer the 410
+  most-used experts INT4 (g128) and the 102 least-used in the 3-bit codebook format; about 21.9 GiB of experts per GPU resident in VRAM,
+  the rest served from pinned system memory (expert host tier); fp8 KV cache; INT6 trunk in `--mode 4bit`. Accuracy (model card):
+  0.12 % of the bf16 log-likelihood lost on long documents, needles 40/40 identical to bf16. Speed [[REL4]]: decode 191.9 / @8 423.1 /
+  prefill @64K 7,002 / TTFT 132 ms / update p99 17.3 ms.
+- **3-bit modes: INT6 trunk** (rc9): the attention q/o and Gated DeltaNet projections run INT6 g128 weights from the new optional
+  `trunk-int6/` directory of the 3-bit repository (int8-g128 prompt rows), the GDN state fold happens at load time, and INT6 decode GEMVs
+  cover up to 32 rows. Same experts, same W8A8 prompt rows elsewhere, same modes. Speed [[REL3]].
+- **One image** for all six modes (the 4-bit modes select their MoE bundle by path).
+- **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
+  automatic fallback to ROCm's user-pointer memory and a warning; the 4-bit modes need about 98 GiB of free GTT (a 256 GB host).
+- **Preflight**: `--dry-run` reports host RAM, the GTT limit and what it chooses, and warns when the GPUs have no peer-to-peer link.
+
+## Release 20261010-r1 (previous)
 
 ## Stack (image rc8)
 - Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1` @ `sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191`.
