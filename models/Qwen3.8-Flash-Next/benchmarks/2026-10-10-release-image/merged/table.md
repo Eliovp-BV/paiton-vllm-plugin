@@ -6,7 +6,6 @@ release-image validation: pass = within 2 % of the lane numbers 219.4 / 573.5 / 
 
 | Source | Weighted decode (tok/s) | Update p99 (ms) | TTFT p50, short prompts (ms) | Aggregate @8 (tok/s) | Prefill at 64,000 tokens (tok/s) |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| reference engine 1.2.3, published (BetterBench 0.6.0, 2x R9700; prefill over a lossy 6-bit wire) | 177.3 | 17.1 | 192 | 457.5 (48/48 ok) | 6,418 |
 | ours, run `rc8img-0937` (standard profile; exact wire); release image rc8 (sha256:c7e76bc0d7d9; launched through the image's launch-flashnext.py, seeded caches; default modes decode / prefill-long) | 216.3 | 13.9 | 117 | 565.1 (48/48 ok) | 8,161 |
 
 Prefill by depth, exact wire, 2,048-token chunks (tok/s): 2,000: 7,925, 8,000: 8,321, 16,000: 8,311, 32,000: 8,232, 64,000: 8,161, 128,000: 7,928
