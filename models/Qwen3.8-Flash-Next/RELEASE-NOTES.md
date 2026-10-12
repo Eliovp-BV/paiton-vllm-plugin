@@ -11,8 +11,11 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   update p99 17.7 ms.
 - **3-bit modes: launcher fixes only.** Same image, same weights, same modes and the same speed and accuracy as the 10 Oct release.
   What changes is the launcher: a short settle wait before it reports READY, the peer-to-peer and GTT preflight checks, and an optional
-  `--host-pools gtt` (removes the occasional memory pauses under load, costs ~1 GiB VRAM in decode). [[PREFIX-CACHING: the --prefix-caching recommendation for
-  agents and coding tools, if approved]]
+  `--host-pools gtt` (removes the occasional memory pauses under load, costs ~1 GiB VRAM in decode).
+- **Agents and coding tools: add `--prefix-caching`** (3-bit modes). An agent resends the whole conversation every turn; with the
+  prefix cache the shared part is reused instead of prefilled again: a repeated 64K-token prefix reaches its first token in 0.35 s
+  instead of 9.6 s, with identical output. On the 4-bit, use `--mode 4bit-cache`. The speed tables are measured without it (the
+  benchmark never repeats a prefix).
 - **Known issue (3-bit, draft for approval):** In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use
   `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.
 - **4-bit cache mode (opt-in, `--mode 4bit-cache`)**: prefix caching plus an 8 GiB RAM prefix tier for agents and coding tools; repeated

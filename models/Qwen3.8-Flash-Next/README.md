@@ -27,8 +27,6 @@ tuning, we keep optimizing. No custom engine was built: this is regular vLLM wit
 
 ## What you get (official numbers, measured on the shipped image through this launcher; BetterBench 0.6.0 standard profile, exact bf16 wire, cold prefix cache, 2x R9700)
 
-<!-- [[REL3S]]: the 3-bit rows are the published 10 Oct numbers (same image and config); the morning validation with the new launcher confirms them -->
-
 | 4-bit (`--mode 4bit`, `--mode 4bit-200k`) | |
 |---|---:|
 | Weighted single-stream decode (median of 3 runs) | 189.8 tok/s |
