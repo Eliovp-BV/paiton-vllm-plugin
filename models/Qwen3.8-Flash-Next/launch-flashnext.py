@@ -341,13 +341,24 @@ def main():
     env = dict(m['env']); env['VLLM_CACHE_ROOT'] = COMMON['mounts']['cache']; env['HF_HUB_OFFLINE'] = '1'
     if tier: env[m['expert_tier']['env']] = tier
     engine_args = list(m['engine_args'])
-    if a.prefix_caching:
+    if a.prefix_caching and '--enable-prefix-caching' in engine_args: print(f'mode {a.mode}: prefix caching is part of this mode (--prefix-caching not needed)')
+    elif a.prefix_caching:
         pc = COMMON['prefix_caching']; engine_args = [x for x in engine_args if x not in pc['engine_args_drop']] + pc['engine_args_add']; env.update(pc['env'])
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
-    hp_env, _ = host_pool_env(a.host_pools, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'))
+    rtier = m.get('ram_tier') or {}
+    hp_env, rt = host_pool_env(a.host_pools, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)))
     env.update(hp_env)
+    if rtier:   # RAM prefix tier (cache mode): prefix-cache blocks evicted from VRAM are kept in pinned host memory (GTT) and loaded back on a hit
+        rt = int(rt)
+        if rt >= rtier.get('min_gib', 4.0):
+            kvt = dict(rtier['kv_transfer_config']); kvt['kv_connector_extra_config'] = dict(kvt['kv_connector_extra_config'], cpu_bytes_to_use=rt << 30)
+            engine_args += ['--kv-transfer-config', json.dumps(kvt)]
+            print(f'RAM prefix tier: {rt} GiB of pinned host memory')
+        else:
+            for k in rtier['env']: env.pop(k, None)
+            print(f'WARNING RAM prefix tier: off (it needs {rtier["gib"]:g} GiB of free GTT beyond the host pools); prefix caching stays on, in VRAM only')
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []

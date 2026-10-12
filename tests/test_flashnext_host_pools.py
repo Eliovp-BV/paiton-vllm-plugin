@@ -119,3 +119,36 @@ def test_int6_overlay_linked_only_for_int6_modes(lf, tmp_path):
     assert sorted(p.name for p in with_int6.iterdir() if p.name.startswith('i6-')) == ['i6-L00.safetensors', 'i6-L01.safetensors']
     again = lf.ensure_view(w, tmp_path / 'view', cfg, False)                  # and back: stale overlay links removed
     assert not [p for p in again.iterdir() if p.name.startswith('i6-')]
+
+
+def cache_cmd(lf, monkeypatch, capsys, tmp_path, free, extra=()):
+    """main() --dry-run for --mode 4bit-cache with the host checks stubbed and `free` GiB of free GTT."""
+    import sys
+    monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', lambda *a, **k: [])
+    monkeypatch.setattr(lf, 'render_gid', lambda: None); monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (free, free))
+    monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w'); monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
+    monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit-cache', '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache'), *extra])
+    lf.main()
+    return capsys.readouterr().out
+
+
+def test_cache_mode_ram_tier_ladder(lf, monkeypatch, capsys, tmp_path):
+    hook = 'zz_paiton_fn_kv_tier.pth:ro'
+    full = cache_cmd(lf, monkeypatch, capsys, tmp_path, 125.8)
+    assert '"cpu_bytes_to_use": 8589934592' in full and 'PAITON_FN_KV_TIER=1' in full and 'PAITON_HOST_KV_PRIVATE=1' in full and hook in full
+    assert '--enable-prefix-caching --block-size 2048 --mamba-cache-mode align' in full and '--no-enable-prefix-caching' not in full
+    assert 'PAITON_FN_KV_LEASE=off' in full and 'VLLM_USE_V2_MODEL_RUNNER' not in full
+    part = cache_cmd(lf, monkeypatch, capsys, tmp_path, 103.0)          # 5.5 GiB beyond pinned + margin: 5 GiB tier
+    assert '"cpu_bytes_to_use": 5368709120' in part
+    off = cache_cmd(lf, monkeypatch, capsys, tmp_path, 99.0)            # GTT pools fit, the tier does not
+    assert 'WARNING RAM prefix tier: off' in off and 'kv-transfer-config' not in off and 'PAITON_FN_KV_TIER' not in off and hook not in off
+    assert 'PAITON_HOST_KV_PRIVATE' not in off and '--enable-prefix-caching' in off
+    up = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0)             # user-pointer pools: no tier
+    assert 'kv-transfer-config' not in up and 'HSA_USERPTR_FOR_PAGED_MEM' not in up.split('docker run')[1]
+
+
+def test_cache_mode_ignores_prefix_caching_flag(lf, monkeypatch, capsys, tmp_path):
+    out = cache_cmd(lf, monkeypatch, capsys, tmp_path, 125.8, ('--prefix-caching',))
+    assert 'prefix caching is part of this mode' in out and 'VLLM_USE_V2_MODEL_RUNNER' not in out
+    assert out.count('--enable-prefix-caching') == 1 and '--mamba-cache-mode align' in out
