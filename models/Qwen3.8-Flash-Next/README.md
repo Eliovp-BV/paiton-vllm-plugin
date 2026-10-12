@@ -3,9 +3,20 @@
 Paiton's Flash Next package, two checkpoints served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin (native grouped
 MoE, native collectives, native hidden-chain and sampled MTP drafts):
 - **3-bit** (`EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4`): the fastest; everything in VRAM.
-- **4-bit** (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): the most accurate: perplexity within 0.9 % of the 16-bit model on wikitext and
-  within 0.4 % on unseen text (table in the model card's Perplexity section), within 0.16 % of the bf16 log-likelihood on long documents,
+- **4-bit** (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`): the most accurate (single-request decode ~190 tok/s): same GSM8K and HumanEval scores as the 16-bit model (96.8 vs 96.9 %,
+  96.3 vs 96.3 %), perplexity within 0.9 % (wikitext) / 0.4 % (unseen text), within 0.16 % of the bf16 log-likelihood on long documents,
   needles 40/40 identical to bf16; part of the experts is served from pinned system RAM, so it needs a host with about 256 GB of RAM.
+
+| 4-bit task benchmarks | Questions | 16-bit | 4-bit |
+|---|---:|---:|---:|
+| GSM8K | 1,319 | 96.9 % | **96.8 %** |
+| HumanEval pass@1 | 164 | 96.3 % | **96.3 %** |
+| MMLU-Pro (100 per category × 14) | 1,400 | 84.7 % | [[MMLUPRO]] |
+
+Same prompts, sampling seeds and thinking-on chat template for both; the differences are within the 16-bit model's own run-to-run
+variation (GSM8K 0.0, HumanEval 1.2 points) and a paired McNemar test gives p = 1.00 on both (method and perplexity tables: the 4-bit
+model card's Accuracy section).
+
 Model details, accuracy and format: the two model cards.
 
 ## About this release
@@ -18,7 +29,7 @@ tuning, we keep optimizing. No custom engine was built: this is regular vLLM wit
 
 | 4-bit (`--mode 4bit`, `--mode 4bit-200k`) | |
 |---|---:|
-| Weighted single-stream decode | 189.7 tok/s |
+| Weighted single-stream decode (median of 3 runs) | 189.8 tok/s |
 | Eight concurrent requests, aggregate | 420.7 tok/s (48/48) |
 | Prefill, 64K-token prompt (BetterBench 64K row) | 6,991 tok/s |
 | Prefill, exact 64,000-token prompt, cold cache | 7,162 tok/s |
