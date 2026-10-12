@@ -4,10 +4,22 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 
 - **MXFP4**: the most accurate, from the base download alone.
 - **3-bit W3A4**: the fastest, with the most context (up to 262,144 tokens per request, 524,288 experimental) and
-  images in every long mode except the 524K one. Two to three MMLU-Pro points below MXFP4; an extra 9.55 GB download.
+  images in every long mode except the 524K one. Two to three MMLU-Pro points below MXFP4 with the previous weights (the 12 October update recovers about 0.5 to 1
+  point); an extra 9.55 GB download.
 
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
+
+**12 October: 3-bit accuracy update.** New 3-bit weights at revision `3ef7eb149ec0bd9a0f7927491bf30f53f54ced01`: the BF16 group scales were
+distilled toward the bf16 model; the format, the 3-bit codes, the image and the launcher are unchanged, and so is the
+speed. Against the previous weights, the KL divergence to bf16 falls by 20.9 % (decode) and 23.8 % (prefill), top-1
+agreement with bf16 rises by 1.0 point, long documents (8K to 32K tokens) come 7 to 9 % closer to bf16 and every
+length bucket of the 131K-token documents improves. Served on the R9700: KL −19.5 %, top-1 86.9 → 88.1 %. MMLU-Pro:
+about +0.5 to +1 point. Details: the
+[model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4#accuracy-update-12-october-2026).
+The 3-bit task tables below were measured with the previous weights (`7a2e3d70`). Already downloaded? Run the
+[download](#optional-the-3-bit-weights) again (it replaces the 64 shards, 9.55 GB), then `sha256sum -c SHA256SUMS`;
+the previous weights stay downloadable at revision `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7`.
 
 <a id="what-you-get"></a><a id="pick-how-to-run-it"></a><a id="want-longer-context-run-this"></a><a id="long-context-200k-and-220k"></a>
 
@@ -39,7 +51,7 @@ What each row gives up:
 | `… --extend-cache` | system RAM, or up to 64 GiB of NVMe/SSD space; no images. On hosts with 16 or 32 GB of RAM the GPU part holds 451,879 tokens ([what each host gets](#extend-cache)) |
 | `run-3bit.sh --mode long` | about 3 to 4 % speed on short requests against `run-3bit.sh` ([measured](REFERENCE.md#mode-long-short-requests)); half the cache of `--mode long-kv4` |
 | `run-3bit.sh --mode long-512k` | the model's long-context scaling on every request, short ones included; 2.4 GiB of pinned system RAM with no fallback; a cold 500K-token read takes about 6 minutes |
-| `run-3bit.sh` | a little accuracy: MMLU-Pro 60.6 instead of 62.6 |
+| `run-3bit.sh` | a little accuracy: MMLU-Pro 60.6 instead of 62.6 (previous weights `7a2e3d70`; the 12 October update recovers about 0.5 to 1 point) |
 | `run-mxfp4.sh --mode long` | one request at a time; no images |
 | `run-mxfp4.sh` | speed and room against 3-bit: 156 instead of 180 tok/s, 174,634 instead of 393,216 cache tokens |
 
@@ -51,14 +63,14 @@ What each row gives up:
 | Eight requests at once, total output | 428 tok/s | 489 tok/s | 479 tok/s |
 | Decode with 120K / 228K tokens of context, one request | – | – | 120 / 100 tok/s |
 | New question about a 258K-token document already read | – | – | 2.7 s to the first token (134 s for the first read) |
-| GSM8K / HumanEval / MMLU-Pro | 95.68 / 95.12 / 62.57 | 95.22 / 94.51 / 60.57 | 95.45 / 92.68 / 59.93 |
+| GSM8K / HumanEval / MMLU-Pro (3-bit columns: previous weights `7a2e3d70`) | 95.68 / 95.12 / 62.57 | 95.22 / 94.51 / 60.57 | 95.45 / 92.68 / 59.93 |
 
 The coding mode's short-prompt speed, accuracy and cached-document rows were measured before its FP8 output head
 became the default (6 October); the FP8 head measured the same text prediction and the same or faster decode. The
 long-context decode row is an upper range (a prompt the drafter predicts well); long real text decodes at about
 72 to 76 tok/s at 258K.
 
-**Long coding sessions** (6 October): in 20-turn sessions that grow from 100K to 181K tokens, with a new coding task
+**Long coding sessions** (6 October, previous weights `7a2e3d70`): in 20-turn sessions that grow from 100K to 181K tokens, with a new coding task
 every turn, `--mode long-kv4` solved **87.5 %** of the tasks with **no decline from the first turns to the last**,
 started cached turns in 3.1 to 4.1 s and decoded code at about 210 tok/s (MXFP4 `--mode long`: 83.75 %, 3.3 to 4.4 s,
 about 165 tok/s). [The full table](#long-coding-sessions).
@@ -143,7 +155,7 @@ terminal too.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision 7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7 \
+  --revision 3ef7eb149ec0bd9a0f7927491bf30f53f54ced01 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -152,7 +164,7 @@ Without `hf`, replace the `hf download` command with:
 
 ```bash
 python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7", local_dir=os.environ["PAITON_W3ROT_DIR"])'
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="3ef7eb149ec0bd9a0f7927491bf30f53f54ced01", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>
@@ -348,7 +360,7 @@ Speed from BetterBench; accuracy with greedy decoding on the same questions for 
 | HumanEval pass@1 (164) | 95.12 | 93.90 | 94.51 |
 | MMLU-Pro subset, 0-shot (14 × 100) | 62.57 | 59.71 | 60.57 |
 
-Paired MXFP4 against 3-bit (both FP8 KV): only the MMLU-Pro gap (−2.86 points, 95 % interval −4.81 to −0.90) is
+3-bit accuracy rows: previous weights (`7a2e3d70`). Paired MXFP4 against 3-bit (both FP8 KV): only the MMLU-Pro gap (−2.86 points, 95 % interval −4.81 to −0.90) is
 beyond the uncertainty; math and coding are within it. The 4-bit KV cache scores the same as FP8.
 [Full settings and results](REFERENCE.md#current-benchmark-results) ·
 [Quality results](REFERENCE.md#faster-decode-and-prefill-3-bit-w3a4-weights-optional).
@@ -363,7 +375,7 @@ Measured 1 October.
 | Follow-up question on the cached document, time to first token | 1.4 s | 1.7 s |
 | Decode at this depth | 73–78 tok/s | 72–76 tok/s |
 
-Accuracy of the 3-bit weights with every question placed after a 257K-token document, against the same weights at
+Accuracy of the 3-bit weights (previous weights `7a2e3d70`) with every question placed after a 257K-token document, against the same weights at
 short context (paired per question; all differences are within the 95 % intervals):
 
 | Benchmark | 3-bit, short context | 3-bit, after 257K tokens |
@@ -399,7 +411,7 @@ predicts well, so these are an upper range; real text at 258K decodes at 72 to 7
 
 - **A new question about a 258K-token document already read:** 2.7 s to the first token instead of 134 s for the
   first read, with the same output as a cold read.
-- **Accuracy** with standard-length questions (greedy): GSM8K 95.45, HumanEval 92.68, MMLU-Pro 59.93, needle at
+- **Accuracy** with standard-length questions (greedy; previous weights `7a2e3d70`): GSM8K 95.45, HumanEval 92.68, MMLU-Pro 59.93, needle at
   61,440 tokens 80/80, within noise of the 65,536-token rows; the MMLU-Pro gap to MXFP4 is the 3-bit weights' own.
   An answer from the cache scores like a cold read.
 - **`--mode long-512k`:** reading a 300K-token document cold takes 158 s, a 500K-token one 361 s; follow-up
@@ -412,7 +424,7 @@ predicts well, so these are an upper range; real text at 258K decodes at 72 to 7
 
 ### Long coding sessions
 
-Measured 6 October on the 5 October image and launcher, thinking off. Eight sessions of 20 turns per mode, identical
+Measured 6 October on the 5 October image and launcher, thinking off, with the previous weights (`7a2e3d70`). Eight sessions of 20 turns per mode, identical
 prompts in both: each session starts from about 95K tokens of real source code, and every turn adds one more source
 file and a new HumanEval+ task, so the prompt grows from about 100K to 181K tokens. Each turn's answer runs against
 the task's tests.

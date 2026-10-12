@@ -557,7 +557,7 @@ set the server default, or send
 quantisation decision, with each question placed after a 257,000-token
 background document (a 128K-section archive repeated and shuffled; the document
 is cached once, every question is a new request that reads all of it), served by
-the long-context mode on the 3-bit weights with the FP8 cache, greedy decoding,
+the long-context mode on the 3-bit weights (previous weights `7a2e3d70`) with the FP8 cache, greedy decoding,
 thinking off, one request at a time. Reference: the same model and weights at
 short context (September 3-bit run), paired per item; Δ in points with a 95%
 interval:
@@ -705,7 +705,7 @@ everything else as in the coding mode:
   names the alternative.
 
 **Why it is opt-in.** The scaling is static: it rescales the rotary frequencies for every request, short ones
-included, so answers differ slightly from `--mode long-kv4`. On our suites the difference stayed within noise:
+included, so answers differ slightly from `--mode long-kv4`. On our suites (previous weights `7a2e3d70`) the difference stayed within noise:
 GSM8K 95.53, HumanEval 94.51, MMLU-Pro 60.64 and the needle at 61,440 tokens 80/80, against 95.45 / 92.68 / 59.93 /
 80/80 in the coding mode (paired per question, p > 0.05 for each); DFlash2's acceptance length changed by
 −1.5 to +2.1 % per benchmark.
@@ -816,7 +816,7 @@ tokens each, FP8 cache (26 September measurement):
 At the same KV budget, two 61K-token requests decode at 117 instead of 69 tok/s
 combined. With a warm runtime cache, startup takes about 230 s instead of about 210 s.
 
-**What it costs.** Served model, greedy decoding, thinking off, paired with
+**What it costs.** Served model (previous weights `7a2e3d70`), greedy decoding, thinking off, paired with
 MXFP4 on identical items; Δ in points with a 95% interval:
 
 | Benchmark | MXFP4 | W3A4 | Δ [95% CI] |
@@ -903,7 +903,7 @@ load, peak VRAM was 31.65 to 31.76 GiB (FP8 cache: up to 31.63 GiB), with no
 out-of-memory errors; with either cache, PyTorch keeps freed memory reserved. The
 capacity figures above use this budget.
 
-**What it costs.** Served model with the 3-bit weights, greedy decoding,
+**What it costs.** Served model with the 3-bit weights (previous weights `7a2e3d70`), greedy decoding,
 thinking off, paired with the FP8 cache on identical items; Δ in points with a
 95% interval:
 
