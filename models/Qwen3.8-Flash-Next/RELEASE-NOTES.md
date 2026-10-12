@@ -14,9 +14,9 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   agents and coding tools, if approved]]
 - **Known issue (3-bit, draft for approval):** In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use
   `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.
-- **4-bit cache mode (opt-in, `--mode 4bit-cache`)**: prefix caching plus an 8 GiB RAM prefix tier for agents and coding tools; 64K
-  repeated prompt 13.4 s -> 1.17 s TTFT, identical output from the tier; needs about 104 GiB of free GTT, else the tier stays off (with a
-  warning) and prefix caching runs in VRAM only. [[COST: speed cost vs `--mode 4bit`, pending the r1tier4 gate]]
+- **4-bit cache mode (opt-in, `--mode 4bit-cache`)**: prefix caching plus an 8 GiB RAM prefix tier for agents and coding tools; repeated
+  long prompts start in about 1 s instead of 6-16 s (64K 12.3 -> 1.1 s), identical output from the tier; needs about 108 GiB of free GTT, else the tier stays off (with a
+  warning) and prefix caching runs in VRAM only. The cost: about 22 % lower multi-user throughput than `--mode 4bit` (8 concurrent requests 321.4 tok/s; single-stream 146.7) and about 0.1-0.2 s slower first token on new prompts
 - **Images**: the 4-bit modes run the new image `qwen38-flashnext-rocm10-vllm029-20261011-r1`; the 3-bit modes stay on the published
   `qwen38-flashnext-rocm10-vllm029-20261010-r1` (the launcher picks the right one per mode).
 - **Host memory**: the 4-bit modes use GTT-backed host pools when the GPU's free GTT holds them (no stalls from host memory compaction),

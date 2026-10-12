@@ -119,9 +119,9 @@ About 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest ar
 
 **4-bit cache mode (opt-in, `--mode 4bit-cache`).** For agents and coding tools, which send the whole conversation again on every turn:
 the 4-bit decode mode with prefix caching (2,048-token blocks) and an 8 GiB RAM prefix tier that keeps prefix blocks evicted from VRAM in
-pinned system memory. A repeated 64K-token prompt goes from 13.4 s to 1.17 s time-to-first-token; hits from the RAM tier give the same
-output as a cold start. It pins about 8 GiB more host memory (about 104 GiB of free GTT); without that the launcher leaves the RAM tier
-off, says so, and keeps prefix caching in VRAM. [[COST: speed cost vs `--mode 4bit`, pending the r1tier4 gate]]. The official numbers above are measured in `--mode 4bit`; `--prefix-caching`
+pinned system memory. Repeated long prompts start in about 1 s instead of 6-16 s (32K 6.3 -> 1.0 s, 64K 12.3 -> 1.1 s, 90K 16.2 -> 1.1 s to the first
+token); hits from the RAM tier give the same output as a cold start. It pins about 8 GiB more host memory (about 108 GiB of free GTT on the first GPU, in practice a 256 GB host); without that the launcher leaves the RAM tier
+off, says so, and keeps prefix caching in VRAM. The cost: about 22 % lower multi-user throughput than `--mode 4bit` (8 concurrent requests 321.4 tok/s; single-stream 146.7) and about 0.1-0.2 s slower first token on new prompts. The official numbers above are measured in `--mode 4bit`; `--prefix-caching`
 on `--mode 4bit` / `4bit-200k` is refused (not measured there).
 
 From another terminal:

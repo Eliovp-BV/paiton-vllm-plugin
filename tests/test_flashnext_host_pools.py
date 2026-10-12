@@ -139,9 +139,9 @@ def test_cache_mode_ram_tier_ladder(lf, monkeypatch, capsys, tmp_path):
     assert '"cpu_bytes_to_use": 8589934592' in full and 'PAITON_FN_KV_TIER=1' in full and 'PAITON_HOST_KV_PRIVATE=1' in full and hook in full
     assert '--enable-prefix-caching --block-size 2048 --mamba-cache-mode align' in full and '--no-enable-prefix-caching' not in full
     assert 'PAITON_FN_KV_LEASE=off' in full and 'VLLM_USE_V2_MODEL_RUNNER' not in full
-    part = cache_cmd(lf, monkeypatch, capsys, tmp_path, 103.0)          # 5.5 GiB beyond pinned + margin: 5 GiB tier
-    assert '"cpu_bytes_to_use": 5368709120' in part
-    off = cache_cmd(lf, monkeypatch, capsys, tmp_path, 99.0)            # GTT pools fit, the tier does not
+    part = cache_cmd(lf, monkeypatch, capsys, tmp_path, 106.0)          # 6 GiB beyond pinned + margin + tier overhead: 6 GiB tier
+    assert '"cpu_bytes_to_use": 6442450944' in part
+    off = cache_cmd(lf, monkeypatch, capsys, tmp_path, 103.0)           # GTT pools fit, the tier (with its overhead) does not
     assert 'WARNING RAM prefix tier: off' in off and 'kv-transfer-config' not in off and 'PAITON_FN_KV_TIER' not in off and hook not in off
     assert 'PAITON_HOST_KV_PRIVATE' not in off and '--enable-prefix-caching' in off
     up = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0)             # user-pointer pools: no tier

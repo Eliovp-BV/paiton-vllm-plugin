@@ -111,7 +111,7 @@ def gtt_limits_gib(rocr_ids):
     lim = [min(t, ttm) if ttm > 0 else t for t, _ in devs]
     return min(lim) / (1 << 30), min(l - u for l, (_, u) in zip(lim, devs)) / (1 << 30)
 
-def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0):
+def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0, ram_tier_overhead_gib=0.0):
     """Host pools of a start; returns (env, RAM-tier GiB that fits). All pinned host memory of both TP workers is charged to one GPU's GTT
     when HSA_USERPTR_FOR_PAGED_MEM=0. Modes with a measured pinned_gib (4-bit: host tables + expert host tier, GTT at ready) use the ladder:
       GTT free >= pinned + RAM tier + 2 GiB -> GTT pools + the RAM tier;  >= pinned + 2 GiB -> GTT pools, RAM tier shrunk to what fits
@@ -126,8 +126,9 @@ def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0)
     if choice == 'auto': choice = 'gtt' if fits else 'userptr'
     rt = 0.0
     if choice == 'gtt' and ram_tier_gib:
-        rt = ram_tier_gib if free >= base + ram_tier_gib else (free - base if free - base >= 4.0 else 0.0)
-        if rt < ram_tier_gib: print(f'RAM tier {"shrunk to " + f"{rt:.1f} GiB" if rt else "disabled"}: GTT free {free:.1f} GiB < needed {base + ram_tier_gib:.1f} GiB')
+        head = free - base - ram_tier_overhead_gib   # the tier's GTT at load: its size plus the measured overhead (cache mode: ~106 GiB at 8 GiB)
+        rt = ram_tier_gib if head >= ram_tier_gib else (head if head >= 4.0 else 0.0)
+        if rt < ram_tier_gib: print(f'RAM tier {"shrunk to " + f"{rt:.1f} GiB" if rt else "disabled"}: GTT free {free:.1f} GiB < needed {base + ram_tier_overhead_gib + ram_tier_gib:.1f} GiB')
     print(f'host pools: {choice} (GTT limit {"unknown" if lim is None else f"{lim:.1f} GiB"}, free {"unknown" if free is None else f"{free:.1f} GiB"}, '
           f'needed {base:.1f} GiB for GTT pools)' + ('' if choice == 'gtt' else '; user-pointer pools can stall when the kernel compacts host memory'))
     if choice == 'userptr' and pinned_gib:
@@ -356,7 +357,8 @@ def main():
     if a.host_pools == 'auto' and hp_choice == 'userptr':
         print('host pools: userptr (the default of this mode, as published); --host-pools gtt removes the occasional memory pauses under load '
               'and costs ~1 GiB VRAM in decode')
-    hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)))
+    hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)),
+                               ram_tier_overhead_gib=float(rtier.get('gtt_overhead_gib', 0.0)))
     env.update(hp_env)
     if rtier:   # RAM prefix tier (cache mode): prefix-cache blocks evicted from VRAM are kept in pinned host memory (GTT) and loaded back on a hit
         rt = int(rt)
@@ -366,7 +368,8 @@ def main():
             print(f'RAM prefix tier: {rt} GiB of pinned host memory')
         else:
             for k in rtier['env']: env.pop(k, None)
-            print(f'WARNING RAM prefix tier: off (it needs {rtier["gib"]:g} GiB of free GTT beyond the host pools); prefix caching stays on, in VRAM only')
+            print(f'WARNING RAM prefix tier: off (it needs {rtier["gib"] + rtier.get("gtt_overhead_gib", 0.0):g} GiB of free GTT beyond the host pools); '
+                  'prefix caching stays on, in VRAM only')
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []

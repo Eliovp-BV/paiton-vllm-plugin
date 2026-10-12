@@ -941,7 +941,7 @@
       ],
       "seed": "4bit",
       "gtt_pinned_gib": 95.5,
-      "note": "opt-in cache mode for agents and coding tools: --mode 4bit with prefix caching (align, 2,048-token blocks) and an 8 GiB RAM prefix tier; 64K repeated prefix 13.4 s -> 1.17 s TTFT, tier hits identical to cold; cost vs --mode 4bit: [[COST: pending r1tier4]]",
+      "note": "opt-in cache mode for agents and coding tools: --mode 4bit with prefix caching (align, 2,048-token blocks) and an 8 GiB RAM prefix tier (gates 12 Oct, exact). Repeated long prompts start in ~1 s instead of 6-16 s (32K 6.3 -> 1.0 s, 64K 12.3 -> 1.1 s, 90K 16.2 -> 1.1 s, identical output); @8 321.4 tok/s (-22 % vs the 4bit default 411.3 in-engine), C1 146.7, TTFT on fresh prompts +0.1-0.2 s; peak 30.3 GiB per card; first-GPU GTT ~106 GiB with the tier: the full tier needs ~108 GiB free GTT",
       "image_key": "image_4bit",
       "weights_key": "weights_4bit",
       "requires": [
@@ -967,7 +967,8 @@
           "kv_connector_extra_config": {
             "spec_name": "CPUOffloadingSpec"
           }
-        }
+        },
+        "gtt_overhead_gib": 2.5
       }
     }
   }
