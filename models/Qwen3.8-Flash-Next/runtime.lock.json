@@ -50,5 +50,10 @@
   "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
   "hf_revision": "829b089bf6636af9ffed1f333b103e4e383f7b48",
   "requires": "mtp/mtp-draft-e4m3.safetensors (shipped in the repo)"
+ },
+ "checkpoint_4bit": {
+  "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4",
+  "hf_revision": "9ec8e306503d5f9c9e8fd9c0d77de8fa63428888",
+  "note": "weights verified at 8a43305d7605 (12 Oct 2026: 244 files, sha256 match); 9ec8e306 adds only the card, the docs and SHA256SUMS"
  }
 }

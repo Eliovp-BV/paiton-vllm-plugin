@@ -83,7 +83,7 @@
     },
     "weights_4bit": {
       "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4",
-      "hf_revision": "PIN-ME",
+      "hf_revision": "9ec8e306503d5f9c9e8fd9c0d77de8fa63428888",
       "default_dir": "~/paiton-models/Qwen3.8-Flash-Next-W4A8"
     },
     "image_4bit": {
