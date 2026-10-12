@@ -171,7 +171,9 @@ The server runs in the foreground; add `--detach` to run it in the background (`
 follows its log). The first start takes about **three to four minutes** (the image ships a seeded compile cache; later starts about
 two minutes); wait for `/health` to succeed.
 
-**API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8` · **API key:** none (enter any value if a client asks)
+**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8` · **API key:** none unless you set `--api-key` (enter any value if a client asks)
+
+The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local; add `--api-key KEY` or a firewall if the machine is reachable from untrusted networks.
 
 From another terminal:
 
@@ -315,6 +317,7 @@ starting it.
 | `--kv-cache-memory-bytes BYTES` / `--gpu-memory-utilization FRACTION` | Your own KV budget instead of the measured one, also with `--vision`. |
 | `--profile desktop` | For an R9700 that also drives your desktop: 32,768 context, one request, 2 GiB KV. |
 | `--port PORT` / `--name NAME` / `--detach` | API port (default 18982), container name, run in the background. |
+| `--host ADDRESS` / `--api-key KEY` | Listen address (default 0.0.0.0, every interface; 127.0.0.1 keeps it local); opt-in key the server then requires on `/v1` (handed to Docker by variable name, never printed). |
 | `--devices N` / `--list-gpus` | The GPU to run on (default: the first R9700) and the list to choose from. |
 | `--ignore-vram-check` | Start although VRAM is already in use on the selected GPU (the launcher otherwise waits up to 30 s for a stopping container, then refuses with the amount in use). |
 
