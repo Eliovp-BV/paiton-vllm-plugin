@@ -19,7 +19,7 @@ def main():
     generate.add_argument("--seed",type=int,default=42)
     generate.add_argument("--output",type=Path,required=True)
     serve=commands.add_parser("serve")
-    serve.add_argument("--host",default="127.0.0.1")
+    serve.add_argument("--host",default="0.0.0.0",help="listen address (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)")
     serve.add_argument("--port",type=int,default=8191)
     args=parser.parse_args()
     from .runtime import ImageEngine,validate_request

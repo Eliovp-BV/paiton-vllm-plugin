@@ -9,7 +9,7 @@ services:
     init: true
     environment:
       HF_HUB_OFFLINE: "1"
-    ports: ["0.0.0.0:${PAITON_WAN_PORT:-8192}:8188"]
+    ports: ["${PAITON_BIND:-0.0.0.0}:${PAITON_WAN_PORT:-8192}:8188"]
     volumes:
       - ${PAITON_WAN_DATA:?Use launch.sh}:/data
       - ${PAITON_WAN_OUTPUTS:?Use launch.sh}:/outputs

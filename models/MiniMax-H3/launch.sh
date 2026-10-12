@@ -17,6 +17,8 @@ export PAITON_H3_DATA="$(realpath "$PAITON_H3_DATA")"
 export PAITON_H3_OUTPUTS="$(realpath "$PAITON_H3_OUTPUTS")"
 export PAITON_RENDER_GID="$(stat -c '%g' /dev/kfd)"
 export PAITON_UID="$(id -u)" PAITON_GID="$(id -g)"
+# ComfyUI is published on every interface (0.0.0.0); PAITON_BIND=127.0.0.1 keeps it on this machine.
+export PAITON_BIND="${PAITON_BIND:-0.0.0.0}"
 compose=(docker compose -f "$package_dir/compose.yaml")
 case "${1:-start}" in
   --stop) exec "${compose[@]}" down ;;
@@ -31,9 +33,10 @@ unset PAITON_H3_BUILD
 printf 'Waiting for ComfyUI...\n'
 for ((attempt=0; attempt<90; attempt++)); do
   if "${compose[@]}" exec -T comfyui python3 -c 'from urllib.request import urlopen; urlopen("http://127.0.0.1:8188/system_stats",timeout=2).close()' >/dev/null 2>&1; then
-    printf 'ComfyUI is listening on 0.0.0.0:%s\n' "${PAITON_H3_PORT:-8190}"
+    printf 'ComfyUI is listening on %s:%s\n' "$PAITON_BIND" "${PAITON_H3_PORT:-8190}"
     printf 'On this host: http://127.0.0.1:%s/?paiton=1&studio=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
-    printf 'From another system: http://<server-ip>:%s/?paiton=1&studio=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
+    [[ "$PAITON_BIND" != 0.0.0.0 ]] || \
+      printf 'From another system: http://<server-ip>:%s/?paiton=1&studio=1&preset=%s\n' "${PAITON_H3_PORT:-8190}" "${PAITON_H3_PRESET:-turbo8}"
     printf 'The included workflow opens on first visit. Edit the prompt and click Run.\n'
     printf 'Videos: %s\nLogs: %s --logs\nStop: %s --stop\n' "$PAITON_H3_OUTPUTS" "$0" "$0"
     exit 0

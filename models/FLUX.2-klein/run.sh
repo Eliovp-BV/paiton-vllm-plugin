@@ -25,7 +25,8 @@ elif [[ "${1:-}" == "benchmark" ]]; then
 fi
 mkdir -p "$output_dir"
 port_args=()
-[[ "${1:-}" != serve ]] || port_args=(-p 127.0.0.1:7860:7860)
+# PAITON_BIND (default 0.0.0.0, every interface) sets the host address of the published port; 127.0.0.1 keeps it local.
+[[ "${1:-}" != serve ]] || port_args=(-p "${PAITON_BIND:-0.0.0.0}:7860:7860")
 exec docker run --rm \
   --device=/dev/kfd --device=/dev/dri --group-add "$render_gid" \
   --shm-size=2g \

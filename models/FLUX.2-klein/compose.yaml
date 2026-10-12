@@ -17,20 +17,20 @@ services:
     image: ${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1}
     build: {context: ., dockerfile: Dockerfile}
     command: [--engine, paiton]
-    ports: ["127.0.0.1:${PAITON_API_PORT:-7861}:7860"]
+    ports: ["${PAITON_BIND:-0.0.0.0}:${PAITON_API_PORT:-7861}:7860"]
   stock:
     <<: *engine
     image: ${PAITON_TOOLS_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1}
     build: {context: ., dockerfile: Dockerfile.tools}
     command: [--engine, stock]
-    ports: ["127.0.0.1:${PAITON_STOCK_PORT:-7862}:7860"]
+    ports: ["${PAITON_BIND:-0.0.0.0}:${PAITON_STOCK_PORT:-7862}:7860"]
   comfyui:
     image: ${PAITON_COMFYUI_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:flux2-comfyui-rdna4-v1.0.1}
     build: {context: ., dockerfile: Dockerfile.comfyui}
     environment:
       PAITON_FLUX2_ENDPOINT: http://paiton:7860
       PAITON_STOCK_ENDPOINT: http://stock:7860
-    ports: ["127.0.0.1:${PAITON_UI_PORT:-8188}:8188"]
+    ports: ["${PAITON_BIND:-0.0.0.0}:${PAITON_UI_PORT:-8188}:8188"]
     volumes:
       - ${PAITON_OUTPUTS:-./outputs}:/outputs
       - paiton-flux2-comfy-user:/comfy-user

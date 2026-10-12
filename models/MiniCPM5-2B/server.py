@@ -48,10 +48,10 @@ def prepare(offline=False, verify=False):
     return snapshot
 
 
-def command(snapshot, stock=False):
+def command(snapshot, stock=False, host='0.0.0.0'):
     result = [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'minicpm5-2b'),
-        '--host', '0.0.0.0', '--port', '8036', '--dtype', 'float16',
+        '--host', host, '--port', '8036', '--dtype', 'float16',
         '--max-model-len', '8192', '--max-num-seqs', '2',
         '--max-num-batched-tokens', '512', '--kv-cache-memory-bytes', '1G',
         '--no-enable-prefix-caching', '--generation-config', 'vllm',
@@ -71,6 +71,10 @@ def main():
     parser.add_argument('--offline', action='store_true')
     parser.add_argument('--download-only', action='store_true')
     parser.add_argument('--verify', action='store_true', help='Rehash all checkpoint files, ignoring verification receipts')
+    parser.add_argument('--host', default='0.0.0.0',
+                        help='address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)')
+    parser.add_argument('--api-key', default=None,
+                        help='opt-in: require this key on /v1 requests (passed to vLLM as VLLM_API_KEY, never printed)')
     args = parser.parse_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(args.stock, os.environ)
@@ -79,7 +83,9 @@ def main():
         return
     os.environ.update(HF_HUB_OFFLINE='1', VLLM_ROCM_USE_AITER='0', OMP_NUM_THREADS='1',
                       VLLM_WORKER_MULTIPROC_METHOD='fork')
-    argv = command(snapshot, args.stock)
+    if args.api_key:
+        os.environ['VLLM_API_KEY'] = args.api_key
+    argv = command(snapshot, args.stock, args.host)
     print(json.dumps({'command': argv}), flush=True)
     os.execv(sys.executable, argv)
 

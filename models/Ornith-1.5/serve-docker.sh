@@ -5,6 +5,8 @@ set -euo pipefail
 IMAGE="ghcr.io/eliovp/paiton-vllm-plugin:ornith15-mxfp4-rdna4-v1.0.0"
 CONTAINER_NAME="${PAITON_CONTAINER_NAME:-paiton-ornith}"
 HOST_PORT="${PAITON_HOST_PORT:-8000}"
+# The API listens on every interface (0.0.0.0); PAITON_BIND=127.0.0.1 keeps it on this machine.
+BIND="${PAITON_BIND:-0.0.0.0}"
 CACHE_VOLUME="${PAITON_CACHE_VOLUME:-paiton-ornith-cache}"
 MODE="start"
 
@@ -18,6 +20,16 @@ if [[ $# -eq 1 ]]; then
         exit 2
     fi
     MODE="chat"
+fi
+# Opt-in: PAITON_API_KEY makes vLLM require that key on /v1 requests (passed by variable name, not as a literal argument).
+key_args=()
+if [[ -n "${PAITON_API_KEY:-}" ]]; then
+    if [[ "$MODE" == "chat" ]]; then
+        printf -- '--chat uses the terminal client in the image, which does not send an API key; unset PAITON_API_KEY for --chat.\n' >&2
+        exit 2
+    fi
+    export VLLM_API_KEY="$PAITON_API_KEY"
+    key_args=(--env VLLM_API_KEY)
 fi
 
 if [[ ! -e /dev/kfd || ! -d /dev/dri ]]; then
@@ -44,7 +56,8 @@ if [[ "$container_exists" -eq 0 ]]; then
         --device /dev/dri \
         --group-add video \
         --ipc=host \
-        -p "${HOST_PORT}:8000" \
+        -p "${BIND}:${HOST_PORT}:8000" \
+        "${key_args[@]}" \
         --mount "type=volume,src=${CACHE_VOLUME},dst=/models/cache" \
         "$IMAGE"
 elif [[ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER_NAME")" != "true" ]]; then
@@ -54,6 +67,10 @@ fi
 if [[ "$MODE" == "start" ]]; then
     printf 'Paiton Ornith is starting. Follow it with: docker logs -f %s\n' \
         "$CONTAINER_NAME"
+    printf 'API: http://%s:%s/v1\n' "${BIND/#0.0.0.0/127.0.0.1}" "$HOST_PORT"
+    if [[ "$BIND" == 0.0.0.0 ]]; then
+        printf 'From another system: http://<this-machine-ip>:%s/v1\n' "$HOST_PORT"
+    fi
     exit 0
 fi
 

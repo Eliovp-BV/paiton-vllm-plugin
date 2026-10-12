@@ -4,6 +4,8 @@ set -euo pipefail
 image="${PAITON_QWEN3_CODER_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0}"
 container="${PAITON_CONTAINER_NAME:-paiton-qwen3-coder}"
 port="${PAITON_HOST_PORT:-8010}"
+# The API listens on every interface (0.0.0.0); PAITON_BIND=127.0.0.1 keeps it on this machine.
+bind="${PAITON_BIND:-0.0.0.0}"
 cache_dir="${PAITON_CACHE_DIR:-${HOME}/.cache/paiton}"
 chat=0
 stock=0
@@ -27,6 +29,8 @@ Default: start the API in the background; download the pinned model if needed.
 --download-only  Populate the cache without loading the GPU model.
 
 Environment: PAITON_CACHE_DIR (default ~/.cache/paiton), PAITON_HOST_PORT (8010),
+PAITON_BIND (0.0.0.0, every interface; 127.0.0.1 keeps the API on this machine),
+PAITON_API_KEY (opt-in: require this key on /v1 requests; --chat needs it unset),
 PAITON_CONTAINER_NAME (paiton-qwen3-coder), PAITON_QWEN3_CODER_IMAGE.
 HELP
             exit 0 ;;
@@ -41,6 +45,15 @@ port="$((10#$port))"
 if ((chat && download)); then
     printf -- '--chat and --download-only cannot be combined.\n' >&2
     exit 2
+fi
+key_args=()
+if [[ -n "${PAITON_API_KEY:-}" ]]; then
+    if ((chat)); then
+        printf -- '--chat uses the terminal client in the image, which does not send an API key; unset PAITON_API_KEY for --chat.\n' >&2
+        exit 2
+    fi
+    export VLLM_API_KEY="$PAITON_API_KEY"
+    key_args=(-e VLLM_API_KEY)
 fi
 if ! docker info >/dev/null 2>&1; then
     printf 'Docker is unavailable to this user.\n' >&2
@@ -65,9 +78,15 @@ if docker container inspect "$container" >/dev/null 2>&1; then
         exit 1
     fi
     existing_port="$(docker inspect -f '{{(index (index .HostConfig.PortBindings "8010/tcp") 0).HostPort}}' "$container")"
+    existing_bind="$(docker inspect -f '{{(index (index .HostConfig.PortBindings "8010/tcp") 0).HostIp}}' "$container")"
     existing_cache="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/models/cache"}}{{.Source}}{{end}}{{end}}' "$container")"
     if [[ "$existing_port" != "$port" || "$existing_cache" != "$cache_dir" ]]; then
         printf 'Container %s uses a different port or cache. Reuse those settings or choose another container name.\n' "$container" >&2
+        exit 1
+    fi
+    if [[ "${existing_bind:-0.0.0.0}" != "$bind" ]]; then
+        printf 'Container %s listens on %s, not %s (older launchers kept the API on 127.0.0.1). Run "docker rm -f %s" once to recreate it, or set PAITON_BIND=%s.\n' \
+            "$container" "${existing_bind:-0.0.0.0}" "$bind" "$container" "${existing_bind:-0.0.0.0}" >&2
         exit 1
     fi
     if ! docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$container" | grep -qx 'GPU_MAX_HW_QUEUES=1'; then
@@ -80,10 +99,13 @@ else
     # GPU_MAX_HW_QUEUES=1 keeps RDNA4 decode in its fast mode (decode is about 3.6x slower without it).
     docker run -d --name "$container" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
         --group-add video --ipc=host --label "dev.paiton.qwen3-coder.mode=$mode" \
-        -p "127.0.0.1:$port:8010" -v "$cache_dir:/models/cache" "$image" "${server_args[@]}" >/dev/null
+        -p "$bind:$port:8010" "${key_args[@]}" -v "$cache_dir:/models/cache" "$image" "${server_args[@]}" >/dev/null
 fi
 if ((!chat)); then
-    printf 'Qwen3-Coder is starting. API: http://127.0.0.1:%s/v1\n' "$port"
+    printf 'Qwen3-Coder is starting. API: http://%s:%s/v1\n' "${bind/#0.0.0.0/127.0.0.1}" "$port"
+    if [[ "$bind" == 0.0.0.0 ]]; then
+        printf 'From another system: http://<this-machine-ip>:%s/v1\n' "$port"
+    fi
     printf 'Model: qwen3-coder. Logs: docker logs -f %s\n' "$container"
     printf 'Run this command again with --chat to open terminal chat.\n'
     exit 0

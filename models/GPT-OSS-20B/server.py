@@ -11,7 +11,7 @@ MODEL = "openai/gpt-oss-20b"
 REVISION = "6cee5e81ee83917806bbde320786a8fb61efebee"
 
 
-def command(snapshot, stock=False, qualification=False):
+def command(snapshot, stock=False, qualification=False, host=None):
     argv = [
         sys.executable,
         "-m",
@@ -21,7 +21,9 @@ def command(snapshot, stock=False, qualification=False):
         "--served-model-name",
         "gpt-oss-20b",
         "--host",
-        "127.0.0.1" if qualification else "0.0.0.0",
+        # every interface by default; the benchmark-only qualification mode enables vLLM's
+        # development endpoints and so stays on loopback unless --host says otherwise
+        host or ("127.0.0.1" if qualification else "0.0.0.0"),
         "--port",
         "8020",
         "--dtype",
@@ -75,6 +77,10 @@ def main():
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--download-only", action="store_true")
     parser.add_argument("--qualification", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--host", default=None,
+                        help="address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)")
+    parser.add_argument("--api-key", default=None,
+                        help="opt-in: require this key on /v1 requests (passed to vLLM as VLLM_API_KEY, never printed)")
     args = parser.parse_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(args.stock, os.environ)
@@ -104,7 +110,9 @@ def main():
         # GPT-OSS uses Harmony rendering, which bypasses the Jinja template date.
         os.environ["VLLM_SYSTEM_START_DATE"] = "2026-09-09"
         os.environ["PYTHONPATH"] = str(Path(__file__).parent / "benchmark") + os.pathsep + os.environ.get("PYTHONPATH", "")
-    argv = command(snapshot, args.stock, args.qualification)
+    if args.api_key:
+        os.environ["VLLM_API_KEY"] = args.api_key
+    argv = command(snapshot, args.stock, args.qualification, args.host)
     # These values contain model paths and public generation settings only.
     print(
         json.dumps({"model": MODEL, "revision": REVISION, "command": argv}), flush=True

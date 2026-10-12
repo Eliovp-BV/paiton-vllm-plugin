@@ -13,6 +13,7 @@ MODE="auto"
 DRY_RUN=0
 WITH_HF_TOKEN=0
 HOST_PORT="${PAITON_HOST_PORT:-8000}"
+BIND="${PAITON_BIND:-0.0.0.0}"
 
 usage() {
     cat <<'EOF'
@@ -41,6 +42,10 @@ Environment:
   HF_TOKEN         Token value; used only with --with-hf-token and passed by
                    variable name, never as a literal command-line value.
   PAITON_HOST_PORT Host port for the API (default: 8000).
+  PAITON_BIND      Host address of the API port (default: 0.0.0.0, every
+                   interface; 127.0.0.1 keeps it on this machine).
+  PAITON_API_KEY   Opt-in: vLLM then requires this key on /v1 requests; passed
+                   by variable name, never as a literal command-line value.
   PAITON_CONTAINER_NAME
                    Container name (default: paiton-qwen38).
 EOF
@@ -182,7 +187,7 @@ docker_args=(
     --device /dev/dri
     --group-add video
     --ipc=host
-    -p "${HOST_PORT}:8000"
+    -p "${BIND}:${HOST_PORT}:8000"
     --mount "type=volume,src=${VOLUME_NAME},dst=/models/cache"
 )
 
@@ -231,9 +236,19 @@ else
     fi
 fi
 
+if [[ -n "${PAITON_API_KEY:-}" ]]; then
+    export VLLM_API_KEY="$PAITON_API_KEY"
+    docker_args+=(--env VLLM_API_KEY)
+    printf 'API key:                required on /v1 requests (from PAITON_API_KEY)\n'
+fi
+
 docker_args+=("$IMAGE")
 
 printf '\nThe server stays attached to this terminal. Open a second terminal for curl.\n'
+printf 'API: http://%s:%s/v1\n' "${BIND/#0.0.0.0/127.0.0.1}" "$HOST_PORT"
+if [[ "$BIND" == 0.0.0.0 ]]; then
+    printf 'From another system: http://<this-machine-ip>:%s/v1\n' "$HOST_PORT"
+fi
 printf 'Each cold start takes about ten minutes after any download completes.\n'
 printf 'Wait for Application startup complete or a successful /health response.\n\n'
 

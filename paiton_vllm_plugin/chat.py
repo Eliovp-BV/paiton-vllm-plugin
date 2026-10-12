@@ -31,6 +31,11 @@ def _parser() -> argparse.ArgumentParser:
         help="Enable the model's thinking mode (disabled by default)",
     )
     parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument(
+        "--api-key",
+        default=os.environ.get("PAITON_CHAT_API_KEY") or os.environ.get("VLLM_API_KEY"),
+        help="Bearer key for a server started with an API key (default: PAITON_CHAT_API_KEY or VLLM_API_KEY)",
+    )
     return parser
 
 
@@ -68,10 +73,13 @@ def _complete(
     messages: list[dict[str, str]], args: argparse.Namespace
 ) -> str:
     body = json.dumps(_request_payload(messages, args)).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if getattr(args, "api_key", None):
+        headers["Authorization"] = "Bearer " + args.api_key
     request = urllib.request.Request(
         args.url,
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     pieces: list[str] = []

@@ -20,7 +20,10 @@ WORDS = 'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu x
 
 
 def post(path, payload, timeout=900):
-    req = urllib.request.Request(URL + path, json.dumps(payload).encode(), {'Content-Type': 'application/json'})
+    headers = {'Content-Type': 'application/json'}
+    if os.environ.get('VLLM_API_KEY'):  # a server started with an API key guards /v1 (not /health)
+        headers['Authorization'] = 'Bearer ' + os.environ['VLLM_API_KEY']
+    req = urllib.request.Request(URL + path, json.dumps(payload).encode(), headers)
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read())
 

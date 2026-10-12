@@ -10,10 +10,10 @@ MODEL = "cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit"
 REVISION = "4bd30395b72ea6045edd04806c4fea448d4467b3"
 
 
-def command(snapshot, stock=False):
+def command(snapshot, stock=False, host="0.0.0.0"):
     argv = [sys.executable, "-m", "vllm.entrypoints.openai.api_server",
             "--model", str(snapshot), "--served-model-name", "qwen3-coder",
-            "--host", "0.0.0.0", "--port", "8010", "--dtype", "bfloat16",
+            "--host", host, "--port", "8010", "--dtype", "bfloat16",
             "--max-model-len", "4096", "--max-num-seqs", "2",
             "--max-num-batched-tokens", "512", "--kv-cache-memory-bytes", "2G",
             "--no-enable-prefix-caching", "--attention-backend", "ROCM_ATTN",
@@ -32,6 +32,10 @@ def main():
     parser.add_argument("--stock", action="store_true")
     parser.add_argument("--offline", action="store_true")
     parser.add_argument("--download-only", action="store_true")
+    parser.add_argument("--host", default="0.0.0.0",
+                        help="address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)")
+    parser.add_argument("--api-key", default=None,
+                        help="opt-in: require this key on /v1 requests (passed to vLLM as VLLM_API_KEY, never printed)")
     args = parser.parse_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(args.stock, os.environ)
@@ -43,7 +47,9 @@ def main():
         print(snapshot)
         return
     os.environ["HF_HUB_OFFLINE"] = "1"
-    argv = command(snapshot, args.stock)
+    if args.api_key:
+        os.environ["VLLM_API_KEY"] = args.api_key
+    argv = command(snapshot, args.stock, args.host)
     # These values contain model paths and public generation settings only.
     print(json.dumps({"model": MODEL, "revision": REVISION, "command": argv}), flush=True)
     os.execv(sys.executable, argv)

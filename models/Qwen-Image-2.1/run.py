@@ -23,7 +23,7 @@ def main(argv=None):
     parser.add_argument("--no-native-fusions", action="store_true", help="Use the qualified unpack-only fallback")
     commands = parser.add_subparsers(dest="command")
     serve = commands.add_parser("serve", help="Run the image HTTP API (default)")
-    serve.add_argument("--host", default="0.0.0.0")
+    serve.add_argument("--host", default="0.0.0.0", help="listen address (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)")
     serve.add_argument("--port", type=int, default=8191)
     generate = commands.add_parser("generate", help="Write one PNG directly")
     generate.add_argument("--prompt", required=True)
