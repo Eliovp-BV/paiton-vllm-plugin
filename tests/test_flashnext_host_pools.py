@@ -173,6 +173,20 @@ def test_3bit_modes_default_userptr_gtt_opt_in(lf, monkeypatch, capsys, tmp_path
     assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in out.split('docker run')[1]
 
 
+@pytest.mark.parametrize('mode', ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf'])
+def test_prefix_caching_sets_block_2048(lf, monkeypatch, capsys, tmp_path, mode):
+    run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--prefix-caching',)).split('docker run')[1]
+    assert '--enable-prefix-caching --block-size 2048 --mamba-cache-mode align' in run_args     # hits resume on a block boundary
+    assert run_args.count('--block-size') == 1 and '--no-enable-prefix-caching' not in run_args
+    assert '--block-size' not in mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
+
+
+def test_cache_mode_single_block_size(lf, monkeypatch, capsys, tmp_path):
+    for extra in ((), ('--prefix-caching',)):
+        run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-cache', 125.8, extra).split('docker run')[1]
+        assert run_args.count('--block-size') == 1 and '--block-size 2048' in run_args
+
+
 def test_4bit_default_stays_gtt(lf, monkeypatch, capsys, tmp_path):
     assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 125.8).split('docker run')[1]
 
