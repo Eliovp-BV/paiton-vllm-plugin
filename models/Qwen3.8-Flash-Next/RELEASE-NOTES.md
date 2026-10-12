@@ -9,15 +9,19 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   within 0.16 % of the bf16 log-likelihood on long documents, needles 40/40 identical to bf16 (as served: INT6 trunk, fp8 KV cache). Speed, measured on
   the shipped image: decode 189.7 / @8 420.7 / prefill @64K 6,991 / TTFT 121 ms / update p99 17.7 ms.
 - **3-bit modes: launcher fixes only.** Same image, same weights, same modes and the same speed and accuracy as the 10 Oct release.
-  What changes is the launcher: the host memory pools below (no GPU pauses from host memory compaction under load), a short settle wait
-  before it reports READY, and the peer-to-peer and GTT preflight checks. [[PREFIX-CACHING: the --prefix-caching recommendation for
+  What changes is the launcher: a short settle wait before it reports READY, the peer-to-peer and GTT preflight checks, and an optional
+  `--host-pools gtt` (removes the occasional memory pauses under load, costs ~1 GiB VRAM in decode). [[PREFIX-CACHING: the --prefix-caching recommendation for
   agents and coding tools, if approved]]
 - **Known issue (3-bit, draft for approval):** In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use
   `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.
+- **4-bit cache mode (opt-in, `--mode 4bit-cache`)**: prefix caching plus an 8 GiB RAM prefix tier for agents and coding tools; 64K
+  repeated prompt 13.4 s -> 1.17 s TTFT, identical output from the tier; needs about 104 GiB of free GTT, else the tier stays off (with a
+  warning) and prefix caching runs in VRAM only. [[COST: speed cost vs `--mode 4bit`, pending the r1tier4 gate]]
 - **Images**: the 4-bit modes run the new image `qwen38-flashnext-rocm10-vllm029-20261011-r1`; the 3-bit modes stay on the published
   `qwen38-flashnext-rocm10-vllm029-20261010-r1` (the launcher picks the right one per mode).
-- **Host memory**: GTT-backed host pools by default when the GPU's free GTT holds them (no stalls from host memory compaction), with an
-  automatic fallback to ROCm's user-pointer memory and a warning; the 4-bit modes need about 98 GiB of free GTT (a 256 GB host).
+- **Host memory**: the 4-bit modes use GTT-backed host pools when the GPU's free GTT holds them (no stalls from host memory compaction),
+  with an automatic fallback to ROCm's user-pointer memory and a warning; they need about 98 GiB of free GTT (a 256 GB host). The 3-bit
+  modes keep the published user-pointer pools; `--host-pools gtt` is their opt-in.
 - **Preflight**: `--dry-run` reports host RAM, the GTT limit and what it chooses, and warns when the GPUs have no peer-to-peer link.
 
 ## Release 20261010-r1 (previous)
@@ -35,7 +39,7 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   found the native path is not bit-reproducible run to run while the exact path reproduces itself; prefill
   @64K on the exact path: 7,607 tok/s (development-stack measurement, not re-run on the image; exact 64,000 tokens 7,673; depth rows 7,575 / 7,785 /
   7,762 / 7,711 / 7,607 / 7,422), about 7 % below the default path. Decode rows are identical in both.
-- `--prefix-caching` (opt-in, any mode): align-mode prefix caching of the recurrent state per 2,048-token block; 64K repeat 9.6 s -> 0.35 s TTFT, identical output.
+- `--prefix-caching` (opt-in, the 3-bit modes; the 4-bit modes use `--mode 4bit-cache` and refuse the flag): align-mode prefix caching of the recurrent state per 2,048-token block; 64K repeat 9.6 s -> 0.35 s TTFT, identical output.
 
 ## Long context
 - `decode`: 98,304-token window with speculative decoding (MTP depth 3); `prefill-long`: 200,000-token window, speculative decoding off.
@@ -68,7 +72,7 @@ BetterBench 0.6.0 standard profile on this machine against our OpenAI-compatible
 wire).
 
 ## Next release
-- RAM and SSD KV-cache tier (prefix-cache offload outside the VRAM, as on the 27B release) and the 4-bit container.
+- SSD KV-cache tier for the 4-bit cache mode.
 
 ## Checkpoint repo
 - All modes load the W8 drafter file `mtp/mtp-draft-e4m3.safetensors` shipped in EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 (verified by

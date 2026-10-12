@@ -42,7 +42,7 @@ Decode and concurrency: `--mode decode` (MTP depth 3, 98,304-token window). Pref
 MTP off). Both modes use the bf16 KV cache (no released mode uses fp8 KV). Both modes also exist with exact-arithmetic prefill, about 7 % slower (`--mode decode-nopf`, `--mode prefill-long-nopf`;
 prefill @64K 7,607 measured on the development stack, not re-run on the image). Served long-context needles: 40/40 at 131K and at 200K.
 
-**Prefix caching (opt-in, `--prefix-caching`)**: align-mode caching of the recurrent state per 2,048-token block. A repeated 64K-token
+**Prefix caching (opt-in, `--prefix-caching`, 3-bit modes; the 4-bit modes use `--mode 4bit-cache`)**: align-mode caching of the recurrent state per 2,048-token block. A repeated 64K-token
 prompt goes from 9.6 s to 0.35 s time-to-first-token with identical output. Off by default because the official numbers were measured
 without it.
 
@@ -59,7 +59,7 @@ activations on the wire (no compressed wire); 20 passes per category after warm-
 1/2/4/8 x 48 requests, prefill depths 2K-128K.
 
 ## Next release
-A large prefix cache for the 4-bit modes (RAM tier for coding agents). We keep tuning, we keep optimizing.
+We keep tuning, we keep optimizing.
 
 ## Prerequisites
 - Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`; groups `video`, `render`).
@@ -110,11 +110,19 @@ that compaction can pause the GPUs for a few seconds right after start. `--settl
 ```bash
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh        # 4-bit experts with the expert host tier: 98,304-token window, speculative decoding on
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 4-bit experts, 200,000-token window, speculative decoding off
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-cache.sh  # opt-in cache mode for agents and coding tools: prefix caching + 8 GiB RAM prefix tier
 ```
 
 They download the 4-bit weights (`EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4`, about 133 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8`.
 About 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system memory when a token needs them
 (`--expert-vram-gib` and `--host-pool on|off` change the split; the launcher checks the RAM and the GTT size before it starts).
+
+**4-bit cache mode (opt-in, `--mode 4bit-cache`).** For agents and coding tools, which send the whole conversation again on every turn:
+the 4-bit decode mode with prefix caching (2,048-token blocks) and an 8 GiB RAM prefix tier that keeps prefix blocks evicted from VRAM in
+pinned system memory. A repeated 64K-token prompt goes from 13.4 s to 1.17 s time-to-first-token; hits from the RAM tier give the same
+output as a cold start. It pins about 8 GiB more host memory (about 104 GiB of free GTT); without that the launcher leaves the RAM tier
+off, says so, and keeps prefix caching in VRAM. [[COST: speed cost vs `--mode 4bit`, pending the r1tier4 gate]]. The official numbers above are measured in `--mode 4bit`; `--prefix-caching`
+on `--mode 4bit` / `4bit-200k` is refused (not measured there).
 
 From another terminal:
 
@@ -130,11 +138,13 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   takes about 25 s to read in the 200K mode).
 
 ## Options
-`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k`, `--prefix-caching`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
+`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
 `--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
+Host pools: the 3-bit modes keep ROCm's user-pointer memory for their ~55 GiB of host tables (as published); `--host-pools gtt` is an
+opt-in that removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode. The 4-bit modes use GTT memory (see Prerequisites).
 
 ## Files
-`run-flashnext*.sh` (the wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the four modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
+`run-flashnext*.sh` (the wrappers above), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of the modes and the prefix-caching opt-in), `README.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md` (depth table,
 per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release was built from and tested with),
 `Dockerfile` + `prepare_image_context.py` + `build-context.lock.json` (rebuild the image from locked inputs, see REPRODUCE.md), `release-audit.json`,
 `deployment-check.json`, `metrics.json` and `benchmarks/` (the raw BetterBench outputs of the published run).
