@@ -14,7 +14,8 @@ Host pools: 3-bit modes keep ROCm's user-pointer memory for the host-resident ta
   4bit-cache         opt-in for agents and coding tools: 4bit + prefix caching + an 8 GiB RAM prefix tier (needs ~8 GiB more GTT)
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
-Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--name paiton-flashnext] [--detach] [--dry-run]
+Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--host 0.0.0.0] [--api-key KEY] [--name paiton-flashnext]
+       [--detach] [--dry-run]
        [--weights DIR] [--cache DIR] [--image REF] [--devices GPU-xxx,GPU-yyy] [--served-model-name Qwen3.8-Flash-Next]
 Weights: downloaded once from the Hugging Face repo in modes.json (pinned revision, SHA256SUMS verified) into --weights.
 """
@@ -158,15 +159,18 @@ def drop_page_cache(root):
         except (OSError, AttributeError): continue
     return n, b
 
-def wait_ready(port, proc, name, timeout_s=1800, settle_s=30.0, quiet_s=5.0, rate_max=10000, weights=None, drop_cache=True):
+def wait_ready(port, proc, name, timeout_s=1800, settle_s=30.0, quiet_s=5.0, rate_max=10000, weights=None, drop_cache=True,
+               host='0.0.0.0'):
     """Ready = /health answers, then (after dropping the checkpoint's page cache) the host's page migration rate (/proc/vmstat
     pgmigrate_success) stays below rate_max pages/s for quiet_s seconds, capped at settle_s: the kernel compacts memory right after
     the engine is ready, which can pause the GPU queues for seconds; the first requests then land after it. Returns True when ready."""
     import time, urllib.request
+    wildcard = host in ('0.0.0.0', '::', '')            # every interface, loopback included
+    probe = '127.0.0.1' if wildcard else (f'[{host}]' if ':' in host else host)
     t0 = time.time()
     while True:
         try:
-            with urllib.request.urlopen(f'http://127.0.0.1:{port}/health', timeout=3) as r:
+            with urllib.request.urlopen(f'http://{probe}:{port}/health', timeout=3) as r:
                 if r.status == 200: break
         except Exception: pass
         if proc is not None and proc.poll() is not None: return False
@@ -185,6 +189,8 @@ def wait_ready(port, proc, name, timeout_s=1800, settle_s=30.0, quiet_s=5.0, rat
         print(f'launcher: settle wait {time.time() - t1:.1f} s (host page migration peak {peak:,.0f} pages/s; quiet = below {rate_max:,} pages/s '
               f'for {quiet_s:g} s, cap {settle_s:g} s)', flush=True)
     print(f'launcher: READY on port {port} ({time.time() - t0:.0f} s after start, {time.time() - t_health:.0f} s after /health)', flush=True)
+    print(f'launcher: API http://{probe}:{port}/v1' + (f' (or http://<this-machine-ip>:{port}/v1 from another system)' if wildcard else ''),
+          flush=True)
     print('launcher: every 10 s the server log shows "Avg prompt throughput" (reading prompts, prefill) and "Avg generation throughput" '
           '(writing tokens); a long prompt shows up as prompt throughput, not as slow generation (README: Troubleshooting)', flush=True)
     return True
@@ -325,6 +331,9 @@ def kv_pool_check(mode, m, engine_args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mode', default='decode', choices=sorted(MODES)); ap.add_argument('--port', type=int, default=18982); ap.add_argument('--name', default='paiton-flashnext')
+    ap.add_argument('--host', default='0.0.0.0', help='address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it on this machine)')
+    ap.add_argument('--api-key', default=None, metavar='KEY', help='opt-in: the server then requires this key on /v1 requests (handed to Docker as VLLM_API_KEY by '
+                    'variable name, never printed); default: no key')
     ap.add_argument('--weights', default=None, help='weights dir (default per mode: ~/paiton-models/Qwen3.8-Flash-Next-W3A8, 4-bit modes ~/paiton-models/Qwen3.8-Flash-Next-W4A8)');
     ap.add_argument('--kv-cache-memory-bytes', type=int, default=None, help='KV cache size per GPU in bytes (default: the mode value); '
                     'lower values shrink the cache the prefix cache and long conversations live in')
@@ -404,6 +413,7 @@ def main():
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
     if a.detach: cmd += ['-d']
     for k, v in sorted(env.items()): cmd += ['-e', f'{k}={v}']
+    if a.api_key: cmd += ['-e', 'VLLM_API_KEY']   # by name: Docker reads the value from the launcher's environment (below)
     cmd += ['-v', f'{weights}:{COMMON["mounts"]["checkpoint"]}:ro', '-v', f'{view}:{COMMON["mounts"]["view"]}:ro', '-v', f'{cache}:{COMMON["mounts"]["cache"]}']
     if env.get('PAITON_FN_KV_TIER') == '1':
         # RAM prefix tier: its boot hook must sit in site-packages at interpreter start (every engine and worker process), or stock
@@ -415,16 +425,17 @@ def main():
     # first start of a mode: copy the baked compile-cache seed into the (empty) cache, then serve
     inner = (f'if [ -d /opt/paiton/cache-seed/{m.get("seed", a.mode)} ] && [ -z "$(ls -A {COMMON["mounts"]["cache"]} 2>/dev/null)" ]; then cp -a /opt/paiton/cache-seed/{m.get("seed", a.mode)}/. {COMMON["mounts"]["cache"]}/; fi; '
              f'exec python3 -m vllm.entrypoints.openai.api_server --model {COMMON["mounts"]["view"]} --tokenizer {COMMON["mounts"]["view"]} '
-             + ' '.join(shlex.quote(x) for x in engine_args) + f' --served-model-name {shlex.quote(a.served_model_name)} --host 0.0.0.0 --port {a.port}')
+             + ' '.join(shlex.quote(x) for x in engine_args) + f' --served-model-name {shlex.quote(a.served_model_name)} --host {shlex.quote(a.host)} --port {a.port}')
     cmd += ['--entrypoint', 'bash', image, '-c', inner]
     print(f'mode {a.mode}: image {image}; GPUs {gpus}; weights {weights}; cache {cache}; port {a.port}' + (f'; expert tier {tier}' if tier else ''))
     if a.dry_run: print(' '.join(shlex.quote(x) for x in cmd)); return
-    ready = dict(port=a.port, name=a.name, settle_s=a.settle_s, weights=weights, drop_cache=not a.keep_page_cache)
+    ready = dict(port=a.port, name=a.name, settle_s=a.settle_s, weights=weights, drop_cache=not a.keep_page_cache, host=a.host)
+    run_env = dict(os.environ, VLLM_API_KEY=a.api_key) if a.api_key else None
     if a.detach:
-        rc = subprocess.run(cmd).returncode
+        rc = subprocess.run(cmd, env=run_env).returncode
         if rc: sys.exit(rc)
         sys.exit(0 if wait_ready(proc=None, **ready) else 1)
-    proc = subprocess.Popen(cmd)
+    proc = subprocess.Popen(cmd, env=run_env)
     import signal
     for sig in (signal.SIGTERM, signal.SIGHUP): signal.signal(sig, lambda n, f: proc.send_signal(n))   # the docker client stops the container
     try:
