@@ -888,7 +888,7 @@
         "PAITON_TP_AR_MAX_ROWS": "2048",
         "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective",
         "PAITON_TP_NATIVE_AR": "1",
-        "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.95",
+        "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.925",
         "VLLM_DISABLE_PAITON_PLATFORM": "1",
         "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
         "VLLM_PLUGINS": "register_paiton_models",
