@@ -104,9 +104,11 @@ launcher's `launcher: READY on port …` line (with `--detach` the command retur
 drops the checkpoint files from the page cache and waits until the kernel has finished compacting host memory (at most 30 s), because
 that compaction can pause the GPUs for a few seconds right after start. `--settle-s 0` and `--keep-page-cache` turn this off.
 
-**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8-Flash-Next` · **API key:** none unless you set `--api-key` (enter any value if a client asks)
+**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8-Flash-Next` · **API key:** none unless you set one (enter any value if a client asks)
 
-The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local; add `--api-key KEY` or a firewall if the machine is reachable from untrusted networks.
+The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local. To require an API key, start it with the key in the
+environment: `PAITON_API_KEY=<key> bash models/Qwen3.8-Flash-Next/run-flashnext.sh` (clients then send it as the bearer token). `--api-key KEY`
+works too, but the key is then visible in the process list (`ps`) of the machine. Use a key or a firewall if the machine is reachable from untrusted networks.
 
 **4-bit experts (more accurate, slower; uses system RAM):**
 
