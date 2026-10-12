@@ -104,7 +104,9 @@ launcher's `launcher: READY on port …` line (with `--detach` the command retur
 drops the checkpoint files from the page cache and waits until the kernel has finished compacting host memory (at most 30 s), because
 that compaction can pause the GPUs for a few seconds right after start. `--settle-s 0` and `--keep-page-cache` turn this off.
 
-**API:** `http://127.0.0.1:18982/v1` · **Model:** `Qwen3.8-Flash-Next` · **API key:** none (enter any value if a client asks)
+**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8-Flash-Next` · **API key:** none unless you set `--api-key` (enter any value if a client asks)
+
+The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local; add `--api-key KEY` or a firewall if the machine is reachable from untrusted networks.
 
 **4-bit experts (more accurate, slower; uses system RAM):**
 
@@ -139,7 +141,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   takes about 25 s to read in the 200K mode).
 
 ## Options
-`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`, `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
+`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`, `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
 `--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
 Host pools: the 3-bit modes keep ROCm's user-pointer memory for their ~55 GiB of host tables (as published); `--host-pools gtt` is an
 opt-in that removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode. The 4-bit modes use GTT memory (see Prerequisites).
