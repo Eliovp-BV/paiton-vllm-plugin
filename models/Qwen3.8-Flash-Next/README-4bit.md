@@ -87,7 +87,8 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   launcher never changes it. `--dry-run` prints the RAM, the GTT limit and what it chooses.
 - Disk: about 133 GB for the weights. Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r1`
   (digest pinned in modes.json; the launcher pulls it by digest).
-- Peak VRAM per card in `--mode 4bit`: 30.7 GiB.
+- Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
+  (allocator cap 0.925).
 
 ## Known issues and limitations
 - 98,304-token window in `4bit` (MTP pool), 200,000 in `4bit-200k` with MTP off. `--mode 4bit-200k` serves the same experts and fp8
