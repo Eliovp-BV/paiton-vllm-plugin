@@ -19,7 +19,8 @@ tuning, we keep optimizing. No custom engine was built: this is regular vLLM wit
 |---|---:|
 | Weighted single-stream decode | 189.7 tok/s |
 | Eight concurrent requests, aggregate | 420.7 tok/s (48/48) |
-| Prefill, 64K-token prompt | 6,991 tok/s (exactly 64,000 tokens: 7,162) |
+| Prefill, 64K-token prompt (BetterBench 64K row) | 6,991 tok/s |
+| Prefill, exact 64,000-token prompt, cold cache | 7,162 tok/s |
 | TTFT p50, short prompts | 121 ms |
 | Update p99 | 17.7 ms per stream update |
 

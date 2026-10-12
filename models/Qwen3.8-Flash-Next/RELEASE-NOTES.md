@@ -7,7 +7,8 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
   most-used experts INT4 (g128) and the 102 least-used in the 3-bit codebook format; about 20.8 GiB of experts per GPU resident in VRAM (the decode mode keeps a 2.5 GiB fp8 KV pool, about 305,000 tokens),
   the rest served from pinned system memory (expert host tier); fp8 KV cache; INT6 trunk in `--mode 4bit`. Accuracy (model card):
   within 0.16 % of the bf16 log-likelihood on long documents, needles 40/40 identical to bf16 (as served: INT6 trunk, fp8 KV cache). Speed, measured on
-  the shipped image: decode 189.7 / @8 420.7 / prefill @64K 6,991 / TTFT 121 ms / update p99 17.7 ms.
+  the shipped image: decode 189.7 / @8 420.7 / prefill @64K 6,991 (about 7,000; an exact 64,000-token prompt 7,162) / TTFT 121 ms /
+  update p99 17.7 ms.
 - **3-bit modes: launcher fixes only.** Same image, same weights, same modes and the same speed and accuracy as the 10 Oct release.
   What changes is the launcher: a short settle wait before it reports READY, the peer-to-peer and GTT preflight checks, and an optional
   `--host-pools gtt` (removes the occasional memory pauses under load, costs ~1 GiB VRAM in decode). [[PREFIX-CACHING: the --prefix-caching recommendation for
