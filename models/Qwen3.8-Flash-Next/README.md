@@ -11,11 +11,13 @@ MoE, native collectives, native hidden-chain and sampled MTP drafts):
 |---|---:|---:|---:|
 | GSM8K | 1,319 | 96.9 % | **96.8 %** |
 | HumanEval pass@1 | 164 | 96.3 % | **96.3 %** |
-| MMLU-Pro (100 per category × 14) | 1,400 | 84.7 % | [[MMLUPRO]] |
+| MMLU-Pro (100 per category × 14) | 1,400 | 84.7 % | **83.7 %** |
 
-Same prompts, sampling seeds and thinking-on chat template for both; the differences are within the 16-bit model's own run-to-run
-variation (GSM8K 0.0, HumanEval 1.2 points) and a paired McNemar test gives p = 1.00 on both (method and perplexity tables: the 4-bit
-model card's Accuracy section).
+Same prompts, sampling seeds and thinking-on chat template for both. GSM8K and HumanEval are within the 16-bit model's own run-to-run
+variation (0.0 and 1.2 points; paired McNemar p = 1.00). The MMLU-Pro gap of 1.0 point is not statistically significant (p = 0.16) and
+comes from replies that reach the 16,384-token limit (the 4-bit model thinks about 12 % longer); on the 1,271 questions where neither
+model reached the limit the scores are 91.1 % (4-bit) and 91.0 % (16-bit). Method and perplexity tables: the 4-bit model card's
+Accuracy section.
 
 Model details, accuracy and format: the two model cards.
 
