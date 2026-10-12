@@ -152,3 +152,32 @@ def test_cache_mode_ignores_prefix_caching_flag(lf, monkeypatch, capsys, tmp_pat
     out = cache_cmd(lf, monkeypatch, capsys, tmp_path, 125.8, ('--prefix-caching',))
     assert 'prefix caching is part of this mode' in out and 'VLLM_USE_V2_MODEL_RUNNER' not in out
     assert out.count('--enable-prefix-caching') == 1 and '--mamba-cache-mode align' in out
+
+
+def mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, free, extra=()):
+    import sys
+    monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', lambda *a, **k: [])
+    monkeypatch.setattr(lf, 'render_gid', lambda: None); monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (free, free))
+    monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w'); monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
+    monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', mode, '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache'), *extra])
+    lf.main()
+    return capsys.readouterr().out
+
+
+@pytest.mark.parametrize('mode', ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf'])
+def test_3bit_modes_default_userptr_gtt_opt_in(lf, monkeypatch, capsys, tmp_path, mode):
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8)
+    assert 'HSA_USERPTR_FOR_PAGED_MEM' not in out.split('docker run')[1] and '--host-pools gtt removes' in out
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pools', 'gtt'))
+    assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in out.split('docker run')[1]
+
+
+def test_4bit_default_stays_gtt(lf, monkeypatch, capsys, tmp_path):
+    assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 125.8).split('docker run')[1]
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-200k'])
+def test_prefix_caching_refused_on_unmeasured_4bit_modes(lf, monkeypatch, capsys, tmp_path, mode):
+    with pytest.raises(SystemExit, match='use --mode 4bit-cache'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--prefix-caching',))

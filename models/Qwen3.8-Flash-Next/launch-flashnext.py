@@ -5,11 +5,13 @@ Modes (modes.json, from the measured runs on this image):
   decode             default: MTP depth 3, 98,304-token window, KV 1.6 GiB per card              (decode / concurrency numbers)
   prefill-long       200,000-token window, MTP off, 3 GiB KV per card                            (prefill numbers)
   decode-nopf / prefill-long-nopf   the same with exact-arithmetic prefill (about 7 % slower)
-  --prefix-caching   opt-in on any mode: align-mode prefix caching (byte-identical hits)
-Host pools: the host-resident tables (~55 GiB, both ranks) are allocated as driver-owned GTT memory (HSA_USERPTR_FOR_PAGED_MEM=0)
-  when the GPUs' GTT size holds them, so host memory compaction cannot stall the GPU queues; --host-pools userptr keeps ROCm's default.
+  --prefix-caching   opt-in on the 3-bit modes: align-mode prefix caching (byte-identical hits); 4-bit: --mode 4bit-cache
+Host pools: 3-bit modes keep ROCm's user-pointer memory for the host-resident tables (~55 GiB, both ranks; the published behaviour);
+  --host-pools gtt (opt-in) allocates them as driver-owned GTT memory (HSA_USERPTR_FOR_PAGED_MEM=0): no memory pauses from host memory
+  compaction under load, ~1 GiB more VRAM in decode. 4-bit modes use GTT pools when the GPU's GTT size holds them.
   4bit / 4bit-200k   4-bit experts (W4A8 repo) with the expert host tier: experts beyond --expert-vram-gib per GPU live in
                      pinned host memory (about 41 GiB with the default host pool; the launcher checks the RAM first)
+  4bit-cache         opt-in for agents and coding tools: 4bit + prefix caching + an 8 GiB RAM prefix tier (needs ~8 GiB more GTT)
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
 Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--name paiton-flashnext] [--detach] [--dry-run]
@@ -302,7 +304,7 @@ def main():
     ap.add_argument('--expert-vram-gib', type=float, default=None, help='4-bit modes: VRAM per GPU for resident experts (default from modes.json)'); ap.add_argument('--host-pool', choices=('on', 'off'), default=None, help='4-bit modes: keep a pinned host copy of every non-core expert (on, default) or only of the non-resident ones (off)'); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
-    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory (auto when the GTT size holds them) or ROCm user-pointer memory'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory or ROCm user-pointer memory; auto = the mode default (3-bit: userptr; 4-bit: gtt when the GTT size holds them)'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
     wspec = COMMON.get(m['weights_key']) if m.get('weights_key') else None
     if a.weights is None: a.weights = os.path.expanduser((wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
@@ -341,6 +343,8 @@ def main():
     env = dict(m['env']); env['VLLM_CACHE_ROOT'] = COMMON['mounts']['cache']; env['HF_HUB_OFFLINE'] = '1'
     if tier: env[m['expert_tier']['env']] = tier
     engine_args = list(m['engine_args'])
+    if a.prefix_caching and '--enable-prefix-caching' not in engine_args and m.get('expert_tier'):
+        sys.exit(f'--prefix-caching is not measured on --mode {a.mode}: use --mode 4bit-cache (prefix caching + RAM prefix tier)')
     if a.prefix_caching and '--enable-prefix-caching' in engine_args: print(f'mode {a.mode}: prefix caching is part of this mode (--prefix-caching not needed)')
     elif a.prefix_caching:
         pc = COMMON['prefix_caching']; engine_args = [x for x in engine_args if x not in pc['engine_args_drop']] + pc['engine_args_add']; env.update(pc['env'])
@@ -348,7 +352,11 @@ def main():
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
     rtier = m.get('ram_tier') or {}
-    hp_env, rt = host_pool_env(a.host_pools, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)))
+    hp_choice = m.get('host_pools_default', 'auto') if a.host_pools == 'auto' else a.host_pools
+    if a.host_pools == 'auto' and hp_choice == 'userptr':
+        print('host pools: userptr (the default of this mode, as published); --host-pools gtt removes the occasional memory pauses under load '
+              'and costs ~1 GiB VRAM in decode')
+    hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)))
     env.update(hp_env)
     if rtier:   # RAM prefix tier (cache mode): prefix-cache blocks evicted from VRAM are kept in pinned host memory (GTT) and loaded back on a hit
         rt = int(rt)
