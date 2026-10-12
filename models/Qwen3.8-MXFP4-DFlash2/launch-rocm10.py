@@ -364,6 +364,10 @@ CAPTURE_SIZES_WIDE = CAPTURE_SIZES_RELEASE + [96, 128, 160, 192, 256]
 CAPTURE_SIZES_WIDE_DEFAULT = False
 
 
+# The API listens on every interface (the container shares the host network); --host 127.0.0.1 keeps it local.
+DEFAULT_HOST = '0.0.0.0'
+
+
 def release_command(release):
     """Exact Config.Cmd of each immutable image; Docker overrides replace CMD."""
     context, sequences, cache, capture, mamba = {
@@ -746,7 +750,13 @@ def parser():
                              'long-512k. Images up to 3840 x 2160 (4K UHD) are read at full resolution, larger ones are '
                              'downscaled to that many pixels')
     server = result.add_argument_group('Server')
-    server.add_argument('--port', type=positive_integer, help='localhost API port (default: 18982)')
+    server.add_argument('--port', type=positive_integer, help='API port (default: 18982)')
+    server.add_argument('--host', metavar='ADDRESS',
+                        help='address the API listens on (default: 0.0.0.0, every interface; 127.0.0.1 keeps it on '
+                             'this machine)')
+    server.add_argument('--api-key', metavar='KEY',
+                        help='opt-in: the server then requires this key on /v1 requests (handed to Docker as '
+                             'VLLM_API_KEY by variable name, never printed); default: no key')
     server.add_argument('--name', help='Docker container name (run-3bit.sh and run-mxfp4.sh: paiton-qwen38)')
     server.add_argument('--detach', action='store_true', help='run Docker in the background')
     server.add_argument('--dry-run', action='store_true',
@@ -1322,6 +1332,7 @@ def engine_command(args, weights='mxfp4'):
             cache = W3_KV4_CACHE_BYTES if kv_cache_mode(args, weights) == 'kv4' else W3_KV_CACHE_BYTES
     for flag, value in (('--max-model-len', context), ('--max-num-seqs', sequences),
                         ('--gpu-memory-utilization', budget), ('--port', args.port),
+                        ('--host', getattr(args, 'host', None) or DEFAULT_HOST),
                         ('--max-num-batched-tokens', batched_tokens)):
         if value is not None:
             replace_value(command, flag, value)
@@ -1586,6 +1597,10 @@ def docker_command(args, environment):
         command += ['-e', f'PAITON_VRAM_HEADROOM_MIB={VRAM_HEADROOM_MIB}']
     if lm_head_mode(args, weights) == 'fp8':
         command += ['-e', 'PAITON_LMHEAD_W8=1']
+    if getattr(args, 'api_key', None):
+        # by name only: Docker reads the value from the launcher's environment (main sets it), so it never appears in
+        # the argv, a dry run or the process list
+        command += ['-e', 'VLLM_API_KEY']
     if args.detach:
         command.append('--detach')
     mounts = model_mounts(environment, weights)
@@ -1687,6 +1702,8 @@ def main(argv=None):
     problem = vram_preflight(args, os.environ, command)
     if problem:
         arguments.error(problem)
+    if getattr(args, 'api_key', None):
+        os.environ['VLLM_API_KEY'] = args.api_key
     try:
         os.execvp(command[0], command)
     except FileNotFoundError:

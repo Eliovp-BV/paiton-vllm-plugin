@@ -66,8 +66,14 @@ class Mxfp4LauncherTests(unittest.TestCase):
         self.assertEqual(host.command(self.host_args(), self.image), [
             'docker', 'run', '--rm', '--name', 'paiton-qwen38-mxfp4',
             '--device', '/dev/kfd', '--device', '/dev/dri', '--group-add', 'video',
-            '--shm-size', '2g', '-p', '127.0.0.1:8000:8000',
+            '--shm-size', '2g', '-p', '0.0.0.0:8000:8000',
             '-v', 'paiton-qwen38-mxfp4-cache:/models/cache', self.image])
+
+    def test_host_restricts_the_published_port_and_the_api_key_stays_off_the_argv(self):
+        command = host.command(self.host_args(host='127.0.0.1', api_key='k-test-123'), self.image)
+        self.assertEqual(command[command.index('-p') + 1], '127.0.0.1:8000:8000')
+        self.assertEqual(command[command.index('VLLM_API_KEY') - 1], '-e')
+        self.assertFalse(any('k-test-123' in part for part in command))
 
     def test_context_override_synchronizes_target_and_draft(self):
         for context in (16384, 32768, 65536):

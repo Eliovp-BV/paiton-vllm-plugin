@@ -118,6 +118,24 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('--default-chat-template-kwargs', engine)
         self.assertIn(self.environment['PAITON_CACHE_DIR'] + ':/cache:rw', command)
 
+    def test_api_listens_on_every_interface_and_host_and_api_key_are_opt_in(self):
+        command = self.dry_run()
+        self.assertEqual((value(command, '--network'), value(self.engine(command), '--host')), ('host', '0.0.0.0'))
+        self.assertNotIn('VLLM_API_KEY', command)
+        self.assertEqual(value(self.engine(self.dry_run('--host', '127.0.0.1')), '--host'), '127.0.0.1')
+        result = self.run_launcher('--dry-run', '--api-key', 'k-test-123')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn('k-test-123', result.stdout + result.stderr)
+        command = json.loads(result.stdout)
+        self.assertEqual(command[command.index('VLLM_API_KEY') - 1], '-e')
+        # a real start hands the key to Docker through the environment only
+        (self.root / 'bin' / 'docker').write_text(
+            f'#!{sys.executable}\nimport json,os,sys\nopen(os.environ["DOCKER_ARGV_RECORD"],"w").write('
+            'json.dumps(sys.argv[1:] + ["ENV=" + os.environ.get("VLLM_API_KEY", "")]))\n')
+        command = self.command('--api-key', 'k-test-123')
+        self.assertEqual(command[-1], 'ENV=k-test-123')
+        self.assertFalse(any('k-test-123' in part for part in command[:-1]))
+
     def test_200k_context_override_synchronizes_draft_and_preserves_sampling(self):
         command = self.command('--release', '200k', '--context', '220000', '--port', '19000', '--name', 'custom-qwen')
         self.assertIn(launcher.IMAGES['200k'], command)
@@ -2069,8 +2087,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual([name for name in sections if name not in ('options', 'optional arguments')],
                          ['Choose how to run', 'Server', 'Advanced tuning'])
         self.assertEqual(sections['Choose how to run'], ['--weights', '--mode', '--vision'])
-        self.assertEqual(sections['Server'], ['--port', '--name', '--detach', '--dry-run', '--ignore-vram-check', '--list-gpus', '--devices',
-                                                    '--image'])
+        self.assertEqual(sections['Server'], ['--port', '--host', '--api-key', '--name', '--detach', '--dry-run',
+                                              '--ignore-vram-check', '--list-gpus', '--devices', '--image'])
         self.assertEqual(sorted(sections['Advanced tuning']), sorted((
             '--context', '--max-num-seqs', '--kv-cache', '--prefix-caching', '--thinking', '--long-prefill-threshold',
             '--gdn-state', '--host-cache-gib', '--disk-cache-dir', '--disk-cache-gib', '--wipe-disk-cache',

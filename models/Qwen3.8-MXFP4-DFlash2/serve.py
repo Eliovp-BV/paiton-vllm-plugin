@@ -2,6 +2,7 @@
 """Launch the pinned GHCR release with verified target and DFlash2 snapshots."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -21,7 +22,10 @@ def command(args, image):
     if not args.download_only:
         cmd += ["--device", "/dev/kfd", "--device", "/dev/dri",
                 "--group-add", "video", "--shm-size", "2g",
-                "-p", f"127.0.0.1:{args.port}:8000"]
+                "-p", f"{getattr(args, 'host', '0.0.0.0')}:{args.port}:8000"]
+        if getattr(args, "api_key", None):
+            # by name only: Docker reads the value from this process's environment (main sets it)
+            cmd += ["-e", "VLLM_API_KEY"]
     if args.detach:
         cmd.append("-d")
     cache = mount_path(args.cache) if args.cache else "paiton-qwen38-mxfp4-cache"
@@ -58,6 +62,10 @@ def main():
     parser.add_argument("--draft", type=Path, help="Optional existing pinned DFlash2 snapshot")
     parser.add_argument("--cache", type=Path, help="Persistent cache directory; default is a Docker volume")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--host", default="0.0.0.0",
+                        help="host address of the API port (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)")
+    parser.add_argument("--api-key", default=None,
+                        help="opt-in: require this key on /v1 requests (passed to Docker as VLLM_API_KEY by name, never printed)")
     parser.add_argument("--name", default="paiton-qwen38-mxfp4")
     parser.add_argument("--detach", action="store_true")
     parser.add_argument("--offline", action="store_true", help="Use only cached or mounted model snapshots")
@@ -84,7 +92,8 @@ def main():
             parser.error(f"Snapshot directory does not exist: {path}")
     if args.cache is not None:
         args.cache.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True)
+    env = dict(os.environ, VLLM_API_KEY=args.api_key) if args.api_key else None
+    subprocess.run(cmd, check=True, env=env)
 
 
 if __name__ == "__main__":
