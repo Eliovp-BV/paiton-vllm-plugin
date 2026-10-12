@@ -138,7 +138,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   takes about 25 s to read in the 200K mode).
 
 ## Options
-`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
+`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`, `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--name`, `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`,
 `--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required.
 Host pools: the 3-bit modes keep ROCm's user-pointer memory for their ~55 GiB of host tables (as published); `--host-pools gtt` is an
 opt-in that removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode. The 4-bit modes use GTT memory (see Prerequisites).
@@ -148,6 +148,21 @@ opt-in that removes the occasional memory pauses under load and costs ~1 GiB VRA
 per-category decode, host conditions), `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release was built from and tested with),
 `Dockerfile` + `prepare_image_context.py` + `build-context.lock.json` (rebuild the image from locked inputs, see REPRODUCE.md), `release-audit.json`,
 `deployment-check.json`, `metrics.json` and `benchmarks/` (the raw BetterBench outputs of the published run).
+
+## Troubleshooting
+- **"It is slow" during a long prompt.** Every 10 s the server log prints a line like
+  `Avg prompt throughput: 6812.4 tokens/s, Avg generation throughput: 12.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 41.0%, Prefix cache hit rate: 0.0%`.
+  *Prompt throughput* is the server reading your prompt (prefill); *generation throughput* is it writing the answer. Before the first
+  token of a long request the server is reading: a 64K-token prompt takes about 8 s on the 3-bit and about 9 s on the 4-bit, and in
+  that window generation throughput is near zero by design. Slow generation shows as low generation throughput while nothing is being
+  read. `docker logs -f <name>` follows the log.
+- **Agents re-reading the whole conversation.** With prefix caching, a repeated prefix is served from the cache; the log's
+  *Prefix cache hit rate* shows it. If the KV cache is small relative to the window, the launcher warns at start
+  (`WARNING prefix caching: the KV cache holds about 112K tokens < 2 x the 98K window ...`): long agent requests then queue, and a
+  conversation that was evicted from the cache is read again from the start on its next turn. `--mode 4bit-cache` keeps evicted
+  prefixes in a RAM tier. Lowering `--kv-cache-memory-bytes` below the mode value shrinks the cache further, and the launcher says by how much.
+- **Waiting requests.** `Waiting: N reqs` above 0 means the server is at its concurrency (8 requests) or its KV cache is full; requests
+  start as others finish.
 
 ## Limitations (draft)
 - Known issue (3-bit, draft for approval): In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use `--prefix-caching`, and prefer the 4-bit for long coding sessions; a fix is planned for the next 3-bit release.

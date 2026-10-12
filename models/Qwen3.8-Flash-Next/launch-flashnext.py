@@ -185,6 +185,8 @@ def wait_ready(port, proc, name, timeout_s=1800, settle_s=30.0, quiet_s=5.0, rat
         print(f'launcher: settle wait {time.time() - t1:.1f} s (host page migration peak {peak:,.0f} pages/s; quiet = below {rate_max:,} pages/s '
               f'for {quiet_s:g} s, cap {settle_s:g} s)', flush=True)
     print(f'launcher: READY on port {port} ({time.time() - t0:.0f} s after start, {time.time() - t_health:.0f} s after /health)', flush=True)
+    print('launcher: every 10 s the server log shows "Avg prompt throughput" (reading prompts, prefill) and "Avg generation throughput" '
+          '(writing tokens); a long prompt shows up as prompt throughput, not as slow generation (README: Troubleshooting)', flush=True)
     return True
 
 def tier_params(spec):
@@ -298,10 +300,34 @@ def ensure_view(weights, view, base_cfg, dry, wanted_optional=(), int6=False):
     for k, tgt in links.items(): os.symlink(tgt, view / k)
     return view
 
+def kv_pool_check(mode, m, engine_args):
+    """Warn when the KV cache is small for how the mode is used (GitHub issue #22): with prefix caching, a cache smaller than twice
+    the window means agent requests queue and an evicted conversation is re-processed from the start; a lowered
+    --kv-cache-memory-bytes shrinks the cache (and below one window vLLM refuses to start)."""
+    g = lambda f: int(engine_args[engine_args.index(f) + 1]) if f in engine_args else None  # noqa: E731
+    window, kv_bytes = g('--max-model-len'), g('--kv-cache-memory-bytes')
+    mode_bytes = int(m['engine_args'][m['engine_args'].index('--kv-cache-memory-bytes') + 1])
+    base = m.get('kv_pool_tokens')
+    if not (window and kv_bytes and base):
+        return None
+    tokens = int(base * kv_bytes / mode_bytes)
+    if kv_bytes < mode_bytes:
+        print(f'WARNING KV cache: --kv-cache-memory-bytes {kv_bytes:,} is below the {mode} value {mode_bytes:,}: the cache holds about '
+              f'{tokens:,} tokens instead of {base:,}' + (f'; that is less than one {window:,}-token window, so the server will refuse to start'
+                                                            if tokens < window else ''))
+    if '--enable-prefix-caching' in engine_args and tokens < 2 * window:
+        print(f'WARNING prefix caching: the KV cache holds about {tokens // 1000}K tokens < 2 x the {window // 1000}K window: agent requests '
+              'will queue, and a conversation evicted from the cache re-processes the whole conversation on its next turn'
+              + (' (--mode 4bit-cache keeps evicted prefixes in a RAM tier)' if mode.startswith('decode') or mode.startswith('prefill') else ''))
+    return tokens
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--mode', default='decode', choices=sorted(MODES)); ap.add_argument('--port', type=int, default=18982); ap.add_argument('--name', default='paiton-flashnext')
     ap.add_argument('--weights', default=None, help='weights dir (default per mode: ~/paiton-models/Qwen3.8-Flash-Next-W3A8, 4-bit modes ~/paiton-models/Qwen3.8-Flash-Next-W4A8)');
+    ap.add_argument('--kv-cache-memory-bytes', type=int, default=None, help='KV cache size per GPU in bytes (default: the mode value); '
+                    'lower values shrink the cache the prefix cache and long conversations live in')
     ap.add_argument('--expert-vram-gib', type=float, default=None, help='4-bit modes: VRAM per GPU for resident experts (default from modes.json)'); ap.add_argument('--host-pool', choices=('on', 'off'), default=None, help='4-bit modes: keep a pinned host copy of every non-core expert (on, default) or only of the non-resident ones (off)'); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
@@ -352,6 +378,9 @@ def main():
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides
+    if a.kv_cache_memory_bytes is not None:
+        i = engine_args.index('--kv-cache-memory-bytes'); engine_args[i + 1] = str(a.kv_cache_memory_bytes)
+    kv_pool_check(a.mode, m, engine_args)
     rtier = m.get('ram_tier') or {}
     hp_choice = m.get('host_pools_default', 'auto') if a.host_pools == 'auto' else a.host_pools
     if a.host_pools == 'auto' and hp_choice == 'userptr':

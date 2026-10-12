@@ -181,3 +181,19 @@ def test_4bit_default_stays_gtt(lf, monkeypatch, capsys, tmp_path):
 def test_prefix_caching_refused_on_unmeasured_4bit_modes(lf, monkeypatch, capsys, tmp_path, mode):
     with pytest.raises(SystemExit, match='use --mode 4bit-cache'):
         mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--prefix-caching',))
+
+
+def test_kv_pool_warnings(lf, capsys):
+    m = lf.MODES
+    assert lf.kv_pool_check('decode', m['decode'], list(m['decode']['engine_args'])) == 112347
+    assert 'WARNING' not in capsys.readouterr().out                      # no prefix caching, mode value: silent
+    pc = [x for x in m['decode']['engine_args'] if x != '--no-enable-prefix-caching'] + ['--enable-prefix-caching']
+    lf.kv_pool_check('decode', m['decode'], pc)
+    out = capsys.readouterr().out
+    assert 'WARNING prefix caching: the KV cache holds about 112K tokens < 2 x the 98K window' in out and '4bit-cache' in out
+    lf.kv_pool_check('4bit-cache', m['4bit-cache'], list(m['4bit-cache']['engine_args']))
+    assert 'WARNING' not in capsys.readouterr().out                      # 305K >= 2 x 98K
+    low = list(m['4bit']['engine_args']); low[low.index('--kv-cache-memory-bytes') + 1] = str(2684354560 // 4)
+    assert lf.kv_pool_check('4bit', m['4bit'], low) == 76334
+    out = capsys.readouterr().out
+    assert 'is below the 4bit value 2,684,354,560' in out and 'refuse to start' in out
