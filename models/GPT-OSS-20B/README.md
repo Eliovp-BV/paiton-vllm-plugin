@@ -34,7 +34,7 @@ location expected by this image. This does not copy or download the weights:
 export PAITON_MODEL_DIR="/absolute/path/to/gpt-oss"
 docker run --rm --name paiton-gpt-oss-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8020:8020 \
+  -p 0.0.0.0:8020:8020 \
   --mount type=volume,src=paiton-gpt-oss-local-runtime,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--openai--gpt-oss-20b/snapshots/6cee5e81ee83917806bbde320786a8fb61efebee,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0 --offline
@@ -55,7 +55,7 @@ configured cache, or replace the first line with
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
 docker run --rm --name paiton-gpt-oss-cached \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8020:8020 \
+  -p 0.0.0.0:8020:8020 \
   --mount type=volume,src=paiton-gpt-oss-cached-runtime,dst=/models/cache \
   --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:gpt-oss-20b-mxfp4-rdna4-v1.0.0 --offline
@@ -94,7 +94,7 @@ below remain supported.
 - **Existing runtime:** Python 3.14, vLLM `0.26.1.dev1+g396cd1a43.rocm714`, Torch `2.11.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
 - **Preset / profile:** `gpt-oss-20b` / `gptoss-text-8k`.
 - **Serving behavior:** Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 8K context, Harmony reasoning/tools, bundled pinned Harmony vocabulary.
-- **API:** `http://127.0.0.1:8020/v1`, model name `gpt-oss-20b`. Wait for readiness; `curl http://127.0.0.1:8020/health` checks the server.
+- **API:** `http://127.0.0.1:8020/v1` (or `http://<this-machine-ip>:8020/v1` from another system), model name `gpt-oss-20b`. Wait for readiness; `curl http://127.0.0.1:8020/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile gptoss-text-8k vllm serve /models/existing-gpt-oss-20b`
@@ -144,8 +144,8 @@ The first launch
 downloads only the pinned model files. Model, Triton and vLLM
 caches persist in `~/.cache/paiton-gpt-oss`. The pinned Harmony vocabulary is
 embedded in the image, so cached-model offline launches also support chat. The API listens on `0.0.0.0:8020`
-inside the container and is mapped to port 8020 on the host. Keep access limited
-to your intended clients; this launch has no authentication configured.
+inside the container and is mapped to port 8020 on the host.
+The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks.
 
 ```bash
 # Same checkpoint and serving settings, stock expert implementation:

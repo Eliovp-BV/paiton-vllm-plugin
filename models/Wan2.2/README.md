@@ -114,7 +114,7 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd pa
 
 Open [FastWan text workflow](http://127.0.0.1:8192/?paiton=1&preset=fast) or [Wan image/text workflow](http://127.0.0.1:8192/?paiton=1&preset=base). The connected workflow opens on first visit. Choose `stock` or `paiton` in its loader, edit the prompt, set duration/resolution and click **Run**. The base workflow includes image upload; choose `(none)` for text-only generation. Use portrait orientation for the supplied portrait example. Native Wan image conditioning resizes and center-crops to the chosen canvas; it does not preserve every input edge.
 
-ComfyUI listens on **0.0.0.0:8192**. From another machine, replace `127.0.0.1` with the server's address. This is a separate service and port from H3. Existing models, caches and outputs are not replaced.
+ComfyUI listens on **0.0.0.0:8192**. From another machine, replace `127.0.0.1` with the server's address. Use `PAITON_BIND=127.0.0.1` to keep it local; add a firewall if the machine is reachable from untrusted networks. This is a separate service and port from H3. Existing models, caches and outputs are not replaced.
 
 The first launch builds the pinned local runtime and downloads the base preset. Subsequent launches reuse model and runtime caches. For FastWan text generation, use `./models/FastWan/launch.sh`; it adds the fast preset and opens its workflow. Both launchers share one service and cache. Set `PAITON_WAN_DOWNLOAD_PRESET=all` to download both. Workflow files are also in [comfyui/workflows](comfyui/workflows), with matching API examples.
 

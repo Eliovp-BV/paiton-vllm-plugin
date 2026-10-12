@@ -26,7 +26,7 @@ Select the directory containing both files, then mount it read-only:
 export PAITON_MODEL_DIR="/absolute/path/to/neo-gguf"
 docker run --rm --name paiton-qwen38-neo-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8000:8000 \
+  -p 0.0.0.0:8000:8000 \
   --mount type=volume,src=paiton-qwen38-neo-cache,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/source,readonly" \
   -e HF_HUB_OFFLINE=1 \
@@ -48,7 +48,7 @@ Mount your Hub root, then tell this image to resolve both pinned files there:
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
 docker run --rm --name paiton-qwen38-neo-cached \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8000:8000 \
+  -p 0.0.0.0:8000:8000 \
   --mount type=volume,src=paiton-qwen38-neo-cache,dst=/models/cache \
   --mount "type=bind,src=$HF_HUB_CACHE,dst=/hf-hub,readonly" \
   -e HF_HUB_OFFLINE=1 \
@@ -89,7 +89,7 @@ below remain supported.
 - **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
 - **Preset / profile:** `qwen38-neo` / `qwen38-neo-image-8k`.
 - **Serving behavior:** Explicit original mixed Q4_K_M GGUF, native FP32 activations and BF16 weight metadata; text plus one image (max 1,048,576 pixels), 8K/C1, 2048-token prefill, 2 GiB KV, APC and MTP off. Released native internal decode graphs; vLLM eager execution.
-- **API:** `http://127.0.0.1:8000/v1`, model name `qwen38-neo`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
+- **API:** `http://127.0.0.1:8000/v1` (or `http://<this-machine-ip>:8000/v1` from another system), model name `qwen38-neo`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile qwen38-neo-image-8k vllm serve /models/existing-qwen38-neo`
@@ -188,8 +188,8 @@ Use the immutable image selected by:
 ./models/Qwen3.8-NEO-CODER-MAX/serve-docker.sh
 ```
 
-The default endpoint is `http://127.0.0.1:8000/v1`, and the served model name is
-`qwen38-neo`. `PAITON_NEO_PORT` selects another host port;
+The default endpoint is `http://127.0.0.1:8000/v1` (or `http://<this-machine-ip>:8000/v1` from another system), and the served model name is
+`qwen38-neo`. The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks. `PAITON_NEO_PORT` selects another host port;
 `PAITON_NEO_CACHE` selects another Docker volume. The first start downloads the
 pinned language GGUF and projector into the cache (19.43 GB combined).
 Subsequent starts reuse them and verify their full hashes.

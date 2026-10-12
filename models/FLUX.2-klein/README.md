@@ -28,14 +28,14 @@ export PAITON_OUTPUTS="$HOME/paiton-images"
 mkdir -p "$PAITON_OUTPUTS"
 docker run --rm --name paiton-flux2-local \
   --device /dev/kfd --device /dev/dri --group-add "$(stat -c '%g' /dev/kfd)" --shm-size 2g \
-  -p 127.0.0.1:7860:7860 \
+  -p 0.0.0.0:7860:7860 \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/flux2-klein-runtime,readonly" \
   --mount type=volume,src=paiton-flux2-local-runtime,dst=/models/cache \
   --mount "type=bind,src=$PAITON_OUTPUTS,dst=/outputs" \
   ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1 serve --port 7860
 ```
 
-Open `http://127.0.0.1:7860`. This starts the simple interface, rather than the
+Open `http://127.0.0.1:7860` (or `http://<this-machine-ip>:7860` from another system). This starts the simple interface, rather than the
 ComfyUI launcher above, and needs no source-weight download.
 
 If your folder instead contains the original Diffusers/SDNQ snapshot, prepare
@@ -145,8 +145,9 @@ For a smaller prompt-and-image interface:
 ```
 
 Open [the simple interface](http://127.0.0.1:7860). It keeps Paiton loaded while
-the command runs; right-click an image to save it. Stop with Ctrl-C. Both
-interfaces bind their host ports to localhost.
+the command runs; right-click an image to save it. Stop with Ctrl-C.
+
+Both interfaces listen on all interfaces (0.0.0.0); use `--host 127.0.0.1` (or `PAITON_BIND=127.0.0.1`) to keep them local; add a firewall if the machine is reachable from untrusted networks.
 
 ## Example images
 
@@ -177,7 +178,7 @@ The `paiton-flux2-cache` Docker volume retains prepared tensors, and
 `paiton-flux2-cache-runtime` retains source weights and compilation caches.
 Set `PAITON_CACHE` to another volume prefix or an absolute host directory.
 With a host directory, source and compilation caches live in its `cache/` subdirectory. `PAITON_OUTPUTS` selects the host image directory. The ComfyUI user
-volume is `paiton-flux2-comfy-user`. `PAITON_UI_PORT` changes its localhost port.
+volume is `paiton-flux2-comfy-user`. `PAITON_UI_PORT` changes its host port.
 Image tags can be overridden with `PAITON_IMAGE`, `PAITON_TOOLS_IMAGE` and
 `PAITON_COMFYUI_IMAGE` for local builds.
 

@@ -33,7 +33,7 @@ For Docker, mount that folder explicitly:
 export PAITON_MODEL_DIR="/absolute/path/to/qronos"
 docker run --rm --name paiton-qwen38-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8000:8000 \
+  -p 0.0.0.0:8000:8000 \
   --mount type=volume,src=paiton-qwen38-cache,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/base,readonly" \
   -e PAITON_BASE_MODEL=/models/base -e HF_HUB_OFFLINE=1 \
@@ -89,7 +89,7 @@ below remain supported.
 - **Preset / profile:** `qwen38-qronos` / `qwen38-qronos-text-8k`.
 - **Serving behavior:** Explicit text-only 8K/C1 native compiled model; original source checkpoint unchanged, APC off, no speculation. Released Qronos W4 LM head and serialized external graphs.
 - **Runtime conversion:** the released LM-head path performs lossy BF16-to-W4 quantization during loading. The original checkpoint files stay unchanged; this preparation can take several minutes on the host CPU.
-- **API:** `http://127.0.0.1:8000/v1`, model name `qwen38`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
+- **API:** `http://127.0.0.1:8000/v1` (or `http://<this-machine-ip>:8000/v1` from another system), model name `qwen38`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile qwen38-qronos-text-8k vllm serve /models/existing-qwen38-qronos`
@@ -170,6 +170,8 @@ Useful options:
 ./models/Qwen3.8/serve-docker.sh --require-cache
 ./models/Qwen3.8/serve-docker.sh --with-hf-token
 ```
+
+The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks.
 
 AMD's model repository is public. A Hugging Face token is optional. The
 `--with-hf-token` option passes an existing token only when requested.

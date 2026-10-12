@@ -115,7 +115,7 @@ Generate silent text-to-video locally in ComfyUI or the terminal. This three-eva
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FastWan/launch.sh
 ```
 
-Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast), edit the prompt and click **Run**. Choose stock/Paiton, 480/720 class and two/five seconds in the connected workflow. The default is Paiton, 720 class, two seconds. ComfyUI listens on **0.0.0.0:8192**; replace localhost with your server address for remote access.
+Open [ComfyUI](http://127.0.0.1:8192/?paiton=1&preset=fast), edit the prompt and click **Run**. Choose stock/Paiton, 480/720 class and two/five seconds in the connected workflow. The default is Paiton, 720 class, two seconds. ComfyUI listens on **0.0.0.0:8192**; replace localhost with your server address for remote access. Use `PAITON_BIND=127.0.0.1` to keep it local; add a firewall if the machine is reachable from untrusted networks.
 
 You need Linux, Docker with Compose, AMD GPU device access and one **32 GB gfx1201 R9700**. The first launch builds the pinned runtime and downloads this preset; later launches reuse model and runtime caches. Model storage is about **28.15 GB**, including the preserved original and lossless converted checkpoint. Allow 100 GB free disk for containers, caches and outputs. Qualification used about 15 GiB usable host RAM and 4 GiB swap; 32 GB RAM gives more headroom.
 

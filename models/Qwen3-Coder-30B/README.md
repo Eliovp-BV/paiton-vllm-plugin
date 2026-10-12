@@ -34,7 +34,7 @@ location expected by this image. This does not copy or download the weights:
 export PAITON_MODEL_DIR="/absolute/path/to/qwen3-coder"
 docker run --rm --name paiton-qwen3-coder-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8010:8010 \
+  -p 0.0.0.0:8010:8010 \
   --mount type=volume,src=paiton-qwen3-coder-local-runtime,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--cyankiwi--Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit/snapshots/4bd30395b72ea6045edd04806c4fea448d4467b3,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
@@ -55,7 +55,7 @@ configured cache, or replace the first line with
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
 docker run --rm --name paiton-qwen3-coder-cached \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8010:8010 \
+  -p 0.0.0.0:8010:8010 \
   --mount type=volume,src=paiton-qwen3-coder-cached-runtime,dst=/models/cache \
   --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
@@ -94,7 +94,7 @@ below remain supported.
 - **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
 - **Preset / profile:** `qwen3-coder` / `qwen3-coder-text-4k`.
 - **Serving behavior:** Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 4K context, qwen3_xml tools.
-- **API:** `http://127.0.0.1:8010/v1`, model name `qwen3-coder`. Wait for readiness; `curl http://127.0.0.1:8010/health` checks the server.
+- **API:** `http://127.0.0.1:8010/v1` (or `http://<this-machine-ip>:8010/v1` from another system), model name `qwen3-coder`. Wait for readiness; `curl http://127.0.0.1:8010/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile qwen3-coder-text-4k vllm serve /models/existing-qwen3-coder`
@@ -157,13 +157,13 @@ Choose the client's **OpenAI-compatible** provider and enter:
 
 | Setting | Value |
 | --- | --- |
-| Base URL | `http://127.0.0.1:8010/v1` |
+| Base URL | `http://127.0.0.1:8010/v1`, or `http://<this-machine-ip>:8010/v1` from another system |
 | Model | `qwen3-coder` |
-| API key, if the client requires a value | `local` |
+| API key, if the client requires a value | `local`, or the `PAITON_API_KEY` you set |
 | Context budget | `4096` tokens, including output |
 | Suggested maximum output | `1024` tokens |
 
-The local endpoint does not require authentication and is bound to localhost.
+The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks. (`--chat` needs `PAITON_API_KEY` unset.) A container made by an earlier launcher keeps its 127.0.0.1 port; the launcher says how to recreate it.
 Chat completions, streaming and automatic function tool calls are enabled with
 vLLM's `qwen3_xml` parser. This is a 4096-token release: use focused functions,
 files and coding questions. Whole-repository agent workloads and long-context
@@ -183,7 +183,7 @@ Run the included API and tool-call check with host Python 3:
 python3 models/Qwen3-Coder-30B/check-api.py
 ```
 
-A client on another machine can use an SSH tunnel:
+With `PAITON_BIND=127.0.0.1`, a client on another machine can use an SSH tunnel:
 `ssh -L 8010:127.0.0.1:8010 your-gpu-host`, then the same local base URL.
 
 ## Cache and launch options

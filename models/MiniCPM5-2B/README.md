@@ -34,7 +34,7 @@ location expected by this image. This does not copy or download the weights:
 export PAITON_MODEL_DIR="/absolute/path/to/minicpm5"
 docker run --rm --name paiton-minicpm5-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8036:8036 \
+  -p 0.0.0.0:8036:8036 \
   --mount type=volume,src=paiton-minicpm5-local-runtime,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--openbmb--MiniCPM5-2B-GPTQ/snapshots/6c1ee6fa521aa53f47cfb32696e6d8ef5b0db805,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0 --offline
@@ -55,7 +55,7 @@ configured cache, or replace the first line with
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
 docker run --rm --name paiton-minicpm5-cached \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8036:8036 \
+  -p 0.0.0.0:8036:8036 \
   --mount type=volume,src=paiton-minicpm5-cached-runtime,dst=/models/cache \
   --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
   ghcr.io/eliovp/paiton-vllm-plugin:minicpm5-2b-w4a16-rdna4-v1.0.0 --offline
@@ -94,7 +94,7 @@ below remain supported.
 - **Existing runtime:** Python 3.14, vLLM `0.26.1.dev1+g396cd1a43.rocm714`, Torch `2.11.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
 - **Preset / profile:** `minicpm5` / `minicpm5-awq-text-8k`.
 - **Serving behavior:** MiniCPM5 asymmetric AWQ G128, FP16 activations, lossless in-memory nibble transpose; upstream prefill and native 1/2-token decode. Explicit 8K context, C2, APC off, reasoning disabled by the released chat-template default, no speculation. Source weights and quantization are unchanged.
-- **API:** `http://127.0.0.1:8036/v1`, model name `minicpm5-2b`. Wait for readiness; `curl http://127.0.0.1:8036/health` checks the server.
+- **API:** `http://127.0.0.1:8036/v1` (or `http://<this-machine-ip>:8036/v1` from another system), model name `minicpm5-2b`. Wait for readiness; `curl http://127.0.0.1:8036/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile minicpm5-awq-text-8k vllm serve /models/existing-minicpm5`
@@ -128,7 +128,8 @@ The versioned GHCR image is published. [Compiled artifacts and manifests](https:
 ./models/MiniCPM5-2B/serve-docker.sh
 ```
 
-The server listens on `0.0.0.0:8036`. Downloads are pinned and SHA-256 verified.
+The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks.
+Downloads are pinned and SHA-256 verified.
 Weights and runtime caches persist in `~/.cache/paiton-minicpm5-2b`.
 Use `PAITON_CACHE` to choose another directory, or `PAITON_PORT` to change the
 published port. Do not run competing GPU workloads during benchmarking.

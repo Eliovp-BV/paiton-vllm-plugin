@@ -107,7 +107,7 @@ Paiton takes **332.85 seconds** versus **399.40 seconds** for the matched stock 
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/MiniMax-H3/launch.sh
 ```
 
-Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1) on the host, or `http://<server-ip>:8190/?paiton=1&studio=1` from another system. Replace `<server-ip>` with the host's network address. The first visit opens the connected **Turbo8 studio workflow**, initially set to 15 seconds. Edit the prompt and click **Run**. Choose **paiton** or **stock** in **MiniMax H3 Engine**. Keep the seed fixed when comparing engines.
+Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1) on the host, or `http://<server-ip>:8190/?paiton=1&studio=1` from another system. Replace `<server-ip>` with the host's network address. ComfyUI listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; add a firewall if the machine is reachable from untrusted networks. The first visit opens the connected **Turbo8 studio workflow**, initially set to 15 seconds. Edit the prompt and click **Run**. Choose **paiton** or **stock** in **MiniMax H3 Engine**. Keep the seed fixed when comparing engines.
 
 Use **Video length and resolution** to change the requested duration (5–15 seconds), resolution level (1: 576×320, 2: 704×384, 3: 864×480), and Landscape/Portrait/Square aspect. Portrait swaps the dimensions; Square uses the shorter edge. The node title shows the actual dimensions, frame count and rounded duration.
 

@@ -27,7 +27,7 @@ standalone checkpoint:
 export PAITON_MODEL_DIR="/absolute/path/to/ornith"
 docker run --rm --name paiton-ornith-local \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8000:8000 \
+  -p 0.0.0.0:8000:8000 \
   --mount type=volume,src=paiton-ornith-cache,dst=/models/cache \
   --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/base,readonly" \
   -e PAITON_BASE_MODEL=/models/base -e HF_HUB_OFFLINE=1 \
@@ -45,7 +45,7 @@ Mount the entire Hub cache so the snapshot's links to `blobs/` remain valid:
 export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
 docker run --rm --name paiton-ornith-cached \
   --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 127.0.0.1:8000:8000 \
+  -p 0.0.0.0:8000:8000 \
   --mount type=volume,src=paiton-ornith-cache,dst=/models/cache \
   --mount "type=bind,src=$HF_HUB_CACHE,dst=/hf-hub,readonly" \
   -e PAITON_BASE_MODEL=/hf-hub/models--Capicua25x--Ornith-1.5-35B-A3B-MXFP4-Quark-RDNA4/snapshots/9e488f46c0f7969f84c9923ee0256311cd50316e \
@@ -85,7 +85,7 @@ below remain supported.
 - **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
 - **Preset / profile:** `ornith` / `ornith-text-8k`.
 - **Serving behavior:** Explicit text-only 8K/C1 native compiled model; original source checkpoint unchanged, APC off, no speculation. Lossless cached resharding to fit host RAM. This non-speculative profile does not reproduce the separate DFlash benchmark; the existing DFlash launcher remains available.
-- **API:** `http://127.0.0.1:8000/v1`, model name `ornith`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
+- **API:** `http://127.0.0.1:8000/v1` (or `http://<this-machine-ip>:8000/v1` from another system), model name `ornith`. Wait for readiness; `curl http://127.0.0.1:8000/health` checks the server.
 
 The shorter command uses the shared native resolver and the same installed
 Python. `paiton --profile ornith-text-8k vllm serve /models/existing-ornith`
@@ -143,6 +143,7 @@ docker exec -it paiton-ornith paiton-chat --model ornith
 Use `/reset` to clear the conversation and `/quit` to exit. The server also
 provides an OpenAI-compatible endpoint at
 `http://127.0.0.1:8000/v1/chat/completions`.
+The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; set `PAITON_API_KEY` (the server then requires that key on `/v1`) or use a firewall if the machine is reachable from untrusted networks. (`--chat` needs `PAITON_API_KEY` unset.)
 
 ## Thinking / reasoning mode
 

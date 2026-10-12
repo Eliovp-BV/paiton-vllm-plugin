@@ -58,12 +58,12 @@ runtime libraries; model weights are downloaded at launch.
 
 `PAITON_PORT`, `PAITON_BIND`, `PAITON_CONTAINER`, `PAITON_CACHE` and `PAITON_IMAGE`
 override the host port/address, container name, cache volume/path and image.
-Use an absolute path for a host cache directory. The default API binds to localhost.
+Use an absolute path for a host cache directory. The server listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` (or `serve --host 127.0.0.1` without Docker) to keep it local; use a firewall if the machine is reachable from untrusted networks (the image API has no authentication).
 
 Without a repository checkout, the same container starts with:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 127.0.0.1:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 0.0.0.0:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3
 ```
 
 ## Generate an image
