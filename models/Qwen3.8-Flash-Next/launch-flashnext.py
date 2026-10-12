@@ -14,7 +14,7 @@ Host pools: 3-bit modes keep ROCm's user-pointer memory for the host-resident ta
   4bit-cache         opt-in for agents and coding tools: 4bit + prefix caching + an 8 GiB RAM prefix tier (needs ~8 GiB more GTT)
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
-Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--host 0.0.0.0] [--api-key KEY] [--name paiton-flashnext]
+Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--host 0.0.0.0] [--api-key KEY | env PAITON_API_KEY] [--name paiton-flashnext]
        [--detach] [--dry-run]
        [--weights DIR] [--cache DIR] [--image REF] [--devices GPU-xxx,GPU-yyy] [--served-model-name Qwen3.8-Flash-Next]
 Weights: downloaded once from the Hugging Face repo in modes.json (pinned revision, SHA256SUMS verified) into --weights.
@@ -333,7 +333,8 @@ def main():
     ap.add_argument('--mode', default='decode', choices=sorted(MODES)); ap.add_argument('--port', type=int, default=18982); ap.add_argument('--name', default='paiton-flashnext')
     ap.add_argument('--host', default='0.0.0.0', help='address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it on this machine)')
     ap.add_argument('--api-key', default=None, metavar='KEY', help='opt-in: the server then requires this key on /v1 requests (handed to Docker as VLLM_API_KEY by '
-                    'variable name, never printed); default: no key')
+                    'variable name, never printed). Preferred: set PAITON_API_KEY in the environment instead (the default here); a key '
+                    'given with --api-key is visible in the process list (ps). Default: no key')
     ap.add_argument('--weights', default=None, help='weights dir (default per mode: ~/paiton-models/Qwen3.8-Flash-Next-W3A8, 4-bit modes ~/paiton-models/Qwen3.8-Flash-Next-W4A8)');
     ap.add_argument('--kv-cache-memory-bytes', type=int, default=None, help='KV cache size per GPU in bytes (default: the mode value); '
                     'lower values shrink the cache the prefix cache and long conversations live in')
@@ -342,6 +343,10 @@ def main():
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
     ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory or ROCm user-pointer memory; auto = the mode default (3-bit: userptr; 4-bit: gtt when the GTT size holds them)'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
+    if a.api_key:
+        print('note: --api-key is visible in the process list (ps) of this machine; prefer PAITON_API_KEY=<key> in the environment')
+    a.api_key = a.api_key or os.environ.get('PAITON_API_KEY') or None
+    if a.api_key: print('API key: required on /v1 requests (value not printed)')
     wspec = COMMON.get(m['weights_key']) if m.get('weights_key') else None
     if a.weights is None: a.weights = os.path.expanduser((wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
     if m.get('status', '').startswith('PENDING') : print(f'mode {a.mode}: {m["status"]}')

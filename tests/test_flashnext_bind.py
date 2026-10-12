@@ -16,11 +16,13 @@ def lf():
     return mod
 
 
-def dry_run(lf, monkeypatch, capsys, tmp_path, *extra):
+def dry_run(lf, monkeypatch, capsys, tmp_path, *extra, env={}):
     monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', lambda *a, **k: [])
     monkeypatch.setattr(lf, 'render_gid', lambda: None); monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (125.8, 125.8))
     monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w'); monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
     monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+    monkeypatch.delenv('PAITON_API_KEY', raising=False)
+    for k, v in env.items(): monkeypatch.setenv(k, v)
     monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache'), *extra])
     lf.main()
     out = capsys.readouterr().out
@@ -58,3 +60,13 @@ def test_readiness_probe_follows_the_bind(lf, monkeypatch, capsys, host, probe, 
     out = capsys.readouterr().out
     assert seen == [f'http://{probe}:18982/health'] and f'API http://{probe}:18982/v1' in out
     assert ('<this-machine-ip>' in out) == remote
+
+
+def test_api_key_from_environment_is_the_preferred_form(lf, monkeypatch, capsys, tmp_path):
+    out, argv, inner = dry_run(lf, monkeypatch, capsys, tmp_path, '--mode', 'decode', env={'PAITON_API_KEY': 'k-env-456'})
+    assert argv[argv.index('VLLM_API_KEY') - 1] == '-e' and 'k-env-456' not in out and 'value not printed' in out
+    assert 'visible in the process list' not in out
+    out, argv, inner = dry_run(lf, monkeypatch, capsys, tmp_path, '--mode', 'decode', '--api-key', 'k-cli-789')
+    assert 'visible in the process list' in out and 'k-cli-789' not in out
+    out, argv, inner = dry_run(lf, monkeypatch, capsys, tmp_path, '--mode', 'decode', env={'PAITON_API_KEY': ''})
+    assert 'VLLM_API_KEY' not in out                                   # an empty variable means no key
