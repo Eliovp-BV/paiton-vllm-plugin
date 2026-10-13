@@ -18,7 +18,7 @@ by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin. One launch
 | Prefill, 64K-token prompt | **8,161 tok/s** | 6,991 tok/s |
 | Weights | 116 GB, all in VRAM | 133 GB, about 20.8 GiB of experts per GPU in VRAM, the rest in pinned system RAM |
 | System RAM | 128 GB or more | 256 GB |
-| Context window | 98K (speculative decoding on), 200K (off) | 98K (on), 200K (off) |
+| Context window | 98K (speculative decoding on), 200K (off) | 98K or 262K (on), 200K (off) |
 | Agents and coding tools | `--prefix-caching` | `--mode 4bit-cache` |
 | Start | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh` | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh` |
 | Hugging Face | [W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4) | [W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4) |
@@ -67,7 +67,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   190K-token prompt takes about 25 s to read in the 200K mode).
 
 ## Options
-`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache`, `--prefix-caching`, `--host-pools auto|gtt|userptr`,
+`--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl`, `--prefix-caching`, `--host-pools auto|gtt|userptr`,
 `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`,
 `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`, `--served-model-name`, `--detach`, `--settle-s`,
 `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required. The launcher picks the right image

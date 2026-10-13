@@ -57,9 +57,11 @@ verifies the weights (about 133 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh        # 98,304-token window, speculative decoding on (the speed table)
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 200,000-token window, speculative decoding off
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-cache.sh  # agents and coding tools: prefix caching + 8 GiB RAM prefix tier
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-long.sh   # 262,144-token window, speculative decoding on, ~461K tokens of KV cache
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-xl.sh     # 262,144-token window, speculative decoding on, ~595K tokens of KV cache
 ```
 
-By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode 4bit|4bit-200k|4bit-cache [--dry-run]`.
+By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode 4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl [--dry-run]`.
 
 **Agents and coding tools: `--mode 4bit-cache`.** An agent resends the whole conversation every turn. This mode is the 4-bit decode
 mode with prefix caching (2,048-token blocks) and an 8 GiB RAM prefix tier that keeps prefix blocks evicted from VRAM in pinned system
@@ -68,6 +70,19 @@ first token); hits from the RAM tier give the same output as a cold start. The c
 `--mode 4bit` (8 concurrent requests 321.4 tok/s; single-stream 146.7) and about 0.1-0.2 s slower first token on new prompts. It needs
 about 108 GiB of free GTT; without that the launcher leaves the RAM tier off, says so, and keeps prefix caching in VRAM.
 `--prefix-caching` on `--mode 4bit` / `4bit-200k` is refused (not measured there).
+
+**Long windows with speculative decoding: `--mode 4bit-long` / `--mode 4bit-xl`.** The 4-bit decode mode with a 262,144-token
+window: it moves 1 or 2 GiB of experts per GPU from VRAM to the host tier to make room for a larger KV cache. Measured 12-13 October
+on the released image with the same protocol for all three rows (allocator cap 0.925):
+
+| Mode | Window | KV cache | Experts in VRAM per GPU | Decode, 1 request | 8 requests | 64K prefill on this server | Needles at ~258K tokens | Peak VRAM per card |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `4bit` | 98,304 | 305,338 tokens | 20.75 GiB | 189.4 tok/s | 416.1 tok/s | 4,527 tok/s | – | 30.6 GiB |
+| `4bit-long` | 262,144 | 461,566 tokens | 19.75 GiB | 187.8 tok/s | 410.7 tok/s | 4,161 tok/s | 5 / 5 | 30.6 GiB |
+| `4bit-xl` | 262,144 | 595,050 tokens | 18.75 GiB | 184.9 tok/s | 403.3 tok/s | 3,862 tok/s | 5 / 5 | 30.7 GiB |
+
+Prompts are read faster in `--mode 4bit-200k` (speculative decoding off: 6,991 tok/s at 64K). `--prefix-caching` is refused in
+both modes (not measured there); `--mode 4bit-cache` is the prefix-caching mode.
 
 **Expert placement:** about 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system
 memory when a token needs them. `--expert-vram-gib` and `--host-pool on|off` change the split.
@@ -91,6 +106,6 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   (allocator cap 0.925).
 
 ## Known issues and limitations
-- 98,304-token window in `4bit` (MTP pool), 200,000 in `4bit-200k` with MTP off. `--mode 4bit-200k` serves the same experts and fp8
+- 98,304-token window in `4bit` (MTP pool), 262,144 in `4bit-long` / `4bit-xl`, 200,000 in `4bit-200k` with MTP off. `--mode 4bit-200k` serves the same experts and fp8
   KV cache with the 8-bit trunk; its accuracy was not measured separately. Vision is not validated.
 - `--mode 4bit-cache` is opt-in: the speed table is measured in `--mode 4bit`.
