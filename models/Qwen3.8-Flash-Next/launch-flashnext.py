@@ -14,10 +14,12 @@ Host pools: 3-bit modes keep ROCm's user-pointer memory for the host-resident ta
   4bit-cache         opt-in for agents and coding tools: 4bit + prefix caching + an 8 GiB RAM prefix tier (needs ~8 GiB more GTT)
   4bit-long / 4bit-xl  4bit with a 262,144-token window (MTP on): KV 3.5 / 4.5 GiB per GPU (~461K / ~595K tokens), experts
                      19.75 / 18.75 GiB per GPU in VRAM; --prefix-caching refused (not measured)
+  --ple-host pageable  opt-in on 4bit / 4bit-cache: the PLE tables (~49 GiB, both ranks) in pageable host memory instead of pinned
+                     GTT memory: pinned host memory ~96 -> ~47 GiB, so the GTT pools fit a 128 GB host (needs an image with that runtime)
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
 Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--host 0.0.0.0] [--api-key KEY | env PAITON_API_KEY] [--name paiton-flashnext]
-       [--detach] [--dry-run]
+       [--detach] [--dry-run] [--ple-host pinned|pageable]
        [--weights DIR] [--cache DIR] [--image REF] [--devices GPU-xxx,GPU-yyy] [--served-model-name Qwen3.8-Flash-Next]
 Weights: downloaded once from the Hugging Face repo in modes.json (pinned revision, SHA256SUMS verified) into --weights.
 """
@@ -138,7 +140,8 @@ def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0,
         busy = '' if free is None or lim is None or lim - free < 1 else (f' ({lim - free:.0f} GiB of the {lim:.0f} GiB GTT limit is in use by other '
                                                                          'processes: stop other GPU servers first if that is not intended)')
         print(f'WARNING host pools: host GTT {"unknown" if free is None else f"{free:.0f} GiB"} < {base:.0f} GiB{busy}: this mode was benchmarked with its '
-              f'~{pinned_gib:.0f} GiB of pinned host memory in GTT (by default the GTT limit is half the RAM, so in practice a 256 GB host). Using '
+              f'~{pinned_gib:.0f} GiB of pinned host memory in GTT (by default the GTT limit is half the RAM, so in practice a '
+              f'{128 if pinned_gib < 60 else 256} GB host). Using '
               'pageable pinned (user-pointer) memory instead, without a RAM tier: it starts and runs, but slower than the benchmark (186 vs 192 tok/s, '
               '389 vs 423 tok/s at 8 requests in our validation) and expect GPU stalls of up to several seconds when the kernel compacts host memory. '
               'Raising the GTT limit (amdgpu.gttsize / ttm.pages_limit) is a system setting you may choose; this launcher never changes it.')
@@ -216,13 +219,15 @@ def pinned_host_gib(spec, expert_gib_total, ranks):
     else: host = max(0.0, per_rank - float(kv.get('vram_gib', per_rank)))
     return host * ranks
 
-def ram_check(tier_gib, margin_gib=8.0, pinned_gib=None):
-    """Pinned host memory of a start: the host tables (every mode) plus the expert host tier (4-bit modes), against MemAvailable."""
-    tables = COMMON['host_pools']['gtt_need_gib']; need_gib = max(tables + tier_gib, pinned_gib or 0.0)
+def ram_check(tier_gib, margin_gib=8.0, pinned_gib=None, pageable_gib=0.0):
+    """Pinned host memory of a start: the host tables (every mode) plus the expert host tier (4-bit modes), against MemAvailable;
+    with --ple-host pageable the PLE tables (part of the host tables) move from pinned to pageable host memory and still need the RAM."""
+    tables = COMMON['host_pools']['gtt_need_gib'] - pageable_gib; need_gib = max(tables + tier_gib, pinned_gib or 0.0) + pageable_gib
     try: avail = int(re.search(r'MemAvailable:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
     except Exception: print('ram: /proc/meminfo unreadable; not checked'); return []
     ok = avail >= need_gib + margin_gib
-    print(f'ram: pinned host memory {need_gib:.1f} GiB (host tables {tables:g}' + (f' + expert host tier {tier_gib:.1f}' if tier_gib else '') + f', both GPUs); '
+    print(f'ram: pinned host memory {need_gib - pageable_gib:.1f} GiB (host tables {tables:g}' + (f' + expert host tier {tier_gib:.1f}' if tier_gib else '') + ', both GPUs)'
+          + (f' + pageable PLE tables {pageable_gib:.1f} GiB' if pageable_gib else '') + '; '
           f'available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with a {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
     return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the pinned host memory (have {avail:.0f} GiB'
                           + ('; lower the expert tier with --host-pool off' if tier_gib else '') + ')']
@@ -348,6 +353,9 @@ def main():
     ap.add_argument('--expert-vram-gib', type=float, default=None, help='4-bit modes: VRAM per GPU for resident experts (default from modes.json)'); ap.add_argument('--host-pool', choices=('on', 'off'), default=None, help='4-bit modes: keep a pinned host copy of every non-core expert (on, default) or only of the non-resident ones (off)'); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
+    ap.add_argument('--ple-host', choices=('pinned', 'pageable'), default='pinned', help='4-bit modes 4bit and 4bit-cache: where the per-layer '
+                    'embedding tables live on the host: pinned (default, as benchmarked) or pageable (opt-in: ~49 GiB less pinned host memory and '
+                    'GTT, so the GTT pools fit a 128 GB host; same output, decode within ~1 %%; needs an image with the pageable PLE runtime)')
     ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory or ROCm user-pointer memory; auto = the mode default (3-bit: userptr; 4-bit: gtt when the GTT size holds them)'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
     if a.api_key:
@@ -357,18 +365,37 @@ def main():
     wspec = COMMON.get(m['weights_key']) if m.get('weights_key') else None
     if a.weights is None: a.weights = os.path.expanduser((wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
     if m.get('status', '').startswith('PENDING') : print(f'mode {a.mode}: {m["status"]}')
+    pinned_gib = m.get('gtt_pinned_gib'); pageable_gib = 0.0
+    if a.ple_host == 'pageable':
+        if 'gtt_pinned_gib_pageable' not in m:
+            sys.exit(f'--ple-host pageable is not measured on --mode {a.mode}: use --mode '
+                     + ' or --mode '.join(k for k, v in MODES.items() if 'gtt_pinned_gib_pageable' in v))
+        pinned_gib = m['gtt_pinned_gib_pageable']; pageable_gib = COMMON['ple_host']['pageable_gib_both_ranks']
+    ispec = COMMON[m.get('image_key', 'image')]
+    image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
+    ph = COMMON['ple_host']
+    if a.ple_host == 'pageable' and not any(ref in image for ref in ph['images']):
+        msg = (f'--ple-host pageable needs an image with the pageable PLE runtime ({", ".join(ph["images"]) or "none published yet"}); '
+               f'{image} keeps the PLE tables pinned (about 96 GiB of pinned host memory)')
+        if a.dry_run: print('WARNING:', msg)
+        else: sys.exit(msg)
     missing = prerequisites(COMMON['tp'])
     tier = None; tier_gib = 0.0
     if m.get('expert_tier'):
         et = m['expert_tier']; tier = tier_spec(m['env'].get(et['env'], et['default']), a.expert_vram_gib, a.host_pool)
         tier_gib = pinned_host_gib(tier, et['expert_bytes_gib_both_ranks'], COMMON['tp'])
-    missing += ram_check(tier_gib, 16.0 if m.get('gtt_pinned_gib') else 8.0, m.get('gtt_pinned_gib'))
+    missing += ram_check(tier_gib, 16.0 if pinned_gib else 8.0, pinned_gib, pageable_gib)
     if m.get('expert_tier'):
         try: tot = int(re.search(r'MemTotal:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
         except Exception: tot = None
-        print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration keeps about 96 GiB of pinned '
-              'host memory in one GPU\'s GTT, so it needs about 98 GiB of free GTT (the GTT limit is half the RAM by default: a 256 GB host); '
-              'see the host pools line below')
+        if pageable_gib:
+            print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; --ple-host pageable keeps about {pinned_gib:.0f} GiB of pinned host '
+                  f'memory in one GPU\'s GTT (about {pinned_gib + 2:.0f} GiB of free GTT; the GTT limit is half the RAM by default: a 128 GB host) and '
+                  f'the {pageable_gib:.0f} GiB of PLE tables in pageable memory; see the host pools line below')
+        else:
+            print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration keeps about 96 GiB of pinned '
+                  'host memory in one GPU\'s GTT, so it needs about 98 GiB of free GTT (the GTT limit is half the RAM by default: a 256 GB host); '
+                  'see the host pools line below' + ('; --ple-host pageable needs about 49 GiB less' if 'gtt_pinned_gib_pageable' in m else ''))
     if missing and not a.dry_run: sys.exit('fix the missing prerequisites above and run again')
     for rel in m.get('requires', []):
         if not (pathlib.Path(a.weights) / rel).exists() and not a.dry_run: sys.exit(f'mode {a.mode} needs {rel} in the checkpoint dir (not in this copy of the repo)')
@@ -376,8 +403,6 @@ def main():
     if len(gpus) < COMMON['tp'] and not a.dry_run: sys.exit(f'need {COMMON["tp"]} AMD GPUs, found {gpus}')
     gpus = gpus[:COMMON['tp']]
     p2p_check(gpus)
-    ispec = COMMON[m.get('image_key', 'image')]
-    image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
     weights = ensure_weights(a.weights, a.dry_run, *((wspec['hf_repo'], wspec['hf_revision']) if wspec else (None, None)))
     want_rel = (wspec or COMMON)['hf_repo'].split('/')[-1]
     try: got_rel = json.loads((weights / 'config.json').read_text()).get('paiton_release')
@@ -409,9 +434,12 @@ def main():
     if a.host_pools == 'auto' and hp_choice == 'userptr':
         print('host pools: userptr (the default of this mode, as published); --host-pools gtt removes the occasional memory pauses under load '
               'and costs ~1 GiB VRAM in decode')
-    hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=m.get('gtt_pinned_gib'), ram_tier_gib=float(rtier.get('gib', 0.0)),
+    hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=pinned_gib, ram_tier_gib=float(rtier.get('gib', 0.0)),
                                ram_tier_overhead_gib=float(rtier.get('gtt_overhead_gib', 0.0)))
     env.update(hp_env)
+    for k in ph['env']: env.pop(k, None)
+    if a.ple_host == 'pageable':
+        env.update(ph['env']); print(f'PLE tables: pageable host memory ({pageable_gib:.1f} GiB, both GPUs; not pinned, not in GTT)')
     if rtier:   # RAM prefix tier (cache mode): prefix-cache blocks evicted from VRAM are kept in pinned host memory (GTT) and loaded back on a hit
         rt = int(rt)
         if rt >= rtier.get('min_gib', 4.0):
@@ -423,7 +451,7 @@ def main():
             print(f'WARNING RAM prefix tier: off (it needs {rtier["gib"] + rtier.get("gtt_overhead_gib", 0.0):g} GiB of free GTT beyond the host pools); '
                   'prefix caching stays on, in VRAM only')
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
-    cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker']
+    cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker'] + (ph['docker_add'] if a.ple_host == 'pageable' else [])
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
     if a.detach: cmd += ['-d']
     for k, v in sorted(env.items()): cmd += ['-e', f'{k}={v}']

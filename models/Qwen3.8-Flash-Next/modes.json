@@ -83,6 +83,18 @@
       "note": "HSA_USERPTR_FOR_PAGED_MEM=0: ROCm allocates the host tables as GTT buffers instead of registered user pointers, so host memory compaction no longer invalidates them (KFD eviction stalls under load 2.7 s -> 0.07 s over a 3-minute run at 8 requests, speed unchanged). They count against the first GPU's GTT size: 56,116 MiB above the idle baseline at ready (decode mode, 10 Oct).",
       "note_3bit": "3-bit modes default to ROCm user-pointer pools (the published 10 Oct behaviour and VRAM peaks); --host-pools gtt is their opt-in: it removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode (rel3s vs rel3u, 12 Oct)"
     },
+    "ple_host": {
+      "env": {
+        "PAITON_FN_PLE_HOST": "pageable"
+      },
+      "docker_add": [
+        "--ulimit",
+        "memlock=-1:-1"
+      ],
+      "pageable_gib_both_ranks": 48.9,
+      "images": [],
+      "note": "opt-in (launcher --ple-host pageable, 4-bit modes 4bit and 4bit-cache): the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned."
+    },
     "weights_4bit": {
       "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4",
       "hf_revision": "9ec8e306503d5f9c9e8fd9c0d77de8fa63428888",
@@ -699,6 +711,7 @@
       ],
       "seed": "4bit",
       "gtt_pinned_gib": 95.5,
+      "gtt_pinned_gib_pageable": 46.6,
       "note": "4-bit experts with the expert host tier (route 1): decode, MTP 3, 98,304-token window",
       "image_key": "image_4bit",
       "weights_key": "weights_4bit",
@@ -986,6 +999,7 @@
       ],
       "seed": "4bit",
       "gtt_pinned_gib": 95.5,
+      "gtt_pinned_gib_pageable": 46.6,
       "note": "opt-in cache mode for agents and coding tools: --mode 4bit with prefix caching (align, 2,048-token blocks) and an 8 GiB RAM prefix tier (gates 12 Oct, exact). Repeated long prompts start in ~1 s instead of 6-16 s (32K 6.3 -> 1.0 s, 64K 12.3 -> 1.1 s, 90K 16.2 -> 1.1 s, identical output); @8 321.4 tok/s (-22 % vs the 4bit default 411.3 in-engine), C1 146.7, TTFT on fresh prompts +0.1-0.2 s; peak 30.3 GiB per card; first-GPU GTT ~106 GiB with the tier: the full tier needs ~108 GiB free GTT",
       "image_key": "image_4bit",
       "weights_key": "weights_4bit",

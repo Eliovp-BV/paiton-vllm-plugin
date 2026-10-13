@@ -1,6 +1,7 @@
 """Host-pool ladder of the Flash Next launcher (4-bit modes: GTT pools only when the free GTT holds the measured pinned memory)."""
 import importlib.util
 import pathlib
+import sys
 
 import pytest
 
@@ -263,3 +264,56 @@ def test_set_alloc_fraction(lf):
 def test_4bit_cache_keeps_its_cap(lf, monkeypatch, capsys, tmp_path):
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-cache', 125.8, ('--prefix-caching',)).split('docker run')[1]
     assert 'per_process_memory_fraction:0.925' in run_args and run_args.count('per_process_memory_fraction') == 1
+
+
+PAGEABLE = 'PAITON_FN_PLE_HOST=pageable'
+
+
+def test_ple_host_pageable_measured_modes_only(lf):
+    assert sorted(k for k, v in lf.MODES.items() if 'gtt_pinned_gib_pageable' in v) == ['4bit', '4bit-cache']
+    assert all('PAITON_FN_PLE_HOST' not in v['env'] for v in lf.MODES.values())     # pinned unless the flag asks
+
+
+@pytest.mark.parametrize('mode', ['4bit-200k', '4bit-long', '4bit-xl', 'decode', 'prefill-long'])
+def test_ple_host_pageable_refused_on_unmeasured_modes(lf, monkeypatch, capsys, tmp_path, mode):
+    with pytest.raises(SystemExit, match='use --mode 4bit or --mode 4bit-cache'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--ple-host', 'pageable'))
+
+
+def test_ple_host_pageable_needs_a_supporting_image(lf, monkeypatch, capsys, tmp_path):
+    other = ('--image', 'flashnext-test:without-pageable-runtime')
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 125.8, ('--ple-host', 'pageable') + other)
+    assert 'WARNING: --ple-host pageable needs an image with the pageable PLE runtime' in out
+    monkeypatch.setattr(lf, 'prerequisites', lambda tp: [])
+    with pytest.raises(SystemExit, match='pageable PLE runtime'):                    # a real start refuses
+        monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache'),
+                                          '--ple-host', 'pageable', *other])
+        lf.main()
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-cache'])
+def test_ple_host_pageable_fits_a_128gb_host(lf, monkeypatch, capsys, tmp_path, mode):
+    monkeypatch.setitem(lf.COMMON['ple_host'], 'images', ['flashnext-test:pageable'])
+    img = ('--image', 'flashnext-test:pageable')
+    pinned = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, img).split('docker run')[1]   # GTT limit of a 128 GB host: ~62 GiB
+    assert 'HSA_USERPTR_FOR_PAGED_MEM' not in pinned and PAGEABLE not in pinned and 'memlock' not in pinned
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, img + ('--ple-host', 'pageable'))
+    run_args = out.split('docker run')[1]
+    assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in run_args and PAGEABLE in run_args and '--ulimit memlock=-1:-1' in run_args
+    assert 'needed 48.6 GiB for GTT pools' in out and 'WARNING' not in out
+    if mode == '4bit-cache':
+        assert '"cpu_bytes_to_use": 8589934592' in run_args                             # 60 - 48.6 - 2.5 overhead >= the 8 GiB RAM tier
+    assert 'per_process_memory_fraction:0.925' in run_args                             # the 4-bit allocator cap is unchanged
+
+
+def test_ple_host_pageable_ram_check(lf, monkeypatch, capsys):
+    import io
+    def meminfo(gib):
+        monkeypatch.setattr(lf, 'open', lambda *a, **k: io.StringIO(f'MemAvailable: {int(gib * (1 << 20))} kB\n'), raising=False)
+    meminfo(120.0)                                                                     # a 128 GB host after boot
+    assert lf.ram_check(40.8, 16.0, 46.6, 48.9) == []
+    out = capsys.readouterr().out
+    assert 'pinned host memory 46.9 GiB (host tables 6.1 + expert host tier 40.8, both GPUs) + pageable PLE tables 48.9 GiB' in out
+    assert 'needed 111.8 GiB' in out                                                  # the same RAM as pinned (95.8 + 16)
+    meminfo(100.0)                                                                     # pageable tables still need the RAM
+    assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out
