@@ -6,6 +6,18 @@ from io import BytesIO
 import json
 import multiprocessing
 import time
+# the minors prompt guard is required for both engines: a missing or broken guard stops the service from starting
+import prompt_guard
+
+
+def validate(request):
+    """HTTP-level request check (before any worker or GPU work); returns (prompt, seed) or raises ValueError."""
+    prompt=request.get('prompt');seed=request.get('seed',42)
+    if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>8000:
+        raise ValueError('Enter a prompt of 1 to 8000 characters.')
+    if type(seed) is not int or not 0<=seed<2**64:raise ValueError('Seed must be an unsigned 64-bit integer.')
+    if not prompt_guard.check_prompt(prompt)[0]:raise ValueError(prompt_guard.REFUSAL)
+    return prompt,seed
 
 
 def worker(connection,engine):
@@ -16,7 +28,9 @@ def worker(connection,engine):
         from sdnq_tool.pipeline import load_pipeline,generate
     started=time.perf_counter()
     try:
+        guard_id=prompt_guard.self_test()
         pipe=load_pipeline(engine)
+        gate=prompt_guard.install(pipe)   # the stock pipeline too (the Paiton pipeline already carries the same gate)
         torch.cuda.synchronize()
         load_seconds=time.perf_counter()-started
     except Exception as error:
@@ -25,6 +39,9 @@ def worker(connection,engine):
     while True:
         request=connection.recv()
         try:
+            validate(request)
+            if pipe.encode_prompt is not gate:
+                raise RuntimeError('prompt guard is not installed on the pipeline; refusing the request')
             torch.cuda.synchronize();started=time.perf_counter()
             image=generate(pipe,request['prompt'],request['seed']).images[0]
             torch.cuda.synchronize();elapsed=time.perf_counter()-started
@@ -32,7 +49,7 @@ def worker(connection,engine):
             connection.send({'image':base64.b64encode(buffer.getvalue()).decode(),
                 'engine':engine,'seconds':elapsed,'first_generation':first,
                 'load_seconds':load_seconds if first else 0,'seed':request['seed'],
-                'resolution':[1024,1024],'steps':4})
+                'resolution':[1024,1024],'steps':4,'prompt_guard':guard_id})
             first=False
         except Exception as error:
             connection.send({'error':str(error)})
@@ -69,6 +86,7 @@ class InferenceWorker:
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--engine',choices=['paiton','stock'],required=True)
     parser.add_argument('--port',type=int,default=7860);args=parser.parse_args()
+    prompt_guard.self_test()   # fail closed before serving
     inference=InferenceWorker(args.engine)
     class Handler(BaseHTTPRequestHandler):
         def reply(self,data,status=200):
@@ -86,10 +104,8 @@ def main():
                 length=int(self.headers.get('Content-Length','0'))
                 if not 0<length<=40000:raise ValueError('Enter a prompt of 1 to 8000 characters.')
                 request=json.loads(self.rfile.read(length))
-                prompt=request.get('prompt');seed=request.get('seed',42)
-                if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>8000:
-                    raise ValueError('Enter a prompt of 1 to 8000 characters.')
-                if type(seed) is not int or not 0<=seed<2**64:raise ValueError('Seed must be an unsigned 64-bit integer.')
+                if not isinstance(request,dict):raise ValueError('Enter a prompt of 1 to 8000 characters.')
+                prompt,seed=validate(request)
             except (ValueError,TypeError,AttributeError,UnicodeError) as error:
                 self.reply({'error':str(error)},400);return
             try:

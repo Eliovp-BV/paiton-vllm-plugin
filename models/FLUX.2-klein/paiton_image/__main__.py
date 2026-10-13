@@ -53,7 +53,8 @@ def main():
         path = args.output if args.count == 1 else args.output.with_name(f"{args.output.stem}-{index}{args.output.suffix}")
         result.images[0].save(path)
         print(json.dumps({"file": str(path), "seed": args.seed+index, "generation_seconds": elapsed,
-                          "includes_first_use_compilation": index == 0}), flush=True)
+                          "includes_first_use_compilation": index == 0,
+                          "prompt_guard": getattr(pipe, "paiton_prompt_guard", None)}), flush=True)
 
 
 if __name__ == "__main__":

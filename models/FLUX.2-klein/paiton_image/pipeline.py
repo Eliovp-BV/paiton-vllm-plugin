@@ -3,6 +3,8 @@ import json
 import os
 from pathlib import Path
 import torch
+# the minors prompt guard is required: a missing or broken guard module stops the engine from importing / starting
+from . import guard as prompt_guard
 
 MODEL = "Disty0/FLUX.2-klein-4B-SDNQ-4bit-dynamic"
 REVISION = "45e9cc76cb70f84473ce5c6c2e2282d0ef3c6ecd"
@@ -24,6 +26,7 @@ def download_model():
 def load_pipeline(backend="paiton", snapshot=None):
     if backend != "paiton":
         raise ValueError("Use the separate stock container through ./run.sh benchmark --backend stock")
+    guard_id = prompt_guard.self_test()   # fail closed before any GPU work
     from accelerate import init_empty_weights
     from safetensors.torch import load_file
     from diffusers import Flux2KleinPipeline, Flux2Transformer2DModel
@@ -68,12 +71,18 @@ def load_pipeline(backend="paiton", snapshot=None):
     pipe.text_encoder = torch.compile(PromptEncoder(pipe.text_encoder),mode="reduce-overhead",fullgraph=True)
     pipe.vae.decode = torch.compile(pipe.vae.decode,mode="reduce-overhead",fullgraph=True)
     pipe.set_progress_bar_config(disable=True)
+    prompt_guard.install(pipe)            # every prompt encoding passes the guard, whatever the caller
+    pipe.paiton_prompt_guard = guard_id
     return pipe
 
 
 def generate(pipe, prompt, seed=42, callback=None):
-    if not prompt.strip() or len(prompt) > 8000:
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 8000:
         raise ValueError("Enter a prompt of 1 to 8000 characters")
+    if getattr(getattr(pipe, "encode_prompt", None), "paiton_prompt_guard", None) != prompt_guard.GUARD_ID:
+        raise RuntimeError("prompt guard is not installed on the pipeline; refusing the request")
+    if not prompt_guard.check_prompt(prompt)[0]:
+        raise ValueError(prompt_guard.REFUSAL)
     return pipe(prompt=prompt,height=1024,width=1024,num_inference_steps=4,guidance_scale=1.0,
                 num_images_per_prompt=1,max_sequence_length=512,
                 generator=torch.Generator(device="cuda").manual_seed(seed),callback_on_step_end=callback)

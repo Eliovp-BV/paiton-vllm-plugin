@@ -52,8 +52,9 @@ def serve(pipe, port):
                 data = base64.b64encode(buffer.getvalue()).decode()
                 result = f'<p>{elapsed:.2f} seconds. Right-click the image to save it.</p><img alt="Generated image" src="data:image/png;base64,{data}">'
                 self.render(prompt, seed, result)
-            except (ValueError, OverflowError):
-                self.render(prompt, result="<p>Enter a valid prompt and integer seed.</p>", status=400)
+            except (ValueError, OverflowError) as error:
+                message = str(error) if str(error).startswith("Prompt refused") else "Enter a valid prompt and integer seed."
+                self.render(prompt, result=f"<p>{html.escape(message)}</p>", status=400)
 
         def log_message(self, *args):
             pass  # Keep user prompts out of access logs.

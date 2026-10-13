@@ -73,6 +73,7 @@ def run_benchmark(args):
         pipe = load_pipeline(args.backend, snapshot)
         torch.cuda.synchronize()
         manifest["load_seconds"] = time.perf_counter() - started
+        manifest["prompt_guard"] = getattr(pipe, "paiton_prompt_guard", None)
         manifest["resident_allocated_bytes"] = torch.cuda.memory_allocated()
         manifest["resident_reserved_bytes"] = torch.cuda.memory_reserved()
         manifest["component_parameter_bytes"] = {name: sum(t.numel()*t.element_size() for t in getattr(pipe, name).parameters())
