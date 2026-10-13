@@ -182,6 +182,14 @@ class ImageEngine:
             if fp8 is not None:
                 fp8.begin_transformer_forward()   # precision schedule counts transformer forwards, not block forwards
         self.pipeline.transformer.register_forward_pre_hook(remember_prefix,with_kwargs=True)
+        # optional start-up warm-up (PAITON_IMAGE21_WARMUP="1024" or "1024,2048"): one discarded request per size so the
+        # first served request runs warm (kernel loading, solver selection, allocator growth); costs start-up time
+        self.warmup_seconds={}
+        for size in [int(value) for value in os.environ.get("PAITON_IMAGE21_WARMUP","").split(",") if value.strip()]:
+            begin_warmup=time.perf_counter()
+            self.generate("A plain grey ceramic cup on a wooden table, soft daylight",width=size,height=size,seed=0)
+            self.warmup_seconds[size]=time.perf_counter()-begin_warmup
+        self.request_count=0
 
     def _slim_text_encoder(self):
         """The pipeline reads the text encoder's hidden states only: its 151,936 x 4,096 output projection (1.2 GB) is
