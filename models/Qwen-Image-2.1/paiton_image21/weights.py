@@ -2,7 +2,7 @@
 
 This consumer reconstructs a BF16 matrix for each operation. It does not claim
 native MXFP4 GEMM, compiler integration, or an inference speedup. FP8 per-row
-weights (format paiton-qit-fp8-row-v1: fp8 e4m3fn codes plus one fp32 scale per
+weights (format paiton-fp8-row-v1: fp8 e4m3fn codes plus one fp32 scale per
 output row) are kept as codes; the BF16 path decodes them natively on use and the
 low-precision path feeds the codes and row scales to the FP8 GEMM directly.
 """
@@ -20,7 +20,7 @@ E2M1 = [0,.5,1,1.5,2,3,4,6,-0.,-.5,-1,-1.5,-2,-3,-4,-6]
 _NATIVE_UNPACK = None
 _NATIVE_FP8ROW = None
 _NATIVE_LIBRARY = None
-FORMATS = ("paiton-research-mxfp4-weight-only-v2", "paiton-qit-fp8-row-v1")
+FORMATS = ("paiton-research-mxfp4-weight-only-v2", "paiton-fp8-row-v1", "paiton-qit-fp8-row-v1")   # the last: early local exports
 
 def enable_native_unpack(path):
     """Raw-pointer C ABI adapter; native library has no framework dependency."""
