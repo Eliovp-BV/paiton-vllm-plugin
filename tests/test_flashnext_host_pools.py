@@ -221,3 +221,19 @@ def test_4bit_long_modes(lf, monkeypatch, capsys, tmp_path, mode, kv_bytes, vram
     assert '--max-model-len 262144' in run_args and f'--kv-cache-memory-bytes {kv_bytes}' in run_args
     assert f'vram_gib={vram},' in run_args and 'per_process_memory_fraction:0.925' in run_args
     assert '--no-enable-prefix-caching' in run_args and 'HSA_USERPTR_FOR_PAGED_MEM=0' in run_args
+
+
+PARSER_ARGS = '--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_xml'
+
+
+def test_every_mode_parses_reasoning_and_tools(lf):
+    for name, m in lf.MODES.items():
+        e = ' '.join(m['engine_args'])
+        assert PARSER_ARGS in e and e.count('--reasoning-parser') == 1, name
+
+
+@pytest.mark.parametrize('mode,extra', [('decode', ()), ('prefill-long', ()), ('decode', ('--prefix-caching',)), ('4bit', ()),
+                                        ('4bit-200k', ()), ('4bit-cache', ()), ('4bit-long', ()), ('4bit-xl', ())])
+def test_parser_args_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, extra):
+    run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, extra).split('docker run')[1]
+    assert PARSER_ARGS in run_args
