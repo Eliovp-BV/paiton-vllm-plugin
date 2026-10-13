@@ -156,6 +156,7 @@
         "VLLM_ROCM_USE_AITER": "0",
         "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
       },
+      "alloc_fraction_prefix_caching": 0.94,
       "engine_args": [
         "--dtype",
         "bfloat16",
@@ -392,6 +393,7 @@
         "VLLM_ROCM_USE_AITER": "0",
         "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0"
       },
+      "alloc_fraction_prefix_caching": 0.94,
       "engine_args": [
         "--dtype",
         "bfloat16",

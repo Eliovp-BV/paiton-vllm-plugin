@@ -308,6 +308,11 @@ def ensure_view(weights, view, base_cfg, dry, wanted_optional=(), int6=False):
     for k, tgt in links.items(): os.symlink(tgt, view / k)
     return view
 
+def set_alloc_fraction(env, frac):
+    """PyTorch's per-process VRAM cap in PYTORCH_ALLOC_CONF (per_process_memory_fraction), other allocator options kept."""
+    parts = [x for x in env.get('PYTORCH_ALLOC_CONF', '').split(',') if x and not x.startswith('per_process_memory_fraction:')]
+    env['PYTORCH_ALLOC_CONF'] = ','.join(parts + [f'per_process_memory_fraction:{frac:g}'])
+
 def kv_pool_check(mode, m, engine_args):
     """Warn when the KV cache is small for how the mode is used (GitHub issue #22): with prefix caching, a cache smaller than twice
     the window means agent requests queue and an evicted conversation is re-processed from the start; a lowered
@@ -391,6 +396,8 @@ def main():
     if a.prefix_caching and '--enable-prefix-caching' in engine_args: print(f'mode {a.mode}: prefix caching is part of this mode (--prefix-caching not needed)')
     elif a.prefix_caching:
         pc = COMMON['prefix_caching']; engine_args = [x for x in engine_args if x not in pc['engine_args_drop']] + pc['engine_args_add']; env.update(pc['env'])
+        if m.get('alloc_fraction_prefix_caching'):   # prefix caching has its own measured allocator cap (per mode)
+            set_alloc_fraction(env, m['alloc_fraction_prefix_caching'])
     env['ROCR_VISIBLE_DEVICES'] = ','.join(gpus); env['HIP_VISIBLE_DEVICES'] = ','.join(str(i) for i in range(len(gpus))); env['CUDA_VISIBLE_DEVICES'] = env['HIP_VISIBLE_DEVICES']
     env['HOME'] = '/tmp'; env['USER'] = env['LOGNAME'] = 'paiton'
     for k in COMMON['host_pools']['env']: env.pop(k, None)   # a mode profile may carry it; the host-pools choice decides

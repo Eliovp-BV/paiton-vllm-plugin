@@ -237,3 +237,29 @@ def test_every_mode_parses_reasoning_and_tools(lf):
 def test_parser_args_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, extra):
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, extra).split('docker run')[1]
     assert PARSER_ARGS in run_args
+
+
+# resolved allocator cap per 3-bit mode, without / with --prefix-caching (prefill-long keeps 0.95: 0.94 ran out of memory on a
+# 131K-token prefill there)
+CAP_TABLE = {'decode': ('0.95', '0.94'), 'decode-nopf': ('0.95', '0.94'), 'prefill-long': ('0.95', '0.95'), 'prefill-long-nopf': ('0.95', '0.95')}
+
+
+@pytest.mark.parametrize('mode', sorted(CAP_TABLE))
+def test_3bit_allocator_cap(lf, monkeypatch, capsys, tmp_path, mode):
+    for extra, frac in zip(((), ('--prefix-caching',)), CAP_TABLE[mode]):
+        run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, extra).split('docker run')[1]
+        assert run_args.count('per_process_memory_fraction') == 1
+        assert f'PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:{frac}' in run_args
+
+
+def test_set_alloc_fraction(lf):
+    env = {'PYTORCH_ALLOC_CONF': 'max_split_size_mb:64,per_process_memory_fraction:0.95'}
+    lf.set_alloc_fraction(env, 0.94)
+    assert env['PYTORCH_ALLOC_CONF'] == 'max_split_size_mb:64,per_process_memory_fraction:0.94'
+    env = {}; lf.set_alloc_fraction(env, 0.925)
+    assert env['PYTORCH_ALLOC_CONF'] == 'per_process_memory_fraction:0.925'
+
+
+def test_4bit_cache_keeps_its_cap(lf, monkeypatch, capsys, tmp_path):
+    run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-cache', 125.8, ('--prefix-caching',)).split('docker run')[1]
+    assert 'per_process_memory_fraction:0.925' in run_args and run_args.count('per_process_memory_fraction') == 1
