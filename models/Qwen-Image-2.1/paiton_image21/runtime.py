@@ -154,6 +154,8 @@ class ImageEngine:
                 qk8_directory=companions.get("attention-full8" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "attention-qk8")
             self.native_regions=install(self.pipeline.transformer,artifacts/"bf16-regions",
                                         companions.get("attention"),companions.get("normfuse"),fp8_directories,qk8_directory)
+            if self.native_regions is not None:   # approximate attention only from this transformer forward on (1-based count)
+                self.native_regions.qk8_from_forward=int(os.environ.get("PAITON_IMAGE21_ATTENTION_QK8_FROM","0"))
             self.native_fusion_status="active" if self.native_regions is not None else "unsupported configuration; original regions retained"
             if self.native_regions is not None:
                 active=["bf16-regions"]+[name for name,library in (("attention",self.native_regions.attention_library),
@@ -169,11 +171,14 @@ class ImageEngine:
             norm_directory=artifacts/"vae-norm" if (artifacts/"vae-norm"/"manifest.json").is_file() else None
             self.vae_regions=install_vae(self.pipeline.vae,norm_directory)
         # text encoder placement: "1" = host-resident (language model uploaded per request), "lite" = language model
-        # resident on the GPU with the token embedding and the vision tower on the host, else fully resident
+        # resident on the GPU with the token embedding and the vision tower on the host, "auto" = as lite, but a
+        # request above 1024x1024 releases the language model to its pinned host copy after encoding (VRAM for the
+        # 2048 denoiser and VAE) and the next request uploads it again; else fully resident
         te_mode=os.environ.get("PAITON_IMAGE21_TE_HOST","0")
-        self.text_encoder_host="lite" if te_mode=="lite" else te_mode=="1"
+        self.text_encoder_host={"1":True,"lite":"lite","auto":"auto"}.get(te_mode,False)
+        self._te_release_after=False
         if self.text_encoder_host:
-            self._host_text_encoder(language_resident=te_mode=="lite")
+            self._host_text_encoder("host" if te_mode=="1" else te_mode)
         self._guarded_encode=prompt_guard.install(self.pipeline)   # outermost: every prompt encoding passes the guard
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
@@ -211,7 +216,7 @@ class ImageEngine:
             te.lm_head=NoLogits()
             torch.cuda.empty_cache()
 
-    def _host_text_encoder(self,language_resident=False):
+    def _host_text_encoder(self,mode="host"):
         """Keep the text encoder's tensors in pinned host memory and upload the language-model tensors for the prompt
         encoding of each request (frees their VRAM for the denoiser and the VAE; costs one host-to-device copy per
         request). The token embedding is looked up on the host (only the prompt's rows are copied) and the vision
@@ -228,14 +233,20 @@ class ImageEngine:
             for kind,store in (("p",module._parameters),("b",module._buffers)):
                 for key,value in store.items():
                     if value is not None and value.is_cuda:
-                        if language_resident and module is not embed and module not in visual_modules:
+                        language=module is not embed and module not in visual_modules
+                        if language and mode=="lite":
                             continue   # "lite": the language model stays on the GPU
                         host=torch.empty(value.shape,dtype=value.dtype,pin_memory=True)
                         host.copy_(value)
+                        if language and mode=="auto":
+                            self._te_slots.append((store,key,kind,host))   # resident until a large request releases it
+                            continue
                         store[key]=torch.nn.Parameter(host,requires_grad=False) if kind=="p" else host
                         if module is embed:
                             continue   # never uploaded: host lookup below
                         (self._te_visual_slots if module in visual_modules else self._te_slots).append((store,key,kind,host))
+        self._te_mode=mode
+        self._te_language_on_gpu=mode!="host"
         torch.cuda.empty_cache()
         def embed_forward(input_ids,_embed=embed):
             rows=torch.nn.functional.embedding(input_ids.reshape(-1).cpu(),_embed.weight,_embed.padding_idx)
@@ -269,9 +280,15 @@ class ImageEngine:
     def _text_encoder_to(self,device):
         import torch
         if device:
-            self._upload_slots(self._te_slots)
+            if not self._te_language_on_gpu:
+                self._upload_slots(self._te_slots)
+                self._te_language_on_gpu=True
             return
-        for store,key,kind,host in self._te_slots+self._te_visual_slots:
+        release=self._te_visual_slots
+        if self._te_mode=="host" or (self._te_mode=="auto" and self._te_release_after):
+            release=self._te_slots+release
+            self._te_language_on_gpu=False
+        for store,key,kind,host in release:
             store[key]=torch.nn.Parameter(host,requires_grad=False) if kind=="p" else host
 
     def _release_prefix(self):
@@ -289,6 +306,7 @@ class ImageEngine:
             raise RuntimeError("prompt guard is not installed on the pipeline; refusing the request")
         if not self.busy.acquire(blocking=False):
             raise RuntimeError("The single-request GPU worker is busy")
+        self._te_release_after=width*height>1024*1024
         started=time.perf_counter()
         if self.native_regions is not None and getattr(self.native_regions,"fp8",None) is not None:
             self.native_regions.fp8.forwards=0   # precision schedule counts transformer forwards per request

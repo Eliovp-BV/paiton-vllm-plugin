@@ -364,7 +364,8 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
             elif kv_cache_mode == 'cached':
                 cached_k,cached_v = layer_cache.get()
         if segments is None and self.native.attention_native_usable(query,key,value,cached_k,cached_v,attention_mask):
-            if getattr(self.native, 'qk8_library', None) is not None and fp8 is not None:   # fp8 is None unless this forward is low precision
+            if (getattr(self.native, 'qk8_library', None) is not None and fp8 is not None   # fp8 is None unless this forward is low precision
+                    and fp8.forwards > getattr(self.native, 'qk8_from_forward', 0)):
                 result = self.native.attention_qk8(query,key,value,cached_k,cached_v)
             else:
                 result = self.native.attention_native(query,key,value,cached_k,cached_v)
