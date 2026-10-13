@@ -1,17 +1,21 @@
 """Serialized, bounded image requests using a pinned packed checkpoint."""
 import os
-os.environ.update(MIOPEN_FIND_MODE="FAST",MIOPEN_DEBUG_CONV_GEMM="0",
-                  MIOPEN_ENABLE_LOGGING="0",MIOPEN_LOG_LEVEL="2",
+for _key,_value in (("MIOPEN_FIND_MODE","FAST"),("MIOPEN_DEBUG_CONV_GEMM","0")):
+    os.environ.setdefault(_key,_value)   # VAE convolution solver selection; an explicit environment value wins (experiments)
+os.environ.update(MIOPEN_ENABLE_LOGGING="0",MIOPEN_LOG_LEVEL="2",
                   HF_HUB_OFFLINE="1",TRANSFORMERS_OFFLINE="1",TORCH_COMPILE_DISABLE="1",
                   PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True")
 import fcntl
-import io
 import json
 from pathlib import Path
 import threading
 import time
 # the minors prompt guard is required: a missing or broken guard module stops the engine from importing / starting
 from . import guard as prompt_guard
+from .png import encode_png
+import numpy as np
+
+PNG_THREADS=max(1,min(8,os.cpu_count() or 1))
 
 def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
                      seed=42, mode="text-to-image", image=None, sigmas=None):
@@ -122,6 +126,7 @@ class ImageEngine:
             enable_native_unpack(library)
         begin=time.perf_counter()
         self.pipeline=load_pipeline(self.model_dir,self.model_dir,verify_hashes=verify)
+        self._slim_text_encoder()
         if native_fusions:
             from .native_regions import install
             companions={name:artifacts/name for name in ("attention","attention-w64","attention-qk8","attention-full8","normfuse","gemm-fp8","gemm-int8","gemm-w64","quantize","unpack-fp8") if (artifacts/name/"manifest.json").is_file()}
@@ -151,9 +156,17 @@ class ImageEngine:
                 if getattr(self.native_regions,"qk8_library",None) is not None:
                     active.append(("int8-QK + fp8-PV" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "int8-QK")+" attention on low-precision forwards")
                 self.native_fusion_status="active ("+", ".join(active)+")"
-        self.text_encoder_host=os.environ.get("PAITON_IMAGE21_TE_HOST")=="1"
+        self.vae_regions=None
+        if native_fusions and os.environ.get("PAITON_IMAGE21_VAE_FAST","1")=="1":
+            from .vae_fast import install as install_vae
+            norm_directory=artifacts/"vae-norm" if (artifacts/"vae-norm"/"manifest.json").is_file() else None
+            self.vae_regions=install_vae(self.pipeline.vae,norm_directory)
+        # text encoder placement: "1" = host-resident (language model uploaded per request), "lite" = language model
+        # resident on the GPU with the token embedding and the vision tower on the host, else fully resident
+        te_mode=os.environ.get("PAITON_IMAGE21_TE_HOST","0")
+        self.text_encoder_host="lite" if te_mode=="lite" else te_mode=="1"
         if self.text_encoder_host:
-            self._host_text_encoder()
+            self._host_text_encoder(language_resident=te_mode=="lite")
         self._guarded_encode=prompt_guard.install(self.pipeline)   # outermost: every prompt encoding passes the guard
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
@@ -170,21 +183,54 @@ class ImageEngine:
                 fp8.begin_transformer_forward()   # precision schedule counts transformer forwards, not block forwards
         self.pipeline.transformer.register_forward_pre_hook(remember_prefix,with_kwargs=True)
 
-    def _host_text_encoder(self):
-        """Keep the text encoder's tensors in pinned host memory and upload them for the prompt encoding of each request
-        (frees their VRAM for the denoiser and the VAE; costs one host-to-device copy per request)."""
+    def _slim_text_encoder(self):
+        """The pipeline reads the text encoder's hidden states only: its 151,936 x 4,096 output projection (1.2 GB) is
+        replaced by an empty-logits stub (identical hidden states; set PAITON_IMAGE21_TE_LOGITS=1 to keep it)."""
         import torch
         te=self.pipeline.text_encoder
+        self.text_encoder_logits=os.environ.get("PAITON_IMAGE21_TE_LOGITS")=="1" or not isinstance(getattr(te,"lm_head",None),torch.nn.Linear)
+        if not self.text_encoder_logits:
+            class NoLogits(torch.nn.Module):   # stand-in output projection: empty logits, hidden states unchanged
+                def forward(self,hidden_states):
+                    return hidden_states[...,:0]
+            te.lm_head=NoLogits()
+            torch.cuda.empty_cache()
+
+    def _host_text_encoder(self,language_resident=False):
+        """Keep the text encoder's tensors in pinned host memory and upload the language-model tensors for the prompt
+        encoding of each request (frees their VRAM for the denoiser and the VAE; costs one host-to-device copy per
+        request). The token embedding is looked up on the host (only the prompt's rows are copied) and the vision
+        tower is uploaded only when a request runs it (edits)."""
+        import torch
+        te=self.pipeline.text_encoder
+        language=getattr(te.model,"language_model",te.model)
+        embed=language.embed_tokens
+        visual=getattr(te.model,"visual",None)
+        visual_modules=set(visual.modules()) if visual is not None else set()
         self._te_slots=[]
+        self._te_visual_slots=[]
         for module in te.modules():
             for kind,store in (("p",module._parameters),("b",module._buffers)):
                 for key,value in store.items():
                     if value is not None and value.is_cuda:
+                        if language_resident and module is not embed and module not in visual_modules:
+                            continue   # "lite": the language model stays on the GPU
                         host=torch.empty(value.shape,dtype=value.dtype,pin_memory=True)
                         host.copy_(value)
-                        self._te_slots.append((store,key,kind,host))
                         store[key]=torch.nn.Parameter(host,requires_grad=False) if kind=="p" else host
+                        if module is embed:
+                            continue   # never uploaded: host lookup below
+                        (self._te_visual_slots if module in visual_modules else self._te_slots).append((store,key,kind,host))
         torch.cuda.empty_cache()
+        def embed_forward(input_ids,_embed=embed):
+            rows=torch.nn.functional.embedding(input_ids.reshape(-1).cpu(),_embed.weight,_embed.padding_idx)
+            return rows.view(*input_ids.shape,rows.shape[-1]).to(input_ids.device)
+        if type(embed) is torch.nn.Embedding and embed.max_norm is None:
+            embed.forward=embed_forward
+        else:   # unexpected embedding module: upload it with the language model
+            self._te_slots.extend((embed._parameters,key,"p",value.data) for key,value in embed._parameters.items() if value is not None)
+        if visual is not None:
+            visual.register_forward_pre_hook(lambda module,args:self._upload_slots(self._te_visual_slots))
         pipeline=self.pipeline
         # the pipeline derives its execution device from the components: keep it on the GPU with a host-resident encoder
         cls=type(pipeline)
@@ -199,11 +245,19 @@ class ImageEngine:
                 self._text_encoder_to(None)
         pipeline.encode_prompt=encode_prompt
 
+    def _upload_slots(self,slots):
+        import torch
+        for store,key,kind,host in slots:
+            value=host.to("cuda",non_blocking=True)
+            store[key]=torch.nn.Parameter(value,requires_grad=False) if kind=="p" else value
+
     def _text_encoder_to(self,device):
         import torch
-        for store,key,kind,host in self._te_slots:
-            value=host.to("cuda",non_blocking=True) if device else host
-            store[key]=torch.nn.Parameter(value,requires_grad=False) if kind=="p" else value
+        if device:
+            self._upload_slots(self._te_slots)
+            return
+        for store,key,kind,host in self._te_slots+self._te_visual_slots:
+            store[key]=torch.nn.Parameter(host,requires_grad=False) if kind=="p" else host
 
     def _release_prefix(self):
         for cache in self._prefix_caches:
@@ -249,8 +303,7 @@ class ImageEngine:
             self.stream.synchronize()
             seconds=time.perf_counter()-started
             assert result.size==(width,height) and result.mode=="RGBA"
-            buffer=io.BytesIO()
-            result.save(buffer,format="PNG")
+            png_bytes=encode_png(np.asarray(result),level=6,threads=PNG_THREADS)   # same pixels, parallel deflate
             row=dict(mode=mode,seed=seed,settings=settings,backend=self.backend,
                      checkpoint_sha256=self.checkpoint_sha256,request_index=self.request_count,
                      complete_request_to_pil_seconds=seconds,complete_request_to_png_seconds=time.perf_counter()-started,
@@ -264,6 +317,9 @@ class ImageEngine:
             row["prompt_guard"]=self.prompt_guard
             row["steps"]=self.steps
             row["text_encoder_host"]=self.text_encoder_host
+            row["text_encoder_logits"]=self.text_encoder_logits
+            if self.vae_regions is not None:
+                row["vae_regions"]=dict(self.vae_regions)
             row["allocator_budget_gib"]=self.allocator_budget_gib
             row["allocator_config"]=self.allocator_config
             if self.native_regions is not None:
@@ -279,7 +335,7 @@ class ImageEngine:
                     if inexact and not fp8.int8:
                         raise RuntimeError(f"fp8 weight reconstruction was not exact: {inexact} values")
             self.request_count+=1
-            return result,buffer.getvalue(),row
+            return result,png_bytes,row
         finally:
             stop.set()
             if monitor.is_alive():
