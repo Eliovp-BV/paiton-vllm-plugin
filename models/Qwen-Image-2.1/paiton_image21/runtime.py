@@ -17,6 +17,13 @@ import numpy as np
 
 PNG_THREADS=max(1,min(8,os.cpu_count() or 1))
 
+def to_uint8_pixels(image):
+    """[1][C][H][W] denormalized bf16 pipeline output ("pt") -> uint8 [H][W][C] host array, computed on the GPU with the
+    framework's PIL conversion arithmetic (bf16 -> fp32, x * 255 in fp32, round half to even, uint8): identical pixels,
+    no fp32 image on the host."""
+    import torch
+    return (image[0].float()*255).round().to(torch.uint8).permute(1,2,0).contiguous().to("cpu")
+
 def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
                      seed=42, mode="text-to-image", image=None, sigmas=None):
     if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>512:
@@ -306,12 +313,16 @@ class ImageEngine:
                 return values
             kwargs={"image":image.convert("RGBA")} if image is not None else {}
             with torch.cuda.stream(self.stream),torch.inference_mode():
-                result=self.pipeline(prompt=actual_prompt,**settings,**kwargs,
-                    generator=torch.Generator("cuda").manual_seed(seed),callback_on_step_end=callback).images[0]
+                image=self.pipeline(prompt=actual_prompt,**settings,**kwargs,output_type="pt",
+                    generator=torch.Generator("cuda").manual_seed(seed),callback_on_step_end=callback).images
+                pixels=to_uint8_pixels(image)
             self.stream.synchronize()
+            pixels=pixels.numpy()
+            from PIL import Image
+            result=Image.fromarray(pixels)
             seconds=time.perf_counter()-started
             assert result.size==(width,height) and result.mode=="RGBA"
-            png_bytes=encode_png(np.asarray(result),level=6,threads=PNG_THREADS)   # same pixels, parallel deflate
+            png_bytes=encode_png(pixels,level=6,threads=PNG_THREADS)   # same pixels, parallel deflate
             row=dict(mode=mode,seed=seed,settings=settings,backend=self.backend,
                      checkpoint_sha256=self.checkpoint_sha256,request_index=self.request_count,
                      complete_request_to_pil_seconds=seconds,complete_request_to_png_seconds=time.perf_counter()-started,
