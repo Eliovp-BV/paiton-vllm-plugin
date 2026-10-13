@@ -317,3 +317,23 @@ def test_ple_host_pageable_ram_check(lf, monkeypatch, capsys):
     assert 'needed 111.8 GiB' in out                                                  # the same RAM as pinned (95.8 + 16)
     meminfo(100.0)                                                                     # pageable tables still need the RAM
     assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out
+
+
+ALL_MODES = ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl']
+
+
+def test_fix_knobs_in_modes(lf):
+    assert sorted(lf.MODES) == sorted(ALL_MODES)
+    for name, m in lf.MODES.items():
+        assert m['env']['PAITON_FN_PLE_QSL_PAD'] == '1', name                       # n-gram tail refresh: every mode
+        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name == '4bit-cache' else None), name
+    assert lf.COMMON['prefix_caching']['env']['PAITON_FN_STEP_PREP_ALIGN'] == 'inplace'
+
+
+@pytest.mark.parametrize('mode,extra,align', [('decode', (), False), ('decode', ('--prefix-caching',), True),
+                                              ('prefill-long', ('--prefix-caching',), True), ('4bit', (), False),
+                                              ('4bit-cache', (), True), ('4bit-long', (), False)])
+def test_fix_knobs_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, extra, align):
+    run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, extra).split('docker run')[1]
+    assert run_args.count('PAITON_FN_PLE_QSL_PAD=1') == 1
+    assert run_args.count('PAITON_FN_STEP_PREP_ALIGN=inplace') == (1 if align else 0)
