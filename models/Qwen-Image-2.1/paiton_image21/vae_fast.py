@@ -48,11 +48,11 @@ NHWC_MIN_PIXELS = int(__import__("os").environ.get("PAITON_IMAGE21_VAE_NHWC_MIN_
 NHWC_MAX_CHANNELS = 288
 
 
-# native 3x3 convolution (vae-conv companion): "0" off, "narrow" for <= NATIVE_MAX_CHANNELS channels in and out at
+# native 3x3 convolution (vae-conv companion): "0" off, "narrow" (default) for <= NATIVE_MAX_CHANNELS channels in and out at
 # >= NATIVE_MIN_PIXELS output pixels, "all" for every qualifying convolution
-NATIVE_CONV = __import__("os").environ.get("PAITON_IMAGE21_VAE_CONV", "0")
+NATIVE_CONV = __import__("os").environ.get("PAITON_IMAGE21_VAE_CONV", "narrow")
 NATIVE_MAX_CHANNELS = 288
-NATIVE_MIN_PIXELS = 1 << 20
+NATIVE_MIN_PIXELS = 0   # R9700: the native kernel wins on every narrow layer (opt3: 1.2-3.1x), MIOpen on the wide ones
 _NATIVE = dict(kernel=None, counts=None)
 
 
