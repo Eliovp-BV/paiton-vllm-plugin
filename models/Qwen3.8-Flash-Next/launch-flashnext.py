@@ -12,6 +12,8 @@ Host pools: 3-bit modes keep ROCm's user-pointer memory for the host-resident ta
   4bit / 4bit-200k   4-bit experts (W4A8 repo) with the expert host tier: experts beyond --expert-vram-gib per GPU live in
                      pinned host memory (about 41 GiB with the default host pool; the launcher checks the RAM first)
   4bit-cache         opt-in for agents and coding tools: 4bit + prefix caching + an 8 GiB RAM prefix tier (needs ~8 GiB more GTT)
+  4bit-long / 4bit-xl  4bit with a 262,144-token window (MTP on): KV 3.5 / 4.5 GiB per GPU (~461K / ~595K tokens), experts
+                     19.75 / 18.75 GiB per GPU in VRAM; --prefix-caching refused (not measured)
 Prerequisites: python3 >= 3.10, docker with GPU device access (/dev/kfd, /dev/dri), the huggingface_hub Python package
   (`pip install huggingface_hub`; the `hf` / `huggingface-cli` binaries are used only as a fallback), two AMD GPUs visible.
 Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--host 0.0.0.0] [--api-key KEY | env PAITON_API_KEY] [--name paiton-flashnext]

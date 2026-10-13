@@ -191,7 +191,7 @@ def test_4bit_default_stays_gtt(lf, monkeypatch, capsys, tmp_path):
     assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 125.8).split('docker run')[1]
 
 
-@pytest.mark.parametrize('mode', ['4bit', '4bit-200k'])
+@pytest.mark.parametrize('mode', ['4bit', '4bit-200k', '4bit-long', '4bit-xl'])
 def test_prefix_caching_refused_on_unmeasured_4bit_modes(lf, monkeypatch, capsys, tmp_path, mode):
     with pytest.raises(SystemExit, match='use --mode 4bit-cache'):
         mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--prefix-caching',))
@@ -211,3 +211,13 @@ def test_kv_pool_warnings(lf, capsys):
     assert lf.kv_pool_check('4bit', m['4bit'], low) == 76334
     out = capsys.readouterr().out
     assert 'is below the 4bit value 2,684,354,560' in out and 'refuse to start' in out
+
+
+@pytest.mark.parametrize('mode,kv_bytes,vram,tokens', [('4bit-long', '3758096384', '19.75', 461566), ('4bit-xl', '4831838208', '18.75', 595050)])
+def test_4bit_long_modes(lf, monkeypatch, capsys, tmp_path, mode, kv_bytes, vram, tokens):
+    m = lf.MODES[mode]
+    assert m['kv_pool_tokens'] == tokens and 'PAITON_FN_EXPERT_DYN_LOG' not in m['env']
+    run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
+    assert '--max-model-len 262144' in run_args and f'--kv-cache-memory-bytes {kv_bytes}' in run_args
+    assert f'vram_gib={vram},' in run_args and 'per_process_memory_fraction:0.925' in run_args
+    assert '--no-enable-prefix-caching' in run_args and 'HSA_USERPTR_FOR_PAGED_MEM=0' in run_args
