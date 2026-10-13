@@ -390,9 +390,15 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
                     outputs.append(self.native.attention(query[:,start:end],key[:,:end],value[:,:end],
                         attn_mask=mask,dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
                 prefix = segments[-1][1] if segments else 0
-                outputs.append(self.native.attention(query[:,prefix:],key,value,
-                    attn_mask=None if key_valid is None else key_valid[:,None,None,:],
-                    dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
+                image_mask = None if key_valid is None else key_valid[:,None,None,:]
+                image_query = query[:,prefix:]
+                if cached_k is None and self.native.attention_native_usable(image_query,key,value,None,None,image_mask):
+                    # image queries attend to every key without a mask: the dense exact kernel (text queries keep
+                    # their causal-masked framework path above)
+                    outputs.append(self.native.attention_native(image_query,key,value))
+                else:
+                    outputs.append(self.native.attention(image_query,key,value,attn_mask=image_mask,
+                        dropout_p=0.0,backend=None,parallel_config=self._parallel_config))
                 result = torch.cat(outputs,dim=1)
         result = result[:,:query.shape[1]].flatten(2,3).type_as(query)
         if fp8 is not None:
