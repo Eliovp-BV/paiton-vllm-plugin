@@ -169,7 +169,8 @@ class ImageEngine:
         if native_fusions and os.environ.get("PAITON_IMAGE21_VAE_FAST","1")=="1":
             from .vae_fast import install as install_vae
             norm_directory=artifacts/"vae-norm" if (artifacts/"vae-norm"/"manifest.json").is_file() else None
-            self.vae_regions=install_vae(self.pipeline.vae,norm_directory)
+            conv_directory=artifacts/"vae-conv" if (artifacts/"vae-conv"/"manifest.json").is_file() else None
+            self.vae_regions=install_vae(self.pipeline.vae,norm_directory,conv_directory)
         # text encoder placement: "1" = host-resident (language model uploaded per request), "lite" = language model
         # resident on the GPU with the token embedding and the vision tower on the host, "auto" = as lite, but a
         # request above 1024x1024 releases the language model to its pinned host copy after encoding (VRAM for the
