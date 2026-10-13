@@ -10,15 +10,16 @@ import json
 from pathlib import Path
 import threading
 import time
+# the minors prompt guard is required: a missing or broken guard module stops the engine from importing / starting
+from . import guard as prompt_guard
 
 def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
                      seed=42, mode="text-to-image", image=None, sigmas=None):
     if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>512:
         raise ValueError("prompt must contain 1 to 512 characters")
-    from .guard import check_prompt
-    allowed,reason=check_prompt(prompt)
+    allowed,reason=prompt_guard.check_prompt(prompt)
     if not allowed:
-        raise ValueError("Prompt refused: sexual content involving minors is not allowed")
+        raise ValueError(prompt_guard.REFUSAL)
     if type(width) is not int or type(height) is not int or width!=height or width not in (1024,2048):
         raise ValueError("Qualified sizes are 1024x1024 and 2048x2048, batch one")
     required=len(sigmas) if sigmas else 40   # a checkpoint with a fixed sampling schedule (Turbo) defines its step count
@@ -68,6 +69,7 @@ class ImageEngine:
                          "PAITON_IMAGE21_LP_POW2":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
     }
     def __init__(self,model_dir,backend="native",artifact_dir=None,verify=True,native_fusions=False,precision_profile=None):
+        self.prompt_guard=prompt_guard.self_test()   # fail closed before any GPU work
         if native_fusions and backend != "native":
             raise ValueError("native_fusions requires the native backend")
         precision_profile=precision_profile or os.environ.get("PAITON_IMAGE21_PROFILE") or "exact"
@@ -152,6 +154,7 @@ class ImageEngine:
         self.text_encoder_host=os.environ.get("PAITON_IMAGE21_TE_HOST")=="1"
         if self.text_encoder_host:
             self._host_text_encoder()
+        self._guarded_encode=prompt_guard.install(self.pipeline)   # outermost: every prompt encoding passes the guard
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
         self.stream=torch.cuda.Stream()
@@ -213,6 +216,8 @@ class ImageEngine:
         import torch
         settings=validate_request(prompt,width,height,self.steps if steps is None else steps,guidance,seed,mode,image,
                                   self.sample_sigmas)
+        if getattr(self.pipeline,"encode_prompt",None) is not self._guarded_encode:
+            raise RuntimeError("prompt guard is not installed on the pipeline; refusing the request")
         if not self.busy.acquire(blocking=False):
             raise RuntimeError("The single-request GPU worker is busy")
         started=time.perf_counter()
@@ -256,6 +261,7 @@ class ImageEngine:
             row["precision_profile"]=self.precision_profile
             row["model"]=self.model_id
             row["model_variant"]=self.model_variant
+            row["prompt_guard"]=self.prompt_guard
             row["steps"]=self.steps
             row["text_encoder_host"]=self.text_encoder_host
             row["allocator_budget_gib"]=self.allocator_budget_gib

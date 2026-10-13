@@ -72,3 +72,39 @@ def check_prompt(text):
     if mi or age is not None:
         return False, f"blocked: sexual/nudity term '{sex.group(0)}' with minor indicator '{mi.group(0) if mi else str(age) + ' years'}'"
     return True, "ok (adult content allowed)"
+
+GUARD_ID = "minors-v1"
+REFUSAL = "Prompt refused: sexual content involving minors is not allowed"
+# canaries for the fail-closed load check (text only; the engine refuses to start if any canary is misclassified)
+_MUST_BLOCK = ("nude 15 year old", "sexy schoolgirl", "naked child", "nsfw loli", "s3xy t33n", "裸体 萝莉")
+_MUST_ALLOW = ("nude adult woman, 30 years old, fine art photography", "a child flying a kite in a park",
+               "a red vintage bicycle with a wicker basket")
+
+def self_test():
+    """Raise RuntimeError unless the guard classifies every canary correctly; returns the guard id."""
+    wrong = [p for p in _MUST_BLOCK if check_prompt(p)[0]] + [p for p in _MUST_ALLOW if not check_prompt(p)[0]]
+    if wrong:
+        raise RuntimeError(f"prompt guard self-test failed on {len(wrong)} canaries; refusing to serve")
+    return GUARD_ID
+
+def check_prompts(prompt, prompt_embeds=None):
+    """Pipeline-level gate: raise ValueError for a refused prompt (str or list) and for precomputed prompt embeddings
+    without their text, which would bypass the text check."""
+    if prompt is None:
+        if prompt_embeds is not None:
+            raise ValueError("Prompt refused: precomputed prompt embeddings bypass the prompt guard")
+        return
+    for p in [prompt] if isinstance(prompt, str) else list(prompt):
+        if not isinstance(p, str) or not check_prompt(p)[0]:
+            raise ValueError(REFUSAL)
+
+def install(pipeline):
+    """Wrap pipeline.encode_prompt so every prompt encoding (positive and negative, any caller) passes the guard first.
+    Returns the wrapper; the engine checks before each request that it is still the pipeline's encode_prompt."""
+    original = pipeline.encode_prompt
+    def encode_prompt(*args, **kwargs):
+        check_prompts(kwargs.get("prompt", args[0] if args else None), kwargs.get("prompt_embeds"))
+        return original(*args, **kwargs)
+    encode_prompt.paiton_prompt_guard = GUARD_ID
+    pipeline.encode_prompt = encode_prompt
+    return encode_prompt
