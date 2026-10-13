@@ -48,6 +48,10 @@ compaction can pause the GPUs for a few seconds right after start. `--settle-s 0
 **API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8-Flash-Next` ·
 **API key:** none unless you set one (enter any value if a client asks)
 
+**Thinking and tool calls.** The model thinks before it answers unless the request sets
+`"chat_template_kwargs": {"enable_thinking": false}`. The server returns the thinking in `reasoning` (streamed as
+`delta.reasoning`) and the answer in `content`; with `tools` in the request, tool calls come back as `tool_calls`.
+
 The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local. To require an API key, start it with the key
 in the environment: `PAITON_API_KEY=<key> bash models/Qwen3.8-Flash-Next/run-flashnext.sh` (clients then send it as the bearer token).
 `--api-key KEY` works too, but the key is then visible in the process list (`ps`) of the machine. Use a key or a firewall if the
