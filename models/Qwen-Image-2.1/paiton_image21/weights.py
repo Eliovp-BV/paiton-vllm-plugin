@@ -1,7 +1,10 @@
-"""Isolated external reference consumer for Quark MXFP4 weights.
+"""Isolated external reference consumer for Quark MXFP4 weights and FP8 per-row (per-channel) weights.
 
 This consumer reconstructs a BF16 matrix for each operation. It does not claim
-native MXFP4 GEMM, compiler integration, or an inference speedup.
+native MXFP4 GEMM, compiler integration, or an inference speedup. FP8 per-row
+weights (format paiton-qit-fp8-row-v1: fp8 e4m3fn codes plus one fp32 scale per
+output row) are kept as codes; the BF16 path decodes them natively on use and the
+low-precision path feeds the codes and row scales to the FP8 GEMM directly.
 """
 import hashlib
 import ctypes
@@ -15,15 +18,21 @@ from safetensors import safe_open
 
 E2M1 = [0,.5,1,1.5,2,3,4,6,-0.,-.5,-1,-1.5,-2,-3,-4,-6]
 _NATIVE_UNPACK = None
+_NATIVE_FP8ROW = None
 _NATIVE_LIBRARY = None
+FORMATS = ("paiton-research-mxfp4-weight-only-v2", "paiton-qit-fp8-row-v1")
 
 def enable_native_unpack(path):
     """Raw-pointer C ABI adapter; native library has no framework dependency."""
-    global _NATIVE_UNPACK,_NATIVE_LIBRARY
+    global _NATIVE_UNPACK,_NATIVE_FP8ROW,_NATIVE_LIBRARY
     _NATIVE_LIBRARY=ctypes.CDLL(str(Path(path).resolve()))
     _NATIVE_UNPACK=_NATIVE_LIBRARY.paiton_mxfp4_unpack
     _NATIVE_UNPACK.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_size_t,ctypes.c_void_p]
     _NATIVE_UNPACK.restype=ctypes.c_int
+    if hasattr(_NATIVE_LIBRARY,"paiton_fp8row_unpack"):
+        _NATIVE_FP8ROW=_NATIVE_LIBRARY.paiton_fp8row_unpack
+        _NATIVE_FP8ROW.argtypes=[ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_int,ctypes.c_int,ctypes.c_void_p]
+        _NATIVE_FP8ROW.restype=ctypes.c_int
 
 def sha256(path):
     h = hashlib.sha256()
@@ -60,6 +69,27 @@ class PackedWeightMixin:
         return decode_matrix(self._packed_weight,self._packed_scale,
                              math.prod(shape[1:]),self._mxfp4_lookup).reshape(shape)
 
+def decode_fp8row(weight, scale):
+    """bf16 [rows][cols] = e4m3(codes) * scale[row] (exact for power-of-two row scales)."""
+    rows, cols = weight.shape
+    if _NATIVE_FP8ROW is not None:
+        assert weight.is_cuda and weight.is_contiguous() and scale.is_contiguous() and scale.dtype == torch.float32
+        out=torch.empty((rows,cols),device=weight.device,dtype=torch.bfloat16)
+        rc=_NATIVE_FP8ROW(weight.data_ptr(),scale.data_ptr(),out.data_ptr(),rows,cols,
+                          torch.cuda.current_stream(weight.device).cuda_stream)
+        if rc:
+            raise RuntimeError(f"Native fp8 row decode failed with HIP status {rc}")
+        return out
+    return (weight.view(torch.float8_e4m3fn).float() * scale.unsqueeze(-1)).to(torch.bfloat16)
+
+class Fp8RowWeightMixin:
+    @property
+    def weight(self):
+        cached=self.__dict__.get("_materialized_weight")
+        if cached is not None:
+            return cached
+        return decode_fp8row(self._fp8_weight,self._fp8_scale)
+
 class PackedEmbeddingMixin(PackedWeightMixin):
     def forward(self, indices):
         assert self.max_norm is None, "MXFP4 embedding max_norm is unsupported"
@@ -91,13 +121,29 @@ def install_packed(module, row, weight, scale, device):
     module.register_buffer("_packed_scale",scale.to(device))
     module.register_buffer("_mxfp4_lookup",torch.tensor(E2M1,dtype=torch.float32,device=device),persistent=False)
 
+def install_fp8row(module, row, weight, scale, device):
+    shape = tuple(row["shape"])
+    assert row["kind"] == "linear" and tuple(module.weight.shape) == shape and len(shape) == 2
+    weight = weight.view(torch.uint8) if weight.dtype == torch.float8_e4m3fn else weight
+    assert weight.dtype == torch.uint8 and tuple(weight.shape) == shape
+    assert scale.dtype == torch.float32 and tuple(scale.shape) == (shape[0],)
+    old_type = type(module)
+    pair = (Fp8RowWeightMixin,old_type)
+    if pair not in _TYPES:
+        _TYPES[pair] = type("Fp8Row"+old_type.__name__,(Fp8RowWeightMixin,old_type),{})
+    del module._parameters["weight"]
+    module.__class__ = _TYPES[pair]
+    module._original_weight_shape = shape
+    module.register_buffer("_fp8_weight",weight.contiguous().to(device))
+    module.register_buffer("_fp8_scale",scale.contiguous().to(device))
+
 def load_component(snapshot, bundle, name, device="cuda", quantized=True, verify_hashes=False, event=None):
     from diffusers import QwenImage21Transformer2DModel, AutoencoderKLQwenImage21
     from transformers import Qwen3VLConfig, Qwen3VLForConditionalGeneration
     snapshot, bundle = Path(snapshot), Path(bundle)
     manifest = json.loads((bundle/"result.json").read_text())
     assert manifest["status"] == "completed_conversion_only"
-    assert manifest["format"] == "paiton-research-mxfp4-weight-only-v2"
+    assert manifest["format"] in FORMATS, manifest["format"]
     with init_empty_weights(include_buffers=False):
         if name == "text_encoder":
             config = Qwen3VLConfig.from_pretrained(str(snapshot/name),local_files_only=True)
@@ -129,8 +175,9 @@ def load_component(snapshot, bundle, name, device="cuda", quantized=True, verify
                 value = f.get_tensor(key)
                 if key in targets:
                     row = targets[key]
-                    install_packed(model.get_submodule(row["name"]),row,value,
-                                   f.get_tensor(row["name"]+".weight_scale"),device)
+                    install = install_fp8row if row.get("format") == "fp8-row" else install_packed
+                    install(model.get_submodule(row["name"]),row,value,
+                            f.get_tensor(row["name"]+".weight_scale"),device)
                 else:
                     assert tuple(value.shape) == expected[key],key
                     parent,leaf = key.rsplit(".",1)
@@ -170,7 +217,7 @@ def materialize_denoiser_weights(transformer):
     """Reference baseline: expand once for all steps; release before VAE."""
     count=0
     for module in transformer.modules():
-        if isinstance(module,PackedWeightMixin):
+        if isinstance(module,(PackedWeightMixin,Fp8RowWeightMixin)):
             if module.__dict__.get("_materialized_weight") is None:
                 module._materialized_weight=module.weight
                 count+=module._materialized_weight.numel()*2

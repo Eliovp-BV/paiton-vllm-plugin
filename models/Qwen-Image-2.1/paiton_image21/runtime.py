@@ -12,13 +12,18 @@ import threading
 import time
 
 def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
-                     seed=42, mode="text-to-image", image=None):
+                     seed=42, mode="text-to-image", image=None, sigmas=None):
     if not isinstance(prompt,str) or not prompt.strip() or len(prompt)>512:
         raise ValueError("prompt must contain 1 to 512 characters")
+    from .guard import check_prompt
+    allowed,reason=check_prompt(prompt)
+    if not allowed:
+        raise ValueError("Prompt refused: sexual content involving minors is not allowed")
     if type(width) is not int or type(height) is not int or width!=height or width not in (1024,2048):
         raise ValueError("Qualified sizes are 1024x1024 and 2048x2048, batch one")
-    if type(steps) is not int or steps!=40 or type(guidance) not in (int,float) or guidance!=1.0:
-        raise ValueError("This profile requires 40 steps and guidance 1.0")
+    required=len(sigmas) if sigmas else 40   # a checkpoint with a fixed sampling schedule (Turbo) defines its step count
+    if type(steps) is not int or steps!=required or type(guidance) not in (int,float) or guidance!=1.0:
+        raise ValueError(f"This model requires {required} steps and guidance 1.0")
     if type(seed) is not int or not 0<=seed<2**63:
         raise ValueError("seed must be an integer in [0, 2**63)")
     if mode not in ("text-to-image","rgba","edit"):
@@ -30,8 +35,11 @@ def validate_request(prompt, width=2048, height=2048, steps=40, guidance=1.0,
             raise ValueError("Edit input is limited to 4,194,304 pixels")
     elif image is not None:
         raise ValueError("Input images are accepted only for edit requests")
-    return dict(width=width,height=height,output_resolution=width,num_inference_steps=steps,
-                true_cfg_scale=guidance,use_kv_cache=True)
+    settings=dict(width=width,height=height,output_resolution=width,num_inference_steps=steps,
+                  true_cfg_scale=guidance,use_kv_cache=True)
+    if sigmas:
+        settings["sigmas"]=list(sigmas)
+    return settings
 
 class ImageEngine:
     PRECISION_PROFILES={
@@ -50,6 +58,14 @@ class ImageEngine:
                             "PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
         # bit-exact fp8 weights with fp8 per-row activations on the eleven-forward schedule (slower GEMMs)
         "schedule-fp8":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"11","PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # Turbo FP8 checkpoint (8 steps): steps 1-2 with bf16 activations on the 8-bit weights, steps 3-8 fp8 activations
+        # with power-of-two per-token scales through the FP8 GEMM fed directly by the stored codes and row scales;
+        # exact wave64 attention on every step (the arithmetic contract of the checkpoint's paiton_quant.json)
+        "turbo-fp8":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"2","PAITON_IMAGE21_LP_POW2":"1",
+                     "PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # the same with the wave64 fp8 GEMM (speed candidate)
+        "turbo-fp8-w64":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"2",
+                         "PAITON_IMAGE21_LP_POW2":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
     }
     def __init__(self,model_dir,backend="native",artifact_dir=None,verify=True,native_fusions=False,precision_profile=None):
         if native_fusions and backend != "native":
@@ -86,6 +102,10 @@ class ImageEngine:
         checkpoint_metadata=json.loads(manifest.read_text())
         self.model_id=checkpoint_metadata.get("model_id","paiton-image-2.1")
         self.model_variant=checkpoint_metadata.get("model_variant","original")
+        # fixed sampling schedule of the checkpoint (Turbo: model_index.json sample_sigmas); None = 40-step 2.1 schedule
+        index=self.model_dir/"model_index.json"
+        self.sample_sigmas=json.loads(index.read_text()).get("sample_sigmas") if index.is_file() else None
+        self.steps=len(self.sample_sigmas) if self.sample_sigmas else 40
         self.backend=backend
         self.allocator_budget_gib=26
         self.allocator_config="expandable_segments:True"
@@ -113,7 +133,8 @@ class ImageEngine:
                                      gemm_w64_directory=companions.get("gemm-w64"),format=low_precision,
                                      wave64=os.environ.get("PAITON_IMAGE21_LP_W64")=="1",
                                      from_step=int(os.environ.get("PAITON_IMAGE21_LP_FROM_STEP","0")),
-                                     exact_prefix=os.environ.get("PAITON_IMAGE21_LP_QUANTIZE_PREFIX")!="1")
+                                     exact_prefix=os.environ.get("PAITON_IMAGE21_LP_QUANTIZE_PREFIX")!="1",
+                                     pow2=os.environ.get("PAITON_IMAGE21_LP_POW2")=="1")
             qk8_directory=None
             if low_precision and os.environ.get("PAITON_IMAGE21_ATTENTION_QK8")=="1":
                 qk8_directory=companions.get("attention-full8" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "attention-qk8")
@@ -128,6 +149,9 @@ class ImageEngine:
                 if getattr(self.native_regions,"qk8_library",None) is not None:
                     active.append(("int8-QK + fp8-PV" if os.environ.get("PAITON_IMAGE21_ATTENTION_FULL8")=="1" else "int8-QK")+" attention on low-precision forwards")
                 self.native_fusion_status="active ("+", ".join(active)+")"
+        self.text_encoder_host=os.environ.get("PAITON_IMAGE21_TE_HOST")=="1"
+        if self.text_encoder_host:
+            self._host_text_encoder()
         torch.cuda.synchronize()
         self.load_seconds=time.perf_counter()-begin
         self.stream=torch.cuda.Stream()
@@ -143,16 +167,52 @@ class ImageEngine:
                 fp8.begin_transformer_forward()   # precision schedule counts transformer forwards, not block forwards
         self.pipeline.transformer.register_forward_pre_hook(remember_prefix,with_kwargs=True)
 
+    def _host_text_encoder(self):
+        """Keep the text encoder's tensors in pinned host memory and upload them for the prompt encoding of each request
+        (frees their VRAM for the denoiser and the VAE; costs one host-to-device copy per request)."""
+        import torch
+        te=self.pipeline.text_encoder
+        self._te_slots=[]
+        for module in te.modules():
+            for kind,store in (("p",module._parameters),("b",module._buffers)):
+                for key,value in store.items():
+                    if value is not None and value.is_cuda:
+                        host=torch.empty(value.shape,dtype=value.dtype,pin_memory=True)
+                        host.copy_(value)
+                        self._te_slots.append((store,key,kind,host))
+                        store[key]=torch.nn.Parameter(host,requires_grad=False) if kind=="p" else host
+        torch.cuda.empty_cache()
+        pipeline=self.pipeline
+        # the pipeline derives its execution device from the components: keep it on the GPU with a host-resident encoder
+        cls=type(pipeline)
+        pipeline.__class__=type(cls.__name__,(cls,),{"_execution_device":property(lambda _:torch.device("cuda")),
+                                                      "device":property(lambda _:torch.device("cuda"))})
+        original=pipeline.encode_prompt
+        def encode_prompt(*args,**kwargs):
+            self._text_encoder_to("cuda")
+            try:
+                return original(*args,**kwargs)
+            finally:
+                self._text_encoder_to(None)
+        pipeline.encode_prompt=encode_prompt
+
+    def _text_encoder_to(self,device):
+        import torch
+        for store,key,kind,host in self._te_slots:
+            value=host.to("cuda",non_blocking=True) if device else host
+            store[key]=torch.nn.Parameter(value,requires_grad=False) if kind=="p" else value
+
     def _release_prefix(self):
         for cache in self._prefix_caches:
             for layer in cache.layer_caches:
                 layer.k=layer.v=None
         self._prefix_caches.clear()
 
-    def generate(self,prompt,width=2048,height=2048,steps=40,guidance=1.0,seed=42,
+    def generate(self,prompt,width=2048,height=2048,steps=None,guidance=1.0,seed=42,
                  mode="text-to-image",image=None):
         import torch
-        settings=validate_request(prompt,width,height,steps,guidance,seed,mode,image)
+        settings=validate_request(prompt,width,height,self.steps if steps is None else steps,guidance,seed,mode,image,
+                                  self.sample_sigmas)
         if not self.busy.acquire(blocking=False):
             raise RuntimeError("The single-request GPU worker is busy")
         started=time.perf_counter()
@@ -174,7 +234,7 @@ class ImageEngine:
             torch.cuda.reset_peak_memory_stats()
             monitor.start()
             def callback(pipe,step,timestep,values):
-                if step==39:
+                if step==self.steps-1:
                     self._release_prefix()
                 return values
             kwargs={"image":image.convert("RGBA")} if image is not None else {}
@@ -196,6 +256,8 @@ class ImageEngine:
             row["precision_profile"]=self.precision_profile
             row["model"]=self.model_id
             row["model_variant"]=self.model_variant
+            row["steps"]=self.steps
+            row["text_encoder_host"]=self.text_encoder_host
             row["allocator_budget_gib"]=self.allocator_budget_gib
             row["allocator_config"]=self.allocator_config
             if self.native_regions is not None:

@@ -18,7 +18,7 @@ FORMATS = {'fp8-row': (False, 0), 'int8-row': (True, 0), 'int8-32': (True, 32), 
 
 class Fp8Regions:
     def __init__(self, gemm_directory, quantize_directory, unpack_directory, format='fp8-row', gemm_int8_directory=None,
-                 gemm_w64_directory=None, wave64=False, from_step=0, exact_prefix=True):
+                 gemm_w64_directory=None, wave64=False, from_step=0, exact_prefix=True, pow2=False):
         if format not in FORMATS:
             raise ValueError(f'unknown low-precision format {format}')
         self.format = format
@@ -26,6 +26,9 @@ class Fp8Regions:
         self.wave64 = bool(wave64)
         self.from_step = int(from_step)
         self.exact_prefix = bool(exact_prefix)
+        self.pow2 = bool(pow2)   # power-of-two activation scales (fp8 per-row only): the FP8 Turbo checkpoint contract
+        if self.pow2 and (self.int8 or self.block):
+            raise ValueError('power-of-two activation scales are defined for fp8-row only')
         self.gemm_manifest = self.gemm_int8_manifest = self.gemm_w64_manifest = None
         if self.wave64:
             self.gemm_w64_library, self.gemm_w64_manifest = _load_library(
@@ -83,7 +86,12 @@ class Fp8Regions:
         return self.active
 
     def weight_fp8(self, module):
-        """Reconstruction of a packed MXFP4 linear weight into fp8 (exact) or int8 codes and one 2^k scale per row."""
+        """Reconstruction of a packed MXFP4 linear weight into fp8 (exact) or int8 codes and one 2^k scale per row;
+        FP8 per-row checkpoint weights are used as stored (codes and fp32 row scales, no reconstruction)."""
+        if hasattr(module, '_fp8_weight'):
+            if self.int8:
+                raise RuntimeError('FP8 per-row weights need the fp8-row low-precision format')
+            return module._fp8_weight, module._fp8_scale
         packed, scale = module._packed_weight, module._packed_scale
         rows, padded = packed.shape[0], packed.shape[1]*2
         if padded != module._original_weight_shape[1] or not packed.is_contiguous() or not scale.is_contiguous():
@@ -108,7 +116,7 @@ class Fp8Regions:
         codes = torch.empty((rows, cols), dtype=torch.uint8, device=x.device)
         scale = torch.empty((rows, cols // block) if block else (rows,), dtype=torch.float32, device=x.device)
         self.call(self.quantize_kernel, x2.data_ptr(), y.data_ptr() if y is not None else 0, codes.data_ptr(), scale.data_ptr(),
-                  rows, cols, (activation << 1) | int(int8), block)
+                  rows, cols, (activation << 1) | int(int8) | (8 if self.pow2 and not int8 and not block else 0), block)
         self.counts['quantize'] += 1
         return codes, scale
 
@@ -144,5 +152,5 @@ class Fp8Regions:
         for name, manifest in (('gemm', self.gemm_manifest), ('gemm_int8', self.gemm_int8_manifest), ('gemm_w64', self.gemm_w64_manifest)):
             if manifest is not None:
                 manifests[f'{name}_sha256'] = manifest['sha256']
-        return dict(format=self.format, wave64=self.wave64, from_step=self.from_step, exact_prefix=self.exact_prefix,
+        return dict(format=self.format, wave64=self.wave64, from_step=self.from_step, exact_prefix=self.exact_prefix, pow2=self.pow2,
                     variant=self.variant, group_m=self.group_m, counts=dict(self.counts), qualification='precision schedule; graded profiles in measurements/low-precision-r9700.json', **manifests)
