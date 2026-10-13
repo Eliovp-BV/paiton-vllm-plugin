@@ -1,4 +1,4 @@
-"""Prompt-level hard floor for every Qwen-Image model this engine serves: block any request that combines sexual / nudity
+"""Prompt-level hard floor for every image model the Paiton image engines serve: block any request that combines sexual / nudity
 content with an indication that a person is under 18. Adult content without minor indicators is not blocked here (the
 base models render it). Deliberately over-blocks ambiguous combinations. Text-only; never inspects images.
 API: check_prompt(text) -> (allowed: bool, reason: str)."""
@@ -102,6 +102,8 @@ def install(pipeline):
     """Wrap pipeline.encode_prompt so every prompt encoding (positive and negative, any caller) passes the guard first.
     Returns the wrapper; the engine checks before each request that it is still the pipeline's encode_prompt."""
     original = pipeline.encode_prompt
+    if getattr(original, "paiton_prompt_guard", None) == GUARD_ID:      # already guarded: keep one gate
+        return original
     def encode_prompt(*args, **kwargs):
         check_prompts(kwargs.get("prompt", args[0] if args else None), kwargs.get("prompt_embeds"))
         return original(*args, **kwargs)

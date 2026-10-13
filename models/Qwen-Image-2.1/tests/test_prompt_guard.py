@@ -44,6 +44,7 @@ class PromptGuard(unittest.TestCase):
         pipe=FakePipeline()
         wrapper=guard.install(pipe)
         self.assertIs(pipe.encode_prompt,wrapper)
+        self.assertIs(guard.install(pipe),wrapper)                                # idempotent: one gate
         self.assertEqual(pipe.encode_prompt(prompt=ALLOW[2]),"embeddings")
         self.assertEqual(pipe.encode_prompt(ALLOW[2]),"embeddings")              # positional prompt
         for kwargs in (dict(prompt=BLOCK[0]),dict(prompt=[ALLOW[2],BLOCK[1]]),dict(prompt=None,prompt_embeds=object()),
