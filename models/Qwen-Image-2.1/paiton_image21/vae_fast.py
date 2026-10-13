@@ -42,11 +42,30 @@ class NormSilu(nn.Module):
         return out
 
 
+# channels-last convolution for the narrow, high-resolution layers (<= NHWC_MAX_CHANNELS channels in and out, at least
+# NHWC_MIN_PIXELS output pixels), where the NCHW solver choice runs at a fraction of the matrix rate; 0 disables
+NHWC_MIN_PIXELS = int(__import__("os").environ.get("PAITON_IMAGE21_VAE_NHWC_MIN_PIXELS", "0"))
+NHWC_MAX_CHANNELS = 288
+
+
+def _conv2d(x, weight, bias, stride, padding, dilation, groups):
+    if (NHWC_MIN_PIXELS and x.shape[1] <= NHWC_MAX_CHANNELS and weight.shape[0] <= NHWC_MAX_CHANNELS
+            and x.shape[-1] * x.shape[-2] >= NHWC_MIN_PIXELS):
+        y = F.conv2d(x.contiguous(memory_format=torch.channels_last), weight.contiguous(memory_format=torch.channels_last),
+                     bias, stride, padding, dilation, groups)
+        return y.contiguous()
+    return F.conv2d(x, weight, bias, stride, padding, dilation, groups)
+
+
 def _conv_forward_padded(self, x, cache_x=None):
     if cache_x is not None:
         raise ValueError("single-frame convolution takes no feature cache")
     w, _, h, _ = self._padding
-    return F.conv2d(x.squeeze(2), self.weight, self.bias, self.stride, (h, w), self.dilation, self.groups).unsqueeze(2)
+    return _conv2d(x.squeeze(2), self.weight, self.bias, self.stride, (h, w), self.dilation, self.groups).unsqueeze(2)
+
+
+def _conv2d_forward(self, x):
+    return _conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
 
 
 def _upsample_bf16(self, x):
@@ -79,6 +98,9 @@ def install(vae, norm_directory=None):
     for module in [*decoder.modules(), vae.post_quant_conv]:
         if isinstance(module, m.QwenImage21CausalConv3d) and module.padding_mode == "zeros":
             module.forward = types.MethodType(_conv_forward_padded, module)
+            counts["convs"] += 1
+        elif type(module) is nn.Conv2d and module.padding_mode == "zeros" and isinstance(module.padding, tuple):
+            module.forward = types.MethodType(_conv2d_forward, module)   # the upsamplers' convolutions
             counts["convs"] += 1
         elif isinstance(module, m.QwenImage21Upsample) and module.mode in ("nearest", "nearest-exact"):
             module.forward = types.MethodType(_upsample_bf16, module)
