@@ -1,18 +1,14 @@
-FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
+# The Python 3.12 / ROCm 10.0 / PyTorch runtime layers are inherited unchanged from the published
+# qwen-image21-mxfp4-rdna4-v1.0.3 image, pinned by digest. requirements-*.txt document that runtime (the same files are
+# in its /app); one of the pinned nightly wheel URLs now serves a file with a different hash, so the runtime is reused
+# instead of being reinstalled from those URLs.
+FROM ghcr.io/eliovp/paiton-vllm-plugin@sha256:64f6a6154b93f39b34f272fc66110ce17f72cca3ec31284ab57056ca5cdc2677
 
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
       org.opencontainers.image.title="Paiton Qwen-Image-2.1 MXFP4 and Turbo FP8 for RDNA4" \
       org.opencontainers.image.description="Pinned image runtime; model weights download from Hugging Face on first launch"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates git libdrm2 libdrm-amdgpu1 libnuma1 libelf1 libgomp1 libstdc++6 \
-    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY requirements-python.txt requirements-torch.txt requirements.txt ./
-RUN python -m pip install --no-cache-dir --no-deps -r requirements-python.txt \
-    && python -m pip install --no-cache-dir --no-deps -r requirements-torch.txt \
-    && python -m pip install --no-cache-dir --no-deps -r requirements.txt
-
 COPY paiton_image21/ ./paiton_image21/
 COPY artifacts/ ./artifacts/
 COPY verify_artifacts.py ./
