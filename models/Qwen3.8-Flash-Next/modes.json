@@ -73,7 +73,7 @@
         "PAITON_FN_STEP_PREP_ALIGN": "inplace",
         "VLLM_USE_V2_MODEL_RUNNER": "1"
       },
-      "note": "opt-in (launcher --prefix-caching): align-mode prefix caching on the recurrent state; the attention block is set explicitly to 2048 (--block-size 2048) = the mamba block, so a prefix hit resumes on a block boundary and is bit-identical to a cold start (without it vLLM picks 1696 and hits differ from cold: FNRT hitid2, 12 Oct 2026); served gates 10 Oct 2026: 64K repeat 9.6 s -> 0.35 s TTFT with identical output; needles 131K + 200K 40/40"
+      "note": "opt-in (launcher --prefix-caching): align-mode prefix caching on the recurrent state; the attention block is set explicitly to 2048 (--block-size 2048) = the mamba block, so a prefix hit resumes on a block boundary and is bit-identical to a cold start (without it vLLM picks 1696 and hits differ from cold; checked 12 Oct 2026); served gates 10 Oct 2026: 64K repeat 9.6 s -> 0.35 s TTFT with identical output; needles 131K + 200K 40/40"
     },
     "host_pools": {
       "env": {
