@@ -75,6 +75,11 @@ class ImageEngine:
         # exact wave64 attention on every step (the arithmetic contract of the checkpoint's paiton_quant.json)
         "turbo-fp8":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"2","PAITON_IMAGE21_LP_POW2":"1",
                      "PAITON_IMAGE21_ATTENTION_W64":"1"},
+        # opt-in speed profile: turbo-fp8 with int8-QK + fp8-P/V attention on the last four fp8 forwards (5-8)
+        # (2048: 22.66 s vs 24.59 s warm; 32 cases vs bf16 LPIPS 0.0834 / DINO 0.9827 / aIoU 0.9690 vs 0.0832 / 0.9824 / 0.9691)
+        "turbo-fp8-fast":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"2","PAITON_IMAGE21_LP_POW2":"1",
+                          "PAITON_IMAGE21_ATTENTION_W64":"1","PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_FULL8":"1",
+                          "PAITON_IMAGE21_ATTENTION_QK8_FROM":"4"},
         # the same with the wave64 fp8 GEMM (speed candidate)
         "turbo-fp8-w64":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"2",
                          "PAITON_IMAGE21_LP_POW2":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
