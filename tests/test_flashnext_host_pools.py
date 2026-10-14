@@ -347,14 +347,15 @@ def test_fix_knobs_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, ext
 
 def test_r2_image_pins(lf):
     assert lf.COMMON['image'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2', 'digest': 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b'}
-    assert lf.COMMON['image_4bit'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r2', 'digest': 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69'}
-    assert lf.COMMON['ple_host']['images'] == ['sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69']                      # the 4-bit r2 image carries the pageable runtime
+    assert lf.COMMON['image_4bit'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r3', 'digest': 'sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0'}
+    assert lf.COMMON['ple_host']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69']
+    assert lf.COMMON['ple_host']['filebacked']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0']                        # r3: file-backed PLE runtime                      # the 4-bit r2 image carries the pageable runtime
 
 
 @pytest.mark.parametrize('mode', ALL_MODES)
 def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
-    assert ('sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
+    assert ('sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
 
 
 LOWRAM = 'memory layout: PLE tables p'   # pageable / filebacked chosen automatically: the line carries the reason
