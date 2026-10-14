@@ -67,7 +67,9 @@ class Fp8Regions:
         # optional per-shape fp8 GEMM choice, PAITON_IMAGE21_LP_GEMM_TABLE="NxK=w32|w64:variant:group_m,...": every tile
         # variant of both kernels accumulates the same 16-k slabs in the same order, so the choice is bit-identical
         self.gemm_table = {}
-        table = os.environ.get('PAITON_IMAGE21_LP_GEMM_TABLE', '').strip()
+        # default: the MLP down-projection (N 4096, K 12288) on the 256x128 tile with group 2, 5.8 % faster on the R9700 at
+        # 16384 rows and bitwise equal (32/32 latents and PNGs); PAITON_IMAGE21_LP_GEMM_TABLE="" restores variant 0 everywhere
+        table = os.environ.get('PAITON_IMAGE21_LP_GEMM_TABLE', '' if self.wave64 else '4096x12288=w32:4:2').strip()
         if table and not self.int8:
             kernels = {'w32' if not self.wave64 else 'w64': self.gemm_kernel}
             for item in table.split(','):
