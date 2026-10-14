@@ -148,7 +148,7 @@ def test_cache_mode_ram_tier_ladder(lf, monkeypatch, capsys, tmp_path):
     up = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0, ('--ple-host', 'pinned'))   # pinned tables, user-pointer pools: no tier
     assert 'kv-transfer-config' not in up and 'HSA_USERPTR_FOR_PAGED_MEM' not in up.split('docker run')[1]
     auto = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0)           # auto on the pinned r2 image: pageable tables, GTT pools + full tier
-    assert '--ple-host pageable automatically' in auto and '"cpu_bytes_to_use": 8589934592' in auto
+    assert 'memory layout: PLE tables pageable, host pools gtt' in auto and '"cpu_bytes_to_use": 8589934592' in auto
     assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in auto.split('docker run')[1]
 
 
@@ -273,13 +273,16 @@ PAGEABLE = 'PAITON_FN_PLE_HOST=pageable'
 
 
 def test_ple_host_pageable_measured_modes_only(lf):
-    assert sorted(k for k, v in lf.MODES.items() if 'gtt_pinned_gib_pageable' in v) == ['4bit', '4bit-cache']
+    assert sorted(k for k, v in lf.MODES.items() if 'gtt_pinned_gib_pageable' in v) == ['4bit', '4bit-cache', '4bit-long']
+    assert sorted(k for k, v in lf.MODES.items() if v.get('ple_filebacked')) == ['4bit', '4bit-cache', '4bit-long']
+    for k in ('4bit', '4bit-cache', '4bit-long'):                                      # measured resident RAM per layout
+        r = lf.MODES[k]['resident_gib']; assert r['pinned'] > r['filebacked'] and set(r) == {'pinned', 'pageable', 'filebacked'}
     assert all('PAITON_FN_PLE_HOST' not in v['env'] for v in lf.MODES.values())     # pinned unless the flag asks
 
 
-@pytest.mark.parametrize('mode', ['4bit-200k', '4bit-long', '4bit-xl', 'decode', 'prefill-long'])
+@pytest.mark.parametrize('mode', ['4bit-200k', '4bit-xl', 'decode', 'prefill-long'])
 def test_ple_host_pageable_refused_on_unmeasured_modes(lf, monkeypatch, capsys, tmp_path, mode):
-    with pytest.raises(SystemExit, match='use --mode 4bit or --mode 4bit-cache'):
+    with pytest.raises(SystemExit, match='use --mode 4bit or --mode 4bit-cache or --mode 4bit-long'):
         mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--ple-host', 'pageable'))
 
 
@@ -354,7 +357,7 @@ def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
     assert ('sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
 
 
-LOWRAM = 'low-RAM host:'
+LOWRAM = 'memory layout: PLE tables p'   # pageable / filebacked chosen automatically: the line carries the reason
 
 
 def lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, gtt, avail=None, extra=()):
@@ -365,8 +368,8 @@ def lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, gtt, avail=None, extra=(
 
 @pytest.mark.parametrize('mode', ['4bit', '4bit-cache'])
 def test_low_ram_auto_picks_pageable_on_small_gtt(lf, monkeypatch, capsys, tmp_path, mode):
-    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0)               # 128 GB host: GTT limit ~62 GiB
-    assert out.count(LOWRAM) == 1 and '--ple-host pageable automatically' in out and 'GTT limit 60 GiB < 98 GiB' in out
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 128.0)               # 128 GB host: GTT limit ~62 GiB
+    assert out.count('memory layout:') == 1 and 'memory layout: PLE tables pageable, host pools gtt' in out and 'GTT limit 60 GiB < 98 GiB' in out
     run_args = out.split('docker run')[1]
     assert PAGEABLE in run_args and '--ulimit memlock=-1:-1' in run_args and 'HSA_USERPTR_FOR_PAGED_MEM=0' in run_args
     assert 'pool=1' in run_args                                                           # 118 GiB available: the full expert copy stays
@@ -375,21 +378,21 @@ def test_low_ram_auto_picks_pageable_on_small_gtt(lf, monkeypatch, capsys, tmp_p
 @pytest.mark.parametrize('mode', ['4bit', '4bit-cache'])
 def test_low_ram_auto_keeps_pinned_on_big_hosts_and_explicit_flags(lf, monkeypatch, capsys, tmp_path, mode):
     out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, 240.0)              # 256 GB host
-    assert LOWRAM not in out and PAGEABLE not in out.split('docker run')[1]
+    assert 'memory layout: PLE tables pinned, host pools gtt (as benchmarked)' in out and PAGEABLE not in out.split('docker run')[1]
     out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0, ('--ple-host', 'pinned'))
-    assert LOWRAM not in out and PAGEABLE not in out.split('docker run')[1]               # explicit pinned wins
+    assert 'PLE tables pinned' in out and '(as requested)' in out and PAGEABLE not in out.split('docker run')[1]   # explicit pinned wins
 
 
-@pytest.mark.parametrize('mode', ['4bit-long', '4bit-xl', '4bit-200k'])
+@pytest.mark.parametrize('mode', ['4bit-xl', '4bit-200k'])
 def test_low_ram_auto_unmeasured_modes_stay_pinned(lf, monkeypatch, capsys, tmp_path, mode):
     out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0)
-    assert 'is not measured on --mode ' + mode in out and PAGEABLE not in out.split('docker run')[1]
+    assert f'--mode {mode} has no measured low-RAM layout yet' in out and PAGEABLE not in out.split('docker run')[1]
 
 
 def test_low_ram_auto_needs_the_pageable_image(lf, monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(lf, 'meminfo_gib', lambda f: {'MemTotal': 120.0, 'MemAvailable': 118.0}[f])
     out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--image', 'flashnext-test:without-pageable-runtime'))
-    assert 'has no pageable PLE runtime; keeping them pinned' in out and PAGEABLE not in out.split('docker run')[1]
+    assert 'has no low-RAM PLE runtime; keeping them pinned' in out and PAGEABLE not in out.split('docker run')[1]
 
 
 @pytest.mark.parametrize('mode', ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf'])
@@ -441,12 +444,19 @@ def test_ple_filebacked_launch(lf, monkeypatch, capsys, tmp_path):
     run_args = out.split('docker run')[1]
     assert 'PAITON_FN_PLE_HOST=filebacked' in run_args and 'PAITON_FN_PLE_FILE_DIR=/models/ple-raw' in run_args
     assert f'{tmp_path / "raw"}:/models/ple-raw:ro' in run_args and 'memlock' not in run_args
-    assert 'needed 48.6 GiB for GTT pools' in out and 'PLE tables: file-backed' in out
+    assert 'PLE tables: file-backed' in out and 'memory layout: PLE tables filebacked, host pools userptr (as requested)' in out
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--image', 'flashnext-test:filebacked', '--ple-host', 'filebacked',
+                                                                      '--host-pools', 'gtt'))
+    assert 'needed 48.6 GiB for GTT pools' in out and 'host pools gtt' in out                  # measured on 4bit (128 GB host)
+    monkeypatch.setitem(lf.MODES['4bit-long'], 'ple_filebacked', True)
+    with pytest.raises(SystemExit, match='with --host-pools gtt is not measured on --mode 4bit-long'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-long', 60.0, ('--image', 'flashnext-test:filebacked', '--ple-host', 'filebacked',
+                                                                         '--host-pools', 'gtt'))
 
 
 def test_ple_filebacked_refused_unmeasured_or_wrong_image(lf, monkeypatch, capsys, tmp_path):
-    with pytest.raises(SystemExit, match='--ple-host filebacked is not measured on --mode 4bit'):
-        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))
+    with pytest.raises(SystemExit, match='--ple-host filebacked is not measured on --mode 4bit-xl'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-xl', 60.0, ('--ple-host', 'filebacked'))
     monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
     monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
     out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))   # dry run: warning, a start refuses
@@ -464,12 +474,69 @@ def test_ple_filebacked_ram_check(lf, monkeypatch, capsys):
 def test_low_ram_auto_picks_filebacked(lf, monkeypatch, capsys, tmp_path):
     monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:pageable'])
     monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
-    monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
+    monkeypatch.setattr(lf, 'ple_raw_preflight', lambda out, dry: None)
     out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 46.0, 88.0)                 # ~96 GB host
-    assert '--ple-host pageable automatically' in out and '--ple-host filebacked automatically' in out
-    assert 'MemAvailable 88 GiB < 112 GiB' in out and 'PAITON_FN_PLE_HOST=filebacked' in out.split('docker run')[1]
-    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, 118.0)                # 128 GB host: tables stay resident
-    assert '--ple-host filebacked automatically' not in out and 'PAITON_FN_PLE_HOST=pageable' in out.split('docker run')[1]
+    assert out.count('memory layout:') == 1 and 'memory layout: PLE tables filebacked, host pools userptr' in out
+    assert 'MemAvailable 88 GiB < 116 GiB with them resident' in out and 'PAITON_FN_PLE_HOST=filebacked' in out.split('docker run')[1]
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, 120.0)                # 128 GB host: tables stay resident
+    assert 'memory layout: PLE tables pageable' in out and 'PAITON_FN_PLE_HOST=pageable' in out.split('docker run')[1]
     monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', False)
-    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 46.0, 88.0)                 # not measured: stays pageable
-    assert '--ple-host filebacked automatically' not in out
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 46.0, 88.0)                 # not marked: pageable (the RAM check refuses)
+    assert 'PLE tables filebacked' not in out and 'memory layout: PLE tables pageable' in out
+
+
+HOSTS = {256: (125.8, 240.0), 128: (61.0, 120.0), 96: (46.0, 88.0), 64: (30.0, 58.0)}   # GTT limit (half the RAM), MemAvailable
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-cache', '4bit-long'])
+@pytest.mark.parametrize('gb,layout,pools,ok', [(256, 'pinned', 'gtt', True), (128, 'pageable', 'gtt', True),
+                                                (96, 'filebacked', 'userptr', True), (64, 'filebacked', 'userptr', False)])
+def test_auto_layout_by_host_size(lf, monkeypatch, capsys, tmp_path, mode, gb, layout, pools, ok):
+    """the auto decision on 256 / 128 / 96 / 64 GB hosts, with the RAM check of the measured resident RAM (not stubbed)."""
+    gtt, avail = HOSTS[gb]
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:pageable'])
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    monkeypatch.setattr(lf, 'ple_raw_preflight', lambda out, dry: None)
+    real_ram_check = lf.ram_check
+    seen = {}
+    def ram_check(*a, **k):
+        seen['missing'] = real_ram_check(*a, **k); return []
+    import sys
+    monkeypatch.setitem(lf.COMMON['ple_host'], 'images', ['flashnext-test:pageable'])
+    monkeypatch.setattr(lf, 'meminfo_gib', lambda f: {'MemTotal': gtt * 2, 'MemAvailable': avail}[f])
+    monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', ram_check)
+    monkeypatch.setattr(lf, 'render_gid', lambda: None); monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (gtt, gtt))
+    monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w'); monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
+    monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', mode, '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache',
+                                      str(tmp_path / 'cache'), '--image', 'flashnext-test:pageable'])
+    lf.main()
+    out = capsys.readouterr().out
+    if mode == '4bit-cache' and gb == 128:
+        layout, pools = 'filebacked', 'userptr'                                               # 118 + 6 GiB does not fit 120 available
+    assert f'memory layout: PLE tables {layout}, host pools {pools}' in out
+    assert (seen['missing'] == []) == ok
+    if not ok:
+        assert '67 GiB of available RAM (have 58 GiB' in seen['missing'][0]
+
+
+def test_filebacked_disk_preflight(lf, tmp_path, capsys, monkeypatch):
+    import collections
+    du = collections.namedtuple('du', 'total used free')
+    monkeypatch.setattr(lf.shutil, 'disk_usage', lambda p: du(0, 0, 40 << 30))
+    with pytest.raises(SystemExit, match='59 GiB of free disk.*has 40 GiB free.*--ple-raw-dir'):
+        lf.ple_raw_preflight(tmp_path / 'w-ple-raw', False)                                   # 49 GiB raw files + 10 GiB headroom
+    lf.ple_raw_preflight(tmp_path / 'w-ple-raw', True)
+    assert 'WARNING: --ple-host filebacked' in capsys.readouterr().out                         # dry run: a warning
+    monkeypatch.setattr(lf.shutil, 'disk_usage', lambda p: du(0, 0, 60 << 30))
+    lf.ple_raw_preflight(tmp_path / 'w-ple-raw', False)                                       # enough
+    raw = tmp_path / 'built'; raw.mkdir(); (raw / 'codes.e4m3').write_bytes(b'x' * 8)
+    (raw / 'meta.json').write_text('{"rows_total": 2, "dim": 4}')
+    monkeypatch.setattr(lf.shutil, 'disk_usage', lambda p: du(0, 0, 1 << 30))
+    lf.ple_raw_preflight(raw, False)                                                          # already built: no disk needed
+
+
+def test_filebacked_refused_with_vision(lf, monkeypatch, capsys, tmp_path):
+    monkeypatch.setitem(lf.MODES['4bit'], 'vision', True)
+    with pytest.raises(SystemExit, match='not measured with vision'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))

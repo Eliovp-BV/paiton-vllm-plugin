@@ -96,7 +96,7 @@
       "images": [
         "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
       ],
-      "note": "opt-in (launcher --ple-host pageable, 4-bit modes 4bit and 4bit-cache): the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned.",
+      "note": "launcher --ple-host pageable (or auto on hosts whose GTT limit cannot hold the pinned tables), 4-bit modes 4bit, 4bit-cache and 4bit-long: the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned.",
       "filebacked": {
         "env": {
           "PAITON_FN_PLE_HOST": "filebacked",
@@ -104,7 +104,8 @@
         },
         "mount": "/models/ple-raw",
         "images": [],
-        "note": "opt-in (launcher --ple-host filebacked; auto on modes marked ple_filebacked when MemAvailable cannot keep the PLE tables resident): the E4M3 PLE export laid out once as two raw files next to the weights (<weights>-ple-raw: codes.e4m3 + row_scale.f32, ~50 GB) and mmapped read-only by each rank, so the tables live in the page cache (shared, evictable, read from disk on a miss) instead of resident process memory; the same host gather as pageable, so the output is the same. Needs an image with the file-backed runtime (images)."
+        "note": "opt-in (launcher --ple-host filebacked; auto on modes marked ple_filebacked when MemAvailable cannot keep the PLE tables resident): the E4M3 PLE export laid out once as two raw files next to the weights (<weights>-ple-raw: codes.e4m3 + row_scale.f32, ~50 GB) and mmapped read-only by each rank, so the tables live in the page cache (shared, evictable, read from disk on a miss) instead of resident process memory; the same host gather as pageable, so the output is the same. Needs an image with the file-backed runtime (images).",
+        "raw_gib": 49.0
       }
     },
     "weights_4bit": {
@@ -117,7 +118,8 @@
       "digest": "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
     },
     "kv_pool_note": "kv_pool_tokens: vLLM \"GPU KV cache size\" at the mode's --kv-cache-memory-bytes on the release image (11-12 Oct); the -nopf modes and 4bit-cache share their base mode's KV bytes; the launcher scales it linearly when --kv-cache-memory-bytes is lowered",
-    "response_parsers_note": "Every mode passes --reasoning-parser qwen3 (the chat template opens <think> in the prompt unless enable_thinking is false: the thinking goes to the reasoning field of the response message (delta.reasoning when streamed), the answer to content) and --enable-auto-tool-choice --tool-call-parser qwen3_xml (the template's <tool_call><function=...><parameter=...> format -> tool_calls). vLLM 0.29 parser checked on the CPU against this tokenizer and template, 13 Oct 2026."
+    "response_parsers_note": "Every mode passes --reasoning-parser qwen3 (the chat template opens <think> in the prompt unless enable_thinking is false: the thinking goes to the reasoning field of the response message (delta.reasoning when streamed), the answer to content) and --enable-auto-tool-choice --tool-call-parser qwen3_xml (the template's <tool_call><function=...><parameter=...> format -> tool_calls). vLLM 0.29 parser checked on the CPU against this tokenizer and template, 13 Oct 2026.",
+    "resident_gib_note": "resident_gib: host RAM a running server keeps per PLE layout (pinned / GTT + pageable + its processes), measured 14 Oct at ready and under load (memory-cgroup + GTT accounting): 4bit pinned 108.5, pageable ~110, file-backed with user-pointer pools 60.9; 4bit-long 108.4 / 109.9 / 60.9; 4bit-cache file-backed 60.9 (user-pointer pools: no RAM prefix tier). 4bit-cache pinned / pageable = 4bit + its 8 GiB RAM prefix tier (derived). The launcher picks the first layout whose value + 6 GiB fits MemAvailable."
   },
   "modes": {
     "decode": {
@@ -740,7 +742,13 @@
         "default": "static:vram_gib=20.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
         "expert_bytes_gib_both_ranks": 58.23
       },
-      "kv_pool_tokens": 305338
+      "kv_pool_tokens": 305338,
+      "resident_gib": {
+        "pinned": 108.5,
+        "pageable": 110.0,
+        "filebacked": 61.0
+      },
+      "ple_filebacked": true
     },
     "4bit-200k": {
       "source_run": "route-1 prefill benchmark profile (development stack)",
@@ -1048,7 +1056,13 @@
         },
         "gtt_overhead_gib": 2.5
       },
-      "kv_pool_tokens": 305338
+      "kv_pool_tokens": 305338,
+      "resident_gib": {
+        "pinned": 116.5,
+        "pageable": 118.0,
+        "filebacked": 61.0
+      },
+      "ple_filebacked": true
     },
     "4bit-long": {
       "source_run": "ROUTE1 kvt-p1f, 13 Oct 2026 (released image 5e4b24ad, launcher a985fa5 + cap 0.925)",
@@ -1191,7 +1205,14 @@
         "default": "static:vram_gib=19.75,nospec_gib=20.8,counts=/models/ck/common/routing-counts-decode-blend75.json,pool=1,core=0.3,classes=1",
         "expert_bytes_gib_both_ranks": 58.23
       },
-      "kv_pool_tokens": 461566
+      "kv_pool_tokens": 461566,
+      "resident_gib": {
+        "pinned": 108.5,
+        "pageable": 110.0,
+        "filebacked": 61.0
+      },
+      "ple_filebacked": true,
+      "gtt_pinned_gib_pageable": 46.7
     },
     "4bit-xl": {
       "source_run": "ROUTE1 kvt-p2f, 13 Oct 2026 (released image 5e4b24ad, launcher a985fa5 + cap 0.925)",
