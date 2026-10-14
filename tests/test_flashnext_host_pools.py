@@ -459,6 +459,7 @@ def test_ple_filebacked_refused_unmeasured_or_wrong_image(lf, monkeypatch, capsy
         mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-xl', 60.0, ('--ple-host', 'filebacked'))
     monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
     monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['sha256:not-the-pinned-image'])   # whatever 4-bit image is pinned
     out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))   # dry run: warning, a start refuses
     assert 'WARNING: --ple-host filebacked needs an image with the file-backed PLE runtime' in out
 
