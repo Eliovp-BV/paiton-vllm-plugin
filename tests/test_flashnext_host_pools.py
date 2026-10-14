@@ -145,8 +145,11 @@ def test_cache_mode_ram_tier_ladder(lf, monkeypatch, capsys, tmp_path):
     off = cache_cmd(lf, monkeypatch, capsys, tmp_path, 103.0)           # GTT pools fit, the tier (with its overhead) does not
     assert 'WARNING RAM prefix tier: off' in off and 'kv-transfer-config' not in off and 'PAITON_FN_KV_TIER' not in off and hook not in off
     assert 'PAITON_HOST_KV_PRIVATE' not in off and '--enable-prefix-caching' in off
-    up = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0)             # user-pointer pools: no tier
+    up = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0, ('--ple-host', 'pinned'))   # pinned tables, user-pointer pools: no tier
     assert 'kv-transfer-config' not in up and 'HSA_USERPTR_FOR_PAGED_MEM' not in up.split('docker run')[1]
+    auto = cache_cmd(lf, monkeypatch, capsys, tmp_path, 90.0)           # auto on the pinned r2 image: pageable tables, GTT pools + full tier
+    assert '--ple-host pageable automatically' in auto and '"cpu_bytes_to_use": 8589934592' in auto
+    assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in auto.split('docker run')[1]
 
 
 def test_cache_mode_ignores_prefix_caching_flag(lf, monkeypatch, capsys, tmp_path):
@@ -295,7 +298,7 @@ def test_ple_host_pageable_needs_a_supporting_image(lf, monkeypatch, capsys, tmp
 def test_ple_host_pageable_fits_a_128gb_host(lf, monkeypatch, capsys, tmp_path, mode):
     monkeypatch.setitem(lf.COMMON['ple_host'], 'images', ['flashnext-test:pageable'])
     img = ('--image', 'flashnext-test:pageable')
-    pinned = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, img).split('docker run')[1]   # GTT limit of a 128 GB host: ~62 GiB
+    pinned = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, img + ('--ple-host', 'pinned')).split('docker run')[1]   # GTT limit of a 128 GB host: ~62 GiB
     assert 'HSA_USERPTR_FOR_PAGED_MEM' not in pinned and PAGEABLE not in pinned and 'memlock' not in pinned
     out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, img + ('--ple-host', 'pageable'))
     run_args = out.split('docker run')[1]
@@ -349,3 +352,55 @@ def test_r2_image_pins(lf):
 def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
     assert ('sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
+
+
+LOWRAM = 'low-RAM host:'
+
+
+def lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, gtt, avail=None, extra=()):
+    monkeypatch.setitem(lf.COMMON['ple_host'], 'images', ['flashnext-test:pageable'])
+    monkeypatch.setattr(lf, 'meminfo_gib', lambda f: {'MemTotal': gtt * 2, 'MemAvailable': avail}[f])
+    return mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, gtt, ('--image', 'flashnext-test:pageable') + tuple(extra))
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-cache'])
+def test_low_ram_auto_picks_pageable_on_small_gtt(lf, monkeypatch, capsys, tmp_path, mode):
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0)               # 128 GB host: GTT limit ~62 GiB
+    assert out.count(LOWRAM) == 1 and '--ple-host pageable automatically' in out and 'GTT limit 60 GiB < 98 GiB' in out
+    run_args = out.split('docker run')[1]
+    assert PAGEABLE in run_args and '--ulimit memlock=-1:-1' in run_args and 'HSA_USERPTR_FOR_PAGED_MEM=0' in run_args
+    assert 'pool=1' in run_args                                                           # 118 GiB available: the full expert copy stays
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-cache'])
+def test_low_ram_auto_keeps_pinned_on_big_hosts_and_explicit_flags(lf, monkeypatch, capsys, tmp_path, mode):
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, 240.0)              # 256 GB host
+    assert LOWRAM not in out and PAGEABLE not in out.split('docker run')[1]
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0, ('--ple-host', 'pinned'))
+    assert LOWRAM not in out and PAGEABLE not in out.split('docker run')[1]               # explicit pinned wins
+
+
+@pytest.mark.parametrize('mode', ['4bit-long', '4bit-xl', '4bit-200k'])
+def test_low_ram_auto_unmeasured_modes_stay_pinned(lf, monkeypatch, capsys, tmp_path, mode):
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 60.0, 118.0)
+    assert 'is not measured on --mode ' + mode in out and PAGEABLE not in out.split('docker run')[1]
+
+
+def test_low_ram_auto_needs_the_pageable_image(lf, monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(lf, 'meminfo_gib', lambda f: {'MemTotal': 120.0, 'MemAvailable': 118.0}[f])
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--image', 'flashnext-test:without-pageable-runtime'))
+    assert 'has no pageable PLE runtime; keeping them pinned' in out and PAGEABLE not in out.split('docker run')[1]
+
+
+@pytest.mark.parametrize('mode', ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf'])
+def test_low_ram_auto_leaves_3bit_alone(lf, monkeypatch, capsys, tmp_path, mode):
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, mode, 30.0, 60.0)
+    assert LOWRAM not in out and PAGEABLE not in out.split('docker run')[1]
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl'])
+def test_host_pool_off_refused_on_class_tiers(lf, monkeypatch, capsys, tmp_path, mode):
+    assert 'classes=1' in lf.MODES[mode]['expert_tier']['default']                        # the runtime refuses classes=1 without pool=1
+    with pytest.raises(SystemExit, match='--host-pool off does not work with --mode ' + mode):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pool', 'off'))
+    assert 'pool=1' in mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pool', 'on')).split('docker run')[1]
