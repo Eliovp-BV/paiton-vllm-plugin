@@ -27,8 +27,8 @@
     "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
     "hf_revision": "829b089bf6636af9ffed1f333b103e4e383f7b48",
     "image": {
-      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r1",
-      "digest": "sha256:c7e76bc0d7d9f8a3d575b940d23f9b5219eada13b1960e10f3aaa996b5ad9191"
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2",
+      "digest": "sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b"
     },
     "tp": 2,
     "bundles": {
@@ -93,7 +93,9 @@
         "memlock=-1:-1"
       ],
       "pageable_gib_both_ranks": 48.9,
-      "images": [],
+      "images": [
+        "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
+      ],
       "note": "opt-in (launcher --ple-host pageable, 4-bit modes 4bit and 4bit-cache): the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned."
     },
     "weights_4bit": {
@@ -102,8 +104,8 @@
       "default_dir": "~/paiton-models/Qwen3.8-Flash-Next-W4A8"
     },
     "image_4bit": {
-      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r1",
-      "digest": "sha256:5e4b24adbb625d01ec96fffe5f1e6df54f7b6948de8feb318fbab2df41d4cc67"
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r2",
+      "digest": "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
     },
     "kv_pool_note": "kv_pool_tokens: vLLM \"GPU KV cache size\" at the mode's --kv-cache-memory-bytes on the release image (11-12 Oct); the -nopf modes and 4bit-cache share their base mode's KV bytes; the launcher scales it linearly when --kv-cache-memory-bytes is lowered",
     "response_parsers_note": "Every mode passes --reasoning-parser qwen3 (the chat template opens <think> in the prompt unless enable_thinking is false: the thinking goes to reasoning_content, the answer to content) and --enable-auto-tool-choice --tool-call-parser qwen3_xml (the template's <tool_call><function=...><parameter=...> format -> tool_calls). vLLM 0.29 parser checked on the CPU against this tokenizer and template, 13 Oct 2026."
