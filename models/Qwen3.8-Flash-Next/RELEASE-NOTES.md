@@ -3,6 +3,31 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
+## Release 20261014-r2 (hotfix for both images)
+
+### Fixes
+- **Stability and correctness fixes** for prefix caching with several requests at once and for long prompts, in every mode
+  (r2 images). Same speed as r1.
+- **Thinking and tool calls.** Every mode now passes vLLM's reasoning and tool-call parsers: the reasoning comes back in
+  `message.reasoning`, the answer in `content`, tool calls in `tool_calls` (works with the r1 images too).
+- **3-bit memory caps tuned.** With `--prefix-caching`, `--mode decode` and `--mode decode-nopf` cap the memory pool at 94 % (was 95 %): in our
+  test with 8 concurrent requests plus long prompts the cards stayed at or below 31.4 GiB (was up to 31.7 GiB), at 170.2 / 493.0 tok/s
+  with 1 / 8 requests. The prefill-long modes, which need the room for 131K-token prompts, and every run without prefix caching keep
+  95 %. No need to edit `PYTORCH_ALLOC_CONF` by hand any more (works with the r1 images too).
+- **12 October: prefix caching.** `--prefix-caching` (3-bit modes) now sets 2,048-token cache blocks. A repeated conversation then
+  gives exactly the same output as a fresh one, and peak VRAM was about 1 GiB lower per card in our 65K-token test.
+- **13 October: 4-bit VRAM.** `--mode 4bit` and `--mode 4bit-cache` cap the memory pool at 92.5 %, so a stream of long prompts stays
+  at about 30.6 GiB per card (was up to 31.3 GiB), at the same speed.
+
+### New
+- **128 GB hosts for the 4-bit modes:** `--ple-host pageable` (opt-in, `--mode 4bit` and `--mode 4bit-cache`, r2 4-bit image) keeps
+  the per-layer embedding tables in pageable memory: about 47 GiB pinned instead of 96 GiB, so the GTT pools fit the default limit of
+  a 128 GB host. Same output; speed within about 1 % of the default.
+
+### Images
+- 3-bit: `qwen38-flashnext-rocm10-vllm029-20261010-r2`; 4-bit: `qwen38-flashnext-rocm10-vllm029-20261011-r2` (the launcher pins both
+  by digest). The r1 images stay available; the fixes above need r2.
+
 ## Release 20261011
 
 ### 4-bit (new): the accuracy release
