@@ -1,4 +1,4 @@
-# Qwen-Image-2.1 MXFP4 on RDNA4
+# Qwen-Image-2.1 (Turbo) on RDNA4
 
 Generate images, transparent RGBA artwork, or edit an image on one **32 GB Radeon
 AI PRO R9700**. The managed container enables the qualified Paiton optimizations
