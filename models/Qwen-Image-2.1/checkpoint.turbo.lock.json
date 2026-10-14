@@ -1,0 +1,115 @@
+{
+  "repository": "EliovpAI/Qwen-Image-2.1-Turbo-FP8-NearBF16",
+  "revision": "75aa44c6d3b158f5b4e7e19c4509c25241f8cb5e",
+  "profile": "per-channel FP8 weights (NearBF16), Turbo 8-step schedule",
+  "source_repository": "Qwen/Qwen-Image-2.1-Turbo",
+  "source_revision": "fc13ba1986fcb905854dc8de2f52eee395f49b5b",
+  "download_bytes": 18538165726,
+  "files": [
+    {
+      "file": "LICENSE",
+      "bytes": 7831,
+      "sha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d"
+    },
+    {
+      "file": "model_index.json",
+      "bytes": 578,
+      "sha256": "97e2febeb19d93cb41fa44807cde8bd42757950b5dffeacdb0331fb2d390cf20"
+    },
+    {
+      "file": "paiton_quant.json",
+      "bytes": 1036,
+      "sha256": "eca7ab7c8a9bc065c0cb41ca91b1fdb368bef79bc5c28893d2b05b6338a19874"
+    },
+    {
+      "file": "processor/chat_template.jinja",
+      "bytes": 5292,
+      "sha256": "3636d0f0bd6bef02654cdffdc447b79cb2cef8ab02cc75267345946291a489e4"
+    },
+    {
+      "file": "processor/processor_config.json",
+      "bytes": 1300,
+      "sha256": "14932921ca485d458a04dafd8069fbb0a4505622a48208d19ed247115801385b"
+    },
+    {
+      "file": "processor/tokenizer.json",
+      "bytes": 11422650,
+      "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506"
+    },
+    {
+      "file": "processor/tokenizer_config.json",
+      "bytes": 705,
+      "sha256": "fd42a0b35a8d13cd473e88e310b50cbf1bccaa9eb60ed0fd873af5f8f0c59307"
+    },
+    {
+      "file": "result.json",
+      "bytes": 106337,
+      "sha256": "66577c7f984522078d6fed1e8808402737fbd7e358376a2453c59308c488401d"
+    },
+    {
+      "file": "scheduler/scheduler_config.json",
+      "bytes": 486,
+      "sha256": "16c948c71f9152a34cce6e3a2f309e97ad2dca32beecbe5e2fd3a7925b7eb4bb"
+    },
+    {
+      "file": "text_encoder/config.json",
+      "bytes": 1542,
+      "sha256": "89050cba6b66c4f68f52305b54fc37efe28d95232246b94aa8dc0cfa36f3b734"
+    },
+    {
+      "file": "text_encoder/generation_config.json",
+      "bytes": 241,
+      "sha256": "d04d0c6fdd1dc056cf68178425a3ecf17a0b9e848cf1a8378ad31c623263472c"
+    },
+    {
+      "file": "text_encoder/model-00001-of-00003.safetensors",
+      "bytes": 4857030584,
+      "sha256": "97427936bf2952cc92d22992645044413e41f6f4a8d0b702b4bc479d21ab52e1"
+    },
+    {
+      "file": "text_encoder/model-00002-of-00003.safetensors",
+      "bytes": 4838828904,
+      "sha256": "28210801cd768042ac600f1d251306853b72efc51d8423147f4f9449a06d60e7"
+    },
+    {
+      "file": "text_encoder/model-00003-of-00003.safetensors",
+      "bytes": 898346680,
+      "sha256": "74a9af707d78c674d42fab7927324995a05efbfe618c08ded14402584e254523"
+    },
+    {
+      "file": "text_encoder/model.safetensors.index.json",
+      "bytes": 91460,
+      "sha256": "b29e7eb95e4dbdb3e2a009883807617823552b420cffd846ab5ae3b5a0d56451"
+    },
+    {
+      "file": "transformer/config.json",
+      "bytes": 370,
+      "sha256": "2c567038ca190824728844b8d06d94ae02360e668707afd9734e789a7eb58ce3"
+    },
+    {
+      "file": "transformer/diffusion_pytorch_model-00001-of-00002.safetensors",
+      "bytes": 4838379312,
+      "sha256": "8916e632ca31ca74b65483e1ee24a35cd108f5648b000b8a78cc927e31dbd670"
+    },
+    {
+      "file": "transformer/diffusion_pytorch_model-00002-of-00002.safetensors",
+      "bytes": 2418376136,
+      "sha256": "be43b16e318f98f17442ade4f29ef98f560d380bc84cc2416f9fa8cf163ce9d2"
+    },
+    {
+      "file": "transformer/diffusion_pytorch_model.safetensors.index.json",
+      "bytes": 53454,
+      "sha256": "443be9ffdf0e047c51fdbb58219e3b9bd32b13e828158acb5fe96b1913e83c5d"
+    },
+    {
+      "file": "vae/config.json",
+      "bytes": 2172,
+      "sha256": "42bfdec412459bbb7bc38a0617ab70edcfc873f84ec47e0c7d01c53ba09885a5"
+    },
+    {
+      "file": "vae/diffusion_pytorch_model.safetensors",
+      "bytes": 675508656,
+      "sha256": "71879ffd5321e6d10c3c87513e2b474b1252efa7f3dec2969214a9bf06a6dd5c"
+    }
+  ]
+}

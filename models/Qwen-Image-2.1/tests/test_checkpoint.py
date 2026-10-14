@@ -68,6 +68,19 @@ class Checkpoint(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Unknown model variant"):
             checkpoint.checkpoint_lock("unknown")
 
+    def test_turbo_lock_is_pinned(self):
+        lock = checkpoint.checkpoint_lock("turbo")
+        self.assertEqual(lock["repository"], "EliovpAI/Qwen-Image-2.1-Turbo-FP8-NearBF16")
+        self.assertEqual(len(lock["revision"]), 40)
+        self.assertTrue(all(c in "0123456789abcdef" for c in lock["revision"]))
+        files = {row["file"] for row in lock["files"]}
+        self.assertIn("result.json", files)
+        self.assertIn("model_index.json", files)
+        self.assertEqual(sum(row["bytes"] for row in lock["files"]), lock["download_bytes"])
+        for row in lock["files"]:
+            self.assertFalse(Path(row["file"]).is_absolute() or ".." in Path(row["file"]).parts)
+            self.assertEqual(len(row["sha256"]), 64)
+
 
 if __name__ == "__main__":
     unittest.main()

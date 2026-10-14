@@ -9,6 +9,9 @@ from PIL import Image,UnidentifiedImageError
 
 def serve(engine,host,port):
     model_id=getattr(engine,"model_id","paiton-image-2.1")
+    # the loaded checkpoint defines the step count (40 for 2.1, 8 for the Turbo schedule)
+    steps=getattr(engine,"steps",40)
+    steps=steps if type(steps) is int else 40
     class Handler(BaseHTTPRequestHandler):
         def send_json(self,status,value):
             payload=json.dumps(value).encode()
@@ -28,7 +31,7 @@ def serve(engine,host,port):
                 self.send_json(200,dict(object="list",data=[dict(id=model_id,object="model",
                     owned_by="EliovpAI",tasks=["text-to-image","rgba","edit"],batch_size=1,
                     generation_sizes=["1024x1024","2048x2048"],rgba_sizes=["1024x1024","2048x2048"],
-                    edit_sizes=["1024x1024"],steps=40,guidance=1.0)]))
+                    edit_sizes=["1024x1024"],steps=steps,guidance=1.0)]))
             else:
                 self.send_json(404,dict(error="Unknown endpoint"))
 
@@ -65,7 +68,7 @@ def serve(engine,host,port):
                 elif "image_b64" in body:
                     raise ValueError("Use the edits endpoint for input images")
                 image,png,report=engine.generate(body.get("prompt"),width=width,height=height,
-                    steps=body.get("steps",40),guidance=body.get("guidance",1.0),seed=body.get("seed",42),mode=mode,image=source)
+                    steps=body.get("steps",steps),guidance=body.get("guidance",1.0),seed=body.get("seed",42),mode=mode,image=source)
                 self.send_json(200,dict(created=int(time.time()),data=[dict(b64_json=base64.b64encode(png).decode())],metrics=report))
             except (ValueError,TypeError,UnidentifiedImageError,Image.DecompressionBombError,binascii.Error) as error:
                 self.send_json(400,dict(error=str(error)))

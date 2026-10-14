@@ -7,15 +7,18 @@ from pathlib import Path
 import sys
 
 
-PRECISION_PROFILES = ("exact", "exact-w32", "schedule-int8", "schedule-int8-11", "schedule-fp8")
+PRECISION_PROFILES = ("exact", "exact-w32", "schedule-int8", "schedule-int8-11", "schedule-fp8",
+                      "turbo-fp8", "turbo-fp8-fast", "turbo-fp8-fast-rgba-exact")
+TURBO_PROFILES = ("turbo-fp8", "turbo-fp8-fast", "turbo-fp8-fast-rgba-exact")
 DEFAULT_PROFILE = "schedule-int8"
-MODEL_DEFAULT_PROFILES = {"original": DEFAULT_PROFILE, "uncensored": "exact"}
+# turbo: the 8-step Qwen-Image-2.1-Turbo FP8 checkpoint; fp8 attention on the last four steps except for RGBA requests
+MODEL_DEFAULT_PROFILES = {"original": DEFAULT_PROFILE, "uncensored": "exact", "turbo": "turbo-fp8-fast-rgba-exact"}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     parser.add_argument("--model", choices=tuple(MODEL_DEFAULT_PROFILES), default="original",
-                        help="Select the original checkpoint or the abenzerps fine-tune converted to MXFP4")
+                        help="Select the original checkpoint, the abenzerps fine-tune converted to MXFP4, or the 8-step Turbo FP8 checkpoint")
     parser.add_argument("--model-dir", type=Path, help="Verify and reuse an existing published checkpoint")
     parser.add_argument("--cache-dir", type=Path, default=os.environ.get("HF_HUB_CACHE"))
     parser.add_argument("--offline", action="store_true", help="Require already cached files")
@@ -41,7 +44,7 @@ def main(argv=None):
         command_parser.add_argument("--model-dir", type=Path, default=argparse.SUPPRESS)
         command_parser.add_argument("--cache-dir", type=Path, default=argparse.SUPPRESS)
         command_parser.add_argument("--precision-profile", choices=PRECISION_PROFILES, default=argparse.SUPPRESS,
-                                    help="exact keeps every step bit-exact; schedule-int8 (default) runs steps 8-40 in low precision (measured 103.6 s warm)")
+                                    help="exact keeps every step bit-exact; schedule-int8 (default) runs steps 8-40 in low precision (measured 103.6 s warm); turbo-fp8-fast-rgba-exact (Turbo default), turbo-fp8-fast and turbo-fp8 (exact attention) apply to --model turbo only")
     args = parser.parse_args(argv)
     if args.command == "generate":
         if args.output.exists():
@@ -52,6 +55,11 @@ def main(argv=None):
             parser.error("--image requires --mode edit")
         if args.image is not None and not args.image.is_file():
             parser.error("Input image does not exist")
+    profile = getattr(args, "precision_profile", os.environ.get("PAITON_IMAGE21_PROFILE", MODEL_DEFAULT_PROFILES[args.model]))
+    if args.model == "turbo" and args.no_native_fusions:
+        parser.error("--model turbo requires the native fusions (the unpack-only fallback is not qualified for it)")
+    if (args.model == "turbo") != (profile in TURBO_PROFILES) and not args.no_native_fusions:
+        parser.error("turbo-fp8 profiles require --model turbo, and --model turbo requires a turbo-fp8 profile")
     from paiton_image21.checkpoint import prepare
 
     checkpoint = prepare(args.model_dir, args.cache_dir, args.offline, model=args.model)
@@ -61,7 +69,6 @@ def main(argv=None):
     command = [sys.executable, "-u", "-m", "paiton_image21", "--model-dir", str(checkpoint)]
     if not args.no_native_fusions:
         command.append("--native-fusions")
-        profile = getattr(args, "precision_profile", os.environ.get("PAITON_IMAGE21_PROFILE", MODEL_DEFAULT_PROFILES[args.model]))
         command += ["--precision-profile", profile]
     if args.command in (None, "serve"):
         command += ["serve", "--host", getattr(args, "host", "0.0.0.0"),

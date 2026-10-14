@@ -7,8 +7,8 @@ from paiton_image21 import server
 
 
 class ModelIdentity(unittest.TestCase):
-    def handler(self,model):
-        engine=Mock(model_id=model,model_variant='uncensored' if model.endswith('uncensored') else 'original')
+    def handler(self,model,steps=40):
+        engine=Mock(model_id=model,model_variant='uncensored' if model.endswith('uncensored') else 'original',steps=steps)
         engine.checkpoint_sha256='a'*64
         engine.generate.return_value=(None,b'png',{'model':model})
         with patch.object(server,'ThreadingHTTPServer') as http:
@@ -34,3 +34,13 @@ class ModelIdentity(unittest.TestCase):
         h.path='/v1/images/generations';body=json.dumps({'prompt':'A teapot'}).encode()
         h.headers={'Content-Length':str(len(body))};h.rfile=io.BytesIO(body);h.do_POST()
         self.assertEqual(h.send_json.call_args.args[0],200);e.generate.assert_called_once()
+
+    def test_turbo_requests_default_to_the_checkpoint_step_count(self):
+        h,e=self.handler('qwen-image-2.1-turbo-fp8-nearbf16',steps=8)
+        h.path='/v1/models';h.do_GET()
+        self.assertEqual(h.send_json.call_args.args[1]['data'][0]['steps'],8)
+        h.path='/v1/images/generations';body=json.dumps({'prompt':'A teapot','size':'1024x1024'}).encode()
+        h.headers={'Content-Length':str(len(body))};h.rfile=io.BytesIO(body);h.do_POST()
+        self.assertEqual(h.send_json.call_args.args[0],200)
+        self.assertEqual(e.generate.call_args.kwargs['steps'],8)
+

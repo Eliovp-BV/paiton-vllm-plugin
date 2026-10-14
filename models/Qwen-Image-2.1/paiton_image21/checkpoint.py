@@ -8,7 +8,8 @@ import sys
 PACKAGE = Path(__file__).resolve().parent.parent
 
 
-MODEL_LOCKS = {"original": "checkpoint.lock.json", "uncensored": "checkpoint.uncensored.lock.json"}
+MODEL_LOCKS = {"original": "checkpoint.lock.json", "uncensored": "checkpoint.uncensored.lock.json",
+               "turbo": "checkpoint.turbo.lock.json"}
 
 
 def checkpoint_lock(model="original"):
