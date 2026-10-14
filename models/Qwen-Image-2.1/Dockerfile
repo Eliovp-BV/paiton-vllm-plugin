@@ -1,7 +1,7 @@
 FROM python:3.12-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e
 
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
-      org.opencontainers.image.title="Paiton Qwen-Image-2.1 MXFP4 for RDNA4" \
+      org.opencontainers.image.title="Paiton Qwen-Image-2.1 MXFP4 and Turbo FP8 for RDNA4" \
       org.opencontainers.image.description="Pinned image runtime; model weights download from Hugging Face on first launch"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -16,7 +16,7 @@ RUN python -m pip install --no-cache-dir --no-deps -r requirements-python.txt \
 COPY paiton_image21/ ./paiton_image21/
 COPY artifacts/ ./artifacts/
 COPY verify_artifacts.py ./
-COPY run.py checkpoint.lock.json checkpoint.uncensored.lock.json model.json LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
+COPY run.py checkpoint.lock.json checkpoint.uncensored.lock.json checkpoint.turbo.lock.json model.json LICENSE NOTICE THIRD_PARTY_NOTICES.md ./
 COPY LICENSES/ ./LICENSES/
 RUN python verify_artifacts.py \
     && PYTHONDONTWRITEBYTECODE=1 python -c 'from paiton_image21.native_regions import qualified_upstream; assert qualified_upstream(), "Unqualified framework/source build"'
@@ -34,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=1800s \
   CMD python -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:8191/health", timeout=3).read()'
 ENTRYPOINT ["python", "/app/run.py"]
 
-LABEL org.opencontainers.image.version="qwen-image21-mxfp4-rdna4-v1.0.3"
+LABEL org.opencontainers.image.version="qwen-image21-mxfp4-rdna4-v1.1.0"

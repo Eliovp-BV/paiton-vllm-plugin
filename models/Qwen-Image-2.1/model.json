@@ -72,13 +72,13 @@
   "repository_revision": "b52373faeac233fb27c8bba2d334729208ee7b22",
   "native_fusions_option": "Enabled by the managed launchers; --no-native-fusions selects the unpack-only fallback",
   "native_fusions_measurements": "measurements/bf16-regions-r9700.json",
-  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3",
+  "container": "ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.1.0",
   "weight_reconstruction_measurements": "measurements/weight-reconstruction-r9700.json",
   "container_repeat_measurements": "measurements/container-followup-r9700.json",
   "native_attention_measurements": "measurements/native-attention-r9700.json",
   "precision_profiles": {
     "default": "schedule-int8",
-    "option": "--precision-profile {exact,exact-w32,schedule-int8,schedule-int8-11,schedule-fp8} (or PAITON_IMAGE21_PROFILE); requires native fusions",
+    "option": "--precision-profile {exact,exact-w32,schedule-int8,schedule-int8-11,schedule-fp8} for the MXFP4 checkpoints, {turbo-fp8,turbo-fp8-fast,turbo-fp8-fast-rgba-exact} for --model turbo (or PAITON_IMAGE21_PROFILE); requires native fusions",
     "exact": "Every step bit-exact against the pinned BF16 framework arithmetic, with the wave64 exact native attention and fused normalization.",
     "exact_w32": "As exact, with the v1.0.1 wave32 exact attention kernel.",
     "schedule_int8": "Cached text prefix and the first seven denoising steps exact; steps 8-40 with int8 activations (per 256-element block scales from the fused LayerNorm quantizer, exact-weight int8 reconstruction of the unchanged MXFP4 checkpoint) through wave64 int8 WMMA GEMMs and int8-QK / fp8-PV attention. Graded 41.8 dB PSNR / 0.0008 LPIPS at 2048x2048 and 50.2 dB at 1024x1024 against the exact images.",
@@ -103,7 +103,22 @@
       "lock": "checkpoint.uncensored.lock.json",
       "default_precision_profile": "exact",
       "qualification": "MI355 conversion correctness, eight-prompt quality screen, RGBA, editing and A-B-A; R9700 execution and low-precision profile quality not tested on this checkpoint."
+    },
+    "turbo": {
+      "api_id": "qwen-image-2.1-turbo-fp8-nearbf16",
+      "repository": "EliovpAI/Qwen-Image-2.1-Turbo-FP8-NearBF16",
+      "upstream": "Qwen/Qwen-Image-2.1-Turbo",
+      "lock": "checkpoint.turbo.lock.json",
+      "steps": 8,
+      "default_precision_profile": "turbo-fp8-fast-rgba-exact",
+      "precision_profiles": [
+        "turbo-fp8",
+        "turbo-fp8-fast",
+        "turbo-fp8-fast-rgba-exact"
+      ],
+      "requires_native_fusions": true,
+      "qualification": "FP8 per-channel weights (power-of-two scales) on the native RDNA4 FP8 GEMM: steps 1-2 bf16 activations, steps 3-8 fp8 activations; turbo-fp8 keeps exact attention on every step, turbo-fp8-fast uses int8-QK / fp8-PV attention on the last four steps, turbo-fp8-fast-rgba-exact keeps exact attention for RGBA requests. Recorded performance of the original checkpoint does not apply to this checkpoint."
     }
   },
-  "selector": "--model {original,uncensored}; one checkpoint per worker; shared native artifacts, separate pinned model hashes"
+  "selector": "--model {original,uncensored,turbo}; one checkpoint per worker; shared native artifacts, separate pinned model hashes"
 }

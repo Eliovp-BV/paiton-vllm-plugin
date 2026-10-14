@@ -3,6 +3,7 @@
 !requirements*.txt
 !checkpoint.lock.json
 !checkpoint.uncensored.lock.json
+!checkpoint.turbo.lock.json
 !run.py
 !model.json
 !paiton_image21/
@@ -53,4 +54,10 @@
 !artifacts/unpack-fp8/
 !artifacts/unpack-fp8/manifest.json
 !artifacts/unpack-fp8/mxfp4_fp8_gfx1201.so
+!artifacts/vae-conv/
+!artifacts/vae-conv/manifest.json
+!artifacts/vae-conv/qwen_image21_vae_conv_gfx1201.so
+!artifacts/vae-norm/
+!artifacts/vae-norm/manifest.json
+!artifacts/vae-norm/qwen_image21_vae_norm_gfx1201.so
 !verify_artifacts.py

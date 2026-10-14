@@ -1,10 +1,10 @@
 {
   "file": "qwen_image21_normfuse_gfx1201.so",
-  "sha256": "b26804148de04fb3d136e8ae4b8ffed19ce6cf5fe6650fd8ba4072903c4941c9",
+  "sha256": "5e8b83925192cda6a4c26a28ec3547e842d4ca544c3909fd09f32663f9e83625",
   "architecture": "gfx1201",
   "abi_version": 1,
   "framework_dependencies": [],
-  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate) | adds PaitonImage21NormModulateQuant (int8 codes + per-256-block scales, candidate)",
+  "scope": "Exact BF16 LayerNorm (4096 wide, no affine) fused with the preceding gated residual and the following modulation product; caller-owned buffers and HIP stream; no allocation or synchronization",
   "limits": {
     "hidden_dim": 4096,
     "max_rows": 40000
@@ -12,5 +12,5 @@
   "arithmetic": "Reference vectorized Welford statistics (hardware reciprocal counts, FMA updates, shuffle and shared combines), v_rsq_f32 with denormal scaling, BF16 RNE at each reference rounding point",
   "graph_contract": "Fixed shapes; caller-owned buffers and stream; initialize before capture; changed inputs supported",
   "qualification": "BUILT_NOT_GPU_QUALIFIED",
-  "abi": "PaitonImage21NormModulate(x, branch, params, mask, hidden_out, modulated, rows, gate_offset, scale_offset, eps, hipStream_t) -> int"
+  "abi": "PaitonImage21NormModulate(x, branch, params, mask, hidden_out, modulated, rows, gate_offset, scale_offset, eps, hipStream_t) -> int; PaitonImage21NormModulateQuant(..., codes, scales, rows, gate_offset, scale_offset, eps, block=256, hipStream_t) -> int (int8 per 256-column block); PaitonImage21NormModulateQuantRow(..., codes, scales, rows, gate_offset, scale_offset, eps, format 0|8, hipStream_t) -> int (fp8 e4m3fn per row, 8 = power-of-two scales)"
 }

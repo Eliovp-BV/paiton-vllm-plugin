@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parent/'artifacts'
 COMPONENTS=('', 'bf16-regions', 'attention', 'attention-w64', 'attention-qk8',
             'attention-full8', 'normfuse', 'gemm-fp8', 'gemm-int8', 'gemm-w64',
-            'quantize', 'unpack-fp8')
+            'quantize', 'unpack-fp8', 'vae-norm', 'vae-conv')
 
 
 def main():

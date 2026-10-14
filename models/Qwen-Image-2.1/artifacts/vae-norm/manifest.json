@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_vae_norm_gfx1201.so",
+  "sha256": "5eec97a54dd95de13a2a008cd047db516c440adc5812ba80f9f6a16570cf20fb",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "BUILT_NOT_GPU_QUALIFIED",
+  "scope": "VAE decoder channel-first RMS normalization (bf16 [C][H*W], one frame) with gamma, zero bias and optional fused SiLU; no fp32 temporaries",
+  "arithmetic": "fp32 sum of squares per pixel, correctly rounded sqrt and division, bf16 RNE at each framework rounding point (normalize, scale, gamma, bias, SiLU); reduction order differs from the framework",
+  "abi": "PaitonImage21VaeRmsNorm(x, gamma, out, channels, pixels, scale, eps, silu, hipStream_t) -> int (see vae_norm.hip)"
+}

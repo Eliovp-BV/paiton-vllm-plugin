@@ -1,15 +1,16 @@
 {
   "file": "mxfp4_weights_gfx1201.so",
-  "sha256": "8f8943e4161a71aa786ff5c570e82ffe02324aedfdeb71757109f08773708027",
+  "sha256": "67eadb7e5c5b01a8e384628eb499cda918b74ae771a26a68c449e5283e0a0d73",
   "architecture": "gfx1201",
-  "abi": "paiton_mxfp4_unpack(uint8*, uint8*, bf16*, size_t, hipStream_t) -> int",
-  "rocm": "10.0",
+  "abi_version": 1,
   "framework_dependencies": [],
-  "scope": "MXFP4 weight reconstruction only; caller-owned buffers and HIP stream; no allocation or synchronization in kernel entry point",
+  "scope": "Exact MXFP4 weight reconstruction and fp8 e4m3fn per-row-scaled weight decoding to BF16; caller-owned buffers and HIP stream; no allocation or synchronization",
   "limits": {
     "count_multiple": 32,
     "max_count": 68719476736
   },
-  "qualification": "Independent native all-encoding arithmetic, aligned/unaligned buffers, bounds, canaries, nondefault streams, event handoffs, poisoned changed-input graphs and A-B-A; exact model denoiser intermediates, repeated complete requests and task-mode quality gates",
-  "abi_version": 1
+  "arithmetic": "OCP E2M1/G32/E8M0 to BF16; preserves signed zero, edge scales and reference rounding",
+  "graph_contract": "Fixed shapes; caller-owned buffers and stream; initialize before capture; changed inputs supported",
+  "qualification": "BUILT_NOT_GPU_QUALIFIED",
+  "abi": "paiton_mxfp4_unpack(uint8*, uint8*, bf16*, size_t, hipStream_t) -> int; paiton_fp8row_unpack(uint8*, float*, bf16*, int rows, int cols, hipStream_t) -> int"
 }

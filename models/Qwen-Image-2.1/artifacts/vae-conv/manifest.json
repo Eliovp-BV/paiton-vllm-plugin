@@ -1,0 +1,11 @@
+{
+  "file": "qwen_image21_vae_conv_gfx1201.so",
+  "sha256": "6b7b94e6118c2877c7deb2a4bffac63fc19bfeb9c27fb7e7bf374c444fb6ab61",
+  "architecture": "gfx1201",
+  "abi_version": 1,
+  "framework_dependencies": [],
+  "qualification": "BUILT_NOT_GPU_QUALIFIED",
+  "scope": "VAE decoder 3x3 convolution, stride 1, zero padding 1, one image, bf16 NCHW; Ci % 16 == 0, Co % 48 == 0, W % 64 == 0, H % 4 == 0",
+  "arithmetic": "implicit GEMM through wave32 v_wmma_f32_16x16x16_bf16, fp32 accumulation, bf16 RNE output then the bf16 bias add (framework rounding points); summation order differs from the framework solver",
+  "abi": "PaitonImage21VaeConv3x3(in, wt[3][3][Co][Ci], bias, out, ci, co, h, w, hipStream_t) -> int (see vae_conv.hip)"
+}

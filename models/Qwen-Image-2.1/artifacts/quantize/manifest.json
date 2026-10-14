@@ -1,11 +1,11 @@
 {
   "file": "qwen_image21_quantize_gfx1201.so",
-  "sha256": "29c9070bd7a1f8dcdcddd94c0e4b2cee676bccbcaefbefcae5aabc78ecfb4a65",
+  "sha256": "e5819669d5582f0cc50a88e5ad3a8775973b59d4e677758c06035dc34b2fc67f",
   "architecture": "gfx1201",
   "abi_version": 1,
   "framework_dependencies": [],
-  "qualification": "CANDIDATE_NOT_QUALIFIED",
-  "scope": "BF16 -> fp8 e4m3fn / int8 activation quantizer with fp32 scales per row or per (row, 32/64/128/256-column block); optional fused GELU(tanh) or silu(x)*y; cols % 8 == 0, cols <= 12288",
-  "arithmetic": "fp32 row absmax, scale = absmax/448 (or /127), round-to-nearest-even, saturating",
+  "qualification": "BUILT_NOT_GPU_QUALIFIED",
+  "scope": "BF16 -> fp8 e4m3fn / int8 activation quantizer with fp32 scales per row or per (row, 32/64/128/256-column block); optional fused GELU(tanh) or silu(x)*y; optional power-of-two fp8 row scales (format bit 3); cols % 8 == 0, cols <= 12288",
+  "arithmetic": "fp32 row absmax, scale = absmax/448 (or /127) or 2^ceil(log2(absmax/448)) from the fp32 bit pattern, round-to-nearest-even, saturating",
   "abi": "PaitonImage21QuantizeRowwise (see quantize_rowwise.hip)"
 }
