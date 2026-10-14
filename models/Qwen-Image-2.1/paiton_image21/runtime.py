@@ -80,6 +80,10 @@ class ImageEngine:
         "turbo-fp8-fast":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"2","PAITON_IMAGE21_LP_POW2":"1",
                           "PAITON_IMAGE21_ATTENTION_W64":"1","PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_FULL8":"1",
                           "PAITON_IMAGE21_ATTENTION_QK8_FROM":"4"},
+        # the same, but RGBA requests keep the exact attention (their alpha IoU is the one category the fast path moves)
+        "turbo-fp8-fast-rgba-exact":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_FROM_STEP":"2","PAITON_IMAGE21_LP_POW2":"1",
+                                     "PAITON_IMAGE21_ATTENTION_W64":"1","PAITON_IMAGE21_ATTENTION_QK8":"1","PAITON_IMAGE21_ATTENTION_FULL8":"1",
+                                     "PAITON_IMAGE21_ATTENTION_QK8_FROM":"4","PAITON_IMAGE21_ATTENTION_QK8_RGBA":"exact"},
         # the same with the wave64 fp8 GEMM (speed candidate)
         "turbo-fp8-w64":{"PAITON_IMAGE21_LP":"fp8-row","PAITON_IMAGE21_LP_W64":"1","PAITON_IMAGE21_LP_FROM_STEP":"2",
                          "PAITON_IMAGE21_LP_POW2":"1","PAITON_IMAGE21_ATTENTION_W64":"1"},
@@ -161,6 +165,9 @@ class ImageEngine:
                                         companions.get("attention"),companions.get("normfuse"),fp8_directories,qk8_directory)
             if self.native_regions is not None:   # approximate attention only from this transformer forward on (1-based count)
                 self.native_regions.qk8_from_forward=int(os.environ.get("PAITON_IMAGE21_ATTENTION_QK8_FROM","0"))
+                # PAITON_IMAGE21_ATTENTION_QK8_RGBA=exact: RGBA requests keep the exact attention on every forward
+                self._qk8_from=self.native_regions.qk8_from_forward
+                self._qk8_rgba_exact=os.environ.get("PAITON_IMAGE21_ATTENTION_QK8_RGBA","")=="exact"
             self.native_fusion_status="active" if self.native_regions is not None else "unsupported configuration; original regions retained"
             if self.native_regions is not None:
                 active=["bf16-regions"]+[name for name,library in (("attention",self.native_regions.attention_library),
@@ -316,6 +323,8 @@ class ImageEngine:
         started=time.perf_counter()
         if self.native_regions is not None and getattr(self.native_regions,"fp8",None) is not None:
             self.native_regions.fp8.forwards=0   # precision schedule counts transformer forwards per request
+        if self.native_regions is not None and hasattr(self,"_qk8_from"):
+            self.native_regions.qk8_from_forward=1<<30 if (mode=="rgba" and self._qk8_rgba_exact) else self._qk8_from
         stop=threading.Event()
         samples=[]
         def sample():
