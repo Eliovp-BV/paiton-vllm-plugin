@@ -140,12 +140,14 @@ class Companions(unittest.TestCase):
         self.assertEqual(tuple(out.shape),(1,3,4096))
         self.assertEqual(calls,[((1,3,32,128),(1,2,32,128),(1,2,32,128))])
 
-    def test_segmented_prefill_keeps_masked_framework_path(self):
-        seen=[]
+    def test_segmented_prefill_masks_text_and_runs_image_queries_native(self):
+        # text segments keep their causal-masked framework attention; the image queries of the prefix pass attend to every
+        # key without a mask and take the dense exact native kernel
+        calls=[]
         native=NS(counts={'fallback':0},norm_rope=lambda x,norm,freq:x,
-                  attention_native_usable=lambda *a:(seen.append('asked') or True),
-                  attention_native=lambda *a:AssertionError('native attention must not run with segments'),
-                  attention=lambda q,k,v,**kw:q)
+                  attention_native_usable=lambda q,k,v,ck,cv,mask:(calls.append(('usable',q.shape[1],ck is None,mask is None)) or True),
+                  attention_native=lambda q,k,v,*a:(calls.append(('native',q.shape[1],k.shape[1])) or q),
+                  attention=lambda q,k,v,attn_mask=None,**kw:(calls.append(('framework',q.shape[1],k.shape[1],attn_mask is not None)) or q))
         class Fallback:
             _attention_backend=None
             _parallel_config=None
@@ -155,7 +157,7 @@ class Companions(unittest.TestCase):
         with torch.no_grad(), mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True):
             out=adapter.NativeAttentionProcessor(native,Fallback())(attn,hidden,segments=[(0,1,True)])
         self.assertEqual(tuple(out.shape),(1,3,4096))
-        self.assertEqual(seen,[])
+        self.assertEqual(calls,[('framework',1,1,True),('usable',2,True,True),('native',2,3)])
 
     def test_affine_layernorm_disables_fused_normalization_only(self):
         captured=[]
@@ -278,10 +280,10 @@ class LowPrecisionSchedule(unittest.TestCase):
 
 class Qk8Routing(unittest.TestCase):
     """The int8-QK attention companion is used only on low-precision forwards; exact forwards keep the exact kernel."""
-    def _run(self, active, has_qk8):
+    def _run(self, active, has_qk8, forwards=1, qk8_from=None):
         calls=[]
         class Fp8:
-            def __init__(self): self.active=active
+            def __init__(self): self.active=active; self.forwards=forwards
             def quantize(self,x,y=None,activation=0,int8=None,block=None): return 'codes','scale'
             def linear(self,module,codes,scale): return torch.zeros((1,3,4096),dtype=torch.bfloat16).view(3,4096)
         regions=NS(fp8=Fp8(), counts={'fallback':0,'attention_native':0}, qk8_library=object() if has_qk8 else None,
@@ -291,6 +293,8 @@ class Qk8Routing(unittest.TestCase):
                    attention_qk8=lambda *a: (calls.append('qk8') or torch.zeros((1,3,32,128),dtype=torch.bfloat16)))
         lin=lambda x: torch.zeros((1,3,4096),dtype=torch.bfloat16)
         attn=NS(to_q=lin,to_k=lin,to_v=lin,norm_q=None,norm_k=None,to_out=[lambda x: x, lambda x: x])
+        if qk8_from is not None:
+            regions.qk8_from_forward=qk8_from
         processor=adapter.NativeAttentionProcessor(regions, NS(_attention_backend=None,_parallel_config=None))
         hidden=torch.zeros((1,3,4096),dtype=torch.bfloat16)
         with mock.patch.object(torch.Tensor,'is_cuda',new_callable=mock.PropertyMock,return_value=True), torch.no_grad():
@@ -305,6 +309,13 @@ class Qk8Routing(unittest.TestCase):
 
     def test_without_the_companion_low_precision_forwards_keep_the_exact_kernel(self):
         self.assertEqual(self._run(active=True, has_qk8=False), ['exact'])
+
+    def test_qk8_starts_after_the_configured_forward(self):
+        # turbo-fp8-fast: approximate attention only on forwards after qk8_from_forward (1-based count per request)
+        self.assertEqual(self._run(active=True, has_qk8=True, forwards=4, qk8_from=4), ['exact'])
+        self.assertEqual(self._run(active=True, has_qk8=True, forwards=5, qk8_from=4), ['qk8'])
+        # RGBA requests of turbo-fp8-fast-rgba-exact set the threshold out of reach
+        self.assertEqual(self._run(active=True, has_qk8=True, forwards=8, qk8_from=1 << 30), ['exact'])
 
 
 class PrecisionProfiles(unittest.TestCase):
