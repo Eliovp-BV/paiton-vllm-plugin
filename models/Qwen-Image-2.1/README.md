@@ -33,6 +33,58 @@ qualification. The R9700 timings and VRAM figures below describe the original
 model. The source author's “uncensored” label is not a guarantee of behavior.
 See [the conversion measurements](measurements/uncensored-mi355.json).
 
+## Qwen-Image-2.1-Turbo (8 steps, FP8) — new in v1.1.0
+
+The same container also runs
+[EliovpAI/Qwen-Image-2.1-Turbo-FP8-NearBF16](https://huggingface.co/EliovpAI/Qwen-Image-2.1-Turbo-FP8-NearBF16),
+the 8-step Turbo model with per-channel FP8 weights, on Paiton's native RDNA4 FP8 kernels:
+
+```sh
+./models/Qwen-Image-2.1/serve-docker.sh --model turbo
+```
+
+Without a repository checkout:
+
+```sh
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 0.0.0.0:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.1.0 --model turbo
+```
+
+The first launch downloads **18.54 GB** (pinned revision, SHA-256 verified). Requests use the same API as the original
+model; the server defaults to the checkpoint's **8 steps** and guidance 1.0 (a request that sets `steps` must use 8).
+Text-to-image and RGBA at 1024 × 1024 and 2048 × 2048, editing at 1024 × 1024.
+
+Warm complete-request latency on one R9700 (PNG included):
+
+| | 1024 × 1024 | 2048 × 2048 |
+|---|---:|---:|
+| Stock diffusers, Qwen-Image-2.1-Turbo bf16, 8 steps (model CPU offload: the bf16 model does not fit the 32 GB card) | 23.6 s | out of memory |
+| Paiton v1.0.3, Qwen-Image-2.1 MXFP4, 40 steps (`schedule-int8`) | 19.7 s | 104.7 s |
+| **Paiton v1.1.0, `--model turbo`** (default `turbo-fp8-fast-rgba-exact`) | **3.99 s** | **22.05 s** |
+| Paiton v1.1.0, `--model turbo --precision-profile turbo-fp8` (exact attention) | 4.05 s | 23.68 s |
+
+The v1.0.3 row is the previous release with the original 40-step model, for orientation; the Turbo model needs 8 steps.
+Peak device memory: 19.5 GiB at 1024 × 1024 and 26.1 GiB at 2048 × 2048 (text encoder resident, no
+offload). First request after start: 15.2 s at 1024 × 1024 (fresh cache).
+
+Precision profiles for `--model turbo` (all use the checkpoint's FP8 weights; bf16 activations on steps 1–2 and FP8
+activations with power-of-two per-token scales on steps 3–8, as in the checkpoint's `paiton_quant.json`):
+
+| Profile | Attention | Quality vs bf16 (73 images: LPIPS / DINOv2 / alpha IoU) |
+|---|---|---:|
+| `turbo-fp8-fast-rgba-exact` (default) | int8-QK / fp8-PV on the last four steps; RGBA requests keep exact attention | 0.0921 / 0.9839 / 0.942 |
+| `turbo-fp8-fast` | int8-QK / fp8-PV on the last four steps, RGBA included | 0.0924 / 0.9839 / 0.939 |
+| `turbo-fp8` | exact on every step | 0.0918 / 0.9841 / 0.942 |
+
+Turbo profiles require `--model turbo` and the native fusions (`--no-native-fusions` is refused for this model).
+
+### Minors prompt guard
+
+Every request of every model in this container (and of the FLUX.2 klein engine) passes a prompt guard before the prompt is
+encoded. Prompts that combine sexual content with any indication of a minor are refused with HTTP 400
+(`Prompt refused: sexual content involving minors is not allowed`); no image is generated. The engine does not start if the
+guard is missing or fails its self-test. The guard is a prompt-level filter that deliberately over-blocks; it is not a
+guarantee, and you remain responsible for how you use the models and for complying with the law and the model licenses.
+
 At **2048 × 2048, 40 steps, guidance 1.0**, v1.0.2 measured **103.64 seconds** median warm
 complete-request latency against **136.65 seconds** for its bit-exact profile in matched fresh-process
 pairs (24.2% lower latency), and the bit-exact profile itself is 17.7% faster than v1.0.1
@@ -63,7 +115,7 @@ Use an absolute path for a host cache directory. The server listens on all inter
 Without a repository checkout, the same container starts with:
 
 ```sh
-docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 0.0.0.0:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.0.3
+docker run --rm --name paiton-qwen-image21 --device /dev/kfd --device /dev/dri --ipc=host -p 0.0.0.0:8191:8191 -v paiton-qwen-image21-cache:/cache ghcr.io/eliovp/paiton-vllm-plugin:qwen-image21-mxfp4-rdna4-v1.1.0
 ```
 
 ## Generate an image
