@@ -17,7 +17,7 @@ by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin. One launch
 | 8 concurrent requests | **565 tok/s** | 421 tok/s |
 | Prefill, 64K-token prompt | **8,161 tok/s** | 6,991 tok/s |
 | Weights | 116 GB, all in VRAM | 133 GB, about 20.8 GiB of experts per GPU in VRAM, the rest in pinned system RAM |
-| System RAM | 128 GB or more | 256 GB |
+| System RAM | 128 GB or more | 256 GB as benchmarked; 128 GB and 96 GB with the automatic layouts ([4-bit page](README-4bit.md#system-ram)) |
 | Context window | 98K (speculative decoding on), 200K (off) | 98K or 262K (on), 200K (off) |
 | Agents and coding tools | `--prefix-caching` | `--mode 4bit-cache` |
 | Start | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh` | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh` |

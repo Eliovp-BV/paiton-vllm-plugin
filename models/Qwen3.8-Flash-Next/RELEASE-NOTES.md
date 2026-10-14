@@ -3,6 +3,16 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
+## Release 20261014-r3 (4-bit image)
+
+- **4-bit on 128 GB and 96 GB hosts.** The launcher picks the memory layout from the host's RAM and prints it at start: the
+  benchmarked pinned layout on 256 GB hosts, pageable embedding tables on 128 GB hosts, and on 96 GB hosts embedding tables read
+  through the page cache from two raw files laid out once next to the weights (49 GiB of disk; checked before the start).
+  `--mode 4bit`, `4bit-cache` and `4bit-long`; same output in every layout. See [System RAM](README-4bit.md#system-ram).
+- **Decode in `--mode 4bit-200k`** (the mode without speculative decoding): batched steps no longer process padding rows; same output
+  in our checks.
+- New 4-bit image `...-20261011-r3` (the r2 image plus the two changes above); the 3-bit image stays r2.
+
 ## Launcher update (4-bit on smaller hosts)
 
 - **Pageable embedding tables chosen automatically.** `--ple-host` now defaults to `auto`: on `--mode 4bit` and `--mode 4bit-cache`,

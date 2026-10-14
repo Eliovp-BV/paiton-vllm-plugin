@@ -6,7 +6,8 @@ weights: [EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4](https://huggingface.co/
 **The accuracy of the 16-bit model, on two R9700: the same GSM8K and HumanEval scores, and MMLU-Pro within one point.** The 16-bit
 model is 335 GiB (360 GB) and can't run on this hardware at all. This is [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)
 with 4-bit experts, served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin; part of the experts is served from
-pinned system RAM, so it needs a host with about 256 GB of RAM. No custom engine: regular vLLM with the Paiton plugin and our own kernels.
+pinned system RAM: the benchmarked setup uses a host with 256 GB of RAM, and the launcher also runs it on 128 GB and 96 GB hosts
+(same output, see [System RAM](#system-ram)). No custom engine: regular vLLM with the Paiton plugin and our own kernels.
 
 ## Accuracy
 
@@ -94,23 +95,35 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 
 ## Hardware
 - Two AMD Radeon AI PRO R9700 (32 GiB each), ROCm 10 host driver.
-- **System RAM: 256 GB.** The 4-bit modes pin about 96 GiB of host memory (about 55 GiB of host tables plus about 41 GiB of expert
-  copies). The benchmarked configuration keeps it in GPU-mapped GTT memory, which needs about 98 GiB of free GTT; the GTT limit is
-  half the RAM by default, so in practice a host with 256 GB of RAM (a 200 GB host has about 93 GiB).
-- On hosts with less GTT, `--mode 4bit` and `--mode 4bit-cache` switch to pageable embedding tables (next point). The other 4-bit
-  modes fall back to ROCm's user-pointer memory and say so: they run, but slower (186.0 vs 191.9 tok/s
-  single-stream, 388.9 vs 423.1 at 8 requests in our validation run) and can pause for several seconds when the kernel compacts host
-  memory. Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the
-  launcher never changes it. `--dry-run` prints the RAM, the GTT limit and what it chooses.
-- **Hosts with less than about 200 GB of RAM (`--mode 4bit`, `--mode 4bit-cache`):** when the GTT limit cannot hold the pinned
-  tables, the launcher keeps the per-layer embedding tables (about 49 GiB) in ordinary pageable host memory and says so
-  (`--ple-host pinned` keeps the pinned layout, `--ple-host pageable` forces the pageable one). Only about 47 GiB is then pinned, so
-  the GTT pools fit the default limit of a 128 GB host. The tables still need the RAM: the launcher checks for about 112 GiB of
-  available memory, as in the default layout. Same output as the default. With RAM to spare it is as fast as the pinned layout
-  (151.6 vs 153.0 tok/s single-stream, 481.1 vs 452.0 at 8 requests; short prompt, 512 generated tokens). Within a 128 GB host's
-  memory budget little is left for the page cache: 130.1 tok/s single-stream and 458.3 at 8 requests in the same check. It needs an
-  image with this runtime (the r2 4-bit image); with other images the tables stay pinned.
-- Disk: about 133 GB for the weights. Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r2`
+- **System RAM: 256 GB as benchmarked, 128 GB and 96 GB supported** (`--mode 4bit`, `4bit-cache`, `4bit-long`; next section).
+
+## System RAM
+The launcher picks the memory layout from the host's RAM and the GPU's GTT limit (half the RAM by default) and prints it at start
+(`memory layout: ...`, with the reason). `--dry-run` shows the choice without starting anything. Every layout gives the same output.
+
+| Host RAM | Layout the launcher picks | Host RAM in use while serving | Disk |
+|---|---|---|---|
+| 256 GB | per-layer embedding (PLE) tables and expert copies pinned in GTT memory (the benchmarked setup) | about 109 GiB | 133 GB of weights |
+| 128 GB | PLE tables in pageable memory, about 47 GiB pinned (fits the GTT limit) | about 110 GiB | 133 GB of weights |
+| 96 GB | PLE tables read from two raw files through the page cache, user-pointer host memory | about 61 GiB, plus page cache | 133 GB of weights + 49 GiB of raw PLE files |
+| 64 GB | not supported yet: the launcher stops and says how much RAM it needs | | |
+
+- **128 GB:** the launcher keeps about 6 GiB of free RAM beyond the table's figure; `--mode 4bit-cache` (whose 8 GiB RAM prefix
+  tier needs more) uses the 96 GB layout there, without the RAM prefix tier.
+- **96 GB:** the PLE tables (about 49 GiB) are laid out once as two raw files next to the weights (`<weights>-ple-raw`, about a
+  minute on an NVMe disk) and reused at every start. The launcher checks before anything else that the disk has the 49 GiB plus
+  10 GiB to spare, and otherwise stops with the numbers (`--ple-raw-dir` puts them on another disk). Free RAM beyond the figure in
+  the table becomes page cache for the tables, so fewer reads go to the disk. Host memory runs as user-pointer memory in this
+  layout, which can pause for a moment when the kernel compacts host memory.
+- **Speed:** smaller hosts are slower in `--mode 4bit` (short prompt, 512 generated tokens, single-stream / 8 requests, same load
+  client): 256 GB pinned 151.7 / 428.5 tok/s; 128 GB pageable, within a 128 GB host's memory budget, 130.1 / 458.3; 96 GB
+  file-backed 128.4 / 304.7. One server start each; single-stream speed varies by up to about 15 % between starts.
+- **Explicit choices:** `--ple-host pinned`, `pageable` or `filebacked` overrides the automatic choice (the RAM check still
+  applies). `--mode 4bit-xl` and `--mode 4bit-200k` keep the pinned layout: on hosts whose GTT limit cannot hold it they fall back to
+  ROCm's user-pointer memory and say so (186.0 vs 191.9 tok/s single-stream, 388.9 vs 423.1 at 8 requests in our validation run).
+  Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the launcher
+  never changes it.
+- Disk: about 133 GB for the weights (plus 49 GiB on 96 GB hosts, above). Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r3`
   (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
   (allocator cap 0.925).
