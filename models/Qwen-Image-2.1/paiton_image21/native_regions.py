@@ -10,6 +10,7 @@ framework path is used unchanged.
 """
 import ctypes as C
 import hashlib
+import os
 import json
 import inspect
 import math
@@ -62,7 +63,7 @@ class NativeRegions:
     def __init__(self, directory, attention_directory=None, normfuse_directory=None, qk8_directory=None):
         self.fp8 = None   # low-precision GEMM path (Fp8Regions) of the precision schedule, attached by install() when a profile selects it
         self.pending_quantized = None   # (codes, scale) of the fused LayerNorm quantizer for the next attention projection
-        self.norm_modulate_quant_kernel = None
+        self.norm_modulate_quant_kernel = self.norm_modulate_quant_row_kernel = None
         self.qk8_library = self.qk8_manifest = None
         if qk8_directory is not None:   # int8-QK^T attention (optionally fp8 P/V), only for the low-precision forwards of the schedule
             self.qk8_library, self.qk8_manifest = _load_library(
@@ -124,6 +125,13 @@ class NativeRegions:
             if self.norm_modulate_quant_kernel is not None:
                 self.norm_modulate_quant_kernel.argtypes = [C.c_void_p]*7 + [C.c_int]*3 + [C.c_float, C.c_int, C.c_void_p]
                 self.norm_modulate_quant_kernel.restype = C.c_int
+            # fp8 per-row variant (scale row absmax / 448, optionally a power of two); older artifacts lack it
+            self.norm_modulate_quant_row_kernel = getattr(self.normfuse_library, 'PaitonImage21NormModulateQuantRow', None)
+            if self.norm_modulate_quant_row_kernel is not None and os.environ.get('PAITON_IMAGE21_FUSED_QUANT_ROW', '1') != '0':
+                self.norm_modulate_quant_row_kernel.argtypes = [C.c_void_p]*7 + [C.c_int]*3 + [C.c_float, C.c_int, C.c_void_p]
+                self.norm_modulate_quant_row_kernel.restype = C.c_int
+            else:
+                self.norm_modulate_quant_row_kernel = None
             self.norm_modulate_kernel.argtypes = [C.c_void_p]*6+[C.c_int]*3+[C.c_float,C.c_void_p]
             self.norm_modulate_kernel.restype = C.c_int
 
@@ -174,27 +182,41 @@ class NativeRegions:
 
     def fused_quant_available(self):
         fp8 = getattr(self, 'fp8', None)
-        return (fp8 is not None and fp8.active and fp8.int8 and fp8.block == 256
-                and getattr(self, 'norm_modulate_quant_kernel', None) is not None)
+        if fp8 is None or not fp8.active:
+            return False
+        if fp8.int8:
+            return fp8.block == 256 and getattr(self, 'norm_modulate_quant_kernel', None) is not None
+        return not fp8.block and getattr(self, 'norm_modulate_quant_row_kernel', None) is not None
+
+    def _quant_buffers(self, x):
+        rows = x.shape[1]
+        codes = torch.empty((rows, HIDDEN), dtype=torch.uint8, device=x.device)
+        if self.fp8.int8:
+            return rows, codes, torch.empty((rows, HIDDEN // 256), dtype=torch.float32, device=x.device)
+        return rows, codes, torch.empty((rows,), dtype=torch.float32, device=x.device)
+
+    def _quant_kernel(self):
+        """(kernel, last int argument): int8 per-256 block, or fp8 per row with the rowwise quantizer's format bit 3."""
+        if self.fp8.int8:
+            return self.norm_modulate_quant_kernel, 256
+        return self.norm_modulate_quant_row_kernel, 8 if self.fp8.pow2 else 0
 
     def norm_modulate_quant(self, x, parameters, mask, scale_offset, eps):
         """LayerNorm + modulation emitted as int8 codes with per-256-block scales (bit-identical to quantizing the bf16
         output); returns (placeholder, codes, scale) — the placeholder keeps the attention processor's tensor API."""
-        rows = x.shape[1]
-        codes = torch.empty((rows, HIDDEN), dtype=torch.uint8, device=x.device)
-        scale = torch.empty((rows, HIDDEN // 256), dtype=torch.float32, device=x.device)
-        self.call(self.norm_modulate_quant_kernel, x.data_ptr(), 0, parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
-                  0, codes.data_ptr(), scale.data_ptr(), rows, 0, scale_offset, eps, 256)
+        rows, codes, scale = self._quant_buffers(x)
+        kernel, mode = self._quant_kernel()
+        self.call(kernel, x.data_ptr(), 0, parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
+                  0, codes.data_ptr(), scale.data_ptr(), rows, 0, scale_offset, eps, mode)
         self.counts['norm_modulate_quant'] = self.counts.get('norm_modulate_quant', 0) + 1
         return x, codes, scale
 
     def residual_norm_modulate_quant(self, x, branch, parameters, mask, gate_offset, scale_offset, eps):
         hidden = torch.empty_like(x)
-        rows = x.shape[1]
-        codes = torch.empty((rows, HIDDEN), dtype=torch.uint8, device=x.device)
-        scale = torch.empty((rows, HIDDEN // 256), dtype=torch.float32, device=x.device)
-        self.call(self.norm_modulate_quant_kernel, x.data_ptr(), branch.data_ptr(), parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
-                  hidden.data_ptr(), codes.data_ptr(), scale.data_ptr(), rows, gate_offset, scale_offset, eps, 256)
+        rows, codes, scale = self._quant_buffers(x)
+        kernel, mode = self._quant_kernel()
+        self.call(kernel, x.data_ptr(), branch.data_ptr(), parameters.data_ptr(), 0 if mask is None else mask.data_ptr(),
+                  hidden.data_ptr(), codes.data_ptr(), scale.data_ptr(), rows, gate_offset, scale_offset, eps, mode)
         self.counts['residual_norm_modulate_quant'] = self.counts.get('residual_norm_modulate_quant', 0) + 1
         return hidden, codes, scale
 
@@ -337,6 +359,8 @@ class NativeAttentionProcessor(QwenImage21AttnProcessor):
                       and rotary_emb.dtype == torch.complex64
                       and tuple(rotary_emb.shape) == (hidden_states.shape[1],64)))
         if not valid_hidden(hidden_states) or not valid_rope:
+            if getattr(self.native, 'pending_quantized', None) is not None:   # hidden_states is a placeholder then
+                raise RuntimeError('Image21 fused LayerNorm quantizer output reached the framework attention fallback')
             self.native.counts['fallback'] += 1
             return self.fallback(attn,hidden_states,attention_mask,rotary_emb,
                                  layer_cache,kv_cache_mode,cache_write_slice,segments,key_valid)

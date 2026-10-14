@@ -8,6 +8,7 @@ WMMA kernel with fp32 accumulation and the scales and bias in its epilogue. The 
 text-prefix pass and for the first forwards of a request (precision schedule). No framework arithmetic is involved.
 """
 import ctypes as C
+import os
 
 import torch
 
@@ -63,6 +64,33 @@ class Fp8Regions:
         self.inexact = torch.zeros((), dtype=torch.int32, device='cuda')
         self.variant = 0
         self.group_m = 4
+        # optional per-shape fp8 GEMM choice, PAITON_IMAGE21_LP_GEMM_TABLE="NxK=w32|w64:variant:group_m,...": every tile
+        # variant of both kernels accumulates the same 16-k slabs in the same order, so the choice is bit-identical
+        self.gemm_table = {}
+        table = os.environ.get('PAITON_IMAGE21_LP_GEMM_TABLE', '').strip()
+        if table and not self.int8:
+            kernels = {'w32' if not self.wave64 else 'w64': self.gemm_kernel}
+            for item in table.split(','):
+                shape, choice = item.split('=')
+                n, k = (int(v) for v in shape.lower().split('x'))
+                lib, variant, group_m = choice.split(':')
+                if lib not in kernels:
+                    if lib == 'w64':
+                        library, manifest = _load_library(gemm_w64_directory, 1, 'PaitonImage21GemmW64GetAbiVersion',
+                                                          'PaitonImage21GemmW64GetTargetArch', 'PaitonImage21GemmW64Initialize')
+                        self.gemm_w64_manifest = manifest
+                        kernel = library.PaitonImage21GemmFp8W64
+                    elif lib == 'w32':
+                        library, manifest = _load_library(gemm_directory, 1, 'PaitonImage21GemmFp8GetAbiVersion',
+                                                          'PaitonImage21GemmFp8GetTargetArch', 'PaitonImage21GemmFp8Initialize')
+                        self.gemm_manifest = manifest
+                        kernel = library.PaitonImage21GemmFp8
+                    else:
+                        raise ValueError(f'unknown fp8 GEMM kernel {lib}')
+                    kernel.argtypes = [C.c_void_p]*6 + [C.c_int]*5 + [C.c_void_p]
+                    kernel.restype = C.c_int
+                    kernels[lib] = kernel
+                self.gemm_table[(n, k)] = (kernels[lib], int(variant), int(group_m), lib)
         self.counts = dict(quantize=0, gemm=0, unpack=0, exact_forwards=0, low_precision_forwards=0)
         self.forwards = 0        # transformer forwards of the current request (reset by the runtime per request)
         self.schedule_active = False   # set per transformer forward: past the exact prefix of the schedule
@@ -136,8 +164,9 @@ class Fp8Regions:
             self.call(self.gemm_kernel, codes.data_ptr(), scale.data_ptr(), weight.data_ptr(), weight_scale.data_ptr(), bias_ptr, out.data_ptr(),
                       rows, n, k, self.block, self.variant, self.group_m)
         else:
-            self.call(self.gemm_kernel, codes.data_ptr(), scale.data_ptr(), weight.data_ptr(), weight_scale.data_ptr(), bias_ptr, out.data_ptr(),
-                      rows, n, k, self.variant, self.group_m)
+            kernel, variant, group_m, _ = self.gemm_table.get((n, k), (self.gemm_kernel, self.variant, self.group_m, None))
+            self.call(kernel, codes.data_ptr(), scale.data_ptr(), weight.data_ptr(), weight_scale.data_ptr(), bias_ptr, out.data_ptr(),
+                      rows, n, k, variant, group_m)
         self.counts['gemm'] += 1
         return out
 
@@ -153,4 +182,5 @@ class Fp8Regions:
             if manifest is not None:
                 manifests[f'{name}_sha256'] = manifest['sha256']
         return dict(format=self.format, wave64=self.wave64, from_step=self.from_step, exact_prefix=self.exact_prefix, pow2=self.pow2,
-                    variant=self.variant, group_m=self.group_m, counts=dict(self.counts), qualification='precision schedule; graded profiles in measurements/low-precision-r9700.json', **manifests)
+                    variant=self.variant, group_m=self.group_m,
+                    gemm_table={f'{n}x{k}': f'{lib}:{v}:{g}' for (n, k), (_, v, g, lib) in self.gemm_table.items()}, counts=dict(self.counts), qualification='precision schedule; graded profiles in measurements/low-precision-r9700.json', **manifests)
