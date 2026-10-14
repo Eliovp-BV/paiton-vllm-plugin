@@ -106,7 +106,7 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   launcher checks for about 112 GiB of available memory, as in the default mode. Same output as the default; in our check on a
   128 GB memory budget, 176.2 tok/s single-stream and 403.4 at 8 requests (default pinned: 177.2 / 400.7). It needs an image with
   this runtime; the launcher refuses the flag on images without it.
-- Disk: about 133 GB for the weights. Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r1`
+- Disk: about 133 GB for the weights. Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r2`
   (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
   (allocator cap 0.925).
