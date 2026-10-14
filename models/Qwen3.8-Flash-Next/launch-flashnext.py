@@ -91,6 +91,55 @@ def ensure_weights(d, dry, repo=None, revision=None):
     return d
 
 
+def ple_raw_plan(weights):
+    """(meta, shards) of the E4M3 PLE export <weights>/common/ple-e4m3/shard_*.safetensors (codes [n, dim] F8_E4M3 + row_scale [n]
+    F32 each): what --ple-host filebacked lays out as two raw files (codes.e4m3 = rows x dim bytes, row_scale.f32 = rows x 4)."""
+    src = pathlib.Path(weights) / 'common' / 'ple-e4m3'
+    files = sorted(src.glob('shard_*.safetensors'), key=lambda q: int(q.name[6:].split('.')[0]))
+    if not files: return None, []
+    shards = []; rows = 0; dim = None
+    for f in files:
+        with open(f, 'rb') as fh:
+            n = int.from_bytes(fh.read(8), 'little'); h = json.loads(fh.read(n)); base = 8 + n
+        c, r = h['codes'], h['row_scale']
+        if c['dtype'] != 'F8_E4M3' or r['dtype'] != 'F32' or c['shape'][0] != r['shape'][0] or (dim is not None and c['shape'][1] != dim):
+            sys.exit(f'{f}: unexpected PLE export layout ({c["dtype"]} {c["shape"]}, {r["dtype"]} {r["shape"]})')
+        dim = c['shape'][1]; rows += c['shape'][0]
+        shards.append((f, base + c['data_offsets'][0], c['data_offsets'][1] - c['data_offsets'][0],
+                       base + r['data_offsets'][0], r['data_offsets'][1] - r['data_offsets'][0]))
+    meta = {'format': 1, 'rows_total': rows, 'dim': dim, 'shards': [[f.name, f.stat().st_size] for f, *_ in shards]}
+    return meta, shards
+
+def ensure_ple_raw(weights, out, dry):
+    """--ple-host filebacked: the PLE export as two raw files in <out> (built once, about 50 GB; reused while meta.json matches)."""
+    out = pathlib.Path(out); meta, shards = ple_raw_plan(weights)
+    if meta is None: sys.exit(f'--ple-host filebacked: no PLE export in {weights}/common/ple-e4m3')
+    size = meta['rows_total'] * (meta['dim'] + 4)
+    try: have = json.loads((out / 'meta.json').read_text())
+    except Exception: have = None
+    if have == meta and (out / 'codes.e4m3').stat().st_size == meta['rows_total'] * meta['dim'] \
+            and (out / 'row_scale.f32').stat().st_size == meta['rows_total'] * 4:
+        print(f'PLE raw files: {out} ({size / 2**30:.1f} GiB, reused)'); return out
+    if dry: print(f'PLE raw files: would build {out} ({size / 2**30:.1f} GiB, once)'); return out
+    out.mkdir(parents=True, exist_ok=True); free = shutil.disk_usage(out).free
+    if free < size + (10 << 30): sys.exit(f'--ple-host filebacked: {out} needs {size / 2**30:.0f} GiB + 10 GiB free disk, has {free / 2**30:.0f} GiB')
+    (out / 'meta.json').unlink(missing_ok=True)
+    print(f'PLE raw files: building {out} ({size / 2**30:.1f} GiB from {len(shards)} export shards, once)', flush=True)
+    for name, pick in (('codes.e4m3', lambda s: s[1:3]), ('row_scale.f32', lambda s: s[3:5])):
+        tmp = out / (name + '.tmp')
+        with open(tmp, 'wb') as dst:
+            for i, sh in enumerate(shards):
+                off, n = pick(sh)
+                with open(sh[0], 'rb') as src:
+                    while n:
+                        k = os.copy_file_range(src.fileno(), dst.fileno(), n, off)
+                        if k <= 0: sys.exit(f'PLE raw files: copy from {sh[0]} failed')
+                        off += k; n -= k
+            dst.flush(); os.fsync(dst.fileno())
+        tmp.rename(out / name)
+    (out / 'meta.json').write_text(json.dumps(meta) + '\n')
+    return out
+
 def ensure_base_cfg(d, dry):
     """Base model's config + tokenizer files (pinned revision) next to the weights; the container export does not carry them."""
     d = pathlib.Path(d)
@@ -226,20 +275,23 @@ def meminfo_gib(field):
     try: return int(re.search(rf'{field}:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
     except Exception: return None
 
-def ram_need_gib(tier_gib, pinned_gib=None, pageable_gib=0.0):
-    """Host memory a start keeps resident: pinned (host tables + expert host tier, or the measured pinned total) + pageable PLE tables."""
-    tables = COMMON['host_pools']['gtt_need_gib'] - pageable_gib
+def ram_need_gib(tier_gib, pinned_gib=None, pageable_gib=0.0, filebacked_gib=0.0):
+    """Host memory a start keeps resident: pinned (host tables + expert host tier, or the measured pinned total) + pageable PLE tables;
+    file-backed PLE tables live in the page cache (evictable) and are not counted."""
+    tables = COMMON['host_pools']['gtt_need_gib'] - pageable_gib - filebacked_gib
     return max(tables + tier_gib, pinned_gib or 0.0) + pageable_gib
 
-def ram_check(tier_gib, margin_gib=8.0, pinned_gib=None, pageable_gib=0.0):
+def ram_check(tier_gib, margin_gib=8.0, pinned_gib=None, pageable_gib=0.0, filebacked_gib=0.0):
     """Pinned host memory of a start: the host tables (every mode) plus the expert host tier (4-bit modes), against MemAvailable;
     with --ple-host pageable the PLE tables (part of the host tables) move from pinned to pageable host memory and still need the RAM."""
-    tables = COMMON['host_pools']['gtt_need_gib'] - pageable_gib; need_gib = ram_need_gib(tier_gib, pinned_gib, pageable_gib)
+    tables = COMMON['host_pools']['gtt_need_gib'] - pageable_gib - filebacked_gib
+    need_gib = ram_need_gib(tier_gib, pinned_gib, pageable_gib, filebacked_gib)
     avail = meminfo_gib('MemAvailable')
     if avail is None: print('ram: /proc/meminfo unreadable; not checked'); return []
     ok = avail >= need_gib + margin_gib
     print(f'ram: pinned host memory {need_gib - pageable_gib:.1f} GiB (host tables {tables:g}' + (f' + expert host tier {tier_gib:.1f}' if tier_gib else '') + ', both GPUs)'
-          + (f' + pageable PLE tables {pageable_gib:.1f} GiB' if pageable_gib else '') + '; '
+          + (f' + pageable PLE tables {pageable_gib:.1f} GiB' if pageable_gib else '')
+          + (f'; PLE tables {filebacked_gib:.1f} GiB file-backed (page cache: free RAM beyond this check means fewer disk reads)' if filebacked_gib else '') + '; '
           f'available {avail:.1f} GiB; needed {need_gib + margin_gib:.1f} GiB with a {margin_gib:g} GiB margin -> {"ok" if ok else "NOT ENOUGH"}')
     return [] if ok else [f'{need_gib + margin_gib:.0f} GiB of available RAM for the pinned host memory (have {avail:.0f} GiB'
                           + ')']
@@ -355,7 +407,9 @@ def kv_pool_check(mode, m, engine_args):
 def low_ram_plan(a, m, image, gpus):
     """--ple-host auto on the 4-bit modes: PLE tables pinned (as benchmarked) when the GPU's GTT limit (half of MemTotal by default)
     holds the measured pinned total + 2 GiB; else pageable, on modes where it is measured and with an image that has the pageable
-    runtime. An explicit flag is kept; one line is printed when the launcher picks pageable."""
+    runtime. Then, when MemAvailable cannot hold the pageable layout (the tables resident) with a 16 GiB margin, file-backed tables
+    (page cache) on modes where that is measured (ple_filebacked) and with an image that has the file-backed runtime.
+    An explicit flag is kept; one line is printed per automatic choice."""
     if not m.get('expert_tier'):
         if a.ple_host == 'auto': a.ple_host = 'pinned'
         return
@@ -375,6 +429,16 @@ def low_ram_plan(a, m, image, gpus):
                 print(f'low-RAM host: GTT limit {lim:.0f} GiB < {need:.0f} GiB for the pinned PLE tables (MemTotal '
                       f'{meminfo_gib("MemTotal") or 0:.0f} GiB) -> --ple-host pageable automatically (pinned host memory ~{m["gtt_pinned_gib_pageable"]:.0f} '
                       'GiB, same output; --ple-host pinned keeps the benchmarked layout)')
+        fb = ph.get('filebacked') or {}
+        if a.ple_host == 'pageable' and m.get('ple_filebacked') and any(ref in image for ref in fb.get('images', [])):
+            et = m['expert_tier']; tier_gib = pinned_host_gib(tier_spec(m['env'].get(et['env'], et['default']), a.expert_vram_gib, a.host_pool),
+                                                              et['expert_bytes_gib_both_ranks'], COMMON['tp'])
+            need = ram_need_gib(tier_gib, m['gtt_pinned_gib_pageable'], ph['pageable_gib_both_ranks']) + 16.0
+            avail = meminfo_gib('MemAvailable')
+            if avail is not None and avail < need:
+                a.ple_host = 'filebacked'
+                print(f'low-RAM host: MemAvailable {avail:.0f} GiB < {need:.0f} GiB with the PLE tables resident -> --ple-host filebacked '
+                      f'automatically (the {ph["pageable_gib_both_ranks"]:.0f} GiB of tables in the page cache, read from disk on a miss)')
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -389,10 +453,12 @@ def main():
     ap.add_argument('--expert-vram-gib', type=float, default=None, help='4-bit modes: VRAM per GPU for resident experts (default from modes.json)'); ap.add_argument('--host-pool', choices=('on', 'off'), default=None, help='4-bit modes: keep a pinned host copy of every non-core expert (on, default) or only of the non-resident ones (off)'); ap.add_argument('--cache', default=None, help='compile cache dir (default ~/.cache/paiton/flashnext/<mode>)')
     ap.add_argument('--image', default=None, help='image reference (default: the pinned release image)'); ap.add_argument('--devices', default=None, help='comma list of ROCR ids (default: all AMD GPUs; two are required)')
     ap.add_argument('--view', default=None, help='runtime view dir (default: <weights>-view)'); ap.add_argument('--base-cfg', default=None, help='dir with the base model config + tokenizer files (default: <weights>-base-cfg, downloaded at the pinned revision)')
-    ap.add_argument('--ple-host', choices=('auto', 'pinned', 'pageable'), default='auto', help='4-bit modes 4bit and 4bit-cache: where the per-layer '
+    ap.add_argument('--ple-host', choices=('auto', 'pinned', 'pageable', 'filebacked'), default='auto', help='4-bit modes 4bit and 4bit-cache: where the per-layer '
                     'embedding tables live on the host: pinned (as benchmarked) or pageable (~49 GiB less pinned host memory and GTT, so the GTT '
                     'pools fit a 128 GB host; same output, decode within ~1 %%; needs an image with the pageable PLE runtime); auto (default): '
-                    'pageable when the GTT limit cannot hold the pinned tables, else pinned')
+                    'pageable when the GTT limit cannot hold the pinned tables, else pinned; filebacked: the tables mmapped from raw files next to '
+                    'the weights (page cache, for hosts that cannot keep them resident; built once, about 50 GB of disk)')
+    ap.add_argument('--ple-raw-dir', default=None, help='--ple-host filebacked: where the raw PLE files live (default <weights>-ple-raw)')
     ap.add_argument('--prefix-caching', action='store_true', help='opt-in: align-mode prefix caching (recurrent state cached per 2048-token block); see RELEASE-NOTES.md'); ap.add_argument('--served-model-name', default='Qwen3.8-Flash-Next'); ap.add_argument('--host-pools', choices=('auto', 'gtt', 'userptr'), default='auto', help='host-resident tables: driver-owned GTT memory or ROCm user-pointer memory; auto = the mode default (3-bit: userptr; 4-bit: gtt when the GTT size holds them)'); ap.add_argument('--detach', action='store_true'); ap.add_argument('--settle-s', type=float, default=30.0, help='after /health: wait (at most this long) for the host page migration to calm down before reporting READY; 0 = off'); ap.add_argument('--keep-page-cache', action='store_true', help='do not drop the checkpoint files from the page cache after the load'); ap.add_argument('--dry-run', action='store_true')
     a = ap.parse_args(); m = MODES[a.mode]
     if a.api_key:
@@ -406,13 +472,21 @@ def main():
     image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
     gpus = a.devices.split(',') if a.devices else amd_gpus()
     low_ram_plan(a, m, image, gpus[:COMMON['tp']])
-    pinned_gib = m.get('gtt_pinned_gib'); pageable_gib = 0.0
-    if a.ple_host == 'pageable':
-        if 'gtt_pinned_gib_pageable' not in m:
-            sys.exit(f'--ple-host pageable is not measured on --mode {a.mode}: use --mode '
-                     + ' or --mode '.join(k for k, v in MODES.items() if 'gtt_pinned_gib_pageable' in v))
-        pinned_gib = m['gtt_pinned_gib_pageable']; pageable_gib = COMMON['ple_host']['pageable_gib_both_ranks']
-    ph = COMMON['ple_host']
+    pinned_gib = m.get('gtt_pinned_gib'); pageable_gib = filebacked_gib = 0.0
+    ph = COMMON['ple_host']; fbh = ph.get('filebacked') or {}
+    if a.ple_host in ('pageable', 'filebacked'):
+        key = 'gtt_pinned_gib_pageable' if a.ple_host == 'pageable' else 'ple_filebacked'
+        if not m.get(key):
+            ok = [k for k, v in MODES.items() if v.get(key)]
+            sys.exit(f'--ple-host {a.ple_host} is not measured on --mode {a.mode}: '
+                     + ('use --mode ' + ' or --mode '.join(ok) if ok else 'not measured on any mode yet'))
+        pinned_gib = m['gtt_pinned_gib_pageable']
+        if a.ple_host == 'pageable': pageable_gib = ph['pageable_gib_both_ranks']
+        else: filebacked_gib = ph['pageable_gib_both_ranks']
+    if a.ple_host == 'filebacked' and not any(ref in image for ref in fbh.get('images', [])):
+        msg = (f'--ple-host filebacked needs an image with the file-backed PLE runtime ({", ".join(fbh.get("images", [])) or "none published yet"})')
+        if a.dry_run: print('WARNING:', msg)
+        else: sys.exit(msg)
     if a.ple_host == 'pageable' and not any(ref in image for ref in ph['images']):
         msg = (f'--ple-host pageable needs an image with the pageable PLE runtime ({", ".join(ph["images"]) or "none published yet"}); '
                f'{image} keeps the PLE tables pinned (about 96 GiB of pinned host memory)')
@@ -430,13 +504,14 @@ def main():
         dflt_gib = pinned_host_gib(tier_spec(m['env'].get(et['env'], et['default'])), et['expert_bytes_gib_both_ranks'], COMMON['tp'])
         if pinned_gib and abs(tier_gib - dflt_gib) > 0.05:   # the measured pinned totals hold the default expert tier
             pinned_gib = round(pinned_gib - dflt_gib + tier_gib, 1)
-    missing += ram_check(tier_gib, 16.0 if pinned_gib else 8.0, pinned_gib, pageable_gib)
+    missing += ram_check(tier_gib, 16.0 if pinned_gib else 8.0, pinned_gib, pageable_gib, filebacked_gib)
     if m.get('expert_tier'):
         tot = meminfo_gib('MemTotal')
-        if pageable_gib:
-            print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; --ple-host pageable keeps about {pinned_gib:.0f} GiB of pinned host '
+        if pageable_gib or filebacked_gib:
+            print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; --ple-host {a.ple_host} keeps about {pinned_gib:.0f} GiB of pinned host '
                   f'memory in one GPU\'s GTT (about {pinned_gib + 2:.0f} GiB of free GTT; the GTT limit is half the RAM by default: a 128 GB host) and '
-                  f'the {pageable_gib:.0f} GiB of PLE tables in pageable memory; see the host pools line below')
+                  f'the {pageable_gib or filebacked_gib:.0f} GiB of PLE tables in {"pageable memory" if pageable_gib else "the page cache (file-backed)"}; '
+                  'see the host pools line below')
         else:
             print(f'host RAM: {"unknown" if tot is None else f"{tot:.0f} GiB"} total; the benchmarked 4-bit configuration keeps about 96 GiB of pinned '
                   'host memory in one GPU\'s GTT, so it needs about 98 GiB of free GTT (the GTT limit is half the RAM by default: a 256 GB host); '
@@ -457,6 +532,7 @@ def main():
         else: sys.exit(msg)
     base_cfg = ensure_base_cfg(a.base_cfg or str(weights) + '-base-cfg', a.dry_run); view = ensure_view(weights, a.view or str(weights) + '-view', base_cfg, a.dry_run, tuple(m.get('requires', [])), int6=bool(m['env'].get('PAITON_FN_INT6_EXTRA')))
     cache = pathlib.Path(a.cache or os.path.expanduser(f'~/.cache/paiton/flashnext/{a.mode}')); cache.mkdir(parents=True, exist_ok=True)
+    ple_raw = ensure_ple_raw(weights, a.ple_raw_dir or str(weights) + '-ple-raw', a.dry_run) if a.ple_host == 'filebacked' else None
     env = dict(m['env']); env['VLLM_CACHE_ROOT'] = COMMON['mounts']['cache']; env['HF_HUB_OFFLINE'] = '1'
     if tier: env[m['expert_tier']['env']] = tier
     engine_args = list(m['engine_args'])
@@ -481,9 +557,11 @@ def main():
     hp_env, rt = host_pool_env(hp_choice, gpus, tier_gib, pinned_gib=pinned_gib, ram_tier_gib=float(rtier.get('gib', 0.0)),
                                ram_tier_overhead_gib=float(rtier.get('gtt_overhead_gib', 0.0)))
     env.update(hp_env)
-    for k in ph['env']: env.pop(k, None)
+    for k in list(ph['env']) + list(fbh.get('env', {})): env.pop(k, None)
     if a.ple_host == 'pageable':
         env.update(ph['env']); print(f'PLE tables: pageable host memory ({pageable_gib:.1f} GiB, both GPUs; not pinned, not in GTT)')
+    elif a.ple_host == 'filebacked':
+        env.update(fbh['env']); print(f'PLE tables: file-backed ({filebacked_gib:.1f} GiB, both GPUs) from {ple_raw}, page cache; not pinned, not in GTT')
     if rtier:   # RAM prefix tier (cache mode): prefix-cache blocks evicted from VRAM are kept in pinned host memory (GTT) and loaded back on a hit
         rt = int(rt)
         if rt >= rtier.get('min_gib', 4.0):
@@ -501,6 +579,7 @@ def main():
     for k, v in sorted(env.items()): cmd += ['-e', f'{k}={v}']
     if a.api_key: cmd += ['-e', 'VLLM_API_KEY']   # by name: Docker reads the value from the launcher's environment (below)
     cmd += ['-v', f'{weights}:{COMMON["mounts"]["checkpoint"]}:ro', '-v', f'{view}:{COMMON["mounts"]["view"]}:ro', '-v', f'{cache}:{COMMON["mounts"]["cache"]}']
+    if ple_raw: cmd += ['-v', f'{ple_raw}:{fbh["mount"]}:ro']
     if env.get('PAITON_FN_KV_TIER') == '1':
         # RAM prefix tier: its boot hook must sit in site-packages at interpreter start (every engine and worker process), or stock
         # vLLM offloading rejects the route-1 scratch ring group at init. The container runs as the host uid and cannot write there,

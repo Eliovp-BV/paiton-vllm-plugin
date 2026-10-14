@@ -404,3 +404,72 @@ def test_host_pool_off_refused_on_class_tiers(lf, monkeypatch, capsys, tmp_path,
     with pytest.raises(SystemExit, match='--host-pool off does not work with --mode ' + mode):
         mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pool', 'off'))
     assert 'pool=1' in mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pool', 'on')).split('docker run')[1]
+
+
+def _fake_ple_export(root, shards=((3, 4), (5, 4))):
+    """a tiny E4M3 PLE export: shard_i.safetensors with row_scale [n] F32 + codes [n, dim] F8_E4M3 (row r = bytes r, scale r)."""
+    import json as _j, struct
+    d = root / 'common' / 'ple-e4m3'; d.mkdir(parents=True); r0 = 0
+    for i, (n, dim) in enumerate(shards):
+        sc = b''.join(struct.pack('<f', float(r0 + k)) for k in range(n)); co = bytes((r0 + k) % 256 for k in range(n) for _ in range(dim))
+        h = _j.dumps({'__metadata__': {'format': 'e4m3'}, 'row_scale': {'dtype': 'F32', 'shape': [n], 'data_offsets': [0, len(sc)]},
+                      'codes': {'dtype': 'F8_E4M3', 'shape': [n, dim], 'data_offsets': [len(sc), len(sc) + len(co)]}}).encode()
+        (d / f'shard_{i:03d}.safetensors').write_bytes(struct.pack('<Q', len(h)) + h + sc + co); r0 += n
+    return root
+
+
+def test_ple_raw_files_built_once(lf, tmp_path, capsys):
+    import json, struct
+    w = _fake_ple_export(tmp_path / 'w'); out = tmp_path / 'raw'
+    lf.ensure_ple_raw(w, out, False)
+    codes, scale = (out / 'codes.e4m3').read_bytes(), (out / 'row_scale.f32').read_bytes()
+    assert codes == bytes(r for r in range(8) for _ in range(4))                        # rows of both shards, in order
+    assert [struct.unpack_from('<f', scale, 4 * r)[0] for r in range(8)] == [float(r) for r in range(8)]
+    assert json.loads((out / 'meta.json').read_text())['rows_total'] == 8 and 'building' in capsys.readouterr().out
+    lf.ensure_ple_raw(w, out, False)
+    assert 'reused' in capsys.readouterr().out
+    (w / 'common/ple-e4m3/shard_001.safetensors').write_bytes((w / 'common/ple-e4m3/shard_001.safetensors').read_bytes() + b'x')
+    lf.ensure_ple_raw(w, out, False)                                                       # a changed export rebuilds
+    assert 'building' in capsys.readouterr().out
+
+
+def test_ple_filebacked_launch(lf, monkeypatch, capsys, tmp_path):
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:filebacked'])
+    monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--image', 'flashnext-test:filebacked', '--ple-host', 'filebacked'))
+    run_args = out.split('docker run')[1]
+    assert 'PAITON_FN_PLE_HOST=filebacked' in run_args and 'PAITON_FN_PLE_FILE_DIR=/models/ple-raw' in run_args
+    assert f'{tmp_path / "raw"}:/models/ple-raw:ro' in run_args and 'memlock' not in run_args
+    assert 'needed 48.6 GiB for GTT pools' in out and 'PLE tables: file-backed' in out
+
+
+def test_ple_filebacked_refused_unmeasured_or_wrong_image(lf, monkeypatch, capsys, tmp_path):
+    with pytest.raises(SystemExit, match='--ple-host filebacked is not measured on --mode 4bit'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))
+    monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))   # dry run: warning, a start refuses
+    assert 'WARNING: --ple-host filebacked needs an image with the file-backed PLE runtime' in out
+
+
+def test_ple_filebacked_ram_check(lf, monkeypatch, capsys):
+    import io
+    monkeypatch.setattr(lf, 'open', lambda *a, **k: io.StringIO(f'MemAvailable: {int(80 * (1 << 20))} kB\n'), raising=False)
+    assert lf.ram_check(40.8, 16.0, 46.6, 0.0, 48.9) == []                                 # 46.9 pinned + 16 < 80 GiB
+    assert 'PLE tables 48.9 GiB file-backed' in capsys.readouterr().out
+    assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out   # pageable needs the tables resident
+
+
+def test_low_ram_auto_picks_filebacked(lf, monkeypatch, capsys, tmp_path):
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:pageable'])
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', True)
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 46.0, 88.0)                 # ~96 GB host
+    assert '--ple-host pageable automatically' in out and '--ple-host filebacked automatically' in out
+    assert 'MemAvailable 88 GiB < 112 GiB' in out and 'PAITON_FN_PLE_HOST=filebacked' in out.split('docker run')[1]
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, 118.0)                # 128 GB host: tables stay resident
+    assert '--ple-host filebacked automatically' not in out and 'PAITON_FN_PLE_HOST=pageable' in out.split('docker run')[1]
+    monkeypatch.setitem(lf.MODES['4bit'], 'ple_filebacked', False)
+    out = lowram_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 46.0, 88.0)                 # not measured: stays pageable
+    assert '--ple-host filebacked automatically' not in out

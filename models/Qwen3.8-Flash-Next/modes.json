@@ -96,7 +96,16 @@
       "images": [
         "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
       ],
-      "note": "opt-in (launcher --ple-host pageable, 4-bit modes 4bit and 4bit-cache): the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned."
+      "note": "opt-in (launcher --ple-host pageable, 4-bit modes 4bit and 4bit-cache): the per-layer embedding (PLE) tables (24.44 GiB per rank, E4M3) stay in ordinary pageable host memory (anonymous mmap, transparent huge pages, mlocked when RLIMIT_MEMLOCK allows) instead of pinned GTT memory; the GPU's gathers go through a host worker pool. Pinned host memory 95.5 -> 46.6 GiB (GTT at ready, 13 Oct), so the GTT pools fit the default GTT limit (half the RAM) of a 128 GB host; the RAM need is unchanged. Gate 13 Oct under a 118 GiB container memory limit: 4bit C1 176.2 / C8 403.4 (pinned 177.2 / 400.7), 4bit-cache 159.0 / 323.3 (pinned 157.0 / 324.7), output bit-identical. Needs an image with the pageable PLE runtime (images); the published 4-bit image keeps the tables pinned.",
+      "filebacked": {
+        "env": {
+          "PAITON_FN_PLE_HOST": "filebacked",
+          "PAITON_FN_PLE_FILE_DIR": "/models/ple-raw"
+        },
+        "mount": "/models/ple-raw",
+        "images": [],
+        "note": "opt-in (launcher --ple-host filebacked; auto on modes marked ple_filebacked when MemAvailable cannot keep the PLE tables resident): the E4M3 PLE export laid out once as two raw files next to the weights (<weights>-ple-raw: codes.e4m3 + row_scale.f32, ~50 GB) and mmapped read-only by each rank, so the tables live in the page cache (shared, evictable, read from disk on a miss) instead of resident process memory; the same host gather as pageable, so the output is the same. Needs an image with the file-backed runtime (images)."
+      }
     },
     "weights_4bit": {
       "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4",
