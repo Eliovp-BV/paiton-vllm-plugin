@@ -108,7 +108,7 @@
       "digest": "sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69"
     },
     "kv_pool_note": "kv_pool_tokens: vLLM \"GPU KV cache size\" at the mode's --kv-cache-memory-bytes on the release image (11-12 Oct); the -nopf modes and 4bit-cache share their base mode's KV bytes; the launcher scales it linearly when --kv-cache-memory-bytes is lowered",
-    "response_parsers_note": "Every mode passes --reasoning-parser qwen3 (the chat template opens <think> in the prompt unless enable_thinking is false: the thinking goes to reasoning_content, the answer to content) and --enable-auto-tool-choice --tool-call-parser qwen3_xml (the template's <tool_call><function=...><parameter=...> format -> tool_calls). vLLM 0.29 parser checked on the CPU against this tokenizer and template, 13 Oct 2026."
+    "response_parsers_note": "Every mode passes --reasoning-parser qwen3 (the chat template opens <think> in the prompt unless enable_thinking is false: the thinking goes to the reasoning field of the response message (delta.reasoning when streamed), the answer to content) and --enable-auto-tool-choice --tool-call-parser qwen3_xml (the template's <tool_call><function=...><parameter=...> format -> tool_calls). vLLM 0.29 parser checked on the CPU against this tokenizer and template, 13 Oct 2026."
   },
   "modes": {
     "decode": {
