@@ -3,6 +3,16 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
+## Launcher update (4-bit on smaller hosts)
+
+- **Pageable embedding tables chosen automatically.** `--ple-host` now defaults to `auto`: on `--mode 4bit` and `--mode 4bit-cache`,
+  when the GPU's GTT limit cannot hold the pinned tables (hosts with less than about 200 GB of RAM at the default limit), the
+  launcher keeps the per-layer embedding tables in pageable memory and prints one line saying so. Hosts with enough GTT keep the
+  pinned layout; `--ple-host pinned` / `pageable` choose explicitly. Before, these hosts fell back to ROCm's user-pointer memory,
+  which was slower single-stream (130.2 vs 151.6 tok/s with RAM to spare).
+- **`--host-pool off` is refused in the 4-bit modes** with a clear message; their expert tier needs the host copy, and the flag
+  stopped the engine at start.
+
 ## Release 20261014-r2 (hotfix for both images)
 
 ### Fixes
@@ -22,7 +32,8 @@ Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.m
 ### New
 - **128 GB hosts for the 4-bit modes:** `--ple-host pageable` (opt-in, `--mode 4bit` and `--mode 4bit-cache`, r2 4-bit image) keeps
   the per-layer embedding tables in pageable memory: about 47 GiB pinned instead of 96 GiB, so the GTT pools fit the default limit of
-  a 128 GB host. Same output; speed within about 1 % of the default.
+  a 128 GB host. Same output; with RAM to spare as fast as the default, within a 128 GB host's memory budget about 14 % slower
+  single-stream and as fast at 8 requests.
 
 ### Images
 - 3-bit: `qwen38-flashnext-rocm10-vllm029-20261010-r2`; 4-bit: `qwen38-flashnext-rocm10-vllm029-20261011-r2` (the launcher pins both

@@ -72,7 +72,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
 
 ## Options
 `--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl`, `--prefix-caching`, `--host-pools auto|gtt|userptr`,
-`--kv-cache-memory-bytes`, `--expert-vram-gib`, `--host-pool on|off`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`,
+`--kv-cache-memory-bytes`, `--expert-vram-gib`, `--ple-host auto|pinned|pageable`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`,
 `--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`, `--served-model-name`, `--detach`, `--settle-s`,
 `--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required. The launcher picks the right image
 per mode (3-bit and 4-bit run different images).

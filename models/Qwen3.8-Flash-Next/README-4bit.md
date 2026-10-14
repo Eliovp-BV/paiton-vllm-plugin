@@ -85,7 +85,8 @@ Prompts are read faster in `--mode 4bit-200k` (speculative decoding off: 6,991 t
 both modes (not measured there); `--mode 4bit-cache` is the prefix-caching mode.
 
 **Expert placement:** about 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system
-memory when a token needs them. `--expert-vram-gib` and `--host-pool on|off` change the split.
+memory when a token needs them. `--expert-vram-gib` changes the split. `--host-pool off` is refused in the 4-bit modes: their expert
+tier moves experts through the host copy, so it cannot be turned off.
 
 The first start of a mode takes about five to six minutes; wait for `launcher: READY on port …`. **API:** `http://127.0.0.1:18982/v1`
 (or `http://<this-machine-ip>:18982/v1`) · **Model:** `Qwen3.8-Flash-Next`. Network, API key, stopping and troubleshooting:
@@ -96,16 +97,19 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 - **System RAM: 256 GB.** The 4-bit modes pin about 96 GiB of host memory (about 55 GiB of host tables plus about 41 GiB of expert
   copies). The benchmarked configuration keeps it in GPU-mapped GTT memory, which needs about 98 GiB of free GTT; the GTT limit is
   half the RAM by default, so in practice a host with 256 GB of RAM (a 200 GB host has about 93 GiB).
-- On hosts with less GTT the launcher falls back to ROCm's user-pointer memory and says so: it runs, but slower (186.0 vs 191.9 tok/s
+- On hosts with less GTT, `--mode 4bit` and `--mode 4bit-cache` switch to pageable embedding tables (next point). The other 4-bit
+  modes fall back to ROCm's user-pointer memory and say so: they run, but slower (186.0 vs 191.9 tok/s
   single-stream, 388.9 vs 423.1 at 8 requests in our validation run) and can pause for several seconds when the kernel compacts host
   memory. Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the
   launcher never changes it. `--dry-run` prints the RAM, the GTT limit and what it chooses.
-- **128 GB hosts: `--ple-host pageable`** (opt-in, `--mode 4bit` and `--mode 4bit-cache`). The per-layer embedding tables (about
-  49 GiB of the host tables) then stay in ordinary pageable host memory instead of pinned memory, so only about 47 GiB is pinned and
-  the GTT pools need about 49 GiB of free GTT, which the default limit of a 128 GB host covers. The tables still need the RAM: the
-  launcher checks for about 112 GiB of available memory, as in the default mode. Same output as the default; in our check on a
-  128 GB memory budget, 176.2 tok/s single-stream and 403.4 at 8 requests (default pinned: 177.2 / 400.7). It needs an image with
-  this runtime; the launcher refuses the flag on images without it.
+- **Hosts with less than about 200 GB of RAM (`--mode 4bit`, `--mode 4bit-cache`):** when the GTT limit cannot hold the pinned
+  tables, the launcher keeps the per-layer embedding tables (about 49 GiB) in ordinary pageable host memory and says so
+  (`--ple-host pinned` keeps the pinned layout, `--ple-host pageable` forces the pageable one). Only about 47 GiB is then pinned, so
+  the GTT pools fit the default limit of a 128 GB host. The tables still need the RAM: the launcher checks for about 112 GiB of
+  available memory, as in the default layout. Same output as the default. With RAM to spare it is as fast as the pinned layout
+  (151.6 vs 153.0 tok/s single-stream, 481.1 vs 452.0 at 8 requests; short prompt, 512 generated tokens). Within a 128 GB host's
+  memory budget little is left for the page cache: 130.1 tok/s single-stream and 458.3 at 8 requests in the same check. It needs an
+  image with this runtime (the r2 4-bit image); with other images the tables stay pinned.
 - Disk: about 133 GB for the weights. Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r2`
   (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
