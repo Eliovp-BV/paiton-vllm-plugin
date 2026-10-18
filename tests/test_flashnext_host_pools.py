@@ -350,9 +350,9 @@ def test_fix_knobs_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, ext
 
 def test_r2_image_pins(lf):
     assert lf.COMMON['image'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2', 'digest': 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b'}
-    assert (lf.COMMON['image_4bit']['tag'], lf.COMMON['image_4bit']['digest']) == ('paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc', 'PIN-ME')   # 4-bit release 20261017 rc: one image for every 4-bit mode (pinned at publish)
-    assert lf.COMMON['ple_host']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69', 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc']
-    assert lf.COMMON['ple_host']['filebacked']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc']   # r3 + the 20261017 rc: file-backed PLE runtime
+    assert (lf.COMMON['image_4bit']['tag'], lf.COMMON['image_4bit']['digest']) == ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1', 'sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9')   # 4-bit release 20261017 rc: one image for every 4-bit mode (pinned at publish)
+    assert lf.COMMON['ple_host']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69', 'sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9']
+    assert lf.COMMON['ple_host']['filebacked']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9']   # r3 + the 20261017 rc: file-backed PLE runtime
 
 
 @pytest.mark.parametrize('mode', ALL_MODES)
@@ -364,7 +364,7 @@ def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
         monkeypatch.setitem(lf.COMMON, key, dict(lf.COMMON[key], fnexec_modes=None))
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
     if mode.startswith('4bit') or mode.endswith('-native'):   # release 20261017 r2 rc: one local image for every 4-bit and native mode
-        assert 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc' in run_args
+        assert 'sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9' in run_args
         return   # (r6, decision B: --mode decode stays the torch worker on the published 3-bit image)
     assert ('sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
 
