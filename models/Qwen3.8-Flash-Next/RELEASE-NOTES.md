@@ -3,6 +3,65 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
+## Release 20261017 (r6)
+
+### Nothing changes for the default commands
+- Every mode (`--mode decode`, `prefill-long`, `decode-nopf`, `prefill-long-nopf`, `4bit`, `4bit-cache`, `4bit-long`, `4bit-200k`,
+  `4bit-xl`) runs the torch worker exactly as in r3; a published command serves as before. `--dry-run` prints which worker a command
+  runs and how to get the other.
+
+### New: the native Paiton worker (opt-in)
+- `--fn-worker native` on `--mode decode` (3-bit) and on `--mode 4bit` (4-bit): the same configuration (98,304-token window, MTP
+  depth 3) with the model running in the native Paiton worker; vLLM keeps the API server, scheduler and KV cache manager. The other
+  modes have no native release path. Details: [overview](README.md#native-worker-opt-in).
+- **Speed** (BetterBench 0.6.0 standard profile; decode / TTFT p50 / prefill @64K in the mode / 8 requests / 4 requests):
+  - 3-bit `--mode decode --fn-worker native`, distilled drafter: 272.5 tok/s / 56 ms / 8,392 /
+    685.4 / 531.0.
+  - 4-bit `--mode 4bit --fn-worker native --kv-profile speed`, distilled drafter: 240.4 / 65 ms / 7,759 /
+    566.7 / 456.0.
+  - 4-bit `--mode 4bit --fn-worker native` (`--kv-profile capacity`, the default), distilled drafter: 240.3 /
+    65 ms / 7,757 / 561.9 / 456.9.
+  - With `--drafter stock` (the checkpoint's own drafter): 3-bit 249.9 / 56 ms / 8,401 / 659.4 /
+    516.4; 4-bit 237.6 / 65 ms / 7,748 / 545.4 / 443.4 (4-bit at the default `--kv-profile capacity`).
+  - For comparison, the default (torch worker, checkpoint drafter, r3): 3-bit 216.3 / 117 ms / 8,161 (`prefill-long`) / 565.1 /
+    449.2; 4-bit 189.8 / 121 ms / 6,991 (`4bit-200k`) / 420.7.
+- **Distilled drafter in the image.** The native modes use the distilled MTP drafter B4gh5-mtpft by default; one copy in the image
+  serves 3-bit and 4-bit. The launcher assembles `<checkpoint dir>-b4gh5-mtpft` next to the downloaded checkpoint (hard links to the
+  checkpoint's files, links to the drafter files in the image; the downloaded checkpoint is never modified), and `--dry-run` checks
+  the image's drafter files against their pinned sha256. `--drafter stock` uses the checkpoint's own drafter.
+- **KV profiles (4-bit native).** `--kv-profile capacity` (the default): 2.5 GiB per GPU, about 305,338 tokens (3.11 concurrent 98K
+  contexts, as r3 `--mode 4bit`). `--kv-profile speed`: 1.5 GiB per GPU, about 183,202 tokens (1.86 contexts); the freed VRAM holds
+  more experts, faster. 3-bit native: about 551K KV tokens (torch default: about 112K).
+
+### 4-bit image update (torch modes)
+- Every 4-bit mode now runs the new 4-bit image, which also carries the native worker. Torch-worker changes since r3:
+  - **64 GB hosts:** the cold-expert tier (`--expert-cold`, picked automatically when even the 96 GB layout does not fit): the
+    coldest share of the experts is read from one file per GPU. Same output, slower (`--mode 4bit` about 85 / 181 tok/s single /
+    8 requests under a 60 GiB memory limit). See [System RAM](README-4bit.md#system-ram).
+  - **Image input:** `--vision` (opt-in) on `--mode 4bit`, `4bit-cache` and `4bit-long`; images up to 4K, 8 per request, no video;
+    the vision tower takes its VRAM from the KV cache. See [Run it](README-4bit.md#run-it).
+  - **`--mode 4bit-200k`:** fixed a stall on prompts whose last 2,048-token chunk was 1 to 64 tokens long.
+- The 3-bit torch modes keep the published 3-bit image (`...-20261010-r2` @ `sha256:ea84a147...`), unchanged.
+
+### Known limits of the native worker
+- 4-bit native: greedy output can vary from run to run while a long prompt (tens of thousands of tokens) is being read next to other requests; a request on its own, or several short ones together, repeat exactly. Errors and quality are not affected.
+- Request fields answered with HTTP 400 (the torch default serves them): `logprobs` / `top_logprobs` / `prompt_logprobs`;
+  `response_format`, structured outputs, guided JSON; tool calls with `strict: true` tools or `tool_choice` `"required"` / a named
+  tool (plain `auto` tool calling works); presence / frequency / repetition penalties; `top_k` outside 1..32 at temperature > 0;
+  `min_tokens`, `allowed_token_ids`, `bad_words`; `thinking_token_budget`. `min_p` and `logit_bias` are refused by vLLM itself with
+  speculative decoding, on both workers. Full list: [overview](README.md#request-api-limits).
+- No prefix caching: `--prefix-caching` keeps the torch worker; for agents and coding tools use `--prefix-caching` (3-bit) or
+  `--mode 4bit-cache` (4-bit) on the torch worker. No image input: `--vision` stays on the torch worker (4-bit).
+- Host requirements, with no automatic fallback when the native worker is asked for (the launcher prints the reason): 4-bit native
+  needs a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit; smaller hosts keep the torch default and its
+  128 GB / 96 GB / 64 GB layouts; `--ple-host pageable|filebacked`, `--expert-cold` and `--host-pools userptr` are torch-worker
+  layouts); 3-bit native needs about 60 GiB of free GTT (about 128 GB of RAM). Two R9700 (32 GiB), as before.
+
+### Images
+- 3-bit torch modes: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2` @
+  `sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b` (unchanged).
+- Every 4-bit mode and both native modes: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9` (the launcher pins it by digest).
+
 ## Release 20261014-r3 (4-bit image)
 
 - **4-bit on 128 GB and 96 GB hosts.** The launcher picks the memory layout from the host's RAM and prints it at start: the
@@ -91,6 +150,7 @@ Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.m
 
 ## Next release
 - SSD KV-cache tier for the 4-bit cache mode.
+- Native worker: the request-API limits above, prefix caching and image input.
 
 ## Release 20261010-r1 (previous: 3-bit)
 

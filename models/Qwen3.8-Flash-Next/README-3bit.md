@@ -8,7 +8,8 @@ with tensor parallel 2 and the Paiton plugin (native grouped MoE, native collect
 Everything runs from VRAM: **216 tok/s for a single request, 565 tok/s at 8 requests, 8,161 tok/s prefill at 64K.**
 No custom engine: regular vLLM with the Paiton plugin and our own kernels.
 
-This release: the same image, weights, modes, speed and accuracy as the 10 October release, with launcher fixes (below).
+This release: the default commands serve the same image, weights, modes, speed and accuracy as before (torch worker). New, opt-in:
+the native Paiton worker, `--mode decode --fn-worker native` ([below](#native-worker-opt-in)).
 
 ## Accuracy
 Negative log-likelihood on 44 held-out long documents (8K-32K tokens): 1.7671 against bf16's 1.7574 (+0.55 %). Needle retrieval as
@@ -16,10 +17,10 @@ served: 40 of 40 at 131K and at 200K tokens, identical to bf16. Full tables (KL,
 [model card](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4). The prompt rows run W8A8.
 
 ## Speed
-Official numbers, measured on the shipped image through this launcher (BetterBench 0.6.0 standard profile, exact bf16 wire, cold
-prefix cache, 2x R9700):
+Official numbers of the default (torch worker, the checkpoint's own drafter), measured on the shipped image through this launcher
+(BetterBench 0.6.0 standard profile, exact bf16 wire, cold prefix cache, 2x R9700):
 
-| `--mode decode` / `--mode prefill-long` | |
+| `--mode decode` / `--mode prefill-long` (default, torch worker) | |
 |---|---:|
 | Weighted single-stream decode | 216.3 tok/s |
 | Eight concurrent requests, aggregate | 565.1 tok/s (48/48; ladder 1/2/4/8 = 204.6 / 315.1 / 449.2 / 565.1) |
@@ -31,6 +32,21 @@ Per-category decode (tok/s): chat 202.1, code 214.3, file_edit 236.0, json 259.2
 summarization 239.8. Prefill by depth (tok/s): 2K 7,925 / 8K 8,321 / 16K 8,311 / 32K 8,232 / 64K 8,161 / 128K 7,928.
 Decode and concurrency: `--mode decode` (MTP depth 3, 98,304-token window). Prefill: `--mode prefill-long` (200,000-token window,
 MTP off). Both modes use the bf16 KV cache. How the numbers were taken: [overview](README.md#how-the-numbers-were-taken).
+
+## Native worker (opt-in)
+`--mode decode --fn-worker native` serves `--mode decode`'s configuration (98,304-token window, MTP depth 3) through the native
+Paiton worker, on the 4-bit release image (`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9`), with a KV cache of about 551K tokens (about 112K on the torch default).
+
+| `--mode decode --fn-worker native` | Distilled drafter B4gh5-mtpft (default) | `--drafter stock` (checkpoint's own) |
+|---|---:|---:|
+| Weighted single-stream decode | 272.5 tok/s | 249.9 tok/s |
+| TTFT p50, short prompts | 56 ms | 56 ms |
+| Prefill, 64K-token prompt (in this mode) | 8,392 tok/s | 8,401 tok/s |
+| Eight concurrent requests, aggregate | 685.4 tok/s | 659.4 tok/s |
+| Four concurrent requests, aggregate | 531.0 tok/s | 516.4 tok/s |
+
+No prefix caching (`--prefix-caching` keeps the torch worker), no image input, request-API limits (no logprobs, structured outputs,
+penalties, ...) and the host requirement (about 60 GiB of free GTT): [overview](README.md#native-worker-opt-in).
 
 ## Long context
 - `decode`: 98,304-token window, speculative decoding on; `prefill-long`: 200,000-token window, speculative decoding off.
@@ -48,9 +64,11 @@ bash models/Qwen3.8-Flash-Next/run-flashnext.sh            # decode mode (defaul
 bash models/Qwen3.8-Flash-Next/run-flashnext-200k.sh       # 200,000-token mode (prefill-long): speculative decoding off
 bash models/Qwen3.8-Flash-Next/run-flashnext-exact.sh      # exact-arithmetic prefill, about 7 % slower
 bash models/Qwen3.8-Flash-Next/run-flashnext-cached.sh     # decode mode with prefix caching (agents and coding tools)
+bash models/Qwen3.8-Flash-Next/run-flashnext.sh --fn-worker native   # opt-in: decode mode on the native worker
 ```
 
-By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode decode|prefill-long|decode-nopf|prefill-long-nopf [--prefix-caching] [--dry-run]`.
+By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode decode|prefill-long|decode-nopf|prefill-long-nopf [--prefix-caching] [--dry-run]`
+(`--mode decode` also takes `--fn-worker native [--drafter stock]`).
 
 **Agents and coding tools: add `--prefix-caching`.** An agent resends the whole conversation every turn; with the prefix cache the
 shared part is reused instead of read again: a repeated 64K-token prefix reaches its first token in 0.35 s instead of 9.6 s, with
@@ -69,11 +87,16 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 - **System RAM: 128 GB or more.** The host tables (n-gram table and others, about 55 GiB over both GPUs) live in pinned system
   memory. By default they use ROCm's user-pointer memory, as published; `--host-pools gtt` puts them in GPU-mapped GTT memory (needs
   about 120 GiB of RAM or more), which removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode.
-- Disk: about 116 GB for the weights; the image is 41 GB: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2`
+- Disk: about 116 GB for the weights; the image of the torch modes is 41 GB: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2`
   @ `sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b` (pinned in modes.json; the launcher pulls it by digest).
+  `--fn-worker native` runs the 4-bit release image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9` instead.
+- Native worker: about 60 GiB of free GTT for the host tables (about 128 GB of RAM or more at the default GTT limit); without it
+  the launcher stops with the reason.
 - Peak VRAM per card: 30.3 GiB in `decode`, 31.5 GiB in `prefill-long` under 64K-128K prefill load.
 
 ## Known issues and limitations
 - In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use `--prefix-caching`, and prefer the
   [4-bit](README-4bit.md) for long coding sessions; a fix is planned for the next 3-bit release.
-- 98,304-token window in `decode` (MTP pool), 200,000 in `prefill-long` with MTP off. Vision is not validated.
+- 98,304-token window in `decode` (MTP pool, also with `--fn-worker native`), 200,000 in `prefill-long` with MTP off. No image
+  input in this release.
+- The native worker is opt-in and has request-API limits and no prefix caching ([overview](README.md#request-api-limits)).

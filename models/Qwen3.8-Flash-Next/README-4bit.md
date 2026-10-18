@@ -6,8 +6,8 @@ weights: [EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4](https://huggingface.co/
 **The accuracy of the 16-bit model, on two R9700: the same GSM8K and HumanEval scores, and MMLU-Pro within one point.** The 16-bit
 model is 335 GiB (360 GB) and can't run on this hardware at all. This is [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)
 with 4-bit experts, served by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin; part of the experts is served from
-pinned system RAM: the benchmarked setup uses a host with 256 GB of RAM, and the launcher also runs it on 128 GB and 96 GB hosts
-(same output, see [System RAM](#system-ram)). No custom engine: regular vLLM with the Paiton plugin and our own kernels.
+pinned system RAM: the benchmarked setup uses a host with 256 GB of RAM, and the launcher also runs it on 128 GB, 96 GB and 64 GB
+hosts (same output, see [System RAM](#system-ram)). No custom engine: regular vLLM with the Paiton plugin and our own kernels.
 
 ## Accuracy
 
@@ -33,10 +33,10 @@ prompt activations, fp8 KV cache). Method, KL, top-1 agreement and per-category 
 [model card](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4).
 
 ## Speed
-Official numbers, measured on the shipped image through this launcher (BetterBench 0.6.0 standard profile, exact bf16 wire, cold
-prefix cache, 2x R9700, PCIe 4.0 x16 host with 251 GiB of RAM):
+Official numbers of the default (torch worker, the checkpoint's own drafter), measured on the r3 image through this launcher
+(BetterBench 0.6.0 standard profile, exact bf16 wire, cold prefix cache, 2x R9700, PCIe 4.0 x16 host with 251 GiB of RAM):
 
-| `--mode 4bit` / `--mode 4bit-200k` | |
+| `--mode 4bit` / `--mode 4bit-200k` (default, torch worker) | |
 |---|---:|
 | Weighted single-stream decode (median of 3 runs) | 189.8 tok/s |
 | Eight concurrent requests, aggregate | 420.7 tok/s (48/48) |
@@ -50,6 +50,26 @@ summarization 206.1. Prefill by depth (tok/s): 2K 5,564 / 8K 6,771 / 16K 6,641 /
 Decode and concurrency: `--mode 4bit` (MTP depth 3, 98,304-token window, INT6 trunk). Prefill: `--mode 4bit-200k` (200,000-token
 window, MTP off, 8-bit trunk). Both use an fp8 (E4M3) KV cache. How the numbers were taken: [overview](README.md#how-the-numbers-were-taken).
 
+## Native worker (opt-in)
+`--mode 4bit --fn-worker native` serves `--mode 4bit`'s configuration (98,304-token window, MTP depth 3, INT6 trunk, fp8 KV cache)
+through the native Paiton worker. Two KV profiles: `--kv-profile capacity` (the default) = 2.5 GiB per GPU, about 305,338 tokens
+(3.11 concurrent 98K contexts, as r3 `--mode 4bit`); `--kv-profile speed` = 1.5 GiB per GPU, about 183,202 tokens (1.86 contexts),
+the freed VRAM holds more experts, faster.
+
+**Repeatability:** Greedy output can vary from run to run while a long prompt (tens of thousands of tokens) is being read next to other requests; a request on its own, or several short ones together, repeat exactly. Errors and quality are not affected.
+
+| `--mode 4bit --fn-worker native` | `--kv-profile speed`, distilled drafter B4gh5-mtpft | `--kv-profile capacity` (default), distilled drafter B4gh5-mtpft | `--drafter stock` (checkpoint's own) |
+|---|---:|---:|---:|
+| Weighted single-stream decode | 240.4 tok/s | 240.3 tok/s | 237.6 tok/s |
+| TTFT p50, short prompts | 65 ms | 65 ms | 65 ms |
+| Prefill, 64K-token prompt (in this mode) | 7,759 tok/s | 7,757 tok/s | 7,748 tok/s |
+| Eight concurrent requests, aggregate | 566.7 tok/s | 561.9 tok/s | 545.4 tok/s |
+| Four concurrent requests, aggregate | 456.0 tok/s | 456.9 tok/s | 443.4 tok/s |
+
+It needs a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); smaller hosts keep the torch default and
+its 128 GB / 96 GB / 64 GB layouts. No prefix caching (use `--mode 4bit-cache`), no `--vision`, request-API limits (no logprobs,
+structured outputs, penalties, ...): [overview](README.md#native-worker-opt-in).
+
 ## Run it
 Requirements: [Hardware](#hardware) below and the common [prerequisites](README.md#prerequisites). The first start downloads and
 verifies the weights (about 133 GB) into `~/paiton-models/Qwen3.8-Flash-Next-W4A8` (`--weights DIR` to change it).
@@ -60,9 +80,17 @@ bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-200k.sh   # 200,000-token wind
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-cache.sh  # agents and coding tools: prefix caching + 8 GiB RAM prefix tier
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-long.sh   # 262,144-token window, speculative decoding on, ~461K tokens of KV cache
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-xl.sh     # 262,144-token window, speculative decoding on, ~595K tokens of KV cache
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native   # opt-in: --mode 4bit on the native worker (--kv-profile speed: faster, less KV)
 ```
 
-By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode 4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl [--dry-run]`.
+By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode 4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl [--vision] [--dry-run]`
+(`--mode 4bit` also takes `--fn-worker native [--kv-profile capacity|speed] [--drafter stock]`).
+
+**Image input: `--vision`** (opt-in, torch worker; `--mode 4bit`, `4bit-cache` and `4bit-long`). Images up to 4K (3840x2160;
+`--vision-max-pixels N|2mp|4k` sets a lower cap), up to 8 images per request, no video. The vision tower takes its VRAM from the KV
+cache: about 157,882 tokens in `4bit` (305,338 without images), about 170K in `4bit-cache`, about 301,871 in `4bit-long`
+(461,566 without); about 1 GiB more RAM. Text answers stayed identical to text-only in our checks. AI2D: 84.7 % (bf16 85.3 %).
+`--vision` is refused on `4bit-xl` and `4bit-200k` (not measured there) and with `--fn-worker native`.
 
 **Agents and coding tools: `--mode 4bit-cache`.** An agent resends the whole conversation every turn. This mode is the 4-bit decode
 mode with prefix caching (2,048-token blocks) and an 8 GiB RAM prefix tier that keeps prefix blocks evicted from VRAM in pinned system
@@ -85,8 +113,8 @@ on the released image with the same protocol for all three rows (allocator cap 0
 Prompts are read faster in `--mode 4bit-200k` (speculative decoding off: 6,991 tok/s at 64K). `--prefix-caching` is refused in
 both modes (not measured there); `--mode 4bit-cache` is the prefix-caching mode.
 
-**Expert placement:** about 20.8 GiB of experts per GPU stay in VRAM (the most-used ones); the rest are read from pinned system
-memory when a token needs them. `--expert-vram-gib` changes the split. `--host-pool off` is refused in the 4-bit modes: their expert
+**Expert placement:** about 21.4 GiB of experts per GPU stay in VRAM (21.2 GiB with `--vision`; the most-used ones); the rest are read from
+pinned system memory when a token needs them. `--expert-vram-gib` changes the split. `--host-pool off` is refused in the 4-bit modes: their expert
 tier moves experts through the host copy, so it cannot be turned off.
 
 The first start of a mode takes about five to six minutes; wait for `launcher: READY on port …`. **API:** `http://127.0.0.1:18982/v1`
@@ -95,7 +123,10 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 
 ## Hardware
 - Two AMD Radeon AI PRO R9700 (32 GiB each), ROCm 10 host driver.
-- **System RAM: 256 GB as benchmarked, 128 GB and 96 GB supported** (`--mode 4bit`, `4bit-cache`, `4bit-long`; next section).
+- **System RAM: 256 GB as benchmarked, 128 GB and 96 GB supported** (`--mode 4bit`, `4bit-cache`, `4bit-long`), **64 GB with the
+  cold-expert tier** (`--mode 4bit`, `4bit-long`; next section).
+- Native worker (`--fn-worker native`): a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); without it
+  the launcher stops with the reason.
 
 ## System RAM
 The launcher picks the memory layout from the host's RAM and the GPU's GTT limit (half the RAM by default) and prints it at start
@@ -106,7 +137,7 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
 | 256 GB | per-layer embedding (PLE) tables and expert copies pinned in GTT memory (the benchmarked setup) | about 109 GiB | 133 GB of weights |
 | 128 GB | PLE tables in pageable memory, about 47 GiB pinned (fits the GTT limit) | about 110 GiB | 133 GB of weights |
 | 96 GB | PLE tables read from two raw files through the page cache, user-pointer host memory | about 61 GiB, plus page cache | 133 GB of weights + 49 GiB of raw PLE files |
-| 64 GB | not supported yet: the launcher stops and says how much RAM it needs | | |
+| 64 GB | as 96 GB, plus the coldest share of the experts (0.2) read from one file per GPU (`--expert-cold`, picked automatically) | about 51 GiB, plus page cache | 133 GB of weights + 49 GiB of raw PLE files + the cold-expert files |
 
 - **128 GB:** the launcher keeps about 6 GiB of free RAM beyond the table's figure; `--mode 4bit-cache` (whose 8 GiB RAM prefix
   tier needs more) uses the 96 GB layout there, without the RAM prefix tier.
@@ -115,6 +146,11 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
   10 GiB to spare, and otherwise stops with the numbers (`--ple-raw-dir` puts them on another disk). Free RAM beyond the figure in
   the table becomes page cache for the tables, so fewer reads go to the disk. Host memory runs as user-pointer memory in this
   layout, which can pause for a moment when the kernel compacts host memory.
+- **64 GB:** `--expert-cold auto` (the default) turns on only when even the 96 GB layout does not fit the free RAM, with the smallest
+  measured share that does: the coldest experts leave the pinned host pool for one file per GPU (`<weights>-expert-cold`, written at
+  the first start and reused; `--expert-cold-dir` puts them elsewhere), read on demand. Same output, slower: measured under a 60 GiB
+  memory limit, `--mode 4bit` about 85 tok/s single-stream and 181 at 8 requests, `--mode 4bit-long` about 89 / 237 with needles at
+  131K tokens 5 / 5. `--expert-cold off` or a share (e.g. `0.2`) chooses explicitly.
 - **Speed:** smaller hosts are slower in `--mode 4bit` (short prompt, 512 generated tokens, single-stream / 8 requests, same load
   client): 256 GB pinned 151.7 / 428.5 tok/s; 128 GB pageable, within a 128 GB host's memory budget, 130.1 / 458.3; 96 GB
   file-backed 128.4 / 304.7. One server start each; single-stream speed varies by up to about 15 % between starts.
@@ -123,12 +159,15 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
   ROCm's user-pointer memory and say so (186.0 vs 191.9 tok/s single-stream, 388.9 vs 423.1 at 8 requests in our validation run).
   Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the launcher
   never changes it.
-- Disk: about 133 GB for the weights (plus 49 GiB on 96 GB hosts, above). Image: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r3`
-  (digest pinned in modes.json; the launcher pulls it by digest).
+- Disk: about 133 GB for the weights (plus 49 GiB on 96 GB and 64 GB hosts, above). Image (every 4-bit mode, torch and native):
+  `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9` (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
   (allocator cap 0.925).
 
 ## Known issues and limitations
 - 98,304-token window in `4bit` (MTP pool), 262,144 in `4bit-long` / `4bit-xl`, 200,000 in `4bit-200k` with MTP off. `--mode 4bit-200k` serves the same experts and fp8
-  KV cache with the 8-bit trunk; its accuracy was not measured separately. Vision is not validated.
+  KV cache with the 8-bit trunk; its accuracy was not measured separately.
+- Image input (`--vision`): `4bit`, `4bit-cache` and `4bit-long` on the torch worker only; not on `4bit-xl` or `4bit-200k`.
 - `--mode 4bit-cache` is opt-in: the speed table is measured in `--mode 4bit`.
+- The native worker is opt-in and has request-API limits, no prefix caching and no image input
+  ([overview](README.md#request-api-limits)).
