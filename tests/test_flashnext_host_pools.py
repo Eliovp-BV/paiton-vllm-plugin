@@ -93,7 +93,8 @@ def dry_cmd(lf, monkeypatch, tmp_path, capsys, kv_tier):
     monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w')
     monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
     monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
-    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit', '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache', str(tmp_path / 'cache')])
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit', '--fn-worker', 'torch', '--dry-run', '--devices', 'GPU-0,GPU-1',
+                                      '--cache', str(tmp_path / 'cache')])   # the torch worker's hook (--mode 4bit serves native by default)
     lf.main()
     return capsys.readouterr().out
 
@@ -171,9 +172,10 @@ def mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, free, extra=()):
 
 @pytest.mark.parametrize('mode', ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf'])
 def test_3bit_modes_default_userptr_gtt_opt_in(lf, monkeypatch, capsys, tmp_path, mode):
-    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8)
+    tw = ('--fn-worker', 'torch') if mode == 'decode' else ()   # r6: --mode decode defaults to the native worker; this is the torch path
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, tw)
     assert 'HSA_USERPTR_FOR_PAGED_MEM' not in out.split('docker run')[1] and '--host-pools gtt removes' in out
-    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--host-pools', 'gtt'))
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, tw + ('--host-pools', 'gtt'))
     assert 'HSA_USERPTR_FOR_PAGED_MEM=0' in out.split('docker run')[1]
 
 
@@ -250,8 +252,9 @@ CAP_TABLE = {'decode': ('0.95', '0.94'), 'decode-nopf': ('0.95', '0.94'), 'prefi
 
 @pytest.mark.parametrize('mode', sorted(CAP_TABLE))
 def test_3bit_allocator_cap(lf, monkeypatch, capsys, tmp_path, mode):
+    tw = ('--fn-worker', 'torch') if mode == 'decode' else ()   # r6: --mode decode defaults to the native worker; this is the torch path
     for extra, frac in zip(((), ('--prefix-caching',)), CAP_TABLE[mode]):
-        run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, extra).split('docker run')[1]
+        run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, tw + extra).split('docker run')[1]
         assert run_args.count('per_process_memory_fraction') == 1
         assert f'PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:{frac}' in run_args
 
@@ -325,14 +328,14 @@ def test_ple_host_pageable_ram_check(lf, monkeypatch, capsys):
     assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out
 
 
-ALL_MODES = ['decode', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl']
+ALL_MODES = ['decode', '3bit-mtp-native', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl', '4bit-native', '4bit-long-native', '4bit-200k-native', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-mtp-native', '4bit-cache-mtp-native']
 
 
 def test_fix_knobs_in_modes(lf):
     assert sorted(lf.MODES) == sorted(ALL_MODES)
     for name, m in lf.MODES.items():
         assert m['env']['PAITON_FN_PLE_QSL_PAD'] == '1', name                       # n-gram tail refresh: every mode
-        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name == '4bit-cache' else None), name
+        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name in ('4bit-cache', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-cache-mtp-native') else None), name
     assert lf.COMMON['prefix_caching']['env']['PAITON_FN_STEP_PREP_ALIGN'] == 'inplace'
 
 
@@ -347,14 +350,22 @@ def test_fix_knobs_reach_the_server(lf, monkeypatch, capsys, tmp_path, mode, ext
 
 def test_r2_image_pins(lf):
     assert lf.COMMON['image'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2', 'digest': 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b'}
-    assert lf.COMMON['image_4bit'] == {'tag': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r3', 'digest': 'sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0'}
-    assert lf.COMMON['ple_host']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69']
-    assert lf.COMMON['ple_host']['filebacked']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0']                        # r3: file-backed PLE runtime                      # the 4-bit r2 image carries the pageable runtime
+    assert (lf.COMMON['image_4bit']['tag'], lf.COMMON['image_4bit']['digest']) == ('paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc', 'PIN-ME')   # 4-bit release 20261017 rc: one image for every 4-bit mode (pinned at publish)
+    assert lf.COMMON['ple_host']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'sha256:13166ca5894684ca72f7f15584c9e81fd77c7fbf8297cfc1958ecf0c28c2cb69', 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc']
+    assert lf.COMMON['ple_host']['filebacked']['images'] == ['sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0', 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc']   # r3 + the 20261017 rc: file-backed PLE runtime
 
 
 @pytest.mark.parametrize('mode', ALL_MODES)
 def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
+    nat = lf.MODES[mode].get('native') or {}; key = lf.MODES[mode].get('image_key', 'image'); fm = lf.COMMON[key].get('fnexec_modes')
+    if mode.endswith('-native') and fm is not None and nat['env_native']['PAITON_FN_MODE_NAME'] not in fm:   # a dev mode: --fnexec-lib
+        with pytest.raises(SystemExit, match='carries the native executor files of'):
+            mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8)
+        monkeypatch.setitem(lf.COMMON, key, dict(lf.COMMON[key], fnexec_modes=None))
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
+    if mode.startswith('4bit') or mode.endswith('-native'):   # release 20261017 r2 rc: one local image for every 4-bit and native mode
+        assert 'paiton-qwen38-flashnext:rocm10-vllm029-20261017-r2-rc' in run_args
+        return   # (r6, decision B: --mode decode stays the torch worker on the published 3-bit image)
     assert ('sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args
 
 
@@ -539,6 +550,111 @@ def test_filebacked_disk_preflight(lf, tmp_path, capsys, monkeypatch):
 
 
 def test_filebacked_refused_with_vision(lf, monkeypatch, capsys, tmp_path):
-    monkeypatch.setitem(lf.MODES['4bit'], 'vision', True)
-    with pytest.raises(SystemExit, match='not measured with vision'):
-        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked'))
+    # --vision with --ple-host filebacked is refused (not measured with image input)
+    with pytest.raises(SystemExit, match='not measured with --vision'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--ple-host', 'filebacked', '--vision', '--image', 'local:vision'))
+
+
+@pytest.mark.parametrize('mode,why', [('4bit-200k', 'not validated'), ('4bit-xl', 'not measured')])
+def test_vision_refused_modes(lf, monkeypatch, capsys, tmp_path, mode, why):
+    with pytest.raises(SystemExit, match=f'--vision is not available on --mode {mode}: image input is {why}'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--vision', '--image', 'local:vision'))
+
+
+@pytest.mark.parametrize('mode', ['decode', '4bit', '4bit-cache', '4bit-long'])
+def test_vision_refused_on_images_without_the_vision_runtime(lf, monkeypatch, capsys, tmp_path, mode):
+    # the published images before the vision runtime are refused (3-bit: the pinned r2; 4-bit: an explicit r3 --image); the 4-bit
+    # 20261017 rc carries it (torch worker with --vision); an --image without a digest runs with a note
+    old = () if mode == 'decode' else ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261011-r3@sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0')
+    with pytest.raises(SystemExit, match='--vision is not available with the image .*release 2026101'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--vision',) + old)
+    if mode != 'decode':
+        out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--vision',))
+        assert 'image input: on (--vision)' in out and 'worker: native' not in out
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8, ('--vision', '--image', 'local:vision'))
+    assert 'is not checked for the vision runtime' in out and 'image input: on (--vision)' in out
+
+
+@pytest.mark.parametrize('mode', ['4bit', '4bit-long'])
+def test_expert_cold_auto_on_64gb_only(lf, monkeypatch, capsys, tmp_path, mode):
+    """64 GB host: file-backed tables + the coldest 20 % of the experts from a file; 96 GB keeps every expert copy in RAM."""
+    import sys
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:cold'])
+    monkeypatch.setitem(lf.COMMON['ple_host'], 'images', ['flashnext-test:cold'])
+    monkeypatch.setitem(lf.COMMON['expert_cold'], 'images', ['flashnext-test:cold'])
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    monkeypatch.setattr(lf, 'ple_raw_preflight', lambda out, dry: None); monkeypatch.setattr(lf, 'cold_preflight', lambda out, s, dry: None)
+    seen = {}
+    real = lf.ram_check
+    def ram_check(*a, **k):
+        seen['missing'] = real(*a, **k); return []
+    for gb, (gtt, avail) in ((96, (46.0, 88.0)), (64, (30.0, 58.0)), (48, (22.0, 44.0))):
+        monkeypatch.setattr(lf, 'meminfo_gib', lambda f, g=gtt, v=avail: {'MemTotal': g * 2, 'MemAvailable': v}[f])
+        monkeypatch.setattr(lf, 'p2p_check', lambda *a, **k: None); monkeypatch.setattr(lf, 'ram_check', ram_check)
+        monkeypatch.setattr(lf, 'render_gid', lambda: None); monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus, g=gtt: (g, g))
+        monkeypatch.setattr(lf, 'ensure_weights', lambda d, dry, *a: tmp_path / 'w'); monkeypatch.setattr(lf, 'ensure_base_cfg', lambda d, dry: tmp_path / 'cfg')
+        monkeypatch.setattr(lf, 'ensure_view', lambda *a, **k: tmp_path / 'view')
+        monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', mode, '--dry-run', '--devices', 'GPU-0,GPU-1', '--cache',
+                                          str(tmp_path / 'cache'), '--image', 'flashnext-test:cold'])
+        lf.main()
+        out = capsys.readouterr().out; run_args = out.split('docker run')[1]
+        if gb == 96:
+            assert 'cold experts' not in out and 'cold=' not in run_args and seen['missing'] == []
+        else:
+            assert 'cold experts 20% from' in out and ',cold=0.2' in run_args and 'PAITON_FN_EXPERT_COLD_DIR=/models/expert-cold' in run_args
+            assert '-expert-cold:/models/expert-cold' in run_args and 'PAITON_FN_EXPERT_COLD_CACHE=384' in run_args
+            assert (seen['missing'] == []) == (gb == 64)                                       # 48 GB: refused (needs 56 GiB)
+
+
+def test_expert_cold_explicit_and_refusals(lf, monkeypatch, capsys, tmp_path):
+    monkeypatch.setitem(lf.COMMON['ple_host']['filebacked'], 'images', ['flashnext-test:cold'])
+    monkeypatch.setitem(lf.COMMON['expert_cold'], 'images', ['flashnext-test:cold'])
+    monkeypatch.setattr(lf, 'ensure_ple_raw', lambda w, out, dry: tmp_path / 'raw')
+    monkeypatch.setattr(lf, 'ple_raw_preflight', lambda out, dry: None); monkeypatch.setattr(lf, 'cold_preflight', lambda out, s, dry: None)
+    img = ('--image', 'flashnext-test:cold')
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, img + ('--ple-host', 'filebacked', '--expert-cold', '0.2'))
+    assert ',cold=0.2' in out.split('docker run')[1]
+    with pytest.raises(SystemExit, match='--expert-cold 0.3 is not measured on --mode 4bit'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, img + ('--ple-host', 'filebacked', '--expert-cold', '0.3'))
+    with pytest.raises(SystemExit, match='needs the file-backed PLE tables'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 125.8, img + ('--ple-host', 'pinned', '--expert-cold', '0.2'))
+    with pytest.raises(SystemExit, match='--expert-cold 0.2 is not measured on --mode 4bit-cache'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit-cache', 60.0, img + ('--ple-host', 'filebacked', '--expert-cold', '0.2'))
+    out = mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, img + ('--ple-host', 'filebacked', '--expert-cold', 'off'))
+    assert 'cold=' not in out.split('docker run')[1]
+
+
+def test_expert_cold_pool_shrinks(lf):
+    spec = 'static:vram_gib=20.75,pool=1,core=0.3,classes=1'
+    full = lf.pinned_host_gib(spec, 58.23, 2); cold = lf.pinned_host_gib(lf.tier_spec(spec, cold=0.2), 58.23, 2)
+    assert full - cold == pytest.approx(0.2 * 58.23)
+
+
+def test_cold_preflight(lf, tmp_path, monkeypatch):
+    import collections
+    du = collections.namedtuple('du', 'total used free')
+    monkeypatch.setattr(lf.shutil, 'disk_usage', lambda p: du(0, 0, 15 << 30))
+    with pytest.raises(SystemExit, match='22 GiB of free disk'):
+        lf.cold_preflight(tmp_path / 'c', 0.2, False)                                         # 0.2 x 58.2 + 10
+    monkeypatch.setattr(lf.shutil, 'disk_usage', lambda p: du(0, 0, 30 << 30))
+    lf.cold_preflight(tmp_path / 'c', 0.2, False)
+
+
+def test_expert_cold_refused_with_vision(lf, monkeypatch, capsys, tmp_path):
+    """--vision is not measured with cold experts (nor with the file-backed tables they need): refused either way."""
+    monkeypatch.setitem(lf.COMMON['expert_cold'], 'images', ['local:vision'])
+    with pytest.raises(SystemExit):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--vision', '--image', 'local:vision', '--expert-cold', '0.2'))
+    with pytest.raises(SystemExit, match='not measured with --vision'):
+        mode_cmd(lf, monkeypatch, capsys, tmp_path, '4bit', 60.0, ('--vision', '--image', 'local:vision', '--ple-host', 'filebacked',
+                                                                  '--expert-cold', '0.2'))
+
+
+def test_userptr_warning_only_when_gtt_is_short(lf, monkeypatch, capsys):
+    # --ple-host filebacked picks user-pointer pools by design: no "host GTT 126 GiB < 49 GiB" warning when the GTT fits
+    monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (126.0, 126.0))
+    lf.host_pool_env('userptr', ['GPU-0', 'GPU-1'], pinned_gib=47.0)
+    assert 'WARNING host pools' not in capsys.readouterr().out
+    monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (40.0, 40.0))
+    lf.host_pool_env('auto', ['GPU-0', 'GPU-1'], pinned_gib=47.0)
+    assert 'WARNING host pools: host GTT 40 GiB < 49 GiB' in capsys.readouterr().out
