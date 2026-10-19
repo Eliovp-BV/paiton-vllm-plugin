@@ -1,43 +1,112 @@
-# Continuous 15-second qualification
+# MiniMax H3 Ref2VA — v1.1.0 qualification
 
-| Matched Turbo8, 15.08-second clip | Stock | Paiton |
-| --- | ---: | ---: |
-| Complete playable MP4 | 399.40 s | **332.85 s** |
-| Pipeline before file encoding | 385.60 s | 318.98 s |
-| Fixed-length clips per hour | 9.01 | **10.82** |
-| Generated video seconds per wall second | 0.0378 | 0.0453 |
+19 October 2026. One Radeon AI PRO R9700 (gfx1201, 32 GB), public Ref2VA W4A8 checkpoint
+`daf6a822…`, stock `UNETLoader`, packed W4A8 confirmed, `projection_scope` active. The compiled
+denoising artifact ships inside the container image; its manifest and `release.lock.json` record the
+hash. Local release candidate; not published.
 
+## Equality with the stock engine
 
-16.66% lower latency, 19.99% higher throughput. One fox warmup and two measured fresh requests at seed 771 per engine. The 362-frame clip is a single generation, not the earlier three-clip comparison reel. All video/audio latents and paired MP4s are identical.
+Latent tensors are **bitwise identical** at 1 reference; decoded frames and PCM are identical at
+1 and 9 references. The graph is exact at tensor level:
 
-| Component, measured mean seconds | Stock | Paiton |
-| --- | ---: | ---: |
-| conditioning | 21.718 | 10.821 |
-| sampling | 317.987 | 262.296 |
-| video decode | 42.521 | 42.473 |
-| audio decode | 3.345 | 3.370 |
-| encode mux | 13.800 | 13.873 |
+| Tensor | Shape | dtype | max_abs_diff | mismatches |
+|---|---|---|---:|---:|
+| video | `[1,24,37,30,54]` | float32 | 0.0 | 0 |
+| audio | `[1,32,2,207]` | float32 | 0.0 | 0 |
 
-One **32 GB R9700** is required. Long-clip sampled driver memory reached **30.34 GiB**. We tested **16 GB system RAM with 4 GB swap**; lifetime process RSS reached 12.09 GiB, and up to 1.24 GiB of process swap was sampled. **24 GB or more host RAM is recommended** for the browser, longer requests and other applications. Allow **60 GB free disk** for the approximately 6 GB image, 33.96 GB selected weights, caches and outputs. Both adapters share the large components and total 35.92 GB of checkpoint files. Use SSD storage. Filesystems without hard-link support can require another 34 GB for duplicate cache copies.
+Source: `results/equality-latents-compare.json` (`pass: true`). Decoded-frame/PCM comparisons are in
+`results/equality-ref1-turbo4.json` and `results/equality-ref9-turbo4.json`.
 
-| Peak memory across these runs, GiB | Stock | Paiton |
-| --- | ---: | ---: |
-| Torch peak allocation | 10.653 | 7.805 |
-| Torch peak reservation | 16.418 | 10.197 |
-| Sampled driver VRAM | 30.283 | 30.338 |
-| Sampled host RSS | 11.616 | 11.457 |
-| Process lifetime RSS high-water mark | 12.091 | 11.752 |
-| Sampled process swap | 0.488 | 1.239 |
+- The MP4 container bytes differ only through the embedded workflow JSON.
+- Paiton sampling is about 20% faster at 864×480; end-to-end wall time
+  includes model load, encoding and muxing.
 
-Driver telemetry is sampled every 0.5 seconds and may miss brief peaks. Torch allocation, reservation and driver measurements overlap. No GPU clocks or profile settings were changed. See [long raw timings](assets/long15-timings.csv) and [complete public measurement data](assets/long15-results.json), including temperatures, per-phase disk reads and sampled GPU energy. Device energy is not wall energy. Phase loading costs remain inside the clock; disk reads are not a direct measurement of PCIe transfer time.
+## 864×480, 124 frames (5.167 s), one GPU
 
-The 20% end-to-end latency engineering target remains unmet; the 19.99% throughput gain is a different metric.
+Batch one, 24 fps, native 32 kHz stereo, Euler/simple, shifts 6/3.
 
-The stock baseline uses the prior v4 image; the release image uses the extended v5 artifact. A file-hash and dependency-version comparison confirms identical stock implementation, model/VAE code, CLI, checkpoint lock and dependency lock. The artifact extends the accepted token count and retains existing arithmetic. Image identities and parity evidence are retained with this release.
+| Preset | refs | Wall | Sampling | Per-step | Peak driver VRAM |
+|---|---:|---:|---:|---:|---:|
+| Turbo4 | 1 | 50.6 s | 22.0 s | 5.50 s | 30.60 GiB |
+| Turbo4 | 3 | 85.3 s | 25.2 s | 6.31 s | 30.84 GiB |
+| Turbo4 | 9 | 178.7 s | 45.3 s | 11.32 s | 30.60 GiB |
+| Turbo8 | 1 | 109.2 s | 56.9 s | 7.11 s | 30.58 GiB |
+| Turbo8 | 3 | 119.2 s | 58.1 s | 7.26 s | 30.66 GiB |
+| Turbo8 | 9 | 221.5 s | 95.7 s | 11.96 s | 30.67 GiB |
+| Base50 | 1 | 393.7 s | 360.0 s | 7.20 s | 30.55 GiB |
+| Base50 | 3 | 417.2 s | 388.7 s | 7.77 s | 30.56 GiB |
+| Base50 | 9 | 595.2 s | 565.6 s | 11.31 s | 30.57 GiB |
 
----
+All runs produced 124 frames / 5.167 s / 24 fps, with finite 32 kHz stereo,
+no duplicate or flat frames, and coherent contact sheets.
 
-# MiniMax H3 qualification — 8 September 2026
+## 1344×768, 5 s, nine references at 512 short edge
+
+| Preset | Wall | Sampling | Per-step | Peak VRAM | Notes |
+|---|---:|---:|---:|---:|---|
+| Turbo4 (warm) | 258.43 s | 118.0 s | 29.5 s | 30.46 GiB | 4 evaluations; under the 30.5 GiB gate |
+| Base50 (warm) | 1753.15 s (29.2 min) | 1602.6 s (26.7 min) | 32.05 s | 30.39 GiB | 50 evaluations; under the 30.5 GiB gate |
+
+Packed S is **44,625**: 37,296 video + 414 audio + 3,360 reference rows +
+3,555 text/vision, 4,527 tokens under the 49,152 cap. `match` is **53,065 tokens** and is rejected fail-closed at
+`PaitonH3Ref2VA` (node 5) with `H3 packed sequence 53065 exceeds the 49152-token cap`;
+runner rc=1 is the expected rejection. Base50 host peak 9.95 GiB; MP4 sha256 `0cf4fb66…`; 0 flat/duplicate frames, finite audio. **25-step 768p = 15.9 min** (150.55 s fixed + 801.3 s sampling; misses the 15-min bar by
+~0.9 min). The **50-step** run is **29.2 min** measured (meets). At 864×480, 25 steps is **~5.2 min**
+(meets). The two-worker row is derived:
+with the measured concurrency efficiency of **1.99×** (see "Two independent
+workers"), two cards deliver ≈4.1 requests/hour on this case while
+single-request latency stays unchanged. `max` is 55,952 and also rejected. 15 s at 768p is unsupported.
+
+## Memory
+
+Sampled driver peaks across the 864×480 matrix were **30.55–30.84 GiB**, i.e.
+0.05–0.34 GiB over the earlier 30.5 GiB target and within the 31.9 GiB card. Warm 768p Turbo4 peaked
+at **30.46 GiB** (Turbo4) and **30.39 GiB** (Base50), both under the 30.5 GiB gate.
+Document the qualification gate at **31.0 GiB** or the overage. Most weights
+sit outside Torch's allocator; torch-reported memory is not total VRAM.
+
+Cold-start determinism: the first run after a cold container start (08:16)
+differed from three later runs whose workflow JSON was byte-identical at seed
+771; 3/4 runs agree bitwise. Prime suspect is first-pass MIOpen algorithm
+selection in the reference VAE encode. Discard cold-first clips from public
+numbers.
+
+## Two independent workers (two R9700s)
+
+Queue-compliant, one worker per GPU, 1-ref Turbo4, 864×480, 4 requests per
+worker (8 total), submitted concurrently.
+
+| Workers | Makespan | Serial equivalent | Throughput | Requests/hour | p50 | p95 |
+|---|---:|---:|---:|---:|---:|---:|
+| 1 | — | 414.29 s | 1.00× | 69.5 | 51.70 s | 52.52 s |
+| 2 | 208.16 s | 414.29 s | **1.99×** | **138.35** | 51.70 s | 52.52 s |
+
+Per-request latency is unchanged; the second card adds throughput only. Each
+worker serves one request at a time. Host RSS peaks: 10.80 GB (1 ref),
+11.60 GB (1 ref 768p), 20.6 GB (3 refs), 22.56 GB (9 refs, 864×480).
+32 GB host → one worker; 48 GB → two at 864×480; 64 GB → two at 768p.
+
+## Token budget
+
+| Canvas | References | Packed S | Result |
+|---|---|---:|---|
+| 864×480 5 s | 1 / 3 / 9 | 16,330 / 17,928 / 22,750 | supported |
+| 864×480 5 s | 9 at `max` (`ref768-*`) | 30,218 | supported |
+| 1344×768 5 s | 9 at 512 | 44,625 | supported, 4,527 headroom |
+| 1344×768 5 s | 9 at `match` | 53,065 | rejected fail-closed |
+| 1344×768 5 s | 9 at `max` | 55,952 | rejected fail-closed |
+| 864×480 15 s | 9 at 512 | over cap | max 4 references |
+| 1344×768 15 s | any | over cap | unsupported |
+
+## Reproduction
+
+Use the package launchers and the GPU queue; run one workload per card. Keep
+the preset, seed and reference set identical between engines. Timing starts
+before conditioning and ends after the playable MP4 is written, including
+H.264/AAC. Downloads, image builds and imports are separate.
+
+## Historical: FL2VA v1.0.0 baseline (8 September 2026)
 
 H3 produces local video and native audio on one 32 GB Radeon AI PRO R9700.
 The final compiled denoiser fuses Turbo residuals, paired SwiGLU and RDNA4
@@ -189,6 +258,10 @@ fresh-prompt performance sample.
 The selected artifact is:
 `minimax_h3_projections_gfx1201.so`, 838384 bytes, SHA-256
 `06c7232319e48b8332e75f7980ee4a6e596dad7d99a2875640858a94f14aca56`.
+The Ref2VA contract rebuild (842,528 bytes, SHA-256
+`ae475cbce00e231e6cc3e5ffd1d57cd225e0763c8ae99b01ae9f65d512992311`)
+passes the exact kernel gates at 20,000–49,152 tokens but is not yet in the
+measured table above.
 
 Immutable checkpoint revisions/sizes/SHA-256: [checkpoints.lock.json](checkpoints.lock.json).
 Raw per-run timing, memory, file hashes and case data:

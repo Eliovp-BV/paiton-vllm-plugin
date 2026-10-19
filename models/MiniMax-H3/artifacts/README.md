@@ -1,9 +1,9 @@
 # Qualified gfx1201 artifact
 
-The local review bundle includes `minimax_h3_projections_gfx1201.so` and its
-SHA-256-checked manifest. The runtime checks the hash, target and ABI before
-loading it. The binary is generated and is not tracked as compiler source.
-A source checkout requires the separately supplied review artifact before
-building the runtime image; no public artifact download has been published.
+`minimax_h3_projections_gfx1201.so` ships **only inside the published container image**. It is not
+checked into git, the release archive or the Hugging Face package. This directory keeps the
+compiler-emitted manifest (ABI, contract, target, size and SHA-256) and this note.
 
-See the package's THIRD_PARTY_NOTICES.md before distributing a combined image.
+`verify.py` checks the manifest and `release.lock.json`, and with `--image <ref>` checks the image's
+`dev.paiton.artifact.sha256` label against the locked hash. The image digest is pinned in
+`release.lock.json`; the manifest remains the runtime contract.

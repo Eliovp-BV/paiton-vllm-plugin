@@ -11,3 +11,7 @@ This package does not imply endorsement by MiniMax or the quantization authors.
 
 MiniMax H3 is licensed under the MiniMax H3 Community License Agreement,
 Copyright © 2026 MiniMax. All Rights Reserved.
+
+Ref2VA support (nine image references, three video and three audio references)
+is an additional runtime capability of this package. Reference conditioning does
+not change the licence of the H3 weights or of any Model Derivative.

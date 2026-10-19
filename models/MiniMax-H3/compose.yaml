@@ -1,7 +1,8 @@
-name: paiton-h3
+name: paiton-h3-review
 services:
   comfyui:
-    image: ${PAITON_H3_IMAGE:-paiton-minimax-h3:local-v1.0.1}
+    image: ${PAITON_H3_IMAGE:-paiton-minimax-h3:fused-v4-review}
+    build: {context: ., dockerfile: Dockerfile}
     devices: [/dev/kfd, /dev/dri]
     group_add: ["${PAITON_RENDER_GID:?Use launch.sh}"]
     user: "${PAITON_UID:?Use launch.sh}:${PAITON_GID:?Use launch.sh}"
@@ -9,7 +10,7 @@ services:
     init: true
     environment:
       HF_HUB_OFFLINE: "1"
-    ports: ["${PAITON_BIND:-0.0.0.0}:${PAITON_H3_PORT:-8190}:8188"]
+    ports: ["127.0.0.1:${PAITON_H3_PORT:-8190}:8188"]
     volumes:
       - ${PAITON_H3_DATA:?Use launch.sh}:/data
       - ${PAITON_H3_OUTPUTS:?Use launch.sh}:/outputs

@@ -1,215 +1,149 @@
 # MiniMax H3 with Paiton on Radeon
 
+Powered by MiniMax H3.
+
+Local **video with native stereo audio** and up to **nine image, three video and three audio
+references** on one **32 GB gfx1201 R9700**. v1.1.0 uses the pruned Ref2VA W4A8
+denoiser, the required Qwen3-VL-32B intermediate-state encoder, the public eight-dimensional pruned
+AdaLN table, and the four/eight-step H3 Turbo adapters. No hosted generation is used.
+
 ## Model weights and existing downloads
 
-Run these examples from the repository root. Turbo8 needs the selected W4A8
-denoiser, Qwen text/vision encoder, INT8 video VAE, audio VAE and Turbo8 adapter.
-Use the exact files, revisions and destination names in
-[checkpoints.lock.json](checkpoints.lock.json), under the `turbo8` profile.
-The original MiniMax repository alone does not supply this prepared combination.
+Run the examples from the repository root. The selected denoiser, text/vision encoder, VAEs and Turbo
+adapters are pinned in [checkpoints.lock.json](checkpoints.lock.json). The launcher downloads and verifies
+them on first use. To reuse an existing H3 data directory, set
+`export PAITON_H3_DATA="/absolute/path/to/h3-data"`; the directory contains `models/` and `cache/`.
+See [the model weights guide](../../docs/MODEL_WEIGHTS.md) for offline and Hugging Face cache mounts.
 
-### First download
+Container image:
+`ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0@sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed`.
+Hugging Face runtime package:
+[`EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4@paiton-rdna4-v1.1.0`](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/tree/paiton-rdna4-v1.1.0).
 
-```bash
+**Release package.** The combined runtime is distributed under the licenses in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). H3 regional authorization was confirmed for this
+qualification. The compiled artifact ships inside the container image; its manifest and
+`release.lock.json` record the hash.
+
+## Start locally
+
+With Docker/Compose and a working ROCm driver, from the repository root:
+
+```sh
 ./models/MiniMax-H3/launch.sh
 ```
 
-The launcher downloads and verifies the selected components, then starts
-ComfyUI. Its model cache is separate from the host's default Hugging Face cache.
+This builds the local image, downloads SHA-256-verified pinned Turbo8 components once, and opens
+ComfyUI at `http://127.0.0.1:8190`. Load a Ref2VA workflow, select **stock** or **paiton** in
+**MiniMax H3 Engine**, edit the prompt and queue. Use `./models/MiniMax-H3/launch.sh --logs` or `--stop`. For four
+steps, run `./models/MiniMax-H3/run.sh download --profile turbo4` and load `turbo4.json`. To install only the faster
+preset initially: `PAITON_H3_PRESET=turbo4 ./models/MiniMax-H3/launch.sh`.
 
-### Already in a local folder
+Models, verification stamps and runtime caches persist in `./paiton-h3-data`; outputs go to
+`./paiton-videos`. Override `PAITON_H3_DATA` and `PAITON_H3_OUTPUTS` with existing absolute
+directories. The UI keeps model objects with 2 GB host-RAM headroom. Identical cached UI requests are
+not fresh-prompt benchmarks.
 
-If you already have this package's full data directory, set
-`export PAITON_H3_DATA="/absolute/path/to/h3-data"` before launching.
-It contains `models/` and `cache/`; existing verified files are reused.
+Reference inputs use `MiniMaxH3ReferenceToVideo` (the Paiton node `PaitonH3Ref2VA` forwards to it and
+preflights the token cap): nine **separate** image inputs, three videos with optional soundtracks,
+and three standalone audio inputs. `ref_image_size` is `match` (default) or `max`; reference videos
+ignore it. Order is images → videos → audio and advances the shared RoPE clock.
 
-For model files in another folder, use the directory that contains
-`diffusion_models/`, `text_encoders/`, `vae/` and `loras/`, with the selected
-files arranged as the checkpoint lock specifies. Mount it read-only. This
-Docker example verifies the files and generates one clip using the published
-runtime, without needing a ComfyUI build:
+## Terminal generation and benchmarks
 
-```bash
-export PAITON_MODEL_DIR="/absolute/path/to/h3-models"
-export PAITON_H3_DATA="$HOME/.local/share/paiton/h3-existing"
-export PAITON_H3_OUTPUTS="$HOME/paiton-videos"
-mkdir -p "$PAITON_H3_DATA" "$PAITON_H3_OUTPUTS"
-h3_local=(docker run --rm --init --device /dev/kfd --device /dev/dri
-  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g
-  --mount "type=bind,src=$PAITON_H3_DATA,dst=/data"
-  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/data/models,readonly"
-  --mount "type=bind,src=$PAITON_H3_OUTPUTS,dst=/outputs"
-  -e HF_HUB_OFFLINE=1
-  ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0)
-"${h3_local[@]}" download --profile turbo8 --verify-only
-"${h3_local[@]}" generate --engine paiton --preset turbo8 --frames 124 \
-  --prompt 'A red fox walks beside a stream. Audio: flowing water and birds.' \
-  --seed 771 --output /outputs/h3-existing
-```
-
-Only generate after verification succeeds. Choose a new output name on later
-runs. Original models remain read-only; verification and runtime caches are
-writable. For linked Hub snapshots, use the complete-cache mount below.
-
-### Already in the Hugging Face cache
-
-Mount the Hub root so all pinned repositories and their blobs remain visible.
-Preparation finds the original cached files, verifies them and places the
-selected components in the package's `models/` layout:
-
-```bash
-export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
-export PAITON_H3_DATA="$HOME/.local/share/paiton/h3-existing"
-export PAITON_H3_OUTPUTS="$HOME/paiton-videos"
-mkdir -p "$PAITON_H3_DATA" "$PAITON_H3_OUTPUTS"
-h3_cached=(docker run --rm --init --device /dev/kfd --device /dev/dri
-  --group-add "$(stat -c '%g' /dev/kfd)" --user "$(id -u):$(id -g)" --shm-size 2g
-  --mount "type=bind,src=$PAITON_H3_DATA,dst=/data"
-  --mount "type=bind,src=$HF_HUB_CACHE,dst=/data/cache/hub,readonly"
-  --mount "type=bind,src=$PAITON_H3_OUTPUTS,dst=/outputs"
-  -e HF_HUB_OFFLINE=1
-  ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0)
-"${h3_cached[@]}" download --profile turbo8
-"${h3_cached[@]}" generate --engine paiton --preset turbo8 --frames 124 \
-  --prompt 'A red fox walks beside a stream. Audio: flowing water and birds.' \
-  --seed 771 --output /outputs/h3-cached
-```
-
-The Bash array reuses the same Docker mounts. Only generate when preparation
-succeeds. For another drive, replace `HF_HUB_CACHE` with its absolute path.
-Missing pinned components stop preparation because downloads are disabled.
-Files are hard-linked when possible and copied otherwise; allow up to about
-34 GB for a separate prepared copy. Source weights are preserved. These commands
-run the CLI workflow; `launch.sh` retains its own ComfyUI setup and mounts.
-[Cache path guide](../../docs/MODEL_WEIGHTS.md).
-
-## Serving interface
-
-For this video and audio generation package, keep using the existing launcher from the repository
-root: `./models/MiniMax-H3/launch.sh`. Open [the included ComfyUI workflow](http://127.0.0.1:8190/?paiton=1&studio=1) after startup.
-The setup, CLI alternatives, flags and cache locations documented below remain
-available. `paiton serve` provides vLLM chat APIs, including NEO visual chat;
-this package uses its existing generation workflow. See the
-[main launch guide](../../README.md#quick-start) to choose an interface.
-
-
-Create **video with native stereo audio** locally on one **Radeon AI PRO R9700, 32 GB**. The included workflow generates a continuous **15.08-second, 864×480 clip at 24 fps**. Powered by MiniMax H3.
-
-Paiton takes **332.85 seconds** versus **399.40 seconds** for the matched stock request: **16.66% lower end-to-end latency** and **19.99% more clips per hour**. Fresh conditioning, video/audio decoding and writing a playable MP4 are included. All three paired long clips have equal video/audio latents and byte-identical MP4s.
-
-[![A continuous 15-second fox scene generated locally](assets/fox-15s-poster.jpg)](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/resolve/main/assets/fox-15s.mp4)
-
-[Play the generated 15-second clip](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/resolve/main/assets/fox-15s.mp4) · [Hugging Face runtime package](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4)
-
-## Start ComfyUI with one command
-
-```bash
-git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/MiniMax-H3/launch.sh
-```
-
-Open [ComfyUI](http://127.0.0.1:8190/?paiton=1&studio=1) on the host, or `http://<server-ip>:8190/?paiton=1&studio=1` from another system. Replace `<server-ip>` with the host's network address. ComfyUI listens on all interfaces (0.0.0.0); use `PAITON_BIND=127.0.0.1` to keep it local; add a firewall if the machine is reachable from untrusted networks. The first visit opens the connected **Turbo8 studio workflow**, initially set to 15 seconds. Edit the prompt and click **Run**. Choose **paiton** or **stock** in **MiniMax H3 Engine**. Keep the seed fixed when comparing engines.
-
-Use **Video length and resolution** to change the requested duration (5–15 seconds), resolution level (1: 576×320, 2: 704×384, 3: 864×480), and Landscape/Portrait/Square aspect. Portrait swaps the dimensions; Square uses the shorter edge. The node title shows the actual dimensions, frame count and rounded duration.
-
-Upload an image in **First image · optional** to animate it. Optionally upload a **Last image** to guide the ending. Keep both set to **(none)** for text-to-video. These use the same FL2VA model and its full vision encoder; no additional checkpoint is needed. First images are stretched to the selected canvas; last images are center-cropped, so matching the canvas aspect gives more predictable composition. Audio remains enabled.
-
-Already used the interface? Open `http://<server-ip>:8190/?paiton=1&studio=1` to load the new template once, or select `turbo8-studio.json` from the workflow templates. Save your current workflow before switching.
-
-![Included workflow](assets/comfyui-workflow.png)
-
-The helper pulls the versioned GHCR artifact image, prepares pinned ComfyUI components locally, verifies the model downloads and starts the interface. Models and caches persist in `~/.local/share/paiton/minimax-h3/` (or your XDG data directory); videos go to `~/paiton-videos/`. Both paths are independent of the working directory. Subsequent launches reuse the local image and model cache. ComfyUI listens on all IPv4 interfaces (`0.0.0.0`) so other systems can connect to the host's address.
-
-To update an existing Git checkout, finish any running generation, then run these commands from the repository root:
-
-```bash
+```sh
 ./models/MiniMax-H3/launch.sh --stop
-git pull --ff-only
-./models/MiniMax-H3/launch.sh
+./models/MiniMax-H3/run.sh download --profile turbo4
+./models/MiniMax-H3/run.sh generate --preset turbo4 --engine paiton \
+  --prompt 'A red fox beside a stream. Audio: birds and flowing water.' \
+  --seed 771 --ref-image /outputs/ref0.png --ref-image /outputs/ref1.png \
+  --output /outputs/ref2va
+./models/MiniMax-H3/run.sh benchmark --preset turbo4 --engine stock --output /outputs/stock4
+./models/MiniMax-H3/run.sh benchmark --preset turbo4 --engine paiton --output /outputs/paiton4
+./models/MiniMax-H3/run.sh report /outputs/paiton4
+./models/MiniMax-H3/run.sh inspect /outputs/paiton4/clip-2.mp4 --output /outputs/paiton4/quality
 ```
 
-This update prepares a new **local** ComfyUI image (`local-v1.0.1`) using the existing GHCR `minimax-h3-rdna4-v1.0.0` artifact. It reuses the model cache; no new published image or model download is required. Existing release, clip and benchmark links remain valid.
+For 768p, pass nine references pre-scaled to 512 short edge and `--width 1344 --height 768`.
+Benchmark mode runs one warmup and two measured generations, encoding the prompt again each time. It
+retains commands, timings, telemetry, clips and latent tensors. Use the same preset and settings for
+both engines. User-visible timing includes H.264 encoding and AAC muxing. Run one GPU workload at a
+time.
 
-From this model directory, `./launch.sh --logs` follows startup and `./launch.sh --stop` stops H3 while preserving caches, videos and user settings. `PAITON_H3_DATA`, `PAITON_H3_OUTPUTS` and `PAITON_H3_PORT` override those defaults. Stop other GPU generation workloads before starting H3.
+## Qualified performance and limits
 
-With weights already present, the first 15-second requests took **423.6 s stock** and **381.0 s Paiton**, after process setup. First download, verification, local image preparation and a cold disk/runtime cache add time. One **32 GB R9700** is required. Long-clip sampled driver memory reached **30.34 GiB**. We tested **16 GB system RAM with 4 GB swap**; lifetime process RSS reached 12.09 GiB, and up to 1.24 GiB of process swap was sampled. **24 GB or more host RAM is recommended** for the browser, longer requests and other applications. Allow **60 GB free disk** for the approximately 6 GB image, 33.96 GB selected weights, caches and outputs. Both adapters share the large components and total 35.92 GB of checkpoint files. Use SSD storage. Filesystems without hard-link support can require another 34 GB for duplicate cache copies.
+**864×480, 124 actual frames at 24 fps: 5.1667 video seconds**, batch one, Euler/simple, shifts
+video/audio 6/3, BasicGuider, and native 32 kHz stereo. Four and eight steps mean exactly four and
+eight denoiser evaluations.
 
-## Choose a workflow
+| Preset | 1 ref | 3 refs | 9 refs |
+|---|---:|---:|---:|
+| Turbo4 wall / sampling / per-step / peak | 50.6 / 22.0 / 5.50 s / 30.60 GiB | 85.3 / 25.2 / 6.31 s / 30.84 GiB | 178.7 / 45.3 / 11.32 s / 30.60 GiB |
+| Turbo8 wall / sampling / per-step / peak | 109.2 / 56.9 / 7.11 s / 30.58 GiB | 119.2 / 58.1 / 7.26 s / 30.66 GiB | 221.5 / 95.7 / 11.96 s / 30.67 GiB |
+| Base50 wall / sampling / per-step / peak | 393.7 / 360.0 / 7.20 s / 30.55 GiB | 417.2 / 388.7 / 7.77 s / 30.56 GiB | 595.2 / 565.6 / 11.31 s / 30.57 GiB |
 
-| Workflow | Output | Purpose |
-| --- | --- | --- |
-| `turbo8-studio.json` | Adjustable; defaults to 362 frames | Default; optional first/last images, eight evaluations |
-| `turbo4-studio.json` | Adjustable; defaults to 124 frames | Optional first/last images, four evaluations |
-| `turbo8-15s.json` | 362 frames, 15.0833 s | Original fixed continuous scene; eight evaluations |
-| `turbo8.json` | 124 frames, 5.1667 s | Shorter eight-step scene |
-| `turbo4.json` | 124 frames, 5.1667 s | Faster four-step alternative with a quality tradeoff |
+**1344×768, 5 s, nine references at 512 short edge:**
 
-All default to 864×480, 24 fps and native 32 kHz stereo. Studio templates also expose smaller canvases. Find them in the included workflow templates or load the JSON from `comfyui/workflows/`. H3 snaps frame counts upward to its `17k+5` grid: requesting 360 frames produces 362. It does not produce exactly 15.000 seconds at this setting.
+| Preset | Wall | Sampling | Per-step | Peak |
+|---|---:|---:|---:|---:|
+| Turbo4 (warm) | 258.43 s | 118.0 s | 29.5 s | 30.46 GiB |
+| Base50 | 1753.15 s (29.2 min) | 1602.6 s (26.7 min) | 32.05 s | 30.39 GiB |
 
-To add the faster short preset, run `./run.sh download --profile turbo4` and open `turbo4.json`. To install only Turbo4 initially, use `PAITON_H3_PRESET=turbo4 ./launch.sh` and open the URL printed by the launcher.
+At 768p, **25 steps is 15.9 min** (150.55 s fixed + 801.3 s sampling; misses the 15-min bar by
+~0.9 min) and **50 steps is 29.2 min** (meets). At 864×480, 25 steps is **~5.2 min** (meets).
 
-## Terminal generation
+Paiton vs stock: latent tensors are bitwise identical at 1 reference (video `[1,24,37,30,54]`, audio
+`[1,32,2,207]`, max_abs 0.0, 0 mismatches); decoded frames and PCM are bitwise identical at 1 and 9
+references. The graph is exact at tensor level. Both 768p cells are under the 30.5 GiB gate (Turbo4 30.46 GiB, Base50 30.39 GiB); the 864×480 matrix
+peaks at 30.55–30.84 GiB. The stock/Paiton sampling delta is about 20%
+at 864×480; the four-vs-eight-step difference is a distillation tradeoff, not a compiler speedup.
+Detailed records and methodology: [BENCHMARKS.md](BENCHMARKS.md).
 
-Stop the interface before launching a separate GPU pipeline:
+**Token budget.** The cap is 49,152 packed tokens. 864×480 with 1/3/9 references is
+**16,330 / 17,928 / 22,750** (9 refs at `max` with `ref768-*`: 30,218). 1344×768 with nine references at 512 short edge is **44,625** (37,296 video +
+414 audio + 3,360 reference rows + 3,555 text/vision), leaving **4,527** tokens. `match` is 53,065
+and is rejected fail-closed by `PaitonH3Ref2VA` (node 5) with
+`H3 packed sequence 53065 exceeds the 49152-token cap`; `max` is 55,952 and also rejected. 15 s at
+768p is unsupported; 864×480 supports 15 s without references, with at most four references at 512.
 
-```bash
-./launch.sh --stop
-./run.sh download --profile turbo8
-./run.sh generate --engine paiton --preset turbo8 --frames 362 \
-  --prompt 'A small red fox trots through a sunlit woodland clearing, pauses beside a shallow stream, and looks toward the camera. Natural realistic fur, continuous gentle camera movement, coherent anatomy. Audio: birds chirping, leaves rustling and quiet flowing water; no music and no speech.' \
-  --seed 771 --output /outputs/fox-15s
-```
+**Two R9700s = two independent workers.** One GPU is the product; two do not make one request faster.
+Two workers behind a queue measured **1.99×** throughput (138.35 requests/hour) with unchanged
+per-request latency (p50 51.70 s, p95 52.52 s). Each worker serves one request at a time. Host RAM:
+32 GB → one worker; 48 GB → two at 864×480; 64 GB → two at 768p.
 
-The clip is saved as `~/paiton-videos/fox-15s/clip-0.mp4`. For a faster short request use `--preset turbo4 --frames 124` after downloading its adapter. `generate` includes startup for each new process; benchmark mode keeps the pipeline loaded.
+## Requirements and model precision
 
-## Reproduce the comparison
+- **32 GB VRAM** (31.9 GiB usable); sampled driver peaks 30.46–30.84 GiB. Most weights are outside
+  Torch's allocator; Torch memory is not total VRAM.
+- **16 GB system RAM** tested for one worker using smart memory, Dynamic VRAM, two offload streams,
+  `--fast-disk`, and a 2 GB GPU reserve. Do not use `--high-ram` on this host. Two workers need the
+  host-RAM guidance above.
+- **33.96 GB** selected weights per preset, **35.92 GB** for both adapters with shared components.
+  Allow **60 GB free disk** for the image, weights, caches and outputs; reference weights need more.
+- Linux, `/dev/kfd`, `/dev/dri`, Docker/Compose. Pinned Torch **2.12.0+rocm7.14.0**, Triton
+  **3.7.1 ROCm**, ComfyUI `efa6c8f804bff78b46a0fd458ebd2e47bba07a30`, kitchen **0.2.33**, AIMDO
+  **0.5.2**. AUTO/COMPUTE was retained; clocks, power, fans and voltage were unchanged.
 
-```bash
-./launch.sh --stop
-./run.sh benchmark --engine stock --preset turbo8 --frames 362 --output /outputs/stock-15s
-./run.sh benchmark --engine paiton --preset turbo8 --frames 362 --output /outputs/paiton-15s
-./run.sh report /outputs/paiton-15s
-./run.sh inspect /outputs/paiton-15s/clip-2.mp4 --output /outputs/paiton-15s/quality
-```
+The denoiser's 200 main projections use W4 codebook storage, group 16, ConvRot 256, FP8 group scales,
+INT8 activations, INT32 GEMMs and BF16 outputs. The Qwen3-VL encoder uses NVFP4/AWQ storage emulated
+with FP16 computation and retains the required 50 decoder layers/intermediate output; it is not
+replaced by a smaller model. Video VAE uses INT8 weights/BF16 compute; audio VAE remains explicitly
+FP32. The pruned AdaLN fit is approximate, not an exact cache of original 33B modulation weights.
 
-Each benchmark performs one warmup and two measured requests, encoding the prompt afresh every time. It retains commands, MP4s, raw timings, latent tensors and telemetry. Use fresh output directories and run the engines sequentially with the same settings. ComfyUI's node cache may reuse identical requests, so cached UI timings are a separate scenario.
+[checkpoints.lock.json](checkpoints.lock.json) pins upstream revisions, sizes and full SHA-256 values.
+The downloader preserves bytes and hard-links cached files when possible.
+`download --verify-only --rehash` checks complete files. The selected files need no local
+conversion/calibration. Original full-precision quality parity is unproven; publisher calibration
+claims are not independent H3 quality proof.
 
-| Matched Turbo8, 15.08-second clip | Stock | Paiton |
-| --- | ---: | ---: |
-| Complete playable MP4 | 399.40 s | **332.85 s** |
-| Pipeline before file encoding | 385.60 s | 318.98 s |
-| Fixed-length clips per hour | 9.01 | **10.82** |
-| Generated video seconds per wall second | 0.0378 | 0.0453 |
+## Licenses
 
-
-The earlier three-prompt qualification also measured the short presets:
-
-| Matched preset, 5.17-second clip | Stock | Paiton | Lower latency |
-| --- | ---: | ---: | ---: |
-| Turbo4, four evaluations | 64.15 s | 54.38 s | 15.24% |
-| Turbo8, eight evaluations | 95.83 s | 80.60 s | 15.89% |
-
-
-Full settings, component times, memory definitions, per-run data and quality limits are in [BENCHMARKS.md](BENCHMARKS.md).
-
-## Requirements and supported scope
-
-- Linux x86-64, Docker Engine with Compose, and working `/dev/kfd` and `/dev/dri` access for gfx1201.
-- Pinned Torch **2.12.0+rocm7.14.0**, Triton **3.7.1 ROCm**, ComfyUI commit `efa6c8f804bff78b46a0fd458ebd2e47bba07a30`, kitchen **0.2.33** and AIMDO **0.5.2**. The container setup supplies the software; the host supplies the AMD driver.
-- A single GPU, batch one, Euler/simple, shifts video/audio 6/3, BasicGuider and exactly four or eight denoiser evaluations. The qualified long preset uses eight.
-- Component scheduling uses smart memory, Dynamic VRAM, two transfer streams, `--fast-disk` and a 2 GB GPU reserve. Avoid `--high-ram` on the tested 16 GB host.
-
-The denoiser uses upstream pruned FL2VA W4A8 weights. The required Qwen3-VL-32B intermediate-state encoder uses NVFP4/AWQ storage with FP16 computation; it is not replaced by a smaller model. The video VAE uses INT8 weights/BF16 computation and audio VAE remains FP32. Both compared engines use the same quantized checkpoints and Turbo adapter. Original full-precision quality parity is unproven.
-
-The 15-second fox scene retains a consistent subject and continuous movement. The reviewer confirmed natural audio throughout. Short dialogue also passed listening review. Four-step pouring duplicates a bottle; eight-step pouring has excessive foam and incomplete placement. The pouring clips contain a brief native audio transient. These are retained limitations, not fixes applied to the soundtrack.
-
-Studio functional checks on the R9700 cover first-image generation at 576×320/124 frames, first-and-last images at 320×576/158 frames and 864×480/362 frames, and text-only generation at 384×384/124 frames. The paired short first-image stock/Paiton test produced identical decoded video and audio. These checks retain 24 fps and native stereo audio; the long image-conditioned clip also passed browser playback.
-
-The published latency and quality comparison above covers the original text-to-video presets. Image conditioning and adjustable studio settings are separate functional checks, not an extension of those performance claims. Hosted context processing, 2K regeneration, Ref2VA reference conditioning, canvases beyond the studio presets and other GPUs are outside this qualification. Unsupported kernel shapes fall back to native operations; loading is not proof of practical performance for those settings.
-
-## Downloads, artifacts and licenses
-
-[checkpoints.lock.json](checkpoints.lock.json) records immutable upstream revisions, sizes and SHA-256 values. Downloads preserve original bytes and reuse the persistent cache. No checkpoint conversion or calibration is required locally. `./run.sh download --verify-only --rehash` verifies complete files. Optional reference weights under `--profile all` need substantially more disk.
-
-The GHCR artifact image is `ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0`. The private compiler is not required. `Dockerfile` reproduces that artifact image when the binary from the release bundle is present; `Dockerfile.local` prepares the complete ComfyUI engine locally. `./launch.sh --build` rebuilds both from the bundle. The combined local image is not a distribution artifact.
-
-MiniMax H3 uses a custom community license with territory and commercial-scale restrictions. Obtain the applicable rights before downloading or using its derivatives. Upstream model and encoder terms remain applicable; this runtime package does not relicense them. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), retained licenses and [MiniMax's license](https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/42ed227ee7df40d41602854ae760620d6eb651fe/LICENSE).
+The Paiton runtime bindings are Apache-2.0. The compiled artifact contains a modified comfy-kitchen
+attention kernel (Apache-2.0; see [MODIFICATIONS.md](MODIFICATIONS.md)). MiniMax H3 is licensed under
+the **MiniMax H3 Community License**, which excludes the European Union, the United Kingdom, the
+Republic of Korea and the United States from its territory grant and has commercial-scale conditions.
+Quantization, Turbo adapters and reference conditioning do not remove those terms. Weights are
+downloaded from their publishers and are not relicensed or mirrored here. ComfyUI and AIMDO are
+GPL-3.0 and are installed only in the user-built local image; the published artifact image does not
+contain them. Read [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the retained licenses in
+`LICENSES/` before distributing anything built from this package.

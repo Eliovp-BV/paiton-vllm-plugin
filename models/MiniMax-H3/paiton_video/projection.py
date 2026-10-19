@@ -10,13 +10,26 @@ import threading
 import torch
 
 PROFILES = {(21504,5376), (28672,5376), (5376,7168), (5376,14336)}
+SUPPORTED_CONTRACTS = {
+    "fl2va_pruned_int8_accumulation_projections": {
+        "packed_layout": ["text", "cond", "audio", "video"], "ref_policy": False},
+    "ref2va_pruned_int8_accumulation_projections": {
+        "packed_layout": ["text", "refs", "audio", "video"], "ref_policy": True},
+}
+SUPPORTED_SCOPES = set(SUPPORTED_CONTRACTS)
 max_tokens = 32768
+model_scope = None
 _library = None
 _launch = None
 _packed_launch = None
 _local = threading.local()
 _original = None
 calls = 0
+
+
+def workspace_bytes(m, n, k):
+    """Caller-owned packed-projection workspace; expands A only for wide outputs."""
+    return n*k + ((((m+127)//128)*128*k) if n > 5376 else 0)
 
 
 @torch.library.custom_op("paiton_video::h3_projection", mutates_args=())
@@ -37,10 +50,10 @@ def compiled_projection(a: torch.Tensor, w: torch.Tensor, sa: torch.Tensor, sw: 
     out=torch.empty((m,n),device=a.device,dtype=torch.bfloat16)
     stream=torch.cuda.current_stream(a.device).cuda_stream
     if _packed_launch is not None and m >= 128:
-        workspace_bytes=n*k+(((m+127)//128)*128*k if n > 5376 else 0)
-        workspace=torch.empty(workspace_bytes,device=a.device,dtype=torch.uint8)
+        size=workspace_bytes(m,n,k)
+        workspace=torch.empty(size,device=a.device,dtype=torch.uint8)
         status=_packed_launch(*(t.data_ptr() for t in (a,w,sa,sw,out)),
-                              workspace.data_ptr(),workspace_bytes,m,n,k,stream)
+                              workspace.data_ptr(),size,m,n,k,stream)
     else:
         status=_launch(*(t.data_ptr() for t in (a,w,sa,sw,out)),m,n,k,stream)
     if status:
@@ -53,14 +66,45 @@ def _fake(a,w,sa,sw):
     return torch.empty((a.shape[0],w.shape[0]),device=a.device,dtype=torch.bfloat16)
 
 
+def advertised_max_tokens():
+    """Return the artifact cap even before the engine node installs the library."""
+    if _launch is not None:
+        return max_tokens
+    manifest = Path(__file__).resolve().parents[1]/"artifacts/minimax_h3_projections_gfx1201.manifest.json"
+    try:
+        value = int(json.loads(manifest.read_text()).get("h3_max_tokens", 49152))
+    except (OSError, TypeError, ValueError):
+        return 49152
+    return value if 1 <= value <= 49152 else 49152
+
+
+def validate_manifest(manifest):
+    """Check that the artifact's declared contract is one this runtime implements."""
+    if manifest.get("h3_contract_version") != 1:
+        raise RuntimeError("H3 projection contract version 1 is required")
+    scope = (manifest.get("model") or {}).get("scope")
+    contract = SUPPORTED_CONTRACTS.get(scope)
+    if contract is None:
+        raise RuntimeError(f"Unsupported H3 artifact scope: {scope}")
+    if manifest.get("h3_packed_layout") != contract["packed_layout"]:
+        raise RuntimeError(f"H3 {scope} packed layout mismatch")
+    if contract["ref_policy"]:
+        if not isinstance(manifest.get("h3_ref_policy"), dict):
+            raise RuntimeError(f"H3 {scope} reference policy is required")
+    elif "h3_ref_policy" in manifest:
+        raise RuntimeError(f"H3 {scope} artifact must not declare a reference policy")
+    return scope
+
+
 def install_projections(artifact, packed=True):
-    global _library,_launch,_packed_launch,_original,max_tokens
+    global _library,_launch,_packed_launch,_original,max_tokens,model_scope
     if _launch is not None:
         raise RuntimeError("H3 projections are already installed")
     if torch.cuda.get_device_properties(0).gcnArchName.split(":")[0] != "gfx1201":
         raise RuntimeError("This H3 artifact requires gfx1201")
     artifact=Path(artifact).resolve()
     manifest=json.loads(artifact.with_suffix(".manifest.json").read_text())
+    model_scope=validate_manifest(manifest)
     if manifest.get("h3_projection_abi_version") != 1:
         raise RuntimeError("H3 projection ABI v1 is required")
     if manifest.get("target",{}).get("arch") != "gfx1201":

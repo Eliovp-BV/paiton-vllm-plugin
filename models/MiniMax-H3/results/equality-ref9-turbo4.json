@@ -1,0 +1,16 @@
+{
+  "left": "/outputs/MiniMax-H3/e2e-ref9-turbo4-paiton2_00001_.mp4",
+  "right": "/outputs/MiniMax-H3/e2e-ref9-turbo4-stock_00001_.mp4",
+  "frames": [
+    124,
+    124
+  ],
+  "identical_frames": true,
+  "frame_mismatches": [],
+  "audio_samples": [
+    331776,
+    331776
+  ],
+  "audio_identical": true,
+  "audio_max_abs_diff": 0.0
+}

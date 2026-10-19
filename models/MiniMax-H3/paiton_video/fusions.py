@@ -9,6 +9,7 @@ import threading
 
 import torch
 
+H3_BLOCKS = 50
 max_tokens = 32768
 _launch = None
 _unit_launch = None
@@ -16,14 +17,27 @@ _attention = None
 _pack = None
 _lut = None
 _state = threading.local()
-calls = {"residual": 0, "swiglu": 0, "attention": 0}
+calls = {"residual": 0, "swiglu": 0, "attention": 0, "model_steps": 0, "ref_steps": 0}
+
+
+def note_model_step(refs=False):
+    calls["model_steps"] += 1
+    if refs:
+        calls["ref_steps"] += 1
+
+
+def assert_attention_calls(steps=None, layers=H3_BLOCKS):
+    steps = calls["model_steps"] if steps is None else steps
+    expected = layers*steps
+    if calls["attention"] != expected:
+        raise AssertionError(f"H3 attention calls {calls['attention']} != {expected} for {steps} steps")
 
 
 @torch.library.custom_op("paiton_video::h3_projection_residual", mutates_args=())
 def compiled_residual(a: torch.Tensor, w: torch.Tensor, sa: torch.Tensor,
                       sw: torch.Tensor, residual: torch.Tensor,
                       lut: torch.Tensor, swiglu: bool, residual_scale: float = 0.0625) -> torch.Tensor:
-    from .projection import PROFILES
+    from .projection import PROFILES, workspace_bytes
     if _launch is None:
         raise RuntimeError("Load an H3 fusion artifact before inference")
     if a.ndim != 2 or w.ndim != 2:
@@ -43,7 +57,7 @@ def compiled_residual(a: torch.Tensor, w: torch.Tensor, sa: torch.Tensor,
     if residual_scale not in (0.0625, 1.0) or (residual_scale == 1.0 and _unit_launch is None):
         raise ValueError("Unsupported compiled H3 residual scale")
     launch = _unit_launch if residual_scale == 1.0 else _launch
-    size = n*k + (((m+127)//128)*128*k if n > 5376 else 0)
+    size = workspace_bytes(m, n, k)
     workspace = torch.empty(size, device=a.device, dtype=torch.uint8)
     out = torch.empty((m, n//2 if swiglu else n), device=a.device, dtype=torch.bfloat16)
     status = launch(*(t.data_ptr() for t in (a, w, sa, sw, residual, lut, out, workspace)),

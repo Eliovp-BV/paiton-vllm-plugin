@@ -1,0 +1,53 @@
+{
+  "latent_a": "/outputs/latents/ref1-turbo4-latent_00001_.pt",
+  "latent_b": "/outputs/latents/ref1-turbo4-stock-latent_00001_.pt",
+  "video": {
+    "shape": [
+      [
+        1,
+        24,
+        37,
+        30,
+        54
+      ],
+      [
+        1,
+        24,
+        37,
+        30,
+        54
+      ]
+    ],
+    "dtype": [
+      "torch.float32",
+      "torch.float32"
+    ],
+    "equal": true,
+    "max_abs_diff": 0.0,
+    "mismatch_elements": 0
+  },
+  "audio": {
+    "shape": [
+      [
+        1,
+        32,
+        2,
+        207
+      ],
+      [
+        1,
+        32,
+        2,
+        207
+      ]
+    ],
+    "dtype": [
+      "torch.float32",
+      "torch.float32"
+    ],
+    "equal": true,
+    "max_abs_diff": 0.0,
+    "mismatch_elements": 0
+  },
+  "pass": true
+}

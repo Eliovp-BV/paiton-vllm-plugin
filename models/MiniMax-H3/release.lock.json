@@ -1,26 +1,85 @@
 {
-  "version": "1.0.0",
-  "artifact_image": {
-    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.0.0",
-    "local_manifest_digest": "sha256:56c405453d21fd405ab0bb3f7eb0e0a2d6069ab672d617c319528e210ff2dd19",
-    "bytes": 5149902916
-  },
   "artifact": {
-    "filename": "minimax_h3_projections_gfx1201.so",
-    "sha256": "8138dda01ce0fa5923b733e0242121e9f605a405aa85d5212e0160f5b28df657",
+    "file": "artifacts/minimax_h3_projections_gfx1201.so",
+    "manifest": "artifacts/minimax_h3_projections_gfx1201.manifest.json",
+    "sha256": "ae475cbce00e231e6cc3e5ffd1d57cd225e0763c8ae99b01ae9f65d512992311",
     "size_bytes": 842528
   },
-  "max_packed_tokens": 49152,
-  "qualified_images": {
-    "paiton-minimax-h3:fused-v4-review": "sha256:1108f4f0815d3bee725f9ee375899befc3fefcb03a0446a17621da93b725206f",
-    "paiton-minimax-h3:local-v1.0.0": "sha256:b130c15e177c6112240da09e7e77d7cea761b2d4e19e5f683f7ef6ac22f58362"
+  "artifact_allowlist": [
+    "artifacts/minimax_h3_projections_gfx1201.so",
+    "artifacts/minimax_h3_projections_gfx1201.manifest.json"
+  ],
+  "contract": {
+    "batch_size": 1,
+    "h3_contract_version": 1,
+    "h3_max_tokens": 49152,
+    "h3_projection_abi_version": 1,
+    "packed_layout": [
+      "text",
+      "refs",
+      "audio",
+      "video"
+    ],
+    "ref_limits": {
+      "audios": 3,
+      "images": 9,
+      "videos": 3
+    },
+    "tensor_parallel_size": 1
   },
-  "final_local_image": "sha256:b28ba6d86dca60b64670407445f9a3cc60a23517d6142a7aeb1309db43408e39",
-  "inference_files_identical_to_qualification": true,
-  "compared_stock_files": 571,
-  "after_benchmark_change": "ComfyUI first-visit canvas centers the prompt; graph values and inference code unchanged. Container provenance metadata omitted.",
-  "gpu_tests": {
-    "count": 9,
-    "result": "passed"
+  "gates": {
+    "anonymous_pull": "passed with empty DOCKER_CONFIG",
+    "archive": "dist/paiton-minimax-h3-ref2va-rdna4-v1.1.0.tar.gz",
+    "artifact_distribution": "image-only: .so not in archive/HF/repo; manifest + release.lock hash, image label verified",
+    "base50_768p": "1753.15 s / 29.2 min wall, 1602.6 s sampling, 32.05 s/step, peak 30.39 GiB, host 9.95 GiB, mp4 sha 0cf4fb66\u2026; 25-step 15.9 min (150.55 s fixed + 801.3 s sampling; misses 15-min by ~0.9), 50-step 29.2 min; 864x480 25-step ~5.2 min",
+    "cap_preflight_case": "1344x768 nine-ref match S=53065 rejected fail-closed; @512 S=44625 fits (4,527 headroom)",
+    "cap_preflight_tests": "3 passed",
+    "container_published": true,
+    "cpu_tests": 29,
+    "cpu_tests_result": "28 passed, 1 skipped (PLAN doc test outside the tree)",
+    "docs": "README rewritten in v1.0.0 style; BENCHMARKS tables kept; publication approval pending",
+    "dual_worker": "measured 1.99x, 138.35 req/h, p50 51.70 s, p95 52.52 s; per-request unchanged",
+    "fail_closed_case": "768p nine-ref match S=53065 rejected at PaitonH3Ref2VA (node 5) with the cap error; rc=1 expected",
+    "hf_upload": "passed",
+    "package_sha256": "d78ec97725c232b062bd28c905365f336a9cff530336a0bc23971ad1143703f5",
+    "port_cpu_tests": "43 collected: 37 passed, 6 skipped (GPU/attention/platform)",
+    "published": true,
+    "quality_equality": "passed: latent video [1,24,37,30,54] + audio [1,32,2,207] float32 at 1 ref, max_abs_diff 0.0, 0 mismatches; decoded frames/PCM identical at 1/9 refs; graph exact at tensor level",
+    "release_candidate": "rc2 final candidate",
+    "token_budget_768p_512": "44,625 packed S (video 37,296 + audio 414 + refs 3,360 + text/vision 3,555); 4,527 token headroom",
+    "token_budget_768p_match": "53065 rejected fail-closed",
+    "token_budget_864x480": "16,330 / 17,928 / 22,750 at 1/3/9 refs; 30,218 at 9 refs max (ref768)",
+    "vram": "864x480 peak 30.55-30.84 GiB; 768p Turbo4 30.46 / Base50 30.39 GiB, both under 30.5; qualify at 31.0 GiB"
+  },
+  "image": {
+    "base_digest": "sha256:c56baf54aca1ad229829c1de26e8792806608e65ee9d06ee210b79cd49f70bc9",
+    "bytes": 17821917600,
+    "digest": "sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed",
+    "digest_kind": "registry",
+    "local_image_id": "sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed",
+    "tag": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0"
+  },
+  "publication": {
+    "candidate_image": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0@sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed",
+    "compiler_commit": "560bfca50e4ca69f818205d2d5d45fb50d4f52c4",
+    "github_repository": "Eliovp-BV/paiton-vllm-plugin",
+    "huggingface_repository": "EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4",
+    "huggingface_revision": "paiton-rdna4-v1.1.0",
+    "huggingface_url": "https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/tree/paiton-rdna4-v1.1.0",
+    "public_commit": "560bfca50e4ca69f818205d2d5d45fb50d4f52c4",
+    "public_image_tag": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0"
+  },
+  "release": {
+    "id": "paiton-minimax-h3-ref2va-rdna4-v1.1.0",
+    "tag": "minimax-h3-rdna4-v1.1.0",
+    "version": "1.1.0"
+  },
+  "schema_version": 1,
+  "source": {
+    "git_commit": "560bfca50e4ca69f818205d2d5d45fb50d4f52c4",
+    "package": "ref2va-port-release-v5.tar.gz",
+    "package_sha256": "d78ec97725c232b062bd28c905365f336a9cff530336a0bc23971ad1143703f5",
+    "build_commit": "978788dacec32a9fbd949304ad01dad4d0a31f7d",
+    "build_commit_note": "tree-identical local build commit; published source snapshot is 560bfca5"
   }
 }
