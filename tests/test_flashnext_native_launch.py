@@ -409,6 +409,7 @@ def test_native_manifest_matches_checkpoint(lf, tmp_path):
     (libdir / 'manifest-4bit.json').write_text(json.dumps({'container': {'manifest_sha256': '0996' + '0' * 60}}))
     with pytest.raises(SystemExit, match='was built from a checkpoint whose manifest.json is 09960000'):
         lf.native_manifest_check(a, env, lib)
+    lf.native_manifest_check(a, env, lib, tmp_path / 'absent')   # the resolved checkpoint wins (image drafter: no manifest.json on the host)
 
 
 def test_native_3bit_mtp_mode(lf, monkeypatch, tmp_path, capsys):

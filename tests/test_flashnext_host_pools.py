@@ -330,14 +330,14 @@ def test_ple_host_pageable_ram_check(lf, monkeypatch, capsys):
     assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out
 
 
-ALL_MODES = ['decode', '3bit-mtp-native', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl', '4bit-native', '4bit-long-native', '4bit-200k-native', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-mtp-native', '4bit-cache-mtp-native', '3bit-cache-native', '3bit-long-cache-native']
+ALL_MODES = ['decode', '3bit-mtp-native', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl', '4bit-native', '4bit-long-native', '4bit-200k-native', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-mtp-native', '4bit-cache-mtp-native', '3bit-cache-native', '3bit-long-cache-native', '4bit-long-cache-mtp-native']
 
 
 def test_fix_knobs_in_modes(lf):
     assert sorted(lf.MODES) == sorted(ALL_MODES)
     for name, m in lf.MODES.items():
         assert m['env']['PAITON_FN_PLE_QSL_PAD'] == '1', name                       # n-gram tail refresh: every mode
-        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name in ('4bit-cache', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-cache-mtp-native', '3bit-cache-native') else None)   # 3bit-long-cache-native: gated 18 Oct without it, name
+        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name in ('4bit-cache', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-cache-mtp-native', '4bit-long-cache-mtp-native', '3bit-cache-native') else None)   # 3bit-long-cache-native: gated 18 Oct without it, name
     assert lf.COMMON['prefix_caching']['env']['PAITON_FN_STEP_PREP_ALIGN'] == 'inplace'
 
 

@@ -760,22 +760,23 @@ def native_async_scheduling(a, engine_args):
     if why: sys.exit(f'--mode {a.mode}: the native worker with MTP needs vLLM async scheduling; {why} turns it off (refused)')
     if '--async-scheduling' not in engine_args: engine_args.append('--async-scheduling')
 
-def native_manifest_check(a, env, lib):
+def native_manifest_check(a, env, lib, weights=None):
     """The executor manifest next to --fnexec-lib (manifest-<executor mode>.json) is hashed from one checkpoint: its
     container.manifest_sha256 must be the sha256 of <weights>/manifest.json (e.g. the distilled drafter's manifest on the stock
     checkpoint would load the wrong drafter hashes). Skipped when either file is absent (the image's own fnexec dir, a dry run)."""
     if lib is None: return
-    man = lib.parent / f'manifest-{env.get("PAITON_FN_MODE_NAME", a.mode)}.json'; ck = pathlib.Path(a.weights) / 'manifest.json'
+    # weights: the resolved checkpoint dir (with the image drafter: <published>-b4gh5-mtpft, whose manifest.json links into the image)
+    man = lib.parent / f'manifest-{env.get("PAITON_FN_MODE_NAME", a.mode)}.json'; ck = pathlib.Path(weights or a.weights) / 'manifest.json'
     if not (man.is_file() and ck.is_file()): return
     want = (json.loads(man.read_text()).get('container') or {}).get('manifest_sha256')
     import hashlib; have = hashlib.sha256(ck.read_bytes()).hexdigest()
     if not want or want == have: return
-    msg = (f'--fnexec-lib {man.name} was built from a checkpoint whose manifest.json is {want[:8]}, but {a.weights} holds {have[:8]}: '
+    msg = (f'--fnexec-lib {man.name} was built from a checkpoint whose manifest.json is {want[:8]}, but {ck.parent} holds {have[:8]}: '
            f'pass the matching --weights (or --drafter), or the manifest built from this checkpoint')
     if a.dry_run: print('WARNING:', msg)
     else: sys.exit(msg)
 
-def native_apply(a, m, env, engine_args, cache):
+def native_apply(a, m, env, engine_args, cache, weights=None):
     """--mode with a native block: --fn-worker native (default) wires the native worker (DESIGN 4.1 / 5): worker class, the three
     guard layers, libpaiton_fnexec and the init args through the environment. --fn-worker torch keeps the torch worker with the
     same configuration (the reference). Edits env / engine_args in place; returns the extra docker mounts."""
@@ -816,7 +817,7 @@ def native_apply(a, m, env, engine_args, cache):
               + (f'auto {a.native_kv_tier_why}' if getattr(a, 'native_kv_tier_why', None) else 'as requested'))
     native_spec_tokens(a, m, engine_args)
     native_async_scheduling(a, engine_args)
-    native_manifest_check(a, env, lib)
+    native_manifest_check(a, env, lib, weights)
     real = env.get('ROCR_VISIBLE_DEVICES', '')   # layer 1: no process sees a GPU; the executor restores the real list before hipInit
     env['PAITON_FN_GPU_MASK'] = real; env['ROCR_VISIBLE_DEVICES'] = nat['mask_invalid']
     budget = a.card_budget_gib if a.card_budget_gib is not None else float(nat['card_budget_gib'])
@@ -1193,7 +1194,7 @@ def main():
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
     if a.memory: cmd += ['--memory', f'{int(a.memory * 1024)}m', '--memory-swap', f'{int(a.memory * 1024)}m']
     if a.detach: cmd += ['-d']
-    native_mounts = native_apply(a, m, env, engine_args, cache) if m.get('native') else []
+    native_mounts = native_apply(a, m, env, engine_args, cache, weights) if m.get('native') else []
     for k in ENV_OVERRIDES:   # caller's environment wins over the mode default (e.g. PAITON_FN_ROPE_TRIM=0 to keep the full rotary cache)
         if k in os.environ: env[k] = os.environ[k]
     for kv in a.dev_env:   # last word on the environment: overrides mode values (e.g. the native R2 defaults' opt-out)
