@@ -328,14 +328,14 @@ def test_ple_host_pageable_ram_check(lf, monkeypatch, capsys):
     assert lf.ram_check(40.8, 16.0, 46.6, 48.9) and 'NOT ENOUGH' in capsys.readouterr().out
 
 
-ALL_MODES = ['decode', '3bit-mtp-native', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl', '4bit-native', '4bit-long-native', '4bit-200k-native', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-mtp-native', '4bit-cache-mtp-native']
+ALL_MODES = ['decode', '3bit-mtp-native', 'prefill-long', 'decode-nopf', 'prefill-long-nopf', '4bit', '4bit-200k', '4bit-cache', '4bit-long', '4bit-xl', '4bit-native', '4bit-long-native', '4bit-200k-native', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-mtp-native', '4bit-cache-mtp-native', '3bit-cache-native', '3bit-long-cache-native']
 
 
 def test_fix_knobs_in_modes(lf):
     assert sorted(lf.MODES) == sorted(ALL_MODES)
     for name, m in lf.MODES.items():
         assert m['env']['PAITON_FN_PLE_QSL_PAD'] == '1', name                       # n-gram tail refresh: every mode
-        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name in ('4bit-cache', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-cache-mtp-native') else None), name
+        assert m['env'].get('PAITON_FN_STEP_PREP_ALIGN') == ('inplace' if name in ('4bit-cache', '4bit-cache-native', '4bit-long-cache-native', '4bit-long-cache', '4bit-cache-mtp-native', '3bit-cache-native') else None)   # 3bit-long-cache-native: gated 18 Oct without it, name
     assert lf.COMMON['prefix_caching']['env']['PAITON_FN_STEP_PREP_ALIGN'] == 'inplace'
 
 
@@ -363,7 +363,10 @@ def test_every_mode_runs_its_r2_image(lf, monkeypatch, capsys, tmp_path, mode):
             mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8)
         monkeypatch.setitem(lf.COMMON, key, dict(lf.COMMON[key], fnexec_modes=None))
     run_args = mode_cmd(lf, monkeypatch, capsys, tmp_path, mode, 125.8).split('docker run')[1]
-    if mode.startswith('4bit') or mode.endswith('-native'):   # release 20261017 r2 rc: one local image for every 4-bit and native mode
+    if mode.endswith('-native'):   # release candidate 20261023-pc: one local image for every native mode
+        assert 'paiton-qwen38-flashnext:rocm10-vllm029-20261023-pc-rc1' in run_args
+        return
+    if mode.startswith('4bit'):   # release 20261017: the 4-bit torch modes keep the published image
         assert 'sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9' in run_args
         return   # (r6, decision B: --mode decode stays the torch worker on the published 3-bit image)
     assert ('sha256:0862ca1c999f12834b6169e84bdf594eb5f8e4db4efbd79a909e32efdf16a8c0' if mode.startswith('4bit') else 'sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b') in run_args

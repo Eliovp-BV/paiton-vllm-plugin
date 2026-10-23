@@ -59,7 +59,7 @@ def test_native_wiring(lf, monkeypatch, tmp_path, capsys):
     assert env['PAITON_FN_MODE_NAME'] == '4bit-native' and env['PAITON_FN_HOST_LAYOUT'] == 'pinned'
     assert any(v.endswith(':/usr/local/lib/python3.12/dist-packages/zzzz_paiton_fn_native_guard.pth:ro') for v in vols)
     assert '--worker-cls paiton_vllm_plugin.flashnext.fnworker.PaitonFNWorker' in inner and '--enforce-eager' in inner
-    assert '--speculative-config' not in inner and any(x.endswith('rocm10-vllm029-20261017-r1@sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9') for x in argv)
+    assert '--speculative-config' not in inner and 'paiton-qwen38-flashnext:rocm10-vllm029-20261023-pc-rc1' in argv
 
 
 def test_budget_default_and_reserve_passthrough(lf, monkeypatch, tmp_path, capsys):
@@ -254,6 +254,7 @@ def test_native_tier_dynamic_default(lf, monkeypatch, tmp_path, capsys):
     lib = tmp_path / 'libpaiton_fnexec.so'; lib.write_bytes(b'x')
     for mode in [k for k, v in lf.MODES.items() if v.get('native')]:
         out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), mode=mode)
+        if mode in ('3bit-cache-native', '3bit-long-cache-native'): continue   # as gated 18 Oct: no tier / lease switch in the mode
         assert env['PAITON_FN_TIER_DYNAMIC'] == ('0' if lf.MODES[mode]['native'].get('all_vram') else '1'), mode   # 3-bit: no host experts
         assert sum(1 for x in argv if x.startswith('PAITON_FN_TIER_DYNAMIC=')) <= 1, mode
     out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), '--native-env', 'PAITON_FN_TIER_DYNAMIC=0', mode='4bit-mtp-native')
@@ -267,6 +268,7 @@ def test_native_kv_lease_off(lf, monkeypatch, tmp_path, capsys):
     lib = tmp_path / 'libpaiton_fnexec.so'; lib.write_bytes(b'x')
     for mode in [k for k, v in lf.MODES.items() if v.get('native')]:
         out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), mode=mode)
+        if mode in ('3bit-cache-native', '3bit-long-cache-native'): continue   # as gated 18 Oct: no tier / lease switch in the mode
         assert env['PAITON_FN_KV_LEASE'] == ('on' if mode == '4bit-mtp-native' else 'off'), mode   # the benchmark MTP mode leases
     assert lf.MODES['4bit']['env']['PAITON_FN_KV_LEASE'] == 'on:stage=102,log=1024' and lf.MODES['4bit-cache']['env']['PAITON_FN_KV_LEASE'] == 'off'
     out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), '--native-env', 'PAITON_FN_KV_LEASE=on:log=512', mode='4bit-mtp-native')
@@ -318,7 +320,10 @@ def test_native_kv_tier_opt_in(lf, monkeypatch, tmp_path, capsys):
     lib = tmp_path / 'libpaiton_fnexec.so'; lib.write_bytes(b'x')
     for mode in ('4bit-cache-native', '4bit-long-cache-native'):
         out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), mode=mode)
-        assert '--kv-transfer-config' not in inner and 'PAITON_FN_KV_TIER' not in env and 'PAITON_FN_KVT_LAYOUT' not in env
+        if mode == '4bit-cache-native':   # DEV mode: no sizing rule, the tier stays opt-in
+            assert '--kv-transfer-config' not in inner and 'PAITON_FN_KV_TIER' not in env and 'PAITON_FN_KVT_LAYOUT' not in env
+        else:   # release candidate: --native-kv-tier auto by default
+            assert 'native RAM prefix tier:' in out and ('--kv-transfer-config' in inner) == ('auto (' in out)
         assert '--prefix-cache-retention-interval' not in inner
         out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fnexec-lib', str(lib), '--native-kv-tier', '16',
                                           '--prefix-cache-retention-interval', '32768', mode=mode)
@@ -345,7 +350,7 @@ def test_fnexec_in_image(lf, monkeypatch, tmp_path, capsys):
     # an image that carries /opt/paiton/runtime/fnexec needs no --fnexec-lib (nothing mounted over it); --fnexec-lib stays the dev override
     assert lf.COMMON['image_4bit_native'].get('fnexec_in_image')   # the 20261017 rc carries the executor and the 4-bit release modes' files
     key = lf.MODES['4bit-native'].get('image_key', 'image')
-    with pytest.raises(SystemExit, match='carries the native executor files of 4bit, 4bit-long-native, 3bit only'):
+    with pytest.raises(SystemExit, match='carries the native executor files of 4bit, 4bit-long-native, 3bit, 4bit-long-cache-native, 3bit-cache-native, 3bit-long-cache-native only'):
         dry(lf, monkeypatch, tmp_path, capsys, mode='4bit-native')   # a dev mode: no mode files in the image
     monkeypatch.setitem(lf.COMMON, key, dict(lf.COMMON[key], fnexec_modes=None))
     out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, mode='4bit-native')
@@ -532,7 +537,7 @@ def test_release_native_default(lf, monkeypatch, tmp_path, capsys):
     assert env['PAITON_FN_NATIVE'] == '1' and env['PAITON_FN_MODE_NAME'] == '4bit' and 'PAITON_FN_MANIFEST' not in env
     assert env['PAITON_FN_PF_RS_LL'] == '1' and env['PAITON_TP_COLLECTIVE_PATH'] == '/opt/paiton/runtime/tp-collective-rsll/tp_collective.so'
     assert env['PAITON_FN_ADMIT'] == 'finish' and env['PAITON_FN_FNEXEC_LIB'] == '/opt/paiton/runtime/fnexec/libpaiton_fnexec.so'
-    assert not any(v.endswith(':/opt/paiton/runtime/fnexec:ro') for v in vols) and any(x.endswith('rocm10-vllm029-20261017-r1@sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9') for x in argv)
+    assert not any(v.endswith(':/opt/paiton/runtime/fnexec:ro') for v in vols) and 'paiton-qwen38-flashnext:rocm10-vllm029-20261023-pc-rc1' in argv
     # D1 switch: the stock drafter selects the image's stock manifest
     out, argv, env, vols, inner = native_default_env(lf, monkeypatch, tmp_path, capsys, '4bit', '--drafter', 'stock')
     assert env['PAITON_FN_MANIFEST'] == '/opt/paiton/runtime/fnexec/manifest-4bit-stock.json'
@@ -703,3 +708,33 @@ def test_explicit_native_unmeasured_host_refused(lf, monkeypatch, tmp_path, caps
     assert f'WARNING: --mode {mode} --fn-worker native: {why}' in out and 'drop --fn-worker native' in out
     out, argv, env, vols, inner = native_default_env(lf, monkeypatch, tmp_path, capsys, mode, '--fn-worker', 'native', native_default=False)
     assert 'WARNING: --mode' not in out and env['PAITON_FN_NATIVE'] == '1'   # a measured host: no warning
+
+
+def test_native_kv_tier_auto_from_host(lf, monkeypatch, tmp_path, capsys):
+    # release candidate 20261023: the RAM prefix tier is sized from the host (never a fixed size); --memory emulates a smaller host
+    kvt = lf.MODES['4bit-long-cache-native']['native']['kv_tier']
+    monkeypatch.setattr(lf, 'MEM_CAP_GIB', 64.0)   # --memory 64: every RAM figure is capped
+    assert lf.meminfo_gib('MemTotal') == 64.0
+    monkeypatch.setattr(lf, 'MEM_CAP_GIB', None)
+    for avail, want in ((242.6, 16.0), (128.0, 2.0), (120.0, 0.0)):   # 4-bit: resident 108.5 + margin 6 + reserve 8
+        monkeypatch.setattr(lf, 'meminfo_gib', lambda f, v=avail: v)
+        assert lf.kv_tier_auto(kvt, 108.5, 6.0)[0] == want, avail
+    monkeypatch.setattr(lf, 'meminfo_gib', lambda f: 100.0)
+    out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--memory', '100', mode='3bit-cache-native')
+    assert '--memory 102400m --memory-swap 102400m' in ' '.join(argv)
+    i = argv.index('-c'); eng = shlex.split(argv[i + 1].split('exec ', 1)[1])
+    assert json.loads(eng[eng.index('--kv-transfer-config') + 1])['kv_connector_extra_config']['cpu_bytes_to_use'] == 2 * (14 << 30)   # (100-55-8-8)/2
+    assert env['PAITON_FN_FNEXEC_LIB'] == '/opt/paiton/runtime/fnexec-pc/libpaiton_fnexec.so'
+    out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--native-kv-tier', 'off', mode='3bit-cache-native')
+    assert '--kv-transfer-config' not in inner
+
+
+def test_native_prefix_caching_routes_to_cache_mode(lf, monkeypatch, tmp_path, capsys):
+    out, argv, env, vols, inner = dry(lf, monkeypatch, tmp_path, capsys, '--fn-worker', 'native', '--prefix-caching', mode='decode')
+    assert '--mode 3bit-cache-native' in out and env['PAITON_FN_MODE_NAME'] == '3bit-cache-native'
+    monkeypatch.setattr(lf, 'gtt_limits_gib', lambda gpus: (64.0, 64.0))   # a 128 GB host: 4-bit native refused, the 3-bit mode named
+    monkeypatch.setattr(sys, 'argv', ['launch-flashnext.py', '--mode', '4bit-long-native', '--prefix-caching', '--devices', 'GPU-0,GPU-1',
+                                      '--cache', str(tmp_path / 'cache')])
+    monkeypatch.setattr(lf, 'meminfo_gib', lambda f: 120.0)
+    with pytest.raises(SystemExit, match='this host fits --mode 3bit-cache-native or --mode 3bit-long-cache-native'):
+        lf.main()

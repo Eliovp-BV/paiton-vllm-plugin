@@ -290,6 +290,7 @@ def gtt_limits_gib(rocr_ids):
         try: ttm = int(re.search(r'MemTotal:\s+(\d+)', open('/proc/meminfo').read()).group(1)) * 1024 // 2
         except Exception: ttm = 0
     lim = [min(t, ttm) if ttm > 0 else t for t, _ in devs]
+    if MEM_CAP_GIB: lim = [min(l, int(MEM_CAP_GIB * (1 << 30)) // 2) for l in lim]   # the kernel default: half the RAM
     return min(lim) / (1 << 30), min(l - u for l, (_, u) in zip(lim, devs)) / (1 << 30)
 
 def host_pool_env(choice, gpus, tier_gib=0.0, pinned_gib=None, ram_tier_gib=0.0, ram_tier_overhead_gib=0.0):
@@ -396,10 +397,25 @@ def pinned_host_gib(spec, expert_gib_total, ranks):
     else: host = max(0.0, per_rank - float(kv.get('vram_gib', per_rank)))
     return host * ranks
 
+MEM_CAP_GIB = None   # --memory: the container's RAM limit; every RAM / GTT figure below is read as if the host had this much
+
 def meminfo_gib(field):
-    """/proc/meminfo field (MemTotal, MemAvailable) in GiB; None when unreadable."""
-    try: return int(re.search(rf'{field}:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
+    """/proc/meminfo field (MemTotal, MemAvailable) in GiB, at most --memory; None when unreadable."""
+    try: v = int(re.search(rf'{field}:\s+(\d+)', open('/proc/meminfo').read()).group(1)) / (1 << 20)
     except Exception: return None
+    return min(v, MEM_CAP_GIB) if MEM_CAP_GIB else v
+
+def kv_tier_auto(kvt, need_gib, margin_gib):
+    """--native-kv-tier auto: the RAM prefix tier per GPU from this host's free RAM (MemAvailable, at most --memory) after the mode's
+    own resident RAM, its start margin and the executor's host reserve, split over the two ranks; whole GiB, capped at the measured
+    size, off below the floor. Returns (GiB per GPU, the formula line)."""
+    au = kvt['auto']; avail = meminfo_gib('MemAvailable')
+    if avail is None: return 0.0, 'off (/proc/meminfo unreadable)'
+    spare = avail - need_gib - margin_gib - au['host_reserve_gib']
+    t = float(min(au['max_gib_per_gpu'], max(0, int(spare // COMMON['tp']))))
+    f = (f'(available {avail:.0f} - resident {need_gib:.0f} - margin {margin_gib:g} - reserve {au["host_reserve_gib"]:g}) / {COMMON["tp"]} '
+         f'= {spare / COMMON["tp"]:.1f}, cap {au["max_gib_per_gpu"]:g}, floor {au["min_gib_per_gpu"]:g}')
+    return (t, f) if t >= au['min_gib_per_gpu'] else (0.0, f'off: {f}')
 
 def ram_need_gib(tier_gib, pinned_gib=None, pageable_gib=0.0, filebacked_gib=0.0):
     """Host memory a start keeps resident: pinned (host tables + expert host tier, or the measured pinned total) + pageable PLE tables;
@@ -797,7 +813,7 @@ def native_apply(a, m, env, engine_args, cache):
         cfg['kv_connector_extra_config']['cpu_bytes_to_use'] = int(round(2 * a.native_kv_tier * (1 << 30)))   # total of both ranks, as CPUOffloadingSpec
         engine_args += ['--kv-transfer-config', json.dumps(cfg)]; env.update(kvt['env']); env['PAITON_FN_KVT_LAYOUT'] = a.native_kv_tier_layout
         print(f'native RAM prefix tier: {a.native_kv_tier:g} GiB per GPU ({2 * a.native_kv_tier:g} GiB of host RAM, {a.native_kv_tier_layout}); '
-              f'{kvt["status"]}')
+              + (f'auto {a.native_kv_tier_why}' if getattr(a, 'native_kv_tier_why', None) else 'as requested'))
     native_spec_tokens(a, m, engine_args)
     native_async_scheduling(a, engine_args)
     native_manifest_check(a, env, lib)
@@ -872,14 +888,19 @@ def main():
                     'paiton_vllm_plugin/flashnext/<basename> in the image (repeatable; e.g. the native glue before an image carries it)')
     ap.add_argument('--dev-env', action='append', default=[], metavar='PAITON_FN_X=V', help='development: an extra PAITON_FN_* variable for any mode (e.g. PAITON_FN_NLL_DIR for a gate\'s NLL tap)')
     ap.add_argument('--dev-mount', action='append', default=[], metavar='SRC:DST[:ro]', help='development: an extra bind mount (e.g. a gate\'s schedule hook); SRC must exist')
-    ap.add_argument('--native-kv-tier', type=float, default=None, metavar='GIB', help='native cache modes (development, opt-in): RAM prefix tier of GIB '
-                    'per GPU (host RAM = 2 x GIB): prefix-cache blocks evicted from VRAM are kept in host memory by the native executor and loaded back on a hit')
+    ap.add_argument('--native-kv-tier', type=lambda v: v if v == 'auto' else 0.0 if v == 'off' else float(v), default=None, metavar='GIB|auto|off',
+                    help='native cache modes: RAM prefix tier of GIB per GPU (host RAM = 2 x GIB): prefix-cache blocks evicted from VRAM are kept in '
+                    'host memory by the native executor and loaded back on a hit. auto (the default): sized from this host\'s free RAM after the '
+                    'mode\'s own memory (the start line "native RAM prefix tier:" prints the formula), off when RAM is short; off: VRAM hits only')
+    ap.add_argument('--memory', type=float, default=None, metavar='GIB', help='cap the server container\'s RAM (docker --memory, no swap); '
+                    'the RAM checks, the GTT limit (half of it) and the RAM prefix tier are then sized as on a host with GIB of RAM')
     ap.add_argument('--native-kv-tier-layout', choices=('pageable', 'pinned'), default='pageable', help='--native-kv-tier host layout (default pageable: '
                     'private anonymous memory through a small pinned staging ring; pinned = direct DMA, charged to the GPU\'s GTT)')
     ap.add_argument('--prefix-cache-retention-interval', type=int, default=None, metavar='TOKENS', help='prefix-caching modes (development): keep the '
                     'recurrent-state checkpoint every TOKENS tokens (a multiple of the 2048-token block; host-tier hits end on a kept checkpoint). '
                     'Default: vLLM\'s (MTP modes: dense; MTP off: only the latest replay boundary and shared-prefix junctions)')
     a = ap.parse_args(); m = MODES[a.mode]
+    global MEM_CAP_GIB; MEM_CAP_GIB = a.memory
     alias = next((k for k, v in MODES.items() if (v.get('native') or {}).get('serves_mode') == a.mode), None)
     # the native worker is the default of a mode whose native alias says so (native.is_default) once the alias's image carries the
     # executor (fnexec_in_image); --fn-worker torch keeps the torch worker, and --vision does too (no image input on the native worker yet),
@@ -926,6 +947,9 @@ def main():
     if (a.fn_worker == 'native' or native_default) and not m.get('native') and alias:   # e.g. --mode 4bit = --mode 4bit-mtp-native
         print(f'mode {a.mode}{" --fn-worker native" if a.fn_worker else ""}: --mode {alias} (the native worker in this mode\'s configuration'
               f'{"; the default, --fn-worker torch for the torch worker" if native_default else ""})'); a.mode = alias; m = MODES[a.mode]
+    cm = (m.get('native') or {}).get('cache_mode')
+    if a.prefix_caching and cm:   # native prefix caching: the mode's cache variant (align mode, 2048-token blocks, MTP off)
+        print(f'mode {a.mode} --prefix-caching: --mode {cm} ({MODES[cm]["note"]})'); a.mode = cm; m = MODES[a.mode]
     if a.fn_worker == 'torch' and alias and not m.get('native'):   # --mode 4bit --fn-worker torch: this mode's torch worker (as the r3 release)
         print(f'mode {a.mode} --fn-worker torch: the torch worker (the native default is --mode {alias})'); a.fn_worker = None
     if (a.fn_worker or a.fnexec_lib or a.card_budget_gib or a.native_guard or a.native_worker_cls or a.native_log_dir or a.native_env or a.spec_tokens) and not m.get('native'):
@@ -950,11 +974,13 @@ def main():
               f"(about {prof['kv_pool_tokens']:,} tokens)" + ''.join(f"; --kv-profile {o}: about {m['native']['kv_profiles'][o]['kv_pool_tokens']:,} tokens"
               f" ({m['native']['kv_profiles'][o]['kv_cache_memory_bytes'] / 2**30:g} GiB per GPU)" for o in other) + f"; {prof['note']}")
     kvt = (m.get('native') or {}).get('kv_tier')
+    if kvt and kvt.get('auto') and (a.fn_worker or 'native') == 'native' and a.native_kv_tier is None: a.native_kv_tier = 'auto'
+    if a.native_kv_tier == 'auto' and not (kvt or {}).get('auto'): sys.exit(f'--native-kv-tier auto: --mode {a.mode} has no sizing rule; give GIB')
     if a.native_kv_tier is not None:
         if not kvt or (a.fn_worker or 'native') != 'native':
             sys.exit(f'--native-kv-tier: --mode {a.mode} has no native RAM prefix tier (native cache modes: '
                      + ', '.join(k for k, v in MODES.items() if (v.get('native') or {}).get('kv_tier')) + '; the native worker only)')
-        if a.native_kv_tier < kvt['min_gib_per_gpu']: sys.exit(f'--native-kv-tier {a.native_kv_tier:g}: at least {kvt["min_gib_per_gpu"]:g} GiB per GPU')
+        if a.native_kv_tier != 'auto' and 0 < a.native_kv_tier < kvt['min_gib_per_gpu']: sys.exit(f'--native-kv-tier {a.native_kv_tier:g}: at least {kvt["min_gib_per_gpu"]:g} GiB per GPU')
     if a.prefix_cache_retention_interval is not None:
         ea = list(m['engine_args']) + (COMMON['prefix_caching']['engine_args_add'] if a.prefix_caching else [])
         bs = next((int(ea[i + 1]) for i, x in enumerate(ea) if x == '--block-size'), None)
@@ -994,6 +1020,17 @@ def main():
     image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
     if vis: vision_image_check(a, image)
     gpus = a.devices.split(',') if a.devices else amd_gpus()
+    if (m.get('native') or {}).get('kv_tier') and m.get('gtt_pinned_gib') and (a.fn_worker or 'native') == 'native':
+        # 4-bit native cache modes are measured with the host tables pinned in GTT only; a smaller host gets the mode that fits it
+        ok, why = pinned_fits(m, gpus[:COMMON['tp']])
+        if not ok:
+            fit = [k for k, v in MODES.items() if (v.get('native') or {}).get('kv_tier') and v.get('status', '').startswith('release') and
+                   (pinned_fits(v, gpus[:COMMON['tp']])[0] if v.get('gtt_pinned_gib')
+                    else (meminfo_gib('MemAvailable') or 0.0) >= COMMON['host_pools']['gtt_need_gib'] + 8.0)]
+            msg = (f'--mode {a.mode}: {why} (the 4-bit native worker is measured with its host tables pinned in GTT); '
+                   + (f'this host fits --mode {" or --mode ".join(fit)}' if fit else 'no native prefix-caching mode fits this host'))
+            if a.dry_run: print('WARNING:', msg)
+            else: sys.exit(msg)
     low_ram_plan(a, m, image, gpus[:COMMON['tp']], vis)
     if vis and a.ple_host == 'filebacked':
         sys.exit(f'--ple-host filebacked is not measured with --vision (--mode {a.mode}); image input runs with the PLE tables pinned or '
@@ -1041,6 +1078,12 @@ def main():
         if pinned_gib and abs(tier_gib - dflt_gib) > 0.05:   # the measured pinned totals hold the default expert tier
             pinned_gib = round(pinned_gib - dflt_gib + tier_gib, 1)
     vx = vis['ram_extra_gib'] if vis else 0.0   # --vision: the vision tower's host memory on top of the measured figures
+    if a.native_kv_tier == 'auto':
+        res0 = resident_gib(m, a.ple_host, a.expert_cold) if m.get('expert_tier') else None
+        need, marg = (res0, RESIDENT_MARGIN_GIB) if res0 is not None else \
+            (ram_need_gib(tier_gib, pinned_gib, pageable_gib, filebacked_gib), 16.0 if pinned_gib else 8.0)
+        a.native_kv_tier, a.native_kv_tier_why = kv_tier_auto(m['native']['kv_tier'], need + vx, marg)
+        if not a.native_kv_tier: print(f'native RAM prefix tier: {a.native_kv_tier_why}; prefix caching stays on, in VRAM only')
     vx += 2 * a.native_kv_tier if a.native_kv_tier else 0.0   # --native-kv-tier: both GPUs' tier in host RAM (pageable; pinned also counts here)
     res = resident_gib(m, a.ple_host, a.expert_cold) if m.get('expert_tier') else None
     missing += ram_check(tier_gib, (16.0 if pinned_gib else 8.0) + vx, pinned_gib, pageable_gib, filebacked_gib,
@@ -1148,6 +1191,7 @@ def main():
     env['PAITON_FN_PLACEMENT'] = f'counts:{COMMON["mounts"]["checkpoint"]}/common/routing-counts.json'   # the container runs as the host uid, which has no passwd entry: getpass.getuser() needs these
     cmd = ['docker', 'run', '--rm', '--name', a.name, '--user', f'{os.getuid()}:{os.getgid()}'] + COMMON['docker'] + (ph['docker_add'] if a.ple_host == 'pageable' else []) + (list(vis.get('docker_add', [])) if vis else [])
     gid = render_gid(); cmd += ['--group-add', gid] if gid else []
+    if a.memory: cmd += ['--memory', f'{int(a.memory * 1024)}m', '--memory-swap', f'{int(a.memory * 1024)}m']
     if a.detach: cmd += ['-d']
     native_mounts = native_apply(a, m, env, engine_args, cache) if m.get('native') else []
     for k in ENV_OVERRIDES:   # caller's environment wins over the mode default (e.g. PAITON_FN_ROPE_TRIM=0 to keep the full rotary cache)
