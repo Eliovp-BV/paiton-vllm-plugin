@@ -4,6 +4,7 @@ import pathlib
 import sys
 
 import pytest
+from conftest import fixed_host_open
 
 LAUNCHER = pathlib.Path(__file__).resolve().parents[1] / 'models' / 'Qwen3.8-Flash-Next' / 'launch-flashnext.py'
 
@@ -12,6 +13,7 @@ LAUNCHER = pathlib.Path(__file__).resolve().parents[1] / 'models' / 'Qwen3.8-Fla
 def lf():
     spec = importlib.util.spec_from_file_location('launch_flashnext', LAUNCHER)
     mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    mod.open = fixed_host_open()   # fixed host RAM (conftest), not the live /proc/meminfo
     return mod
 
 
