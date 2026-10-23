@@ -67,8 +67,17 @@ the freed VRAM holds more experts, faster.
 | Four concurrent requests, aggregate | 456.0 tok/s | 456.9 tok/s | 443.4 tok/s |
 
 It needs a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); smaller hosts keep the torch default and
-its 128 GB / 96 GB / 64 GB layouts. No prefix caching (use `--mode 4bit-cache`), no `--vision`, request-API limits (no logprobs,
-structured outputs, penalties, ...): [overview](README.md#native-worker-opt-in).
+its 128 GB / 96 GB / 64 GB layouts. No `--vision`, request-API limits (no logprobs, structured outputs, penalties, ...):
+[overview](README.md#native-worker-opt-in). Image (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261023-pc-rc1`
+@ `sha256:156177eee1297f658f87f59210c0e7eec11603f19590795b591ee999c2820eb7`.
+
+**Prefix caching on the native worker (new in 20261023-pc-rc1): `--mode 4bit --fn-worker native --prefix-caching`** switches to
+`--mode 4bit-long-cache-native`: 262,144-token window, prefix caching with 2,048-token blocks, speculative decoding off, and a RAM
+prefix tier sized from the host (`--native-kv-tier auto`, up to 16 GiB per GPU). A repeated 200K-token document reaches its first
+token in 0.55 s instead of 38.14 s (90K: 0.46 s instead of 16.82 s); from the RAM tier 0.63 s instead of 32.72 s. Idle sessions of
+145K-260K tokens resume from the RAM tier in 0.57 s (145K) to 1.07 s (260K) instead of 23-51 s. Speed without prefix hits (BetterBench
+standard profile): 94.2 tok/s single-request decode, 313.0 tok/s at 8 requests, 6,918 tok/s prefill at 64K (`--mode 4bit --fn-worker native` with speculative decoding: 240.3 / 561.9 / 7,757). Same host requirement as `--mode 4bit --fn-worker native`; a smaller host is refused and pointed at the 3-bit
+cache modes. Details, host sizes and limits: [overview](README.md#prefix-caching-on-the-native-worker).
 
 ## Run it
 Requirements: [Hardware](#hardware) below and the common [prerequisites](README.md#prerequisites). The first start downloads and
@@ -81,10 +90,12 @@ bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-cache.sh  # agents and coding 
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-long.sh   # 262,144-token window, speculative decoding on, ~461K tokens of KV cache
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit-xl.sh     # 262,144-token window, speculative decoding on, ~595K tokens of KV cache
 bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native   # opt-in: --mode 4bit on the native worker (--kv-profile speed: faster, less KV)
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native --prefix-caching   # native prefix caching (4bit-long-cache-native)
 ```
 
 By hand: `python3 models/Qwen3.8-Flash-Next/launch-flashnext.py --mode 4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl [--vision] [--dry-run]`
-(`--mode 4bit` also takes `--fn-worker native [--kv-profile capacity|speed] [--drafter stock]`).
+(`--mode 4bit` also takes `--fn-worker native [--kv-profile capacity|speed] [--drafter stock] [--prefix-caching]`;
+`--mode 4bit-long-cache-native` takes `--native-kv-tier auto|GIB|off` and `--memory GIB`).
 
 **Image input: `--vision`** (opt-in, torch worker; `--mode 4bit`, `4bit-cache` and `4bit-long`). Images up to 4K (3840x2160;
 `--vision-max-pixels N|2mp|4k` sets a lower cap), up to 8 images per request, no video. The vision tower takes its VRAM from the KV
@@ -125,8 +136,9 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 - Two AMD Radeon AI PRO R9700 (32 GiB each), ROCm 10 host driver.
 - **System RAM: 256 GB as benchmarked, 128 GB and 96 GB supported** (`--mode 4bit`, `4bit-cache`, `4bit-long`), **64 GB with the
   cold-expert tier** (`--mode 4bit`, `4bit-long`; next section).
-- Native worker (`--fn-worker native`): a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); without it
-  the launcher stops with the reason.
+- Native worker (`--fn-worker native`, also with `--prefix-caching`): a GTT limit of at least about 98 GiB (about 196 GB of RAM at
+  the default limit); without it the launcher stops with the reason. Tested with native prefix caching on 252 GiB and under a
+  200 GiB memory limit (RAM prefix tier 16 GiB per GPU on both).
 
 ## System RAM
 The launcher picks the memory layout from the host's RAM and the GPU's GTT limit (half the RAM by default) and prints it at start
@@ -159,7 +171,8 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
   ROCm's user-pointer memory and say so (186.0 vs 191.9 tok/s single-stream, 388.9 vs 423.1 at 8 requests in our validation run).
   Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the launcher
   never changes it.
-- Disk: about 133 GB for the weights (plus 49 GiB on 96 GB and 64 GB hosts, above). Image (every 4-bit mode, torch and native):
+- Disk: about 133 GB for the weights (plus 49 GiB on 96 GB and 64 GB hosts, above). Image of the torch 4-bit modes (the native
+  modes run `...-20261023-pc-rc1`, above):
   `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9` (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
   (allocator cap 0.925).
@@ -169,5 +182,7 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
   KV cache with the 8-bit trunk; its accuracy was not measured separately.
 - Image input (`--vision`): `4bit`, `4bit-cache` and `4bit-long` on the torch worker only; not on `4bit-xl` or `4bit-200k`.
 - `--mode 4bit-cache` is opt-in: the speed table is measured in `--mode 4bit`.
-- The native worker is opt-in and has request-API limits, no prefix caching and no image input
-  ([overview](README.md#request-api-limits)).
+- The native worker is opt-in and has request-API limits and no image input ([overview](README.md#request-api-limits)).
+- Native prefix caching runs with speculative decoding off; speculative decoding with prefix caching is in development. Resuming an
+  idle session takes longer the deeper it is (0.6 s at 145K, 1.07 s at 260K). Greedy output of a hit equals a cold start when the
+  request is served alone; next to other requests it can differ, as without the cache.
