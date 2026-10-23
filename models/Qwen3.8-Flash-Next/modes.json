@@ -3865,7 +3865,8 @@
           "PAITON_FN_TAIL_BYPASS": "1",
           "PAITON_FN_TIER_DYNAMIC": "1",
           "PAITON_FN_ASYNC": "1",
-          "PAITON_FN_DROP_DEAD_ROWS": "1"
+          "PAITON_FN_DROP_DEAD_ROWS": "1",
+          "PAITON_FN_EARLY_TOKENS": "1"
         },
         "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU; a hit of a spec-decoded prompt resumes up to one block short (vLLM keeps the last block uncached)",
         "lib_dir_mount": "/opt/paiton/runtime/fnexec-pc",
@@ -3883,13 +3884,8 @@
             "PAITON_FN_KV_TIER": "1"
           },
           "min_gib_per_gpu": 1.0,
-          "status": "development: as 4bit-long-cache-native (--native-kv-tier auto, sized at start from the host)",
-          "note": "--native-kv-tier auto (default) = min(16, floor((MemAvailable [<= --memory] - the mode's resident RAM - its start margin - 8 GiB executor host reserve) / 2)) GiB per GPU, off below 2; cpu_bytes_to_use = 2 x GIB (both ranks); pageable layout (private memory, a 16 MiB pinned staging ring per rank); the executor refuses a tier that leaves < 8 GiB of MemAvailable / cgroup headroom",
-          "auto": {
-            "max_gib_per_gpu": 16,
-            "min_gib_per_gpu": 2,
-            "host_reserve_gib": 8
-          }
+          "status": "off by default: with MTP, vLLM 0.29 offloading treats every KV group as a draft group and never stores the end-of-request state, so RAM-tier re-hits miss (overnight 23 Oct); --native-kv-tier GIB also needs PAITON_FN_EARLY_TOKENS=0 (executor refusal)",
+          "note": "--native-kv-tier GIB per GPU: cpu_bytes_to_use = 2 x GIB (both ranks, CPUOffloadingSpec semantics); PAITON_FN_KV_TIER=1 mounts the kv_tier_boot overlays (scheduler side as the shipped 4bit-cache tier); PAITON_FN_KVT_LAYOUT from --native-kv-tier-layout; other PAITON_FN_KVT_* switches (staging, inflight, threads) through --native-env; the RAM check counts 2 x GIB; the launcher sets no container --memory (nothing to raise)"
         },
         "engine_args_torch": [
           "--compilation-config",
