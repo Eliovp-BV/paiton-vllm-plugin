@@ -3865,7 +3865,6 @@
           "PAITON_FN_TAIL_BYPASS": "1",
           "PAITON_FN_TIER_DYNAMIC": "1",
           "PAITON_FN_ASYNC": "1",
-          "PAITON_FN_EARLY_TOKENS": "1",
           "PAITON_FN_DROP_DEAD_ROWS": "1"
         },
         "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU; a hit of a spec-decoded prompt resumes up to one block short (vLLM keeps the last block uncached)",
