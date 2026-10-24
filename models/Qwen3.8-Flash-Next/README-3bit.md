@@ -12,9 +12,25 @@ This release: the default commands serve the same image, weights, modes, speed a
 the native Paiton worker, `--mode decode --fn-worker native` ([below](#native-worker-opt-in)).
 
 ## Accuracy
-Negative log-likelihood on 44 held-out long documents (8K-32K tokens): 1.7671 against bf16's 1.7574 (+0.55 %). Needle retrieval as
-served: 40 of 40 at 131K and at 200K tokens, identical to bf16. Full tables (KL, top-1 agreement, per-length buckets): the
-[model card](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4). The prompt rows run W8A8.
+New in this release: more accurate 3-bit weights (Hugging Face revision `71faf406`), a drop-in replacement for the first
+3-bit release (`829b089b`): same format, file sizes, kernels and speed. They are the default download from this release on; on a host with the first release, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`), never mixed with the first release, and says once that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning.
+
+| Against the bf16 model | New 3-bit | First 3-bit (`829b089b`) | [4-bit](README-4bit.md) |
+|---|---:|---:|---:|
+| GSM8K / HumanEval / MMLU-Pro (16-bit: 96.9 / 96.3 / 84.7 %) | 97.4 / 94.5 / 83.6 % | 96.8 / 95.7 / 84.2 % | 96.8 / 96.3 / 83.7 % |
+| KL t+a, free / routing locked | **0.0550 / 0.0367** | 0.0604 / 0.0413 | 0.0306 / 0.0166 |
+| Top-1 agreement | **91.18 %** | 90.74 % | 93.36 % |
+| Long documents (44 held-out, 8K-32K tokens), NLL vs bf16 1.7574 | **1.7636 (+0.35 %)** | 1.7671 (+0.55 %) | 1.7603 (+0.16 %) |
+| Served KL on two R9700 (top-64; paired difference −0.0061 [−0.0124, −0.0012]) | **0.0563** | 0.0624 | – |
+| Needles at 131K tokens | 25 of 25 prompts | 40 of 40 (also 40 of 40 at 200K) | 40 of 40 |
+| AI2D with images, emulated (16-bit 85.3 %; not served in the 3-bit modes) | **81.8 %** | 77.7 % | – |
+
+Task scores of the two 3-bit weight sets do not differ significantly (new vs first: GSM8K +0.6, HumanEval −1.2, MMLU-Pro
+−0.6 points; paired p 0.17 / 0.50 / 0.38); both are within 1.8 points of the 16-bit model, with no significant difference. AI2D: +4.2 points
+[+1.8, +6.5], McNemar p 0.0008, measured with an emulation of the served arithmetic (the 3-bit modes take no image input).
+
+Full tables and method: the [model card](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4). The prompt rows run
+W8A8.
 
 ## Speed
 Official numbers of the default (torch worker, the checkpoint's own drafter), measured on the shipped image through this launcher
@@ -35,19 +51,22 @@ MTP off). Both modes use the bf16 KV cache. How the numbers were taken: [overvie
 
 ## Native worker (opt-in)
 `--mode decode --fn-worker native` serves `--mode decode`'s configuration (98,304-token window, MTP depth 3) through the native
-Paiton worker, on the 4-bit release image (`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9`), with a KV cache of about 551K tokens (about 112K on the torch default).
+Paiton worker, with a KV cache of about 551K tokens (about 112K on the torch default).
 
-| `--mode decode --fn-worker native` | Distilled drafter B4gh5-mtpft (default) | `--drafter stock` (checkpoint's own) |
-|---|---:|---:|
-| Weighted single-stream decode | 272.5 tok/s | 249.9 tok/s |
-| TTFT p50, short prompts | 56 ms | 56 ms |
-| Prefill, 64K-token prompt (in this mode) | 8,392 tok/s | 8,401 tok/s |
-| Eight concurrent requests, aggregate | 685.4 tok/s | 659.4 tok/s |
-| Four concurrent requests, aggregate | 531.0 tok/s | 516.4 tok/s |
+| `--mode decode --fn-worker native`, new 3-bit weights, 24 Oct | Distilled drafter B4gh5-mtpft (default) |
+|---|---:|
+| Weighted single-stream decode | 258.7 tok/s |
+| TTFT p50, short prompts | 56 ms |
+| Prefill, 64K-token prompt (in this mode) | 8,433 tok/s |
+| Eight concurrent requests, aggregate | 687.5 tok/s |
+| Four concurrent requests, aggregate | 532.6 tok/s |
+
+The first 3-bit weights measured 272.5 / 56 ms / 8,392 / 685.4 / 531.0 (17 Oct); `--drafter stock` (the checkpoint's own
+drafter) 249.9 / 56 ms / 8,401 / 659.4 / 516.4. Before and after: [BENCHMARKS.md](BENCHMARKS.md).
 
 No image input, request-API limits (no logprobs, structured outputs, penalties, ...) and the host requirement (about 60 GiB of free
-GTT): [overview](README.md#native-worker-opt-in). From 20261024-pc-rc2 on, every native mode runs
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` @ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0` (the 20261017-r1 image plus
+GTT): [overview](README.md#native-worker-opt-in). From 20261024 on, every native mode runs
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3` @ `sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640` (the 20261017-r1 image plus
 the prefix-caching layers; this mode's executor and files are unchanged).
 
 **Prefix caching on the native worker (new in 20261024-pc-rc2): `--mode decode --fn-worker native --prefix-caching`** switches to
@@ -67,7 +86,7 @@ tier off at 64 GiB, 16 GiB per GPU at 128 GiB). Details: [overview](README.md#pr
 
 ## Run it
 Requirements: [Hardware](#hardware) below and the common [prerequisites](README.md#prerequisites). The first start downloads and
-verifies the weights (SHA256SUMS) into `~/paiton-models/Qwen3.8-Flash-Next-W3A8` (`--weights DIR` to change it).
+verifies the weights (SHA256SUMS) into `~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406` (`--weights DIR` to change it).
 
 ```bash
 bash models/Qwen3.8-Flash-Next/run-flashnext.sh            # decode mode (default): 98,304-token window, speculative decoding on
@@ -101,7 +120,7 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   about 120 GiB of RAM or more), which removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode.
 - Disk: about 116 GB for the weights; the image of the torch modes is 41 GB: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2`
   @ `sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b` (pinned in modes.json; the launcher pulls it by digest).
-  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` @ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0` instead.
+  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3` @ `sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640` instead.
 - Native worker: about 60 GiB of free GTT for the host tables (about 128 GB of RAM or more at the default GTT limit); without it
   the launcher stops with the reason. Native prefix caching (`3bit-cache-native`, `3bit-long-cache-native`): tested under 128 GiB
   (RAM prefix tier 16 GiB per GPU) and 64 GiB memory limits (tier off, hits from VRAM; tight: about 7 GiB left after the host tables).
@@ -109,7 +128,8 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 
 ## Known issues and limitations
 - In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use `--prefix-caching`, and prefer the
-  [4-bit](README-4bit.md) for long coding sessions; a fix is planned for the next 3-bit release.
+  [4-bit](README-4bit.md) for long coding sessions. The new weights reduce it but do not remove it: probability of an early stop
+  at real stop points beyond 28K tokens 0.452 (first weights 0.465, bf16 0.328); on empty-reply points 0.420 (0.637, bf16 0.385).
 - 98,304-token window in `decode` (MTP pool, also with `--fn-worker native`), 200,000 in `prefill-long` with MTP off. No image
   input in this release.
 - The native worker is opt-in and has request-API limits ([overview](README.md#request-api-limits)). Native prefix caching runs with

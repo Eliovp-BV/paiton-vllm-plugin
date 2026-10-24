@@ -1,294 +1,172 @@
 # Qwen3.8 Flash Next on two R9700
 
-[Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) in two Paiton releases for two AMD Radeon AI PRO R9700, served
-by vLLM 0.29 on ROCm 10 with tensor parallel 2 and the Paiton plugin. One launcher runs both; pick a page:
+[Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) on two AMD Radeon AI PRO R9700, served by vLLM 0.29 on
+ROCm 10 with tensor parallel 2 and the Paiton plugin. Two weight sets, one launcher: **3-bit** (fastest, everything in VRAM) and
+**4-bit** (the 16-bit model's task scores; part of the experts in system RAM). No custom engine: regular vLLM with the Paiton
+plugin and our own kernels.
 
-- **[3-bit: the fastest](README-3bit.md)**: everything in VRAM.
-- **[4-bit: the accuracy release](README-4bit.md)**: the 16-bit model's scores; part of the experts in system RAM.
+## Which command do I run?
 
-Every published command serves as in the previous release (r3), on the torch worker. Opt-in: the
-[native Paiton worker](#native-worker-opt-in) (`--fn-worker native` on `--mode decode` and `--mode 4bit`). New in 20261024-pc-rc2:
-[prefix caching on the native worker](#prefix-caching-on-the-native-worker) with a RAM prefix tier sized from the host
-(`--fn-worker native --prefix-caching`; on the 4-bit with speculative decoding on).
+| I want … | Command | What I get | Host RAM |
+|---|---|---|---|
+| The fastest chat and code | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh --fn-worker native` | 3-bit, 258.7 tok/s for one request, 687.5 tok/s for 8, 98K-token window | 128 GB+ |
+| The most accurate answers | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native` | 4-bit, 245.3 tok/s for one request, 566.7 tok/s for 8, 98K-token window | 196 GB+ |
+| Agents and coding tools (long conversations resent every turn) | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native --prefix-caching` | 4-bit, 262K-token window; a repeated 200K-token prompt starts answering in 0.85 s instead of 33.62 s; 206.9 tok/s for one request | 196 GB+ |
+| Agents and coding tools on a smaller host | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh --fn-worker native --prefix-caching` | 3-bit, 98K-token window; a repeated 90K-token prompt in 0.32 s instead of 10.53 s; 101 tok/s for one request (no speculative decoding) | 64 GB+ |
+| The 4-bit on a 64-128 GB host | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh` | 4-bit on the torch worker, about 190 tok/s for one request; the launcher picks the memory layout | 64 GB+ ([layouts](README-4bit.md#system-ram)) |
+| Image input | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --vision` | 4-bit with images up to 4K (torch worker) | as above |
+| 200K-token prompts on the 3-bit | `bash models/Qwen3.8-Flash-Next/run-flashnext-200k.sh` | 3-bit, 200,000-token window, speculative decoding off, about 100 tok/s | 128 GB+ |
 
-## Which one do I want?
+Not sure your host fits? Add `--dry-run`: it checks RAM, GTT limit, GPU links and disk and prints what is missing. Without
+`--fn-worker native` every command serves the torch worker exactly as in the previous releases. Pages per weight set:
+[3-bit](README-3bit.md) · [4-bit](README-4bit.md) · [release notes](RELEASE-NOTES.md) · [all measurements](BENCHMARKS.md).
 
-| | [3-bit](README-3bit.md) | [4-bit](README-4bit.md) |
-|---|---|---|
-| Choose it for | Speed | Accuracy |
-| Task benchmarks (16-bit: GSM8K 96.9 %, HumanEval 96.3 %, MMLU-Pro 84.7 %) | not measured yet | **GSM8K 96.8 %, HumanEval 96.3 %, MMLU-Pro 83.7 %** |
-| Long documents (NLL vs bf16) / needles | +0.55 % / 40 of 40 at 131K and 200K | **+0.16 %** / 40 of 40 at 131K, identical to bf16 |
-| Single-request decode, default (torch worker, checkpoint drafter) | **216 tok/s** | ~190 tok/s |
-| Single-request decode, `--fn-worker native` (distilled drafter) | 272.5 tok/s | 240.4 tok/s (`--kv-profile speed`); 240.3 tok/s (default `--kv-profile capacity`) |
-| 8 concurrent requests, default (torch worker, checkpoint drafter) | **565 tok/s** | 421 tok/s |
-| 8 concurrent requests, `--fn-worker native` (distilled drafter) | 685.4 tok/s | 566.7 tok/s (`--kv-profile speed`); 561.9 tok/s (default `--kv-profile capacity`) |
-| Prefill, 64K-token prompt, default (torch worker) | **8,161 tok/s** | 6,991 tok/s |
-| Prefill, 64K-token prompt, `--fn-worker native` (distilled drafter) | 8,392 tok/s | 7,759 tok/s (`--kv-profile speed`); 7,757 tok/s (default `--kv-profile capacity`) |
-| Weights | 116 GB, all in VRAM | 133 GB, about 21.4 GiB of experts per GPU in VRAM (21.2 with `--vision`), the rest in pinned system RAM |
-| System RAM | 128 GB or more (native: about 60 GiB of free GTT, about 128 GB+ of RAM) | 256 GB as benchmarked; 128 GB, 96 GB and 64 GB with the automatic layouts ([4-bit page](README-4bit.md#system-ram)); native: a GTT limit of about 98 GiB (about 196 GB+ of RAM) |
-| Context window | 98K (speculative decoding on), 200K (off); native: 98K | 98K or 262K (on), 200K (off); native: 98K |
-| KV cache | about 112K tokens (`--mode decode`); native: about 551K | about 305K tokens (`--mode 4bit`); native: about 305K (default `--kv-profile capacity`) or 183K (`--kv-profile speed`) |
-| Agents and coding tools | `--prefix-caching` (torch worker); native: `--fn-worker native --prefix-caching` | `--mode 4bit-cache` (torch worker); native: `--fn-worker native --prefix-caching` |
-| Repeated 90K-token prompt, time to first token (native prefix caching: cold → hit) | 10.53 → 0.32 s | 16.82 → 0.46 s (200K document: 38.14 → 0.55 s) |
-| Image input | no | `--vision` (torch worker; `4bit`, `4bit-cache`, `4bit-long`) |
-| Start | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh` | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh` |
-| Start, native worker | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh --fn-worker native` | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native` |
-| Hugging Face | [W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4) | [W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4) |
+## Speed
 
-Speed: BetterBench 0.6.0 standard profile on the shipped images through this launcher ([how](#how-the-numbers-were-taken)). Default
-rows: the torch worker as published in r3, with the checkpoint's own drafter (decode and 8 requests in `--mode decode` /
-`--mode 4bit`, prefill in `--mode prefill-long` / `--mode 4bit-200k`). Native rows: every number in `--mode decode --fn-worker native`
-/ `--mode 4bit --fn-worker native` (with the `--kv-profile` named), with the distilled drafter B4gh5-mtpft that ships in the image.
-Task benchmarks: same prompts, sampling seeds and thinking-on template for the 4-bit and the 16-bit model; method and significance on
-the [4-bit page](README-4bit.md#accuracy). No custom engine was built: this is regular vLLM with the Paiton plugin and our own kernels.
-We keep tuning, we keep optimizing. What changed in this release: [RELEASE-NOTES.md](RELEASE-NOTES.md).
+BetterBench 0.6.0 standard profile on two R9700 through this launcher, unique prompts (no prefix-cache hits). Decode is
+weighted over eight prompt categories. Native rows: 24 Oct 2026, one run each.
+
+| Command | Decode, 1 request | 8 requests | Prefill, 64K prompt | Time to first token (p50) | Window |
+|---|---:|---:|---:|---:|---:|
+| 3-bit `--fn-worker native` | **258.7 tok/s** | **687.5 tok/s** | 8,433 tok/s | 56 ms | 98,304 |
+| 4-bit `--fn-worker native` | **245.3 tok/s** | **566.7 tok/s** | 7,788 tok/s | 65 ms | 98,304 |
+| 4-bit `--fn-worker native --prefix-caching` | 206.9 tok/s | 477.6 tok/s | 7,226 tok/s | 107 ms | 262,144 |
+| 3-bit `--fn-worker native --prefix-caching` | 101.0 tok/s | 403.4 tok/s | 8,731 tok/s | 73 ms | 98,304 |
+| 3-bit default (torch worker) | 216.3 tok/s | 565.1 tok/s | 8,161 tok/s ¹ | 117 ms | 98,304 |
+| 4-bit default (torch worker) | 189.8 tok/s | 420.7 tok/s | 6,991 tok/s ¹ | 121 ms | 98,304 |
+
+¹ measured in the 200K modes (`run-flashnext-200k.sh`, `run-flashnext-4bit-200k.sh`). The torch rows are the published r3
+numbers (10-11 Oct); the 3-bit cache row is from 23 Oct. The 3-bit native row is the new weights; on the same host and day the first 3-bit weights measured
+260.1 tok/s for one request (272.5 on 17 Oct). Earlier native numbers, a second benchmark (LocalMaxxing) and the
+method: [BENCHMARKS.md](BENCHMARKS.md).
+
+## Accuracy
+
+| Against the bf16 model | 3-bit, new weights (default from this release) | 3-bit, first release (`829b089b`) | 4-bit |
+|---|---:|---:|---:|
+| GSM8K / HumanEval / MMLU-Pro (16-bit: 96.9 / 96.3 / 84.7 %) | 97.4 / 94.5 / 83.6 % | 96.8 / 95.7 / 84.2 % | **96.8 / 96.3 / 83.7 %** |
+| KL t+a, free / routing locked (lower is better) | 0.0550 / 0.0367 | 0.0604 / 0.0413 | **0.0306 / 0.0166** |
+| Top-1 agreement | 91.18 % | 90.74 % | **93.36 %** |
+| Long documents (8K-32K tokens), NLL change | +0.35 % | +0.55 % | **+0.16 %** |
+| Served KL on two R9700 (top-64) | 0.0563 | 0.0624 | – |
+| Needles at 131K tokens | 25 of 25 prompts | 40 of 40 | 40 of 40 |
+| AI2D with images, emulated (16-bit 85.3 %; image input is not served in the 3-bit modes) | 81.8 % | 77.7 % | – |
+
+Task scores of the two 3-bit weight sets do not differ significantly (new vs first: GSM8K +0.6, HumanEval −1.2, MMLU-Pro
+−0.6 points; paired p 0.17 / 0.50 / 0.38); both are within 1.8 points of the 16-bit model, with no significant difference.
+
+The new 3-bit weights (Hugging Face revision `71faf406`) replace the first 3-bit release as a drop-in: same format, file
+sizes, kernels and speed. On a host with the first release, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`), never mixed with the first release, and says once that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning. KL t+a, top-1 and NLL: emulation of the served arithmetic on our
+evaluation corpus and 44 held-out long documents; served KL: the running server, both 3-bit revisions in the same
+configuration. Method and intervals: the model cards ([W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4),
+[W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4)) and the [4-bit page](README-4bit.md#accuracy).
 
 ## Prerequisites
-- Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`; groups
-  `video`, `render`). System RAM per release: see the table above.
-- `python3` 3.10 or newer and the Hugging Face hub package: `pip install huggingface_hub` (the launcher downloads the weights and the
-  base model's tokenizer files through it; the `hf` / `huggingface-cli` binaries are only a fallback).
-- Disk: the weights (table above), a few MB for the runtime view and ~0.3 GB per mode of compile cache; the 3-bit image is about
-  41 GB; the 4-bit / native image is larger: it also carries the native worker and the distilled drafter (about 7.5 GB).
-  The 4-bit / native image is about 56 GB on disk.
-- The native worker has its own host requirements: [Native worker (opt-in)](#host-requirements).
-- `launch-flashnext.py --dry-run` checks these prerequisites (RAM, GTT limit, peer-to-peer link between the GPUs) and prints exactly
-  what is missing.
+- Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`;
+  groups `video`, `render`).
+- `python3` 3.10 or newer and `pip install huggingface_hub` (the launcher downloads the weights and the base model's tokenizer
+  files through it).
+- Disk: 116 GB (3-bit) or 133 GB (4-bit) of weights, plus the image: 41 GB for the 3-bit torch modes, about 56 GB for the 4-bit
+  and every native mode.
+
+**Host RAM per mode** (the launcher checks it and stops with the reason; `--dry-run` prints it):
+
+| Mode | Host RAM |
+|---|---|
+| 3-bit `--fn-worker native` (also `--mode 3bit-long-cache-mtp-native`) | about 60 GiB of free GTT: 128 GB+ at the default GTT limit (half the RAM) |
+| 3-bit `--fn-worker native --prefix-caching` (`3bit-cache-native`, `3bit-long-cache-native`) | from about 64 GB (RAM prefix tier from about 79 GiB) |
+| 4-bit `--fn-worker native`, with or without `--prefix-caching` | a GTT limit of about 98 GiB: 196 GB+ at the default GTT limit; smaller hosts are refused and pointed at the modes that fit |
+| 3-bit torch default | 128 GB+ |
+| 4-bit torch default | 256 GB as benchmarked; 128, 96 and 64 GB with automatic layouts ([4-bit page](README-4bit.md#system-ram)) |
 
 ## Use the server
-The wrappers and modes are on the [3-bit](README-3bit.md#run-it) and [4-bit](README-4bit.md#run-it) pages. The server runs in the
-foreground; add `--detach` to run it in the background (`docker logs -f paiton-flashnext` follows its log). The first start of a mode
-copies the baked compile cache and takes about **five to six minutes** (weight loading dominates). Wait for the launcher's
-`launcher: READY on port …` line (with `--detach` the command returns at that point): after `/health` answers, the launcher drops the
-checkpoint files from the page cache and waits until the kernel has finished compacting host memory (at most 30 s), because that
-compaction can pause the GPUs for a few seconds right after start. `--settle-s 0` and `--keep-page-cache` turn this off.
+The first start of a mode downloads and verifies the weights, then takes about five to six minutes; wait for
+`launcher: READY on port …`. Add `--detach` to run in the background (`docker logs -f <name>` follows the log).
 
-**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8-Flash-Next` ·
-**API key:** none unless you set one (enter any value if a client asks)
-
-**Thinking and tool calls.** The model thinks before it answers unless the request sets
-`"chat_template_kwargs": {"enable_thinking": false}`. The server returns the thinking in `reasoning` (streamed as
-`delta.reasoning`) and the answer in `content`; with `tools` in the request, tool calls come back as `tool_calls`.
-
-The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local. To require an API key, start it with the key
-in the environment: `PAITON_API_KEY=<key> bash models/Qwen3.8-Flash-Next/run-flashnext.sh` (clients then send it as the bearer token).
-`--api-key KEY` works too, but the key is then visible in the process list (`ps`) of the machine. Use a key or a firewall if the
-machine is reachable from untrusted networks.
-
-From another terminal:
+**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1`) · **Model:** `Qwen3.8-Flash-Next` ·
+**API key:** none unless you set one: `PAITON_API_KEY=<key> bash models/Qwen3.8-Flash-Next/run-flashnext.sh` (clients send it as
+the bearer token; `--api-key KEY` works too but shows in the process list). The server listens on all interfaces;
+`--host 127.0.0.1` keeps it local. Use a key or a firewall if the machine is reachable from untrusted networks.
 
 ```bash
-curl --fail http://127.0.0.1:18982/health
 curl --fail http://127.0.0.1:18982/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"Qwen3.8-Flash-Next","messages":[{"role":"user","content":"Write a Python function to remove duplicates from a list."}],"max_tokens":256,"stream":true}'
 ```
 
-- **Stop** with `docker stop paiton-flashnext` (or the name you started it with) before switching to another mode or release.
-- **Long prompts:** send prompts of 100K+ tokens from a file (`-d @request.json`) with a client timeout of a few minutes (a
-  190K-token prompt takes about 25 s to read in the 200K mode).
+- **Thinking and tool calls:** the model thinks before it answers unless the request sets
+  `"chat_template_kwargs": {"enable_thinking": false}`; the thinking comes back in `reasoning`, the answer in `content`, tool calls
+  as `tool_calls`.
+- **Stop** with `docker stop paiton-flashnext` (or the name you started it with) before switching mode.
+- **Long prompts:** send prompts of 100K+ tokens from a file (`-d @request.json`) with a client timeout of a few minutes.
 
 ## Native worker (opt-in)
-The default of every mode (`decode`, `prefill-long`, `decode-nopf`, `prefill-long-nopf`, `4bit`, `4bit-cache`, `4bit-long`,
-`4bit-200k`, `4bit-xl`) is the torch worker, exactly as in the previous release (r3): a published command serves as before.
-`--fn-worker native` runs the model in the native Paiton worker instead; vLLM keeps the API server, the scheduler and the KV cache
-manager. Two modes have it, plus their prefix-caching variants ([below](#prefix-caching-on-the-native-worker)):
-
-| | 3-bit | 4-bit |
-|---|---|---|
-| Command | `--mode decode --fn-worker native` | `--mode 4bit --fn-worker native` (`--kv-profile capacity`, the default) or `... --kv-profile speed` |
-| Window | 98,304 tokens, speculative decoding on (MTP depth 3) | 98,304 tokens, speculative decoding on (MTP depth 3) |
-| KV cache | about 551K tokens (torch default `--mode decode`: about 112K) | `capacity`: 2.5 GiB per GPU, about 305,338 tokens (3.11 concurrent 98K contexts, as r3 `--mode 4bit`); `speed`: 1.5 GiB per GPU, about 183,202 tokens (1.86 contexts), more experts in VRAM, faster |
-| Image | `qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` | `qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` |
-
-The other modes have no native release path. `--dry-run` prints which worker a command runs and how to get the other.
-
-| Configuration | Drafter | Decode, 1 request | TTFT p50 | Prefill, 64K | 8 requests | 4 requests |
-|---|---|---:|---:|---:|---:|---:|
-| 3-bit `--mode decode --fn-worker native` | distilled (B4gh5-mtpft) | 272.5 tok/s | 56 ms | 8,392 tok/s | 685.4 tok/s | 531.0 tok/s |
-| 3-bit `--mode decode --fn-worker native --drafter stock` | checkpoint's own | 249.9 tok/s | 56 ms | 8,401 tok/s | 659.4 tok/s | 516.4 tok/s |
-| 3-bit default `--mode decode` (prefill: `--mode prefill-long`), torch worker, r3 | checkpoint's own | 216.3 tok/s | 117 ms | 8,161 tok/s | 565.1 tok/s | 449.2 tok/s |
-| 4-bit `--mode 4bit --fn-worker native --kv-profile speed` | distilled (B4gh5-mtpft) | 240.4 tok/s | 65 ms | 7,759 tok/s | 566.7 tok/s | 456.0 tok/s |
-| 4-bit `--mode 4bit --fn-worker native` (`--kv-profile capacity`, the default) | distilled (B4gh5-mtpft) | 240.3 tok/s | 65 ms | 7,757 tok/s | 561.9 tok/s | 456.9 tok/s |
-| 4-bit `--mode 4bit --fn-worker native --drafter stock` (`--kv-profile capacity`, the default) | checkpoint's own | 237.6 tok/s | 65 ms | 7,748 tok/s | 545.4 tok/s | 443.4 tok/s |
-| 4-bit default `--mode 4bit` (prefill: `--mode 4bit-200k`), torch worker, r3 | checkpoint's own | 189.8 tok/s | 121 ms | 6,991 tok/s | 420.7 tok/s | – |
-
-BetterBench 0.6.0 standard profile ([how](#how-the-numbers-were-taken)). Native prefill rows are measured in the native mode itself
-(98,304-token window, speculative decoding on); the torch rows' prefill comes from the 200K modes (speculative decoding off).
-
-**Drafter.** The native modes use the distilled MTP drafter B4gh5-mtpft by default. It ships inside the image, one copy shared by
-3-bit and 4-bit. The launcher assembles `<checkpoint dir>-b4gh5-mtpft` next to the downloaded checkpoint: hard links to the checkpoint's
-files (copies across file systems) plus links to the drafter files in the image; the downloaded checkpoint itself is never modified.
-`--dry-run` checks the image's drafter files against their pinned sha256. `--drafter stock` uses the checkpoint's own drafter (the
-checkpoint-only path).
-
-**Image.** From 20261024-pc-rc2 on, every native mode runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2`
-@ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0`: the 20261017-r1 image plus two layers (5.34 MB and 9.79 MB) with the prefix-caching executor, the cache
-modes' files, the RAM prefix tier for speculative decoding and the opt-in decode interleave (below). The two native modes above keep
-their executor and files byte-identical and were re-measured on it (4-bit 239.7 / 65 ms / 7,802 / 562.4 / 467.4, inside the range of
-the 20261017 measurements). The torch 4-bit modes keep `...-20261017-r1`, the 3-bit torch modes `...-20261010-r2`.
-
-**No image input.** `--vision` is a torch-worker option (4-bit modes); it is not available with `--fn-worker native`. The 3-bit has no
-image input in this release.
-
-**Decoding next to long prompts (opt-in).** While long prompts are read, every scheduler step carries a 2,048-token prompt chunk
-(about 0.27 s), so a request that is already decoding gets one step per chunk. On the speculative native modes, `--native-env PAITON_FN_DECODE_INTERLEAVE=1` adds one
-decode-only step after each such step: in a burst of eight 17K-29K-token prompts the decoding request rose from about 9.5 to about
-21 tok/s, at 5 % less aggregate prompt throughput (`=2`: about 29 tok/s, -9 %). Off by default: with it on, the greedy tokens of
-concurrent requests can differ from run to run.
-
-**Repeatability (4-bit).** On `--mode 4bit --fn-worker native`, greedy output can vary from run to run while
-a long prompt (tens of thousands of tokens) is being read next to other requests; a request on its own, or several short ones
-together, repeat exactly. Errors and quality are not affected. The 3-bit native worker repeats exactly in all of these cases.
-
-### Prefix caching on the native worker
-New in 20261024-pc-rc2. An agent or coding tool resends the whole conversation every turn; with prefix caching the shared part is
-reused instead of read again. On the native worker, `--prefix-caching` switches to the mode's prefix-caching variant and prints the
-switch; the cache modes can also be named directly (`--mode 4bit-long-cache-native` is the 4-bit cache mode with speculative decoding off;
-`--mode 3bit-long-cache-mtp-native` is a 3-bit cache mode with speculative decoding on, 262,144-token window, KV cache 4.5 GiB per GPU ≈
-561K tokens: 200K-token document 25.81 → 0.68 s, 90K 11.09 → 0.60 s, 200K from the RAM tier 25.61 → 0.92 s; same host requirement as
-`--mode decode --fn-worker native`):
-
-| | 3-bit | 3-bit, long window | 4-bit |
-|---|---|---|---|
-| Command | `--mode decode --fn-worker native --prefix-caching` (= `--mode 3bit-cache-native`) | `--mode 3bit-long-cache-native` | `--mode 4bit --fn-worker native --prefix-caching` (= `--mode 4bit-long-cache-mtp-native`; also from `--mode 4bit-long-native`) |
-| Window | 98,304 tokens | 262,144 tokens | 262,144 tokens (KV cache 2.5 GiB per GPU, about 311K tokens) |
-| Speculative decoding | off | off | on (MTP depth 3) |
-| RAM prefix tier | auto, up to 16 GiB per GPU | auto, up to 16 GiB per GPU | auto, up to 16 GiB per GPU |
-| Host RAM | from about 63 GiB (tier off at 64 GiB); tier 2 GiB per GPU from about 79 GiB, 16 GiB from about 103 GiB | as 3-bit | a GTT limit of about 98 GiB (about 196 GB of RAM at the default GTT limit) |
-
-Prefix-cache blocks are 2,048 tokens; a hit resumes on a block boundary and gives the same tokens as a cold start of the same request.
-With speculative decoding a hit resumes one block earlier (the draft layer's last block is recomputed). Blocks evicted from VRAM go
-to the RAM prefix tier in host memory and are loaded back on a hit. Time to first token on a repeated prompt, cold → hit (served
-gates, 23-24 Oct, one request at a time):
-
-| Prompt | 3-bit `3bit-cache-native` | 3-bit `3bit-long-cache-native` | 4-bit `4bit-long-cache-mtp-native` | 4-bit `4bit-long-cache-native` |
-|---|---:|---:|---:|---:|
-| 32K tokens | 3.70 → 0.27 s | – | 5.26 → 0.69 s | – |
-| 90K tokens | 10.53 → 0.32 s | 10.53 → 0.32 s | 14.72 → 0.78 s | 16.82 → 0.46 s |
-| 200K-token document | – (98K window) | 24.53 → 0.42 s | 33.62 → 0.84 s | 38.14 → 0.55 s |
-| Hit from the RAM tier (evicted from VRAM) | 90K: 10.48 → 0.42 s | – | 200K: 30.39 → 0.96 s | 200K: 32.72 → 0.63 s |
-
-**Idle sessions** (measured with `4bit-long-cache-native`; with speculative decoding a resume reads one more block). Eight 4-bit sessions of 145K-260K tokens (1.62M tokens in total) left idle until their blocks had moved to the
-RAM tier, then resumed one at a time: 0.57-0.62 s at 145K, 0.67-0.70 s at 161K, 0.74-0.78 s at 178K, 0.75-0.80 s at 194K,
-0.96-0.98 s at 211K, 0.98-0.99 s at 227K, 0.99 s at 244K and 1.07 s at 260K (cold: 23-51 s); every session gave the same tokens as
-its cold twin. The time grows with the depth because a resume reads the last 2.0-2.45K tokens again (from the last full block), and
-those tokens attend over the whole context; the copy from RAM itself takes about 0.15 s. A stream that is decoding while another
-session is restored keeps going: inter-token gap p50 10.5 → 12.5 ms, at most one gap of about 0.46 s.
-
-**Speed.** BetterBench 0.6.0 standard profile on the release image, no prefix hits (unique prompts), compared with the
-speculative-decoding native modes without prefix caching:
-
-| Configuration | Decode, 1 request | TTFT p50 | Prefill, 64K | 8 requests | 4 requests |
-|---|---:|---:|---:|---:|---:|
-| 3-bit `--mode 3bit-cache-native` | 101.0 tok/s | 73 ms | 8,731 tok/s | 403.4 tok/s | 279.7 tok/s |
-| 3-bit `--mode 3bit-long-cache-native` | 100.5 tok/s | 73 ms | 8,725 tok/s | 401.5 tok/s | 279.0 tok/s |
-| 3-bit `--mode 3bit-long-cache-mtp-native` (speculative decoding on), RAM tier on | 213.5 tok/s | 85 ms | 8,346 tok/s | 611.0 tok/s | 460.4 tok/s |
-| the same with `--native-kv-tier off` (hits from VRAM only) | 250.0 tok/s | 81 ms | 8,404 tok/s | 657.7 tok/s | 505.1 tok/s |
-| 3-bit `--mode decode --fn-worker native` (speculative decoding on) | 272.5 tok/s | 56 ms | 8,392 tok/s | 685.4 tok/s | 531.0 tok/s |
-| 4-bit `--mode 4bit --fn-worker native --prefix-caching` (speculative decoding on), RAM tier on (the default where RAM allows) | 207.3 tok/s | 107 ms | 7,223 tok/s | 482.8 tok/s | 395.5 tok/s |
-| the same with `--native-kv-tier off` (hits from VRAM only) | 232.6 tok/s | 104 ms | 7,270 tok/s | 487.5 tok/s | 397.6 tok/s |
-| 4-bit `--mode 4bit-long-cache-native` (speculative decoding off) | 94.2 tok/s | 110 ms | 6,918 tok/s | 313.0 tok/s | 233.8 tok/s |
-| 4-bit `--mode 4bit --fn-worker native` (speculative decoding on) | 240.3 tok/s | 65 ms | 7,757 tok/s | 561.9 tok/s | 456.9 tok/s |
-
-Choose a cache mode when long conversations are resent (agents, coding tools, chat with long documents); choose the speculative
-mode without prefix caching for the fastest decode of new prompts. On the 4-bit, the RAM tier costs single-request decode (207.3
-instead of 232.6 tok/s): with the tier on, the executor runs without early token return and without the MALL prefetch (both share
-the side stream the tier copies on); the launcher switches them and prints the trade. Use `--native-kv-tier off` when the sessions fit
-in VRAM (about 311K tokens), the default tier when many long sessions come and go.
-
-**RAM prefix tier sizing.** `--native-kv-tier auto` (the default of the cache modes) sizes the tier at start from the host and
-prints the formula with its numbers on the `native RAM prefix tier:` line:
-
-```
-tier per GPU = min(16, floor((available RAM - the mode's resident RAM - start margin - 8 GiB) / 2)) GiB, off below 2 GiB
-```
-
-With the tier off, prefix caching stays on with hits from VRAM only. `--native-kv-tier GIB` or `off` overrides the size. The tier is
-filled at start (10-27 s), so a RAM shortfall shows at start, not under load. 16 GiB per GPU holds about 2M tokens of idle
-sessions; beyond that the least recently used blocks are dropped and their next turn is read again from the start (same tokens).
-
-**`--memory GIB`** caps the server container's RAM (docker `--memory`, no swap): the RAM checks, the GTT limit (half of it) and the
-tier are then sized as on a host with GIB of RAM, e.g. to leave RAM for other work. Tested hosts (the 4-bit pinned GTT tables are
-not charged to a container limit, so for 4-bit the limit bounds only the pageable part):
-
-| Host RAM | 4-bit cache modes | `3bit-cache-native` |
-|---|---|---|
-| 252 GiB | tier 16 GiB per GPU; all gates pass (`4bit-long-cache-mtp-native` tier on and off, 5-minute soak; `4bit-long-cache-native` 15-minute soak; 0 errors) | tier 16 GiB per GPU; all gates pass (also `3bit-long-cache-native`) |
-| 200 GiB | tier 16 GiB per GPU; all gates pass (`4bit-long-cache-native`; same host tables in both 4-bit cache modes) | – |
-| 192 / 128 / 64 GiB | refused before start: `GTT limit ... < 98 GiB ...; this host fits --mode 3bit-cache-native or --mode 3bit-long-cache-native` | 128 GiB: tier 16 GiB per GPU, all gates pass; 64 GiB: tier off, VRAM hits, all gates pass (tight: about 7 GiB left after the host tables) |
-
-**Limits of the cache modes.** The 3-bit cache modes run with speculative decoding off; the 4-bit one with speculative decoding
-resumes a hit one block early (above); the 4-bit cache modes run only with its host tables pinned in GTT (no `--ple-host pageable|filebacked`, `--expert-cold`); no `--vision`;
-the same request-API limits as the other native modes (below). Greedy output is identical between a hit and a cold start when the
-request is served alone; next to other running requests the greedy tokens can differ, with or without a cache hit (the batch
-composition changes the arithmetic; quality is not affected).
+`--fn-worker native` runs the model in the native Paiton worker instead of the torch worker; vLLM keeps the API server, the
+scheduler and the KV cache manager. It is the fastest path; every native mode runs one image:
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3` @
+`sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640` (pinned; the launcher pulls it by digest). No
+automatic fallback: on a host that does not fit, the launcher stops and says why. No image input (`--vision` is torch-only).
+KV profiles, drafters, repeatability and the opt-in decode interleave: [BENCHMARKS.md](BENCHMARKS.md#native-worker-details).
 
 ### Request-API limits
-The native worker answers these request fields with HTTP 400 and a message that names the field; the torch default serves all of them:
+The native worker answers these request fields with HTTP 400 and a message that names the field (the torch worker serves them):
+`logprobs`, `top_logprobs`, `prompt_logprobs`; `response_format`, structured outputs, guided JSON; tool calls with `strict: true`
+tools or `tool_choice` `"required"` / a named tool (plain `auto` tool calling works); `presence_penalty`, `frequency_penalty`,
+`repetition_penalty`; `top_k` outside 1..32 at temperature > 0 (the server default 20 is fine); `min_tokens`,
+`allowed_token_ids`, `bad_words`; `thinking_token_budget`. `min_p` and `logit_bias` are refused by vLLM itself with speculative
+decoding, on both workers. We are working on these limits for a next release.
 
-- `logprobs`, `top_logprobs`, `prompt_logprobs`
-- `response_format`, structured outputs, guided JSON
-- tool calls with `strict: true` tools, or `tool_choice` `"required"` or a named tool (plain `auto` tool calling works)
-- `presence_penalty`, `frequency_penalty`, `repetition_penalty`
-- `top_k` outside 1..32 at temperature > 0 (the server default 20 is fine)
-- `min_tokens`, `allowed_token_ids`, `bad_words`
-- `thinking_token_budget`
+### Prefix caching on the native worker
+An agent or coding tool resends the whole conversation every turn; with `--prefix-caching` the shared part is reused instead of
+read again, with the same tokens as a cold start. Blocks evicted from VRAM go to a RAM prefix tier sized from the host (up to
+16 GiB per GPU: about 2.2M tokens on the 4-bit) and are loaded back on a hit. Beyond that capacity the least recently used
+sessions are dropped and come back cold (correct output, cold speed). Known issue on the 4-bit, under investigation: near that
+capacity, sessions can come back cold even when they should fit ([details](BENCHMARKS.md#native-prefix-caching-details)).
 
-Served as on the torch worker: `temperature`, `top_p`, `top_k` 1..32, `seed`, `n` > 1, stop strings and stop token ids, `max_tokens`,
-streaming, usage stats, the chat template including `enable_thinking`, the reasoning parser and `auto` tool calling. `min_p` and
-`logit_bias` are refused by vLLM itself with speculative decoding, on both workers. We are working on these limits for a next release.
+| Repeated prompt, time to first token (cold → hit) | 4-bit `--fn-worker native --prefix-caching` | 3-bit `--fn-worker native --prefix-caching` |
+|---|---:|---:|
+| 32K tokens | 5.25 → 0.69 s | 3.70 → 0.27 s |
+| 90K tokens | 14.68 → 0.78 s | 10.53 → 0.32 s |
+| 200K-token prompt | 33.62 → 0.85 s | – (98K window; `--mode 3bit-long-cache-native`: 24.53 → 0.42 s) |
+| Idle session resumed from the RAM tier | 145K-200K: 0.98-1.17 s (cold 21-30 s) | 90K: 10.48 → 0.42 s |
+
+On the 4-bit, `--native-kv-tier off` is faster for single requests (232.6 instead of 206.9 tok/s, 24 Oct) when your sessions fit in
+VRAM (about 311K tokens). Modes, tier sizing, tested host sizes and limits:
+[BENCHMARKS.md](BENCHMARKS.md#native-prefix-caching-details).
 
 ### Host requirements
-When you ask for the native worker explicitly, there is no automatic fallback: if the host does not meet these, the launcher stops and
-prints the reason (`--dry-run` prints it as a warning).
+See **Host RAM per mode** under [Prerequisites](#prerequisites). `--memory GIB` caps the server container's RAM and sizes the
+checks and the RAM tier as on a host with GIB of RAM.
 
-- **4-bit native:** the host tables pinned in GTT memory: a GTT limit of at least about 98 GiB. At the default GTT limit (half the
-  RAM) that means about 196 GB of RAM or more. Hosts with less keep the torch default, which has the 128 GB / 96 GB / 64 GB layouts
-  ([4-bit page](README-4bit.md#system-ram)). `--ple-host pageable|filebacked`, `--expert-cold` and `--host-pools userptr` are
-  torch-worker layouts.
-- **3-bit native:** about 60 GiB of free GTT for the host tables (about 128 GB of RAM or more at the default GTT limit).
-- **Native prefix caching:** `4bit-long-cache-mtp-native` / `4bit-long-cache-native` as 4-bit native (a smaller host is refused with the cache modes that fit it);
-  `3bit-long-cache-mtp-native` as 3-bit native; `3bit-cache-native` / `3bit-long-cache-native` from about 63 GiB of RAM, with the
-  RAM prefix tier from about 79 GiB
-  ([above](#prefix-caching-on-the-native-worker)).
-- Two R9700 (32 GiB each), as before.
+## Troubleshooting
+- **"It is slow" during a long prompt.** Every 10 s the server log prints `Avg prompt throughput … Avg generation throughput …`.
+  Before the first token of a long request the server is reading the prompt (a 64K-token prompt takes about 8 s on the 3-bit and
+  9 s on the 4-bit); generation throughput is near zero then by design.
+- **Agents re-reading the whole conversation.** Use `--prefix-caching` (above); the log's *Prefix cache hit rate* shows the reuse.
+- **Waiting requests.** `Waiting: N reqs` above 0 means the server is at its concurrency (8 requests) or its KV cache is full.
+- **Pauses right after start.** After `/health` answers, the launcher drops the checkpoint from the page cache and waits (at most
+  30 s) until the kernel has finished compacting host memory, which can pause the GPUs; `--settle-s 0` and `--keep-page-cache`
+  turn this off.
 
 ## Options
 `--mode decode|prefill-long|decode-nopf|prefill-long-nopf|4bit|4bit-200k|4bit-cache|4bit-long|4bit-xl|3bit-cache-native|3bit-long-cache-native|4bit-long-cache-native|4bit-long-cache-mtp-native|3bit-long-cache-mtp-native`,
-`--fn-worker torch|native`, `--native-kv-tier auto|GIB|off`, `--memory GIB`,
-`--kv-profile capacity|speed`, `--drafter distilled|stock`, `--prefix-caching`, `--vision`, `--vision-max-pixels N|2mp|4k`,
-`--host-pools auto|gtt|userptr`, `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--ple-host auto|pinned|pageable|filebacked`,
-`--ple-raw-dir DIR`, `--expert-cold auto|off|SHARE`, `--expert-cold-dir DIR`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`,
-`--weights DIR`, `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`, `--served-model-name`, `--detach`, `--settle-s`,
-`--keep-page-cache`, `--dry-run`. GPU selection detects AMD devices by vendor id; two are required. The launcher picks the right image
-per mode: the 3-bit torch modes run the published 3-bit image, the 4-bit torch modes the 20261017-r1 image, every native mode the
-20261024-pc-rc2 image.
-
-## Troubleshooting
-- **"It is slow" during a long prompt.** Every 10 s the server log prints a line like
-  `Avg prompt throughput: 6812.4 tokens/s, Avg generation throughput: 12.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 41.0%, Prefix cache hit rate: 0.0%`.
-  *Prompt throughput* is the server reading your prompt (prefill); *generation throughput* is it writing the answer. Before the first
-  token of a long request the server is reading: a 64K-token prompt takes about 8 s on the 3-bit and about 9 s on the 4-bit, and in
-  that window generation throughput is near zero by design. Slow generation shows as low generation throughput while nothing is being
-  read. `docker logs -f <name>` follows the log.
-- **Agents re-reading the whole conversation.** With prefix caching, a repeated prefix is served from the cache; the log's
-  *Prefix cache hit rate* shows it. If the KV cache is small relative to the window, the launcher warns at start
-  (`WARNING prefix caching: the KV cache holds about 112K tokens < 2 x the 98K window ...`): long agent requests then queue, and a
-  conversation that was evicted from the cache is read again from the start on its next turn. `--mode 4bit-cache` keeps evicted
-  prefixes in a RAM tier; on the native worker `--prefix-caching` does the same ([above](#prefix-caching-on-the-native-worker)). Lowering `--kv-cache-memory-bytes` below the mode value shrinks the cache further, and the launcher says by how much.
-- **Waiting requests.** `Waiting: N reqs` above 0 means the server is at its concurrency (8 requests) or its KV cache is full; requests
-  start as others finish.
+`--fn-worker torch|native`, `--prefix-caching`, `--native-kv-tier auto|GIB|off`, `--memory GIB`, `--kv-profile capacity|speed`,
+`--drafter distilled|stock`, `--vision`, `--vision-max-pixels N|2mp|4k`, `--host-pools auto|gtt|userptr`,
+`--kv-cache-memory-bytes`, `--expert-vram-gib`, `--ple-host auto|pinned|pageable|filebacked`, `--ple-raw-dir DIR`,
+`--expert-cold auto|off|SHARE`, `--expert-cold-dir DIR`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`, `--weights DIR`,
+`--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`, `--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`,
+`--dry-run`. The launcher picks the image per mode: the 3-bit torch modes run the 3-bit image (`...-20261010-r2`), the 4-bit
+torch modes `...-20261017-r1`, every native mode `...-20261024-pc-rc3`.
 
 ## How the numbers were taken
-BetterBench 0.6.0, standard profile, on 2x R9700 against our OpenAI-compatible server through this launcher; prefill with exact bf16
-activations on the wire (no compressed wire); 20 passes per category after warm-up, unique prompts (no prefix-cache hits), concurrency
-1/2/4/8 x 48 requests, prefill depths 2K-128K. Raw outputs: `benchmarks/`; depth tables and host conditions: [BENCHMARKS.md](BENCHMARKS.md).
+BetterBench 0.6.0, standard profile, on 2x R9700 against our OpenAI-compatible server through this launcher; exact bf16
+activations on the wire; 20 passes per category after warm-up, unique prompts (no prefix-cache hits), concurrency 1/2/4/8 x 48
+requests, prefill depths 2K-128K. Raw outputs: `benchmarks/`; depth tables, a second benchmark (LocalMaxxing) and host
+conditions: [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Files
-`run-flashnext*.sh` (the wrappers), `launch-flashnext.py` (also builds the runtime view `<weights>-view` once: base config + tokenizer
-at the pinned revision, see RELEASE-NOTES.md), `modes.json` (environment + engine arguments of every mode), `README.md` (this
-overview), `README-3bit.md`, `README-4bit.md`, `RELEASE-NOTES.md`, `BENCHMARKS.md`, `THIRD_PARTY_NOTICES.md`, `runtime.lock.json`
-and `checkpoint.lock.json` (what this release was built from and tested with), `Dockerfile` + `prepare_image_context.py` +
-`build-context.lock.json` (rebuild the image from locked inputs, see REPRODUCE.md), `release-audit.json`, `deployment-check.json`,
-`metrics.json` and `benchmarks/` (the raw BetterBench outputs).
+`run-flashnext*.sh` (the wrappers), `launch-flashnext.py` (the launcher; also builds the runtime view `<weights>-view` once),
+`modes.json` (environment and engine arguments of every mode), `README.md`, `README-3bit.md`, `README-4bit.md`,
+`RELEASE-NOTES.md`, `BENCHMARKS.md`, `THIRD_PARTY_NOTICES.md`, `runtime.lock.json` and `checkpoint.lock.json` (what this release
+was built from and tested with), `Dockerfile` + `prepare_image_context.py` + `build-context.lock.json` (rebuild the image, see
+REPRODUCE.md), `release-audit.json`, `deployment-check.json`, `metrics.json` and `benchmarks/` (raw BetterBench outputs).

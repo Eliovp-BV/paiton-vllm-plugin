@@ -3,6 +3,26 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
+## Release 20261024 (new 3-bit weights, clearer docs)
+- **New 3-bit weights, the default 3-bit download** (Hugging Face revision `71faf406`; first release `829b089b`). Same
+  format, file sizes, kernels and speed; lower error: KL t+a 0.0550 / 0.0367 free / routing locked (was 0.0604 / 0.0413), top-1
+  91.18 % (90.74 %), long-document NLL +0.35 % vs bf16 (+0.55 %), served KL on two R9700 0.0563 (0.0624). Task scores: GSM8K / HumanEval /
+  MMLU-Pro 97.4 / 94.5 / 83.6 % (first 3-bit 96.8 / 95.7 / 84.2 %; no difference significant). AI2D with images (emulated)
+  81.8 % (77.7 %; +4.2 points, p 0.0008). Early reply ends beyond 28K tokens: reduced, not gone. Recipe: per-expert down-projection Hessians with Ledoit-Wolf shrinkage (as in the 4-bit) and 4M calibration
+  tokens. The default 3-bit weights folder is now keyed by the revision: the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`), never mixed with the first release, and says once that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning.
+- **Image 20261024-pc-rc3** (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3`
+  @ `sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640`: the pc-rc2 image plus one 6.15 MB layer with the
+  executor plans for the new 3-bit weights, so `--drafter stock`, `3bit-cache-native`, `3bit-long-cache-native` and
+  `3bit-long-cache-mtp-native --drafter stock` load them (the launcher picks the plan from the checkpoint's `manifest.json`; the
+  first 3-bit weights keep theirs). The new weights have the same tensor index, dtypes, shapes, offsets and file sizes as the
+  first ones. Checked on rc3 with the new weights: all four modes load and repeat greedy output exactly (6/6); `3bit-cache-native`
+  prefix-cache gate 16/16 (90K 10.62 → 0.33 s), BetterBench quick 101.0 tok/s, 8 requests 402.5; `--drafter stock` 253.6 / 673.8;
+  default 3-bit 264.4 / 682.0 and 4-bit 240.0 / 561.7, as on rc2.
+- **Re-measured** on the 20261024-pc-rc2 image through this launcher, BetterBench standard and LocalMaxxing, before and now:
+  [BENCHMARKS.md](BENCHMARKS.md#release-20261024-24-oct-2026-before-and-now).
+- **Docs:** the overview starts with a "which command do I run" table, per-mode numbers, an accuracy table and the host RAM per
+  mode; gates, formulas and measurement details moved to [BENCHMARKS.md](BENCHMARKS.md).
+
 ## Release 20261024-pc-rc2 (native prefix caching)
 
 ### Nothing changes for the default commands

@@ -66,18 +66,21 @@ the freed VRAM holds more experts, faster.
 | Eight concurrent requests, aggregate | 566.7 tok/s | 561.9 tok/s | 545.4 tok/s |
 | Four concurrent requests, aggregate | 456.0 tok/s | 456.9 tok/s | 443.4 tok/s |
 
+Measured 17 Oct. Re-measured on 24 Oct with the release image (default `--kv-profile capacity`, distilled drafter): 245.3 tok/s,
+65 ms, 7,788 tok/s, 566.7 tok/s, 450.0 tok/s ([BENCHMARKS.md](BENCHMARKS.md)).
+
 It needs a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); smaller hosts keep the torch default and
 its 128 GB / 96 GB / 64 GB layouts. No `--vision`, request-API limits (no logprobs, structured outputs, penalties, ...):
-[overview](README.md#native-worker-opt-in). Image (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2`
-@ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0`.
+[overview](README.md#native-worker-opt-in). Image (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3`
+@ `sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640`.
 
 **Prefix caching on the native worker (new in 20261024-pc-rc2): `--mode 4bit --fn-worker native --prefix-caching`** switches to
 `--mode 4bit-long-cache-mtp-native`: 262,144-token window, prefix caching with 2,048-token blocks, speculative decoding on (MTP depth
 3), and a RAM prefix tier sized from the host (`--native-kv-tier auto`, up to 16 GiB per GPU). A repeated 200K-token document reaches
-its first token in 0.84 s instead of 33.62 s; from the RAM tier 0.96 s instead of 30.39 s. Speed without prefix hits (BetterBench
-standard profile): with the RAM tier on 207.3 tok/s single-request decode, 482.8 tok/s at 8 requests; with `--native-kv-tier off`
+its first token in 0.85 s instead of 33.62 s (24 Oct); from the RAM tier 0.96 s instead of 30.39 s (rc2 gate run). Speed without prefix hits (BetterBench
+standard profile): with the RAM tier on 206.9 tok/s single-request decode, 477.6 tok/s at 8 requests (24 Oct); with `--native-kv-tier off`
 (hits from VRAM only) 232.6 / 487.5 tok/s, 7,270 tok/s prefill at 64K (`--mode 4bit --fn-worker native` without prefix caching:
-240.3 / 561.9 / 7,757). The tier needs two executor settings that cost single-request decode, so `off` is the faster choice when
+245.3 / 566.7 / 7,788 on 24 Oct). The tier needs two executor settings that cost single-request decode, so `off` is the faster choice when
 sessions fit in VRAM (311K tokens). Same host requirement as `--mode 4bit --fn-worker native`; a smaller host is refused and pointed
 at the 3-bit cache modes. `--mode 4bit-long-cache-native` (speculative decoding off, 94.2 tok/s) stays available. Details, host sizes
 and limits: [overview](README.md#prefix-caching-on-the-native-worker).
@@ -175,7 +178,7 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
   Raising the GTT limit (`amdgpu.gttsize`, `ttm.pages_limit`) is a system setting the host's administrator may choose; the launcher
   never changes it.
 - Disk: about 133 GB for the weights (plus 49 GiB on 96 GB and 64 GB hosts, above). Image of the torch 4-bit modes (the native
-  modes run `...-20261024-pc-rc2`, above):
+  modes run `...-20261024-pc-rc3`, above):
   `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261017-r1` @ `sha256:b801bafd3f4cbc04b99153180514845894f98554f49fccdbfe0d6344b47034d9` (digest pinned in modes.json; the launcher pulls it by digest).
 - Peak VRAM per card in `--mode 4bit`: 30.6 GiB under a stream of long prompts, 30.0 GiB in the decode benchmark
   (allocator cap 0.925).
@@ -189,6 +192,6 @@ The launcher picks the memory layout from the host's RAM and the GPU's GTT limit
 - Native prefix caching with speculative decoding resumes one 2,048-token block before the end of the cached prefix (the draft
   layer's last block is recomputed), so a hit reads up to about 4K tokens again: a 200K re-hit takes 0.84-0.96 s (0.55-0.63 s with
   speculative decoding off in `4bit-long-cache-native`). Resuming an idle session takes longer the deeper it is (measured with
-  `4bit-long-cache-native`: 0.6 s at 145K, 1.07 s at 260K). With the RAM tier on, single-request decode is 207.3 instead of 232.6
+  `4bit-long-cache-native`: 0.6 s at 145K, 1.07 s at 260K). With the RAM tier on, single-request decode is 206.9 instead of 232.6
   tok/s. Greedy output of a hit equals a cold start when the request is served alone; next to other requests it can differ, as
   without the cache.
