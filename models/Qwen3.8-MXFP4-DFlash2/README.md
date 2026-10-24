@@ -5,21 +5,21 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 - **MXFP4**: the most accurate, from the base download alone.
 - **3-bit W3A4**: the fastest, with the most context (up to 262,144 tokens per request, 524,288 experimental) and
   images in every long mode except the 524K one. Two to three MMLU-Pro points below MXFP4 with the previous weights (the 12 October update recovers about 0.5 to 1
-  point); an extra 9.55 GB download.
+  point; the 24 October update keeps the task scores and lowers the KL to bf16 further); an extra 9.55 GB download.
 
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**12 October: 3-bit accuracy update.** New 3-bit weights at revision `3ef7eb149ec0bd9a0f7927491bf30f53f54ced01`: the BF16 group scales were
-distilled toward the bf16 model; the format, the 3-bit codes, the image and the launcher are unchanged, and so is the
-speed. Against the previous weights, the KL divergence to bf16 falls by 20.9 % (decode) and 23.8 % (prefill), top-1
-agreement with bf16 rises by 1.0 point, long documents (8K to 32K tokens) come 7 to 9 % closer to bf16 and every
-length bucket of the 131K-token documents improves. Served on the R9700: KL −19.5 %, top-1 86.9 → 88.1 %. MMLU-Pro:
-about +0.5 to +1 point. Details: the
-[model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4#accuracy-update-12-october-2026).
-The 3-bit task tables below were measured with the previous weights (`7a2e3d70`). Already downloaded? Run the
-[download](#optional-the-3-bit-weights) again (it replaces the 64 shards, 9.55 GB), then `sha256sum -c SHA256SUMS`;
-the previous weights stay downloadable at revision `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7`.
+**24 October: 3-bit accuracy update.** New 3-bit weights at revision `ae09a11f55638066b852aeff72e970d7a44e4148`: the group
+scales were distilled toward bf16 a second time, on 4.2M new tokens; the format, the 3-bit codes, the image and the launcher are
+unchanged, and so is the speed (BetterBench weighted decode 169.1 vs 169.3 tok/s in `--mode long-kv4`, 155.5 vs 155.9 in the
+default mode). Served on the R9700, the KL divergence to bf16 falls by 3.0 % [−6.4, −0.4]; long documents (8K to 32K tokens)
+and every length bucket of the 131K-token documents come closer to bf16; task scores are unchanged within noise (GSM8K,
+HumanEval, MMLU-Pro: no significant difference). Already downloaded? Run the [download](#optional-the-3-bit-weights) again,
+then `sha256sum -c SHA256SUMS`. Earlier revisions stay downloadable: `3ef7eb149ec0bd9a0f7927491bf30f53f54ced01` (12 October
+update: KL −19.5 % served, top-1 86.9 → 88.1 %) and `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7` (first release). The 3-bit task
+tables below were measured with the first weights (`7a2e3d70`). Details: the
+[model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4).
 
 <a id="what-you-get"></a><a id="pick-how-to-run-it"></a><a id="want-longer-context-run-this"></a><a id="long-context-200k-and-220k"></a>
 
@@ -155,7 +155,7 @@ terminal too.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision 3ef7eb149ec0bd9a0f7927491bf30f53f54ced01 \
+  --revision ae09a11f55638066b852aeff72e970d7a44e4148 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -164,7 +164,7 @@ Without `hf`, replace the `hf download` command with:
 
 ```bash
 python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="3ef7eb149ec0bd9a0f7927491bf30f53f54ced01", local_dir=os.environ["PAITON_W3ROT_DIR"])'
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="ae09a11f55638066b852aeff72e970d7a44e4148", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>
