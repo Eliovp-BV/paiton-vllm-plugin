@@ -11,14 +11,31 @@ command-line tools or ComfyUI workflows.
 
 ## Start here
 
-| I want to… | Start with |
-| --- | --- |
-| Chat and code on one R9700 | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md) — choose accuracy, speed or long conversations |
-| Run a larger model on two R9700s | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md) — compare the 3-bit and 4-bit versions |
-| Check my setup with a small model | [MiniCPM quick start](#quick-start) |
-| Create images or video | [Image models](#image-generation) · [Video models](#video-generation) |
-| Use a browser workspace | [Paiton Studio](https://github.com/Eliovp-BV/paiton-studio) — install on a Linux host and use it through your browser |
-| Use my existing vLLM installation | [Advanced installation](#use-your-own-vllm-environment) |
+| I want to… | Model | Command (from the repository folder) | What I get |
+| --- | --- | --- | --- |
+| Chat and code fast on one R9700 | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh` | about 180 tok/s, 65K tokens per request |
+| Coding agents and long documents on one R9700 | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | `bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4` | 262K tokens per request, prefix caching, images with `--vision` |
+| The most accurate answers on one R9700 | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), MXFP4 | `bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh` | about 156 tok/s, 65K tokens per request |
+| A larger model, fastest, on two R9700s | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 3-bit | `bash models/Qwen3.8-Flash-Next/run-flashnext.sh --fn-worker native` | about 259 tok/s, 98K-token window; 128 GB+ of RAM |
+| A larger model, most accurate, on two R9700s | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native` | the 16-bit model's task scores, about 245 tok/s; 196 GB+ of RAM |
+| Coding agents on two R9700s | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | `bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native --prefix-caching` | 262K-token window; a repeated 200K-token prompt starts in under 1 s |
+| Check my setup with a small model | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | [Quick start](#quick-start) | a small chat and coding model to test your setup |
+| Create images or video | [Image models](#image-generation) · [Video models](#video-generation) | see the model guide | |
+| Use a browser workspace | [Paiton Studio](https://github.com/Eliovp-BV/paiton-studio) | install on a Linux host | Paiton in your browser |
+| Use my existing vLLM installation | [Advanced installation](#use-your-own-vllm-environment) | | |
+
+Each model guide lists its downloads, host requirements and every other mode. The 27B 3-bit rows need one extra
+download of 9.55 GB ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-the-3-bit-weights)).
+
+### What's new (24 October)
+
+- **Qwen3.8 Flash Next, new 3-bit weights.** Lower error against the 16-bit model than the first 3-bit; task scores within
+  1.8 points of the 16-bit model with no significant difference; +4.2 points on image questions in our emulation (the 3-bit
+  modes take text only). The launcher downloads them automatically into a new folder. [3-bit page](models/Qwen3.8-Flash-Next/README-3bit.md)
+- **Qwen3.8 Flash Next, prefix caching with speculative decoding** on the 4-bit (`--fn-worker native --prefix-caching`):
+  262K-token window, repeated long prompts in under 1 s. [Flash Next guide](models/Qwen3.8-Flash-Next/README.md)
+- **Qwen3.8 27B, 3-bit accuracy update.** Closer to the 16-bit model, same speed, task scores unchanged within noise; run
+  the 3-bit download again. [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
 
 ## Requirements
 
