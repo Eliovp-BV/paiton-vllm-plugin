@@ -17,13 +17,19 @@ Exact-arithmetic prefill (`--mode prefill-long-nopf`), development-stack measure
 Needles: 40/40 at 131,072 and at 200,000 tokens. Prefix caching (opt-in `--prefix-caching`, align mode, 2,048-token blocks): 64K repeat 9.6 s -> 0.35 s TTFT, identical output.
 Single-stream decode in the 200K mode (prefill-long, speculation off): 105.3 / 100.6 / 99.9 tok/s after 32K / 100K / 190K-token prompts (TTFT 24.8 s at 190K).
 
-## Native prefix-caching modes (20261023-pc-rc1, 23 Oct 2026)
-BetterBench 0.6.0 standard profile on the 20261023-pc-rc1 image through this launcher, one run per mode, speculative decoding off,
-unique prompts (no prefix hits); decode / TTFT p50 / prefill @64K / 8 requests / 4 requests:
-`4bit-long-cache-native` 94.2 / 110 ms / 6,918 / 313.0 / 233.8; `3bit-cache-native` 101.0 / 73 ms / 8,731 / 403.4 / 279.7; `3bit-long-cache-native` 100.5 / 73 ms / 8,725 / 401.5 / 279.0.
-Repeated prompts (cold → hit TTFT, one request at a time): 4-bit 200K document 38.14 → 0.55 s, 90K 16.82 → 0.46 s, from the RAM
-tier 32.72 → 0.63 s; 3-bit 90K 10.53 → 0.32 s, 32K 3.70 → 0.27 s, from the RAM tier 10.48 → 0.42 s; 3-bit long 200K 24.53 → 0.42 s.
-Idle sessions resumed from the RAM tier (4-bit): 0.57-0.62 s at 145K to 1.07 s at 260K ([overview](README.md#prefix-caching-on-the-native-worker)).
+## Native prefix-caching modes (20261024-pc-rc2, 24 Oct 2026)
+BetterBench 0.6.0 standard profile through this launcher, one run per mode, unique prompts (no prefix hits); decode / TTFT p50 /
+prefill @64K / 8 requests / 4 requests:
+`4bit-long-cache-mtp-native` (the `--fn-worker native --prefix-caching` default, speculative decoding on) with `--native-kv-tier off`
+232.6 / 104 ms / 7,270 / 487.5 / 397.6, with the RAM tier 207.3 / 107 ms / 7,223 / 482.8 / 395.5; speculative decoding off (20261023,
+unchanged files): `4bit-long-cache-native` 94.2 / 110 ms / 6,918 / 313.0 / 233.8; `3bit-cache-native` 101.0 / 73 ms / 8,731 / 403.4 / 279.7;
+`3bit-long-cache-native` 100.5 / 73 ms / 8,725 / 401.5 / 279.0; `3bit-long-cache-mtp-native` (speculative decoding on, RAM tier)
+213.5 / 85 ms / 8,346 / 611.0 / 460.4, with `--native-kv-tier off` 250.0 / 81 ms / 8,404 / 657.7 / 505.1.
+Repeated prompts (cold → hit TTFT, one request at a time): 4-bit `4bit-long-cache-mtp-native` 200K document 33.62 → 0.84 s, 90K
+14.72 → 0.78 s, from the RAM tier 30.39 → 0.96 s (a hit resumes one block early with speculative decoding); `4bit-long-cache-native`
+200K document 38.14 → 0.55 s, from the RAM tier 32.72 → 0.63 s; 3-bit 90K 10.53 → 0.32 s, 32K 3.70 → 0.27 s, from the RAM tier
+10.48 → 0.42 s; 3-bit long 200K 24.53 → 0.42 s.
+Idle sessions resumed from the RAM tier (`4bit-long-cache-native`): 0.57-0.62 s at 145K to 1.07 s at 260K ([overview](README.md#prefix-caching-on-the-native-worker)).
 
 ## Host conditions
 Quiet host (load average median ~5 on 48 threads; no concurrent builds or uploads).

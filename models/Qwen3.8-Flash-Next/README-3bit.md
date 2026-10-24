@@ -46,16 +46,16 @@ Paiton worker, on the 4-bit release image (`ghcr.io/eliovp/paiton-vllm-plugin:qw
 | Four concurrent requests, aggregate | 531.0 tok/s | 516.4 tok/s |
 
 No image input, request-API limits (no logprobs, structured outputs, penalties, ...) and the host requirement (about 60 GiB of free
-GTT): [overview](README.md#native-worker-opt-in). From 20261023-pc-rc1 on, every native mode runs
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261023-pc-rc1` @ `sha256:156177eee1297f658f87f59210c0e7eec11603f19590795b591ee999c2820eb7` (the 20261017-r1 image plus
-the prefix-caching layer; this mode's executor and files are unchanged).
+GTT): [overview](README.md#native-worker-opt-in). From 20261024-pc-rc2 on, every native mode runs
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` @ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0` (the 20261017-r1 image plus
+the prefix-caching layers; this mode's executor and files are unchanged).
 
-**Prefix caching on the native worker (new in 20261023-pc-rc1): `--mode decode --fn-worker native --prefix-caching`** switches to
+**Prefix caching on the native worker (new in 20261024-pc-rc2): `--mode decode --fn-worker native --prefix-caching`** switches to
 `--mode 3bit-cache-native` (98,304-token window); `--mode 3bit-long-cache-native` has a 262,144-token window. Both: prefix caching
 with 2,048-token blocks, speculative decoding off, and a RAM prefix tier sized from the host (`--native-kv-tier auto`, up to 16 GiB
 per GPU). A repeated 90K-token prompt reaches its first token in 0.32 s instead of 10.53 s (32K: 0.27 s instead of 3.70 s; from the
 RAM tier 0.42 s instead of 10.48 s; 200K document in `3bit-long-cache-native`: 0.42 s instead of 24.53 s). Speed without prefix hits
-(BetterBench standard profile): `3bit-cache-native` 101.0 tok/s single-request decode, 403.4 tok/s at 8 requests, 8,731 tok/s prefill at 64K (`--mode decode --fn-worker native` with speculative decoding: 272.5 / 685.4 / 8,392); `3bit-long-cache-native` 100.5 / 401.5 / 8,725. They start from about 63 GiB of RAM (RAM
+(BetterBench standard profile): `3bit-cache-native` 101.0 tok/s single-request decode, 403.4 tok/s at 8 requests, 8,731 tok/s prefill at 64K (`--mode decode --fn-worker native` with speculative decoding: 272.5 / 685.4 / 8,392); `3bit-long-cache-native` 100.5 / 401.5 / 8,725. `--mode 3bit-long-cache-mtp-native` (new in 20261024-pc-rc2) keeps speculative decoding on with prefix caching: 262,144-token window, 213.5 tok/s single-request decode, 611.0 tok/s at 8 requests with the RAM tier on (250.0 / 657.7 with `--native-kv-tier off`), 200K-token document 25.81 → 0.68 s; it needs the same host as `--mode decode --fn-worker native`. The other two cache modes start from about 63 GiB of RAM (RAM
 tier off at 64 GiB, 16 GiB per GPU at 128 GiB). Details: [overview](README.md#prefix-caching-on-the-native-worker).
 
 ## Long context
@@ -101,7 +101,7 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   about 120 GiB of RAM or more), which removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode.
 - Disk: about 116 GB for the weights; the image of the torch modes is 41 GB: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2`
   @ `sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b` (pinned in modes.json; the launcher pulls it by digest).
-  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261023-pc-rc1` @ `sha256:156177eee1297f658f87f59210c0e7eec11603f19590795b591ee999c2820eb7` instead.
+  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` @ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0` instead.
 - Native worker: about 60 GiB of free GTT for the host tables (about 128 GB of RAM or more at the default GTT limit); without it
   the launcher stops with the reason. Native prefix caching (`3bit-cache-native`, `3bit-long-cache-native`): tested under 128 GiB
   (RAM prefix tier 16 GiB per GPU) and 64 GiB memory limits (tier off, hits from VRAM; tight: about 7 GiB left after the host tables).

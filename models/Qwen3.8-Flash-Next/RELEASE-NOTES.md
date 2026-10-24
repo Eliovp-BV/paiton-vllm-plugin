@@ -3,55 +3,71 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
-## Release 20261023-pc-rc1 (native prefix caching)
+## Release 20261024-pc-rc2 (native prefix caching)
 
 ### Nothing changes for the default commands
 - Every torch-worker command serves as in 20261017: the 4-bit torch modes keep `...-20261017-r1`, the 3-bit torch modes
   `...-20261010-r2`.
 - Every native mode, including the two existing ones (`--mode decode --fn-worker native`, `--mode 4bit --fn-worker native`), now runs
-  the new image: the 20261017-r1 image plus one 5.34 MB layer. Their executor and files are byte-identical; re-measured on the new
-  image (decode / TTFT p50 / prefill @64K / 8 requests / 4 requests): 4-bit 240.2 / 65 ms / 7,807 / 574.8 / 456.7 (20261017:
-  239.8-240.4 / 65-66 / 7,753-7,767 / 557.5-579.8 / 453.8-458.9); 3-bit 267.1 / 55 ms / 8,445 / 693.9 / 532.2 (20261017: 271.2-272.8
-  / 56-65 / 8,389-8,412 / 676.9-691.5 / 529.1-536.5; one run, 1.5-2.1 % lower decode).
+  the new image: the 20261017-r1 image plus two layers (5.34 MB and 9.79 MB). Their executor and files are byte-identical; re-measured
+  on the new image (decode / TTFT p50 / prefill @64K / 8 requests / 4 requests): 4-bit 239.7 / 65 ms / 7,802 / 562.4 / 467.4
+  (20261017: 239.8-240.4 / 65-66 / 7,753-7,767 / 557.5-579.8 / 453.8-458.9); 3-bit 272.6 / 55 ms / 8,439 / 679.3 / 532.5 (20261017: 271.2-272.8 / 56-65 / 8,389-8,412 / 676.9-691.5 / 529.1-536.5); greedy repeat-identical 6/6.
 
 ### New: prefix caching on the native worker
 - `--prefix-caching` with `--fn-worker native` switches to the mode's prefix-caching variant and prints the switch:
-  `--mode 4bit` / `4bit-long-native` → `--mode 4bit-long-cache-native` (262,144-token window); `--mode decode` →
-  `--mode 3bit-cache-native` (98,304 tokens). `--mode 3bit-long-cache-native` (262,144 tokens) is named directly. All three:
-  2,048-token blocks (a hit resumes on a block boundary, the same tokens as a cold start), speculative decoding off.
+  `--mode 4bit` / `4bit-long-native` → `--mode 4bit-long-cache-mtp-native` (262,144-token window, speculative decoding on, MTP
+  depth 3, KV cache 2.5 GiB per GPU ≈ 311K tokens); `--mode decode` → `--mode 3bit-cache-native` (98,304 tokens, speculative
+  decoding off). `--mode 3bit-long-cache-native` (262,144 tokens) and `--mode 4bit-long-cache-native` (262,144 tokens, speculative
+  decoding off) are named directly. All: 2,048-token blocks (a hit resumes on a block boundary, the same tokens as a cold start; with
+  speculative decoding one block earlier). New named mode `--mode 3bit-long-cache-mtp-native`: 3-bit, 262,144 tokens, speculative
+  decoding on, KV cache 4.5 GiB per GPU ≈ 561K tokens (same host requirement as `--mode decode --fn-worker native`; `--prefix-caching`
+  on `--mode decode` keeps `3bit-cache-native`, which also runs on small hosts).
 - **RAM prefix tier, sized from the host.** Blocks evicted from VRAM are kept in host memory and loaded back on a hit.
   `--native-kv-tier auto` (the default) sizes it at start: min(16, floor((available RAM - the mode's resident RAM - start margin -
   8 GiB) / 2)) GiB per GPU, off below 2 GiB (prefix caching then stays on, VRAM hits only); the start line prints the formula.
-  `--native-kv-tier GIB|off` overrides it.
+  `--native-kv-tier GIB|off` overrides it. On `4bit-long-cache-mtp-native` the tier needs two executor settings that cost
+  single-request decode (no early token return, no MALL prefetch): 207.3 tok/s with the tier, 232.6 with `--native-kv-tier off`; the
+  launcher switches them with the tier and prints the trade.
 - **`--memory GIB`:** caps the server container's RAM (docker `--memory`, no swap); RAM checks, GTT limit and tier are sized as on a
   host with GIB of RAM.
-- **Small hosts:** `4bit-long-cache-native` on a host whose GTT limit cannot hold the pinned tables is refused before start, with the
+- **Small hosts:** a 4-bit cache mode on a host whose GTT limit cannot hold the pinned tables is refused before start, with the
   cache modes that fit (`this host fits --mode 3bit-cache-native or --mode 3bit-long-cache-native`).
-- **Time to first token on a repeated prompt** (cold → hit, one request at a time): 4-bit 200K document 38.14 → 0.55 s, 90K 16.82 →
-  0.46 s, 200K from the RAM tier 32.72 → 0.63 s; 3-bit 90K 10.53 → 0.32 s, 32K 3.70 → 0.27 s, 90K from the RAM tier 10.48 → 0.42 s;
-  3-bit long 200K document 24.53 → 0.42 s.
-- **Idle sessions resumed from the RAM tier** (4-bit, eight sessions, 1.62M tokens, one at a time): 0.57-0.62 s at 145K, 0.67-0.70 at
+- **Time to first token on a repeated prompt** (cold → hit, one request at a time): 4-bit `4bit-long-cache-mtp-native` 200K
+  document 33.62 → 0.84 s, 90K 14.72 → 0.78 s, 32K 5.26 → 0.69 s, 200K from the RAM tier 30.39 → 0.96 s; `4bit-long-cache-native`
+  200K document 38.14 → 0.55 s, 90K 16.82 → 0.46 s, 200K from the RAM tier 32.72 → 0.63 s; 3-bit 90K 10.53 → 0.32 s, 32K 3.70 → 0.27 s, 90K from the RAM tier 10.48 → 0.42 s;
+  3-bit long 200K document 24.53 → 0.42 s; `3bit-long-cache-mtp-native` 200K document 25.81 → 0.68 s, 90K 11.09 → 0.60 s, 200K from
+  the RAM tier 25.61 → 0.92 s.
+- **Idle sessions resumed from the RAM tier** (`4bit-long-cache-native`, eight sessions, 1.62M tokens, one at a time): 0.57-0.62 s at 145K, 0.67-0.70 at
   161K, 0.74-0.78 at 178K, 0.75-0.80 at 194K, 0.96-0.98 at 211K, 0.98-0.99 at 227K, 0.99 at 244K, 1.07 s at 260K (cold 23-51 s);
   identical tokens 8/8. A decoding stream next to a restore: inter-token gap p50 10.5 → 12.5 ms, at most one gap of about 0.46 s.
 - **Speed without prefix hits** (BetterBench 0.6.0 standard profile; decode / TTFT p50 / prefill @64K / 8 requests / 4 requests;
-  speculative decoding off): 4-bit `4bit-long-cache-native` 94.2 / 110 ms / 6,918 / 313.0 / 233.8; 3-bit `3bit-cache-native` 101.0 / 73 ms / 8,731 / 403.4 / 279.7; 3-bit `3bit-long-cache-native`
-  100.5 / 73 ms / 8,725 / 401.5 / 279.0. The speculative native modes stay the faster choice for new prompts (4-bit 240.3, 3-bit 272.5 tok/s single-request decode).
-- **Hosts tested** (docker memory limits): 4-bit 252 GiB and 200 GiB (tier 16 GiB per GPU, all gates pass; 192 / 128 / 64 GiB
+  4-bit `4bit-long-cache-mtp-native` with the RAM tier 207.3 / 107 ms / 7,223 / 482.8 / 395.5, with `--native-kv-tier off` 232.6 /
+  104 ms / 7,270 / 487.5 / 397.6; speculative decoding off: 4-bit `4bit-long-cache-native` 94.2 / 110 ms / 6,918 / 313.0 / 233.8; 3-bit `3bit-cache-native` 101.0 / 73 ms / 8,731 / 403.4 / 279.7; 3-bit `3bit-long-cache-native`
+  100.5 / 73 ms / 8,725 / 401.5 / 279.0; 3-bit `3bit-long-cache-mtp-native` with the RAM tier 213.5 / 85 ms / 8,346 / 611.0 / 460.4, with `--native-kv-tier off`
+  250.0 / 81 ms / 8,404 / 657.7 / 505.1. The speculative native modes without prefix caching stay the fastest for new prompts (4-bit 240.3, 3-bit 272.5 tok/s single-request decode).
+- **Decoding next to long prompts (opt-in):** `--native-env PAITON_FN_DECODE_INTERLEAVE=1` on the speculative native modes adds a
+  decode-only step after each step that mixed a 2,048-token prompt chunk with decoding requests. A request decoding during a burst of
+  eight 17K-29K-token prompts: about 9.5 → 21 tok/s, aggregate prompt throughput -5 %. Off by default (greedy tokens of concurrent
+  requests can then differ from run to run).
+- **Hosts tested** (docker memory limits): 4-bit 252 GiB (`4bit-long-cache-mtp-native` tier on and off, `4bit-long-cache-native`)
+  and 200 GiB (`4bit-long-cache-native`) (tier 16 GiB per GPU, all gates pass; 192 / 128 / 64 GiB
   refused with the hint); 3-bit 252 GiB and 128 GiB (tier 16 GiB per GPU), 64 GiB (tier off, VRAM hits). 0 out-of-memory kills, 0
   errors in the 5- and 15-minute soaks.
 
 ### Known limits
 - Resuming an idle session takes longer the deeper it is (above): the last 2.0-2.45K tokens are read again over the whole context.
-- Speculative decoding with prefix caching is in development; the cache modes run with it off.
+- The 3-bit cache modes run with speculative decoding off. With speculative decoding (`4bit-long-cache-mtp-native`) a hit resumes one
+  2,048-token block before the end of the cached prefix, so it reads up to about 4K tokens again (200K re-hit 0.84-0.96 s instead of
+  0.55-0.63 s with speculative decoding off).
 - Greedy output of a hit equals a cold start when the request is served alone. Next to other running requests greedy tokens can
   differ, with or without a cache hit (batch composition, as in the published native modes); quality is not affected.
 - 16 GiB per GPU of RAM tier holds about 2M tokens of idle sessions; beyond that the least recently used are read again from the start.
-- 4-bit cache mode: host tables pinned in GTT only (no `--ple-host pageable|filebacked`, `--expert-cold`); no `--vision` on any
+- 4-bit cache modes: host tables pinned in GTT only (no `--ple-host pageable|filebacked`, `--expert-cold`); no `--vision` on any
   native mode; the native request-API limits apply ([overview](README.md#request-api-limits)). A 64 GiB host is tight for the 3-bit
   cache modes (about 7 GiB left after the host tables; no RAM tier).
 
 ### Images
-- Every native mode: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261023-pc-rc1` @ `sha256:156177eee1297f658f87f59210c0e7eec11603f19590795b591ee999c2820eb7`.
+- Every native mode: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2` @ `sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0`.
 - 4-bit torch modes: `...-20261017-r1` @ `sha256:b801bafd...` (unchanged); 3-bit torch modes: `...-20261010-r2` @ `sha256:ea84a147...`
   (unchanged).
 
