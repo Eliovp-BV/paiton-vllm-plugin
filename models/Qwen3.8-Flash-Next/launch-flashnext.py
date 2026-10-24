@@ -826,6 +826,14 @@ def native_apply(a, m, env, engine_args, cache, weights=None):
     mbd = (nat.get('manifest_by_drafter') or {}).get(a.drafter or nat.get('drafter_default'))
     if mbd and lib is None and in_image:   # the image's executor dir holds one manifest per drafter (the executor default is manifest-<mode>.json)
         env['PAITON_FN_MANIFEST'] = f"{nat['lib_dir_mount']}/{mbd}"
+    alias = COMMON[m.get('image_key', 'image')].get('fnexec_manifest_alias') or {}
+    if alias and lib is None and in_image and weights:   # a drop-in checkpoint the image carries its own executor manifests for
+        try: ck = sha256_file(pathlib.Path(weights) / 'manifest.json')
+        except OSError: ck = None   # the image-drafter view links manifest.json into the image: that plan is the mode's own
+        man = env.get('PAITON_FN_MANIFEST', f"{nat['lib_dir_mount']}/manifest-{env.get('PAITON_FN_MODE_NAME', a.mode)}.json")
+        if ck in alias and man.rsplit('/', 1)[-1] in alias[ck]['files']:
+            env['PAITON_FN_MANIFEST'] = f"{man[:-5]}-{alias[ck]['suffix']}.json"
+            print(f'native executor manifest: {env["PAITON_FN_MANIFEST"]} (checkpoint manifest.json {ck[:8]})')
     if a.native_kv_tier:   # opt-in RAM prefix tier through the native executor (fnexec_kvt_*): vLLM's OffloadingConnector
         kvt = nat['kv_tier']; cfg = json.loads(json.dumps(kvt['kv_transfer_config']))   # scheduler side unchanged, the glue's spec swaps the worker
         cfg['kv_connector_extra_config']['cpu_bytes_to_use'] = int(round(2 * a.native_kv_tier * (1 << 30)))   # total of both ranks, as CPUOffloadingSpec

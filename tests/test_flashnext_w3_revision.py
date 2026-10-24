@@ -97,3 +97,36 @@ def test_release_name_check(lf, monkeypatch, tmp_path, capsys, rel, ok):
     w = checkpoint(tmp_path / 'mine'); (w / 'config.json').write_text('{"paiton_release": "%s"}' % rel)
     out = dry(lf, monkeypatch, tmp_path, capsys, '--weights', str(w))
     assert ('expects the Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 weights' in out) is not ok
+
+
+ALIASED = [(['--mode', 'decode', '--fn-worker', 'native', '--drafter', 'stock'], 'fnexec/manifest-3bit-stock'),
+           (['--mode', 'decode', '--fn-worker', 'native', '--prefix-caching'], 'fnexec-pc/manifest-3bit-cache-native'),
+           (['--mode', '3bit-long-cache-native'], 'fnexec-pc/manifest-3bit-long-cache-native'),
+           (['--mode', '3bit-long-cache-mtp-native', '--drafter', 'stock'], 'fnexec-pc/manifest-3bit-long-cache-mtp-native-stock')]
+
+
+def aliased_checkpoint(lf, monkeypatch, tmp_path, body=b'{"name": "new"}'):
+    w = checkpoint(tmp_path / 'new'); (w / 'manifest.json').write_bytes(body)
+    img = lf.COMMON['image_4bit_native']; sha = hashlib.sha256(body).hexdigest()
+    monkeypatch.setitem(img, 'fnexec_manifest_alias', {sha: dict(next(iter(img['fnexec_manifest_alias'].values())))})
+    return w
+
+
+@pytest.mark.parametrize('args,stem', ALIASED)
+def test_drop_in_checkpoint_gets_the_images_own_executor_manifest(lf, monkeypatch, tmp_path, capsys, args, stem):
+    w = aliased_checkpoint(lf, monkeypatch, tmp_path)
+    out = dry(lf, monkeypatch, tmp_path, capsys, '--weights', str(w), *args[2:], mode=args[1])
+    assert f'PAITON_FN_MANIFEST=/opt/paiton/runtime/{stem}-w3a8-71faf406.json' in out
+
+
+@pytest.mark.parametrize('args,stem', ALIASED[:2])
+def test_other_checkpoints_keep_the_mode_manifest(lf, monkeypatch, tmp_path, capsys, args, stem):
+    aliased_checkpoint(lf, monkeypatch, tmp_path)
+    w = checkpoint(tmp_path / 'old'); (w / 'manifest.json').write_bytes(b'{"name": "RX-B3h-r2"}')
+    out = dry(lf, monkeypatch, tmp_path, capsys, '--weights', str(w), *args[2:], mode=args[1])
+    assert 'w3a8-71faf406' not in out
+
+
+def test_the_shipped_alias_names_image_files_of_the_new_revision(lf):
+    (sha, spec), = lf.COMMON['image_4bit_native']['fnexec_manifest_alias'].items()
+    assert spec['suffix'] == 'w3a8-' + lf.COMMON['hf_revision'][:8] and len(spec['files']) == 4 and len(sha) == 64
