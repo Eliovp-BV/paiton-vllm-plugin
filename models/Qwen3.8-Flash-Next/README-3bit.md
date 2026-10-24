@@ -13,8 +13,8 @@ The default commands serve the torch worker; `--fn-worker native` is the faster 
 ([below](#native-worker-opt-in)).
 
 ## Accuracy
-The 3-bit weights of this release (Hugging Face revision `71faf406`) are the default download. On a host with older 3-bit
-weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`) and says once that
+The 3-bit weights of this release (Hugging Face revision `a100b3ae`) are the default download. On a host with older 3-bit
+weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-a100b3ae`) and says once that
 the old folder can be deleted.
 
 | Task | 16-bit model | 3-bit | [4-bit](README-4bit.md) |
@@ -93,7 +93,7 @@ tier off at 64 GiB, 16 GiB per GPU at 128 GiB). Details: [overview](README.md#pr
 
 ## Run it
 Requirements: [Hardware](#hardware) below and the common [prerequisites](README.md#prerequisites). The first start downloads and
-verifies the weights (SHA256SUMS) into `~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406` (`--weights DIR` to change it).
+verifies the weights (SHA256SUMS) into `~/paiton-models/Qwen3.8-Flash-Next-W3A8-a100b3ae` (`--weights DIR` to change it).
 
 ```bash
 bash models/Qwen3.8-Flash-Next/run-flashnext.sh            # decode mode (default): 98,304-token window, speculative decoding on

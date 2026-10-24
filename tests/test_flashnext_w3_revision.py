@@ -129,4 +129,5 @@ def test_other_checkpoints_keep_the_mode_manifest(lf, monkeypatch, tmp_path, cap
 
 def test_the_shipped_alias_names_image_files_of_the_new_revision(lf):
     (sha, spec), = lf.COMMON['image_4bit_native']['fnexec_manifest_alias'].items()
-    assert spec['suffix'] == 'w3a8-' + lf.COMMON['hf_revision'][:8] and len(spec['files']) == 4 and len(sha) == 64
+    # the plan files in the rc3 image are named after the weights commit (71faf406); later card-only commits reuse them
+    assert spec['suffix'] == 'w3a8-71faf406' and len(spec['files']) == 4 and len(sha) == 64

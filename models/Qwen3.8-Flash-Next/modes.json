@@ -25,7 +25,7 @@
       "fn_mixers": "/opt/paiton/runtime/fn-mixers"
     },
     "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
-    "hf_revision": "71faf40651962b00adc95a8ec3603bbf7976a4b4",
+    "hf_revision": "a100b3aee53b2cf2c9636650387936aab22dd5d7",
     "hf_sha256sums_sha256": "4cf53110fd4848356185e5c7f3fc01fe542d35a0dc8b2fd912c3d2c1f9f6d0a3",
     "hf_revision_note": "the 3-bit weights revision (one constant): weights_3bit takes hf_repo / hf_revision from here and its default_dir is keyed by the first 8 characters; hf_sha256sums_sha256 = sha256 of that revision's SHA256SUMS (an explicit --weights dir with another SHA256SUMS gets a warning). Previous revision 829b089bf6636af9ffed1f333b103e4e383f7b48 (10 Oct 2026), served from the un-keyed weights_3bit.previous_default_dir",
     "image": {

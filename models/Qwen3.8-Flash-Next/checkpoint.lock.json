@@ -1,11 +1,11 @@
 {
  "generated": "2026-10-24T16:26:54Z",
  "hf_repo": "EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4",
- "hf_revision": "71faf40651962b00adc95a8ec3603bbf7976a4b4",
+ "hf_revision": "a100b3aee53b2cf2c9636650387936aab22dd5d7",
  "SHA256SUMS_sha256": "4cf53110fd4848356185e5c7f3fc01fe542d35a0dc8b2fd912c3d2c1f9f6d0a3",
  "files": 248,
  "config_json_present": true,
  "routing_counts": "common/routing-counts.json",
- "hf_revision_note": "repo at revision 71faf406 (24 Oct 2026, 3-bit weights B3h-dnld4m): 248 files, SHA256SUMS (191 files) identical to the verified staged upload; previous revision 829b089bf663 (10 Oct 2026)",
+ "hf_revision_note": "repo at revision a100b3ae (3-bit weights B3h-dnld4m, weights commit 71faf406 + model card, trunk-int6/ removed), SHA256SUMS (191 files) identical to the verified staged upload; previous revision 829b089bf663 (10 Oct 2026)",
  "drafter_file": "mtp/mtp-draft-e4m3.safetensors (sha256 706ced76abbde51c6e3ec9d51c3ab1aab7ab6cf7ebe7589d4398f4ed585514b4) shipped in the repo; required by every mode"
 }

@@ -68,8 +68,8 @@ differ by about 0.008. "Routing locked" gives both models the same experts and i
 questions about science diagrams.
 ² measured through an emulation of the 3-bit arithmetic; the 3-bit modes take text only.
 
-The 3-bit weights of this release are Hugging Face revision `71faf406`, the default 3-bit download. On a host with older 3-bit
-weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`) and says once
+The 3-bit weights of this release are Hugging Face revision `a100b3ae`, the default 3-bit download. On a host with older 3-bit
+weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-a100b3ae`) and says once
 that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning. Full
 tables and intervals: the model cards ([W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4),
 [W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4)).

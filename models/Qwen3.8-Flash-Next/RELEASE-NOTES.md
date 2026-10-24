@@ -4,11 +4,11 @@ No custom engine was built: regular vLLM with the Paiton plugin and our own kern
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
 ## Release 20261024 (new 3-bit weights, clearer docs)
-- **New 3-bit weights, the default 3-bit download** (Hugging Face revision `71faf406`). Same format, file sizes, kernels and
+- **New 3-bit weights, the default 3-bit download** (Hugging Face revision `a100b3ae`). Same format, file sizes, kernels and
   speed as before. Against the 16-bit model: GSM8K / HumanEval / MMLU-Pro 97.4 / 94.5 / 83.6 % (16-bit 96.9 / 96.3 / 84.7 %, no
   significant difference); KL 0.0550 / 0.0367 free / routing locked; top-1 91.18 %; long-document NLL +0.35 %; AI2D with images
   (emulated) 81.8 % (16-bit 85.3 %). The default 3-bit weights folder is now keyed by the revision
-  (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`): the launcher downloads the new weights into it, says once that an older
+  (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-a100b3ae`): the launcher downloads the new weights into it, says once that an older
   folder can be deleted, and serves an explicit `--weights DIR` with other weights as is, with a warning.
 - **Image 20261024-pc-rc3** (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc3`
   @ `sha256:5bca558833ad230ab1e8db7e6a64f538a7396c44dd660b69716a5aec4e714640`: the pc-rc2 image plus one 6.15 MB layer with the
