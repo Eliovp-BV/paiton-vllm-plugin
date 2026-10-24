@@ -91,3 +91,15 @@ def test_unpinned_revision_refuses_a_real_download(lf, monkeypatch, tmp_path):
     monkeypatch.setitem(lf.COMMON, 'hf_revision', 'REVISION_PENDING')
     with pytest.raises(SystemExit, match='not pinned yet'):
         lf.ensure_weights(tmp_path / 'empty', False)
+
+
+@pytest.mark.parametrize('rel,ok', [
+    ('Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4', True),                                    # the first release (829b089b)
+    ('Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 (20261024, B3h-dnld4m)', True),             # a release that names itself
+    ('Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 (candidate FN3-B3h-dnld4m, not published)', False),
+    ('Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4 (20261024, B3h-dnld4m)', False),
+])
+def test_release_name_check(lf, monkeypatch, tmp_path, capsys, rel, ok):
+    w = checkpoint(tmp_path / 'mine'); (w / 'config.json').write_text('{"paiton_release": "%s"}' % rel)
+    out = dry(lf, monkeypatch, tmp_path, capsys, '--weights', str(w))
+    assert ('expects the Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 weights' in out) is not ok

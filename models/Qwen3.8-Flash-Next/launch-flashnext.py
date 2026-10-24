@@ -1147,7 +1147,8 @@ def main():
     want_rel = (wspec or COMMON)['hf_repo'].split('/')[-1]
     try: got_rel = json.loads((weights / 'config.json').read_text()).get('paiton_release')
     except Exception: got_rel = None
-    if got_rel and got_rel != want_rel:
+    # a release may name its revision: '<repo name> (YYYYMMDD, <recipe>)'; any other marker (e.g. an unpublished candidate) is refused
+    if got_rel and not re.fullmatch(re.escape(want_rel) + r'( \(\d{8}, [A-Za-z0-9.-]+\))?', got_rel):
         msg = f'mode {a.mode} expects the {want_rel} weights, but {weights} holds {got_rel}; pass --weights with the matching download'
         if a.dry_run: print('WARNING:', msg)
         else: sys.exit(msg)
