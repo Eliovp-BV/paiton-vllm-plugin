@@ -87,12 +87,6 @@ def test_explicit_4bit_weights_are_not_checked(lf, monkeypatch, tmp_path, capsys
     assert 'WARNING weights' not in out
 
 
-def test_unpinned_revision_refuses_a_real_download(lf, monkeypatch, tmp_path):
-    monkeypatch.setitem(lf.COMMON, 'hf_revision', 'REVISION_PENDING')
-    with pytest.raises(SystemExit, match='not pinned yet'):
-        lf.ensure_weights(tmp_path / 'empty', False)
-
-
 @pytest.mark.parametrize('rel,ok', [
     ('Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4', True),                                    # the first release (829b089b)
     ('Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4 (20261024, B3h-dnld4m)', True),             # a release that names itself

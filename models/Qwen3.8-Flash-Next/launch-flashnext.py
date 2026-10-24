@@ -106,8 +106,6 @@ def ensure_weights(d, dry, repo=None, revision=None):
     if repo and not revision:   # a local-only checkpoint (modes.json local_only): never fall back to another repo's revision
         if dry: print(f'weights: {d} (local-only checkpoint; not present)'); return d
         sys.exit(f'weights: {d} has no SHA256SUMS + model.safetensors, and this checkpoint is not downloadable yet (a local dir)')
-    if (revision or COMMON['hf_revision']) == 'REVISION_PENDING' and not dry:
-        sys.exit(f'weights: the 3-bit revision is not pinned yet in this launcher (modes.json common.hf_revision); pass --weights DIR')
     hf_download(repo or COMMON['hf_repo'], revision or COMMON['hf_revision'], d, dry=dry)
     if not dry: verify_sums(d)
     return d
