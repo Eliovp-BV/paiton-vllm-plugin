@@ -4052,7 +4052,7 @@
       "note": "3-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 4.5 GiB per GPU (560,951 tokens)",
       "host_pools_default": "auto",
       "kv_pool_tokens": 560951,
-      "status": "DEV (rc2): not routed from --prefix-caching until its served gate passes",
+      "status": "release candidate 20261024-pc-rc2: named mode (--mode 3bit-long-cache-mtp-native); served gate 24 Oct PASS 19/19 with the RAM tier on 252 GiB; --prefix-caching on --mode decode keeps routing to 3bit-cache-native (MTP off, the small-host path down to 64 GiB)",
       "image_key": "image_4bit_native",
       "native": {
         "worker_cls": "paiton_vllm_plugin.flashnext.fnworker.PaitonFNWorker",
@@ -4111,14 +4111,14 @@
             "PAITON_FN_MALL_PF": "off"
           },
           "min_gib_per_gpu": 1.0,
-          "status": "release candidate 20261023: on by default, sized at start from the host (--native-kv-tier auto; GIB or off override it)",
+          "status": "release candidate 20261024-pc-rc2: on by default, sized at start from the host (--native-kv-tier auto; GIB or off override it)",
           "note": "--native-kv-tier auto (default) = min(16, floor((MemAvailable [<= --memory] - the mode's resident RAM - its start margin - 8 GiB executor host reserve) / 2)) GiB per GPU, off below 2; cpu_bytes_to_use = 2 x GIB (both ranks); pageable layout (private memory, a 16 MiB pinned staging ring per rank); the executor refuses a tier that leaves < 8 GiB of MemAvailable / cgroup headroom",
           "auto": {
             "max_gib_per_gpu": 16,
             "min_gib_per_gpu": 2,
             "host_reserve_gib": 8
           },
-          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream)"
+          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream): measured 24 Oct, BetterBench standard decode 213.5 tok/s, n=8 611.0 with the tier; --native-kv-tier off keeps the faster settings"
         },
         "torch_reference_mode": "prefill-long"
       }
