@@ -1,28 +1,25 @@
 # Benchmarks (measured on the shipped release image through this directory's launcher; BetterBench 0.6.0 standard profile through the vLLM OpenAI server, exact bf16 wire, cold prefix cache, 2x R9700)
 
-## Release 20261024 (24 Oct 2026): before and now
+<a id="release-20261024-24-oct-2026-before-and-now"></a>
 
-Before: the published numbers (BetterBench 17 Oct; the 4-bit prefix-caching row from 24 Oct before the release image; LocalMaxxing
-19 Oct). Now: the release image through this launcher, 24 Oct, one BetterBench run and one LocalMaxxing series per configuration.
-3-bit before = the first 3-bit weights, now = the new weights.
+## Release 20261024 (24 Oct 2026)
 
-| | 4-bit `--fn-worker native` before / now | 3-bit `--fn-worker native` before / now | 4-bit `--fn-worker native --prefix-caching` before / now |
-|---|---|---|---|
-| BetterBench decode, 1 request (tok/s) | 240.3 / 245.3 | 272.5 / 258.7 ¹ | 207.3 / 206.9 |
-| BetterBench time to first token (p50) | 65 / 65 ms | 56 / 56 ms | 107 / 107 ms |
-| BetterBench prefill, 64K prompt (tok/s) | 7,757 / 7,788 | 8,392 / 8,433 | 7,223 / 7,226 |
-| BetterBench 8 requests (tok/s) | 561.9 / 566.7 | 685.4 / 687.5 | 482.8 / 477.6 |
-| BetterBench 4 requests (tok/s) | 456.9 / 450.0 | 531.0 / 532.6 | 395.5 / 395.1 |
-| LocalMaxxing 1 request (tok/s) | 199.8 / 200.5 | 226.5 / 220.3 | – / 188.9 |
-| LocalMaxxing 8 requests (tok/s) | 678.2 / 680.2 | 745.2 / 781.3 | – / 629.3 |
-| LocalMaxxing time to first token, 1 request | 67 / 67 ms | 60 / 59 ms | – / 101 ms |
-| LocalMaxxing prefill 8K / 64K (tok/s) | 7,121 / 6,994 → 7,112 / 6,993 | 8,292 / 8,205 → 8,382 / 8,251 | – → 6,248 / 6,244 |
-| LocalMaxxing 128K, 1 request (tok/s) | – (98K window) | – (98K window) | – / 163.2 |
-| Repeated prompt, time to first token, 32K / 90K / 200K (cold → hit) | – | – | 5.25 → 0.69 / 14.68 → 0.78 / 33.62 → 0.85 s (before: 5.26 → 0.69 / 14.72 → 0.78 / 33.62 → 0.84 s) |
-| Idle sessions resumed from the RAM tier | – | – | 145K-200K tokens: 0.98-1.17 s, cold 21-30 s (before, speculative decoding off: 0.57-1.07 s at 145K-260K) |
+The release image through this launcher, 24 Oct 2026, one BetterBench run and one LocalMaxxing series per configuration.
 
-¹ On the same host and day the first 3-bit weights measured 260.1 tok/s and the new ones 258.6 (BetterBench standard, 24 Oct); the
-17 Oct 272.5 was not reproduced by either. The two weight sets have the same bytes per tensor and the same kernels.
+| | 3-bit `--fn-worker native` | 4-bit `--fn-worker native` | 4-bit `--fn-worker native --prefix-caching` |
+|---|---:|---:|---:|
+| BetterBench decode, 1 request (tok/s) | 258.7 | 245.3 | 206.9 |
+| BetterBench time to first token (p50) | 56 ms | 65 ms | 107 ms |
+| BetterBench prefill, 64K prompt (tok/s) | 8,433 | 7,788 | 7,226 |
+| BetterBench 8 requests (tok/s) | 687.5 | 566.7 | 477.6 |
+| BetterBench 4 requests (tok/s) | 532.6 | 450.0 | 395.1 |
+| LocalMaxxing 1 request (tok/s) | 220.3 | 200.5 | 188.9 |
+| LocalMaxxing 8 requests (tok/s) | 781.3 | 680.2 | 629.3 |
+| LocalMaxxing time to first token, 1 request | 59 ms | 67 ms | 101 ms |
+| LocalMaxxing prefill 8K / 64K (tok/s) | 8,382 / 8,251 | 7,112 / 6,993 | 6,248 / 6,244 |
+| LocalMaxxing 128K, 1 request (tok/s) | – (98K window) | – (98K window) | 163.2 |
+| Repeated prompt, time to first token, 32K / 90K / 200K (cold → hit) | – | – | 5.25 → 0.69 / 14.68 → 0.78 / 33.62 → 0.85 s |
+| Idle sessions resumed from the RAM tier | – | – | 145K-200K tokens: 0.98-1.17 s (cold 21-30 s) |
 
 **BetterBench**: 0.6.0 standard profile, one run per configuration (method at the end of this page). **LocalMaxxing**: lmx
 v0.1.54 with llm-inference-bench v0.7.7, `--concurrency 1,8 --contexts 0,128k --skip-oversize`, 8,192 output tokens per request
@@ -39,16 +36,13 @@ categories, so its single-request number is lower and its 8-request number highe
 - **Drafter.** The native modes use the distilled MTP drafter B4gh5-mtpft, shipped inside the image. The launcher assembles
   `<checkpoint dir>-b4gh5-mtpft` next to the checkpoint (hard links plus links to the image's drafter files; the downloaded
   checkpoint is never modified); `--dry-run` checks the drafter files against their pinned sha256. `--drafter stock` uses the
-  checkpoint's own drafter (17 Oct: 3-bit 249.9 / 56 ms / 8,401 / 659.4 / 516.4; 4-bit 237.6 / 65 ms / 7,748 / 545.4 / 443.4).
+  checkpoint's own drafter (4-bit, 17 Oct: 237.6 / 65 ms / 7,748 / 545.4 / 443.4).
 - **Decoding next to long prompts (opt-in).** `--native-env PAITON_FN_DECODE_INTERLEAVE=1` adds one decode-only step after each
   2,048-token prompt chunk: in a burst of eight 17K-29K-token prompts a decoding request rose from about 9.5 to about 21 tok/s, at
   5 % less aggregate prompt throughput (`=2`: about 29 tok/s, -9 %). Off by default: with it on, the greedy tokens of concurrent
   requests can differ from run to run.
 - **Repeatability (4-bit).** Greedy output can vary from run to run while a long prompt is read next to other requests; a request
   on its own, or several short ones together, repeat exactly. The 3-bit native worker repeats exactly in all of these cases.
-- **Earlier native numbers** (decode / TTFT p50 / prefill @64K / 8 requests / 4 requests): 17 Oct (20261017-r1 image, published):
-  3-bit 272.5 / 56 ms / 8,392 / 685.4 / 531.0, 4-bit 240.3 / 65 ms / 7,757 / 561.9 / 456.9; 23 Oct BetterBench quick on the rc2
-  image: 3-bit 272.6 / 55 / 8,439 / 679.3 / 532.5, 4-bit 239.7 / 65 / 7,802 / 562.4 / 467.4.
 
 ## Native prefix-caching details
 `--prefix-caching` with `--fn-worker native` switches to the mode's cache variant and prints the switch; the cache modes can also

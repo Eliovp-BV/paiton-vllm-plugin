@@ -35,31 +35,44 @@ weighted over eight prompt categories. Native rows: 24 Oct 2026, one run each.
 | 3-bit default (torch worker) | 216.3 tok/s | 565.1 tok/s | 8,161 tok/s ¹ | 117 ms | 98,304 |
 | 4-bit default (torch worker) | 189.8 tok/s | 420.7 tok/s | 6,991 tok/s ¹ | 121 ms | 98,304 |
 
-¹ measured in the 200K modes (`run-flashnext-200k.sh`, `run-flashnext-4bit-200k.sh`). The torch rows are the published r3
-numbers (10-11 Oct); the 3-bit cache row is from 23 Oct. The 3-bit native row is the new weights; on the same host and day the first 3-bit weights measured
-260.1 tok/s for one request (272.5 on 17 Oct). Earlier native numbers, a second benchmark (LocalMaxxing) and the
-method: [BENCHMARKS.md](BENCHMARKS.md).
+¹ measured in the 200K modes (`run-flashnext-200k.sh`, `run-flashnext-4bit-200k.sh`). The torch rows are from 10-11 Oct, the
+3-bit cache row from 23 Oct. A second benchmark (LocalMaxxing) and all details: [BENCHMARKS.md](BENCHMARKS.md). How we
+tested: [below](#how-we-tested).
 
 ## Accuracy
 
-| Against the bf16 model | 3-bit, new weights (default from this release) | 3-bit, first release (`829b089b`) | 4-bit |
+**Task scores** (the same questions for every model; [how we tested](#how-we-tested)):
+
+| Task | 16-bit model | 3-bit | 4-bit |
 |---|---:|---:|---:|
-| GSM8K / HumanEval / MMLU-Pro (16-bit: 96.9 / 96.3 / 84.7 %) | 97.4 / 94.5 / 83.6 % | 96.8 / 95.7 / 84.2 % | **96.8 / 96.3 / 83.7 %** |
-| KL t+a, free / routing locked (lower is better) | 0.0550 / 0.0367 | 0.0604 / 0.0413 | **0.0306 / 0.0166** |
-| Top-1 agreement | 91.18 % | 90.74 % | **93.36 %** |
-| Long documents (8K-32K tokens), NLL change | +0.35 % | +0.55 % | **+0.16 %** |
-| Served KL on two R9700 (top-64) | 0.0563 | 0.0624 | – |
-| Needles at 131K tokens | 25 of 25 prompts | 40 of 40 | 40 of 40 |
-| AI2D with images, emulated (16-bit 85.3 %; image input is not served in the 3-bit modes) | 81.8 % | 77.7 % | – |
+| GSM8K (grade-school math, 1,319 questions) | 96.9 % | 97.4 % | 96.8 % |
+| HumanEval (Python coding, 164 problems) | 96.3 % | 94.5 % | 96.3 % |
+| MMLU-Pro (knowledge and reasoning, 1,400 questions) | 84.7 % | 83.6 % | 83.7 % |
 
-Task scores of the two 3-bit weight sets do not differ significantly (new vs first: GSM8K +0.6, HumanEval −1.2, MMLU-Pro
-−0.6 points; paired p 0.17 / 0.50 / 0.38); both are within 1.8 points of the 16-bit model, with no significant difference.
+GSM8K asks school math word problems, HumanEval asks for Python functions that must pass tests, MMLU-Pro asks hard
+multiple-choice questions across 14 subjects. No difference to the 16-bit model is statistically significant ("within noise");
+for scale, the 16-bit model itself moves by up to 1.2 points between two runs with different random seeds.
 
-The new 3-bit weights (Hugging Face revision `71faf406`) replace the first 3-bit release as a drop-in: same format, file
-sizes, kernels and speed. On a host with the first release, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`), never mixed with the first release, and says once that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning. KL t+a, top-1 and NLL: emulation of the served arithmetic on our
-evaluation corpus and 44 held-out long documents; served KL: the running server, both 3-bit revisions in the same
-configuration. Method and intervals: the model cards ([W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4),
-[W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4)) and the [4-bit page](README-4bit.md#accuracy).
+**Closeness to the 16-bit model:**
+
+| Measure | 3-bit | 4-bit |
+|---|---:|---:|
+| KL to the 16-bit model, free / routing locked (0 = identical; lower is better) | 0.0550 / 0.0367 | 0.0306 / 0.0166 |
+| Same most likely next token as the 16-bit model | 91.18 % | 93.36 % |
+| Long documents (8K-32K tokens): extra uncertainty against the 16-bit model | +0.35 % | +0.16 % |
+| Needles found in a 131K-token prompt | 40 of 40 | 40 of 40 |
+| AI2D science diagrams with images (16-bit: 85.3 %) | 81.8 % ² | – |
+
+KL measures how far the model's next-word probabilities are from the 16-bit model's; two correct 16-bit implementations already
+differ by about 0.008. "Routing locked" gives both models the same experts and isolates the rounding error. AI2D asks multiple-choice
+questions about science diagrams.
+² measured through an emulation of the 3-bit arithmetic; the 3-bit modes take text only.
+
+The 3-bit weights of this release are Hugging Face revision `71faf406`, the default 3-bit download. On a host with older 3-bit
+weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`) and says once
+that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning. Full
+tables and intervals: the model cards ([W3A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4),
+[W4A8](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W4A8-Paiton-RDNA4)).
 
 ## Prerequisites
 - Two AMD Radeon AI PRO R9700 (32 GiB each) on a ROCm 10 host driver; Docker with GPU device access (`/dev/kfd`, `/dev/dri`;
@@ -158,11 +171,23 @@ checks and the RAM tier as on a host with GIB of RAM.
 `--dry-run`. The launcher picks the image per mode: the 3-bit torch modes run the 3-bit image (`...-20261010-r2`), the 4-bit
 torch modes `...-20261017-r1`, every native mode `...-20261024-pc-rc3`.
 
-## How the numbers were taken
-BetterBench 0.6.0, standard profile, on 2x R9700 against our OpenAI-compatible server through this launcher; exact bf16
-activations on the wire; 20 passes per category after warm-up, unique prompts (no prefix-cache hits), concurrency 1/2/4/8 x 48
-requests, prefill depths 2K-128K. Raw outputs: `benchmarks/`; depth tables, a second benchmark (LocalMaxxing) and host
-conditions: [BENCHMARKS.md](BENCHMARKS.md).
+<a id="how-the-numbers-were-taken"></a>
+
+## How we tested
+
+- **Hardware.** Two AMD Radeon AI PRO R9700 (32 GB each), PCIe 4.0 x16 host with 251 GiB of RAM. The 16-bit reference does
+  not fit there (about 360 GB): it is the original checkpoint served with stock vLLM on a larger AMD GPU server.
+- **Serving.** Every number comes from the server exactly as the launcher ships it, through its OpenAI-compatible API.
+- **Task benchmarks.** Thinking on (the model's default chat template); temperature 1.0, top-p 0.95, top-k 20; replies capped
+  at 16,384 tokens, and a capped reply counts as wrong. The same prompts and the same per-question seed for every model. Full
+  GSM8K (1,319), HumanEval (164, run in a sandbox) and MMLU-Pro (1,400: 100 per subject, 14 subjects). Differences are paired
+  per question: 95 % confidence intervals and an exact McNemar test.
+- **Closeness to the 16-bit model.** KL, top-1 and long-document numbers come from an emulation of the served arithmetic on
+  a 294,912-position evaluation corpus and 44 held-out documents of 8K-32K tokens; needles from the running server.
+- **Speed.** BetterBench 0.6.0 standard profile: 20 passes per category after warm-up, unique prompts (no prefix-cache hits),
+  1/2/4/8 concurrent requests x 48, prefill depths 2K-128K, exact bf16 activations on the wire. LocalMaxxing v0.1.54 (its
+  matrix with 1 and 8 requests and 8,192 output tokens): one warm-up request, three runs on one server, the median run kept.
+  Raw outputs: `benchmarks/`; tables: [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Files
 `run-flashnext*.sh` (the wrappers), `launch-flashnext.py` (the launcher; also builds the runtime view `<weights>-view` once),

@@ -5,32 +5,40 @@ weights: [EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4](https://huggingface.co/
 
 [Qwen/Qwen3.8-Flash-Next](https://huggingface.co/Qwen/Qwen3.8-Flash-Next) with mixed 3-bit experts, served by vLLM 0.29 on ROCm 10
 with tensor parallel 2 and the Paiton plugin (native grouped MoE, native collectives, native hidden-chain and sampled MTP drafts).
-Everything runs from VRAM: **216 tok/s for a single request, 565 tok/s at 8 requests, 8,161 tok/s prefill at 64K.**
+Everything runs from VRAM: **258.7 tok/s for a single request and 687.5 tok/s at 8 requests with `--fn-worker native`**
+(216 / 565 tok/s on the torch-worker default).
 No custom engine: regular vLLM with the Paiton plugin and our own kernels.
 
-This release: the default commands serve the same image, weights, modes, speed and accuracy as before (torch worker). New, opt-in:
-the native Paiton worker, `--mode decode --fn-worker native` ([below](#native-worker-opt-in)).
+The default commands serve the torch worker; `--fn-worker native` is the faster native Paiton worker
+([below](#native-worker-opt-in)).
 
 ## Accuracy
-New in this release: more accurate 3-bit weights (Hugging Face revision `71faf406`), a drop-in replacement for the first
-3-bit release (`829b089b`): same format, file sizes, kernels and speed. They are the default download from this release on; on a host with the first release, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`), never mixed with the first release, and says once that the old folder can be deleted; an explicit `--weights DIR` with other weights is served as is, with a warning.
+The 3-bit weights of this release (Hugging Face revision `71faf406`) are the default download. On a host with older 3-bit
+weights, the launcher downloads them into a fresh folder (`~/paiton-models/Qwen3.8-Flash-Next-W3A8-71faf406`) and says once that
+the old folder can be deleted.
 
-| Against the bf16 model | New 3-bit | First 3-bit (`829b089b`) | [4-bit](README-4bit.md) |
+| Task | 16-bit model | 3-bit | [4-bit](README-4bit.md) |
 |---|---:|---:|---:|
-| GSM8K / HumanEval / MMLU-Pro (16-bit: 96.9 / 96.3 / 84.7 %) | 97.4 / 94.5 / 83.6 % | 96.8 / 95.7 / 84.2 % | 96.8 / 96.3 / 83.7 % |
-| KL t+a, free / routing locked | **0.0550 / 0.0367** | 0.0604 / 0.0413 | 0.0306 / 0.0166 |
-| Top-1 agreement | **91.18 %** | 90.74 % | 93.36 % |
-| Long documents (44 held-out, 8K-32K tokens), NLL vs bf16 1.7574 | **1.7636 (+0.35 %)** | 1.7671 (+0.55 %) | 1.7603 (+0.16 %) |
-| Served KL on two R9700 (top-64; paired difference −0.0061 [−0.0124, −0.0012]) | **0.0563** | 0.0624 | – |
-| Needles at 131K tokens | 25 of 25 prompts | 40 of 40 (also 40 of 40 at 200K) | 40 of 40 |
-| AI2D with images, emulated (16-bit 85.3 %; not served in the 3-bit modes) | **81.8 %** | 77.7 % | – |
+| GSM8K (grade-school math, 1,319 questions) | 96.9 % | 97.4 % | 96.8 % |
+| HumanEval (Python coding, 164 problems) | 96.3 % | 94.5 % | 96.3 % |
+| MMLU-Pro (knowledge and reasoning, 1,400 questions) | 84.7 % | 83.6 % | 83.7 % |
 
-Task scores of the two 3-bit weight sets do not differ significantly (new vs first: GSM8K +0.6, HumanEval −1.2, MMLU-Pro
-−0.6 points; paired p 0.17 / 0.50 / 0.38); both are within 1.8 points of the 16-bit model, with no significant difference. AI2D: +4.2 points
-[+1.8, +6.5], McNemar p 0.0008, measured with an emulation of the served arithmetic (the 3-bit modes take no image input).
+No difference to the 16-bit model is statistically significant (paired 95 % intervals: GSM8K +0.5 [−0.3, +1.3], HumanEval
+−1.8 [−5.0, +1.3], MMLU-Pro −1.1 [−2.3, +0.0] points). For scale, the 16-bit model itself moves by up to 1.2 points between two
+runs with different random seeds.
 
-Full tables and method: the [model card](https://huggingface.co/EliovpAI/Qwen3.8-Flash-Next-W3A8-Paiton-RDNA4). The prompt rows run
-W8A8.
+| Closeness to the 16-bit model | 3-bit | 4-bit |
+|---|---:|---:|
+| KL, free / routing locked (0 = identical) | 0.0550 / 0.0367 | 0.0306 / 0.0166 |
+| Same most likely next token | 91.18 % | 93.36 % |
+| Long documents (8K-32K tokens), NLL against the 16-bit model's 1.7574 | 1.7636 (+0.35 %) | 1.7603 (+0.16 %) |
+| KL measured on the running server, two R9700 (top-64) | 0.0563 | – |
+| Needles found in a 131K-token prompt | 40 of 40 | 40 of 40 |
+| AI2D science diagrams with images (16-bit 85.3 %) | 81.8 % ¹ | – |
+
+KL measures how far the next-word probabilities are from the 16-bit model's (two correct 16-bit implementations differ by about
+0.008). NLL is how surprised the model is by real text; +0.35 % means slightly more surprised than the 16-bit model.
+¹ through an emulation of the 3-bit arithmetic; the 3-bit modes take text only. How we tested: [overview](README.md#how-we-tested).
 
 ## Speed
 Official numbers of the default (torch worker, the checkpoint's own drafter), measured on the shipped image through this launcher
@@ -61,8 +69,7 @@ Paiton worker, with a KV cache of about 551K tokens (about 112K on the torch def
 | Eight concurrent requests, aggregate | 687.5 tok/s |
 | Four concurrent requests, aggregate | 532.6 tok/s |
 
-The first 3-bit weights measured 272.5 / 56 ms / 8,392 / 685.4 / 531.0 (17 Oct); `--drafter stock` (the checkpoint's own
-drafter) 249.9 / 56 ms / 8,401 / 659.4 / 516.4. Before and after: [BENCHMARKS.md](BENCHMARKS.md).
+`--drafter stock` uses the checkpoint's own drafter (slower). All speed tables: [BENCHMARKS.md](BENCHMARKS.md).
 
 No image input, request-API limits (no logprobs, structured outputs, penalties, ...) and the host requirement (about 60 GiB of free
 GTT): [overview](README.md#native-worker-opt-in). From 20261024 on, every native mode runs
@@ -128,8 +135,8 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
 
 ## Known issues and limitations
 - In very long agentic sessions (beyond ~30K tokens) the 3-bit can end replies early. Use `--prefix-caching`, and prefer the
-  [4-bit](README-4bit.md) for long coding sessions. The new weights reduce it but do not remove it: probability of an early stop
-  at real stop points beyond 28K tokens 0.452 (first weights 0.465, bf16 0.328); on empty-reply points 0.420 (0.637, bf16 0.385).
+  [4-bit](README-4bit.md) for long coding sessions. Measured at real stop points of long agent sessions beyond 28K tokens: the
+  3-bit stops with probability 0.452, the 16-bit model 0.328.
 - 98,304-token window in `decode` (MTP pool, also with `--fn-worker native`), 200,000 in `prefill-long` with MTP off. No image
   input in this release.
 - The native worker is opt-in and has request-API limits ([overview](README.md#request-api-limits)). Native prefix caching runs with

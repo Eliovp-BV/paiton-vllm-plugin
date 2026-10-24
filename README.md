@@ -29,9 +29,8 @@ download of 9.55 GB ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-the-3
 
 ### What's new (24 October)
 
-- **Qwen3.8 Flash Next, new 3-bit weights.** Lower error against the 16-bit model than the first 3-bit; task scores within
-  1.8 points of the 16-bit model with no significant difference; +4.2 points on image questions in our emulation (the 3-bit
-  modes take text only). The launcher downloads them automatically into a new folder. [3-bit page](models/Qwen3.8-Flash-Next/README-3bit.md)
+- **Qwen3.8 Flash Next, new 3-bit weights.** GSM8K, HumanEval and MMLU-Pro scores with no significant difference to the
+  16-bit model, at full speed from VRAM. The launcher downloads them automatically into a new folder. [3-bit page](models/Qwen3.8-Flash-Next/README-3bit.md)
 - **Qwen3.8 Flash Next, prefix caching with speculative decoding** on the 4-bit (`--fn-worker native --prefix-caching`):
   262K-token window, repeated long prompts in under 1 s. [Flash Next guide](models/Qwen3.8-Flash-Next/README.md)
 - **Qwen3.8 27B, 3-bit accuracy update.** Closer to the 16-bit model, same speed, task scores unchanged within noise; run
