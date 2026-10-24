@@ -3866,7 +3866,13 @@
           "PAITON_FN_TIER_DYNAMIC": "1",
           "PAITON_FN_ASYNC": "1",
           "PAITON_FN_DROP_DEAD_ROWS": "1",
-          "PAITON_FN_EARLY_TOKENS": "1"
+          "PAITON_FN_EARLY_TOKENS": "1",
+          "PAITON_FN_ADMIT": "finish",
+          "PAITON_FN_ADMIT_MARGIN_MS": "5",
+          "PAITON_FN_MALL_PF": "d1-2:mlp:4,d3-8:win:4",
+          "PAITON_FN_PF_MIXED_MTP": "1",
+          "PAITON_FN_PF_RS_LL": "1",
+          "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective-rsll/tp_collective.so"
         },
         "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU; a hit of a spec-decoded prompt resumes up to one block short (vLLM keeps the last block uncached)",
         "lib_dir_mount": "/opt/paiton/runtime/fnexec-pc",
