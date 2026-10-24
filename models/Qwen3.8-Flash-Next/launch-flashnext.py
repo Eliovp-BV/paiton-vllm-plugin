@@ -36,6 +36,8 @@ import argparse, json, os, pathlib, re, shlex, shutil, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 CFG = json.loads((HERE / 'modes.json').read_text()); COMMON = CFG['common']; MODES = CFG['modes']
+W3 = COMMON['weights_3bit']   # the 3-bit weights: one pinned revision (common), a default dir keyed by it
+W3.update(hf_repo=COMMON['hf_repo'], hf_revision=COMMON['hf_revision'], default_dir=f"{W3['default_dir']}-{COMMON['hf_revision'][:8]}")
 
 SITE_PACKAGES = '/usr/local/lib/python3.12/dist-packages'
 DRAFTER_ROOT = '/opt/paiton/drafter'   # D1 (17 Oct): drafter files baked into the image (one layer, before the code)
@@ -104,9 +106,26 @@ def ensure_weights(d, dry, repo=None, revision=None):
     if repo and not revision:   # a local-only checkpoint (modes.json local_only): never fall back to another repo's revision
         if dry: print(f'weights: {d} (local-only checkpoint; not present)'); return d
         sys.exit(f'weights: {d} has no SHA256SUMS + model.safetensors, and this checkpoint is not downloadable yet (a local dir)')
+    if (revision or COMMON['hf_revision']) == 'REVISION_PENDING' and not dry:
+        sys.exit(f'weights: the 3-bit revision is not pinned yet in this launcher (modes.json common.hf_revision); pass --weights DIR')
     hf_download(repo or COMMON['hf_repo'], revision or COMMON['hf_revision'], d, dry=dry)
     if not dry: verify_sums(d)
     return d
+
+def w3_revision_note(d, explicit):
+    """3-bit weights only: an explicit --weights dir whose SHA256SUMS is not the pinned revision's gets a warning (its files are
+    served as they are); on the default dir, an older un-keyed 3-bit dir gets one line saying it is unused and can be deleted."""
+    d = pathlib.Path(d); sums = d / 'SHA256SUMS'
+    if explicit:
+        if sums.exists() and sha256_file(sums) != COMMON['hf_sha256sums_sha256']:
+            print(f'WARNING weights: {d} is not the pinned 3-bit revision {COMMON["hf_revision"][:8]} of {COMMON["hf_repo"]} '
+                  f'(its SHA256SUMS differs); serving its files as they are')
+        return
+    old = pathlib.Path(os.path.expanduser(W3['previous_default_dir']))
+    if old != d and (old / 'SHA256SUMS').exists():
+        gib = sum(f.stat().st_size for f in old.rglob('*') if f.is_file() and not f.is_symlink()) / 2**30
+        print(f'weights: using the pinned 3-bit revision {COMMON["hf_revision"][:8]} in {d}; the older 3-bit weights in {old} '
+              f'({gib:.0f} GiB, with its {old.name}-* folders next to it) are no longer used and can be deleted')
 
 def ensure_overlay(d, wspec, dry):
     """weights spec with an 'overlay' (D1 b): the base checkpoint (overlay.of) + the files of the repo folder overlay.subdir at
@@ -1013,10 +1032,12 @@ def main():
             not (pathlib.Path(os.path.expanduser(wspec['default_dir'])) / 'SHA256SUMS').exists():
         sys.exit(f'--mode {a.mode}: the {wspec["drafter"].split(" (")[0]} checkpoint is not downloadable yet; put it at '
                  f'{wspec["default_dir"]} or pass --weights <dir> (or --drafter stock for the published checkpoint)')
+    explicit_weights = a.weights is not None
     if a.weights is None:
         a.weights = os.path.expanduser(COMMON[wspec['baked']['of']]['default_dir'] if baked and not
                                        (pathlib.Path(os.path.expanduser(wspec['default_dir'])) / 'SHA256SUMS').exists()
-                                       else (wspec or {}).get('default_dir', '~/paiton-models/Qwen3.8-Flash-Next-W3A8'))
+                                       else (wspec or W3)['default_dir'])
+    if (wspec or W3).get('hf_repo') == COMMON['hf_repo']: w3_revision_note(a.weights, explicit_weights)
     if m.get('status', '').startswith('PENDING') : print(f'mode {a.mode}: {m["status"]}')
     ispec = COMMON[m.get('image_key', 'image')]
     image = a.image or (ispec['tag'] + ('@' + ispec['digest'] if ispec['digest'] != 'PIN-ME' else ''))
