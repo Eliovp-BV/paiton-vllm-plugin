@@ -4118,7 +4118,7 @@
             "min_gib_per_gpu": 2,
             "host_reserve_gib": 8
           },
-          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream): measured 24 Oct, BetterBench standard decode 213.5 tok/s, n=8 611.0 with the tier; --native-kv-tier off keeps the faster settings"
+          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream): measured 24 Oct, BetterBench standard decode 213.5 tok/s tier on vs 250.0 tier off (n=8 611.0 vs 657.7); --native-kv-tier off keeps the faster settings"
         },
         "torch_reference_mode": "prefill-long"
       }
