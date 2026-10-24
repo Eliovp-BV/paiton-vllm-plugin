@@ -815,6 +815,7 @@ def native_apply(a, m, env, engine_args, cache, weights=None):
         engine_args += ['--kv-transfer-config', json.dumps(cfg)]; env.update(kvt['env']); env['PAITON_FN_KVT_LAYOUT'] = a.native_kv_tier_layout
         print(f'native RAM prefix tier: {a.native_kv_tier:g} GiB per GPU ({2 * a.native_kv_tier:g} GiB of host RAM, {a.native_kv_tier_layout}); '
               + (f'auto {a.native_kv_tier_why}' if getattr(a, 'native_kv_tier_why', None) else 'as requested'))
+        if kvt.get('trade'): print(f'native RAM prefix tier: {kvt["trade"]}')
     native_spec_tokens(a, m, engine_args)
     native_async_scheduling(a, engine_args)
     native_manifest_check(a, env, lib, weights)
@@ -949,7 +950,7 @@ def main():
         print(f'mode {a.mode}{" --fn-worker native" if a.fn_worker else ""}: --mode {alias} (the native worker in this mode\'s configuration'
               f'{"; the default, --fn-worker torch for the torch worker" if native_default else ""})'); a.mode = alias; m = MODES[a.mode]
     cm = (m.get('native') or {}).get('cache_mode')
-    if a.prefix_caching and cm:   # native prefix caching: the mode's cache variant (align mode, 2048-token blocks, MTP off)
+    if a.prefix_caching and cm:   # native prefix caching: the mode's cache variant (align mode, 2048-token blocks; 4-bit: MTP on, 3-bit: MTP off)
         print(f'mode {a.mode} --prefix-caching: --mode {cm} ({MODES[cm]["note"]})'); a.mode = cm; m = MODES[a.mode]
     if a.fn_worker == 'torch' and alias and not m.get('native'):   # --mode 4bit --fn-worker torch: this mode's torch worker (as the r3 release)
         print(f'mode {a.mode} --fn-worker torch: the torch worker (the native default is --mode {alias})'); a.fn_worker = None

@@ -228,9 +228,9 @@
       "note": "launcher --expert-cold (auto on hosts where even the file-backed layout does not fit MemAvailable): the coldest share of each decoder layer's experts (by the routing counts) leaves the pinned host pool for one file per GPU (<weights>-expert-cold, written at the first start, reused after); before each MoE launch a gate kernel reads the routed ones into a pinned bounce buffer. Same output, slower. Needs an image with the cold-expert runtime (images). Measured 15 Oct on the r4 image under a 60 GiB memory limit (a 64 GB host), with the reuse cache (384 slots per GPU) and the file-backed PLE layout: cold share 0.2 keeps about 51 GiB of host RAM in use while serving (the memory limit fills with page cache from the file-backed files, as designed), output identical to the pinned layout; --mode 4bit about 85 tok/s single-stream and 181 at 8 requests, --mode 4bit-long about 89 / 237 with needles at 131K tokens 5/5. Share 0.1 (about 55 GiB, measured 14 Oct without the reuse cache) is picked only where it fits (about 72 GB and up)."
     },
     "image_4bit_native": {
-      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261023-pc-rc1",
-      "digest": "sha256:156177eee1297f658f87f59210c0e7eec11603f19590795b591ee999c2820eb7",
-      "note": "4-bit + 3-bit native release image 20261023-pc-rc1 (every native mode): the 20261017-r1 image plus one layer with /opt/paiton/runtime/fnexec-pc (the prefix-caching executor and the cache modes' files); every other mode keeps /opt/paiton/runtime/fnexec unchanged",
+      "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261024-pc-rc2",
+      "digest": "sha256:c5c3b398807fb12ccd34fc2fc12dacc11dc1aae5ad34868aa8f70d4b6ee9f2d0",
+      "note": "4-bit + 3-bit native release image 20261024-pc-rc2 (every native mode): the 20261023-pc-rc1 image plus one layer: /opt/paiton/runtime/fnexec-pc gains the 262K MTP prefix-cache mode files, the native glue gains the decode interleave (fnadmit, opt-in) and the RAM prefix tier fix for MTP (kv_overlays); every other mode is unchanged",
       "fnexec_in_image": true,
       "fnexec_modes": [
         "4bit",
@@ -238,7 +238,9 @@
         "3bit",
         "4bit-long-cache-native",
         "3bit-cache-native",
-        "3bit-long-cache-native"
+        "3bit-long-cache-native",
+        "4bit-long-cache-mtp-native",
+        "3bit-long-cache-mtp-native"
       ],
       "drafter_in_image": "b4gh5-mtpft"
     }
@@ -1368,7 +1370,7 @@
         "manifest_by_drafter": {
           "stock": "manifest-4bit-stock.json"
         },
-        "cache_mode": "4bit-long-cache-native"
+        "cache_mode": "4bit-long-cache-mtp-native"
       }
     },
     "3bit-mtp-native": {
@@ -1723,7 +1725,7 @@
         "note": "layer 1: ROCR_VISIBLE_DEVICES = mask_invalid for every process, the real list in PAITON_FN_GPU_MASK (the executor restores it before hipInit); layer 2: guard_module imported at interpreter start through a .pth (torch.cuda._lazy_init raises, is_available False); layer 3: the worker/guard patch RocmPlatform.set_device and synchronize_device. Init args from env: PAITON_FN_CARD_BUDGET_GIB, PAITON_FN_FNEXEC_LIB, PAITON_FN_GUARD, PAITON_FN_NATIVE_LOG",
         "lib_dir_mount": "/opt/paiton/runtime/fnexec",
         "torch_reference_mode": "4bit-long",
-        "cache_mode": "4bit-long-cache-native"
+        "cache_mode": "4bit-long-cache-mtp-native"
       }
     },
     "4bit-200k-native": {
@@ -3686,7 +3688,7 @@
       "host_pools_default": "userptr"
     },
     "4bit-long-cache-mtp-native": {
-      "source_run": "copy of --mode 4bit-cache-mtp-native (MTP 3 + align, served gate 18 Oct at 98K) at the 262,144-token window (23 Oct; spec dae77a30 is window-independent, kv-meta derived for KV 2.5 GiB: 170 blocks), RAM tier as 4bit-long-cache-native",
+      "source_run": "copy of --mode 4bit-cache-mtp-native (MTP 3 + align, served gate 18 Oct at 98K) at the 262,144-token window (23 Oct; spec dae77a30 is window-independent, kv-meta derived for KV 2.5 GiB: 170 blocks), RAM tier as 4bit-long-cache-native ; rc2 24 Oct: served gates g5 (tier off) / g9 (tier on, KV tier overlay e2377cb)",
       "env": {
         "GPU_MAX_HW_QUEUES": "2",
         "HSA_ENABLE_IPC_MODE_LEGACY": "1",
@@ -3828,7 +3830,7 @@
       ],
       "seed": "4bit",
       "gtt_pinned_gib": 95.5,
-      "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU; a hit of a spec-decoded prompt resumes up to one block short (vLLM keeps the last block uncached)",
+      "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU (311,639 tokens); a hit resumes one block short of the cached prefix (the MTP draft tail); prefix-cache blocks evicted from VRAM go to the RAM prefix tier",
       "image_key": "image_4bit_native",
       "weights_key": "weights_4bit",
       "requires": [
@@ -3845,7 +3847,7 @@
         "pageable": 110.0,
         "filebacked": 61.0
       },
-      "status": "DEV (overnight 23 Oct): needs --fnexec-lib with this mode's files next to the lib until an image carries them; promoted to --prefix-caching only after the served gate",
+      "status": "release candidate 20261024-pc-rc2: native prefix caching with MTP (4-bit, 262,144-token window); --mode 4bit-long-cache-mtp-native, or --prefix-caching on the 4-bit native worker",
       "native": {
         "worker_cls": "paiton_vllm_plugin.flashnext.fnworker.PaitonFNWorker",
         "mask_invalid": "99,98",
@@ -3874,7 +3876,7 @@
           "PAITON_FN_PF_RS_LL": "1",
           "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective-rsll/tp_collective.so"
         },
-        "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU; a hit of a spec-decoded prompt resumes up to one block short (vLLM keeps the last block uncached)",
+        "note": "4-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 2.5 GiB per GPU (311,639 tokens); a hit resumes one block short of the cached prefix (the MTP draft tail); prefix-cache blocks evicted from VRAM go to the RAM prefix tier",
         "lib_dir_mount": "/opt/paiton/runtime/fnexec-pc",
         "torch_reference_mode": "4bit-long-cache",
         "kv_tier": {
@@ -3887,11 +3889,19 @@
             }
           },
           "env": {
-            "PAITON_FN_KV_TIER": "1"
+            "PAITON_FN_KV_TIER": "1",
+            "PAITON_FN_EARLY_TOKENS": "0",
+            "PAITON_FN_MALL_PF": "off"
           },
           "min_gib_per_gpu": 1.0,
-          "status": "off by default: with MTP, vLLM 0.29 offloading treats every KV group as a draft group and never stores the end-of-request state, so RAM-tier re-hits miss (overnight 23 Oct); --native-kv-tier GIB also needs PAITON_FN_EARLY_TOKENS=0 (executor refusal)",
-          "note": "--native-kv-tier GIB per GPU: cpu_bytes_to_use = 2 x GIB (both ranks, CPUOffloadingSpec semantics); PAITON_FN_KV_TIER=1 mounts the kv_tier_boot overlays (scheduler side as the shipped 4bit-cache tier); PAITON_FN_KVT_LAYOUT from --native-kv-tier-layout; other PAITON_FN_KVT_* switches (staging, inflight, threads) through --native-env; the RAM check counts 2 x GIB; the launcher sets no container --memory (nothing to raise)"
+          "status": "release candidate 20261024-pc-rc2: on by default, sized at start from the host (--native-kv-tier auto; GIB or off override it)",
+          "note": "--native-kv-tier auto (default) = min(16, floor((MemAvailable [<= --memory] - the mode's resident RAM - its start margin - 8 GiB executor host reserve) / 2)) GiB per GPU, off below 2; cpu_bytes_to_use = 2 x GIB (both ranks); pageable layout (private memory, a 16 MiB pinned staging ring per rank); the executor refuses a tier that leaves < 8 GiB of MemAvailable / cgroup headroom",
+          "auto": {
+            "max_gib_per_gpu": 16,
+            "min_gib_per_gpu": 2,
+            "host_reserve_gib": 8
+          },
+          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream): measured 24 Oct, BetterBench standard decode 207.3 tok/s tier on vs 232.8 tier off (n=8 482.8 vs 475.7); --native-kv-tier off keeps the faster settings"
         },
         "engine_args_torch": [
           "--compilation-config",
@@ -3905,6 +3915,212 @@
         "manifest_by_drafter": {
           "stock": "manifest-4bit-long-cache-mtp-native-stock.json"
         }
+      }
+    },
+    "3bit-long-cache-mtp-native": {
+      "source_run": "copy of --mode 3bit-mtp-native at the 262,144-token window with the align prefix-caching recipe (24 Oct; spec dae77a30, kv-meta derived for KV 4.5 GiB: 306 blocks), RAM tier as 3bit-long-cache-native",
+      "env": {
+        "GPU_MAX_HW_QUEUES": "2",
+        "HSA_ENABLE_IPC_MODE_LEGACY": "1",
+        "NCCL_PROTO": "Simple",
+        "PAITON_FN_A4": "1",
+        "PAITON_FN_A4_SAMPLED": "1",
+        "PAITON_FN_A5": "sample",
+        "PAITON_FN_ATTEND_FUSE": "0",
+        "PAITON_FN_BIND_SKINNY": "1",
+        "PAITON_FN_DRAFT_FUSED": "1",
+        "PAITON_FN_DRAFT_PREP_FUSED": "1",
+        "PAITON_FN_EARLY_EMIT": "1",
+        "PAITON_FN_GDN_ANCHOR": "1",
+        "PAITON_FN_GDN_PF_FUSED": "1",
+        "PAITON_FN_GDN_PF_NATIVE": "1",
+        "PAITON_FN_GDN_PF_RS": "1",
+        "PAITON_FN_GDN_RS_FMA": "0",
+        "PAITON_FN_GDN_RS_NATIVE": "1",
+        "PAITON_FN_HC_CHAIN": "1",
+        "PAITON_FN_HC_FUSE": "1",
+        "PAITON_FN_HC_V3A": "1",
+        "PAITON_FN_KV_LEASE": "off",
+        "PAITON_FN_MOE_FIN": "1",
+        "PAITON_FN_MOE_FIN_MAX_M": "8",
+        "PAITON_FN_MOE_FUSED": "1",
+        "PAITON_FN_MOE_GRAPH": "1",
+        "PAITON_FN_MOE_HC_FUSE": "1",
+        "PAITON_FN_MOE_PF_DOWN_FUSED": "1",
+        "PAITON_FN_MOE_PF_GLUE": "1",
+        "PAITON_FN_NATIVE_GDN": "1",
+        "PAITON_FN_NATIVE_HC": "1",
+        "PAITON_FN_NATIVE_PLE_CONV": "1",
+        "PAITON_FN_NATIVE_QSA": "all",
+        "PAITON_FN_NATIVE_QSA_MTP": "1",
+        "PAITON_FN_NATIVE_SHARED": "1",
+        "PAITON_FN_NATIVE_TRUNK": "2",
+        "PAITON_FN_PF_MALL": "2",
+        "PAITON_FN_PF_MALL_SET": "all",
+        "PAITON_FN_PLACEMENT": "counts:/models/ck/common/routing-counts.json",
+        "PAITON_FN_PLE_GATHER_AR": "1",
+        "PAITON_FN_PLE_LEAN_PREFILL": "1",
+        "PAITON_FN_PLE_PREFILL": "1",
+        "PAITON_FN_PLE_PREFILL_RS": "1",
+        "PAITON_FN_PLE_QSL_PAD": "1",
+        "PAITON_FN_PLE_RS": "1",
+        "PAITON_FN_PREFILL_AR": "native",
+        "PAITON_FN_RECOVERSSM": "1",
+        "PAITON_FN_ROPE_TRIM": "1",
+        "PAITON_FN_ROUTE_PLAN": "1",
+        "PAITON_FN_SCORE_LAYOUT": "3",
+        "PAITON_FN_SPEC_STATE_FIX": "1",
+        "PAITON_FN_SPHC": "2",
+        "PAITON_FN_STEP_PREP": "1",
+        "PAITON_FN_SUBCHUNK": "4",
+        "PAITON_FN_TAIL_BYPASS": "1",
+        "PAITON_FN_TRUNK_ACT": "bf16",
+        "PAITON_FN_W8A8_PROMPT": "1",
+        "PAITON_MOE_GROUPED_PATH": "/opt/paiton/runtime/moe-grouped-w3",
+        "PAITON_PLUGIN_MODE": "flashnext",
+        "PAITON_RUNTIME_COMPAT_FLOW": "0",
+        "PAITON_TP_AR_MAX_ROWS": "2048",
+        "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective",
+        "PAITON_TP_NATIVE_AR": "1",
+        "PYTORCH_ALLOC_CONF": "max_split_size_mb:64,per_process_memory_fraction:0.95",
+        "VLLM_DISABLE_PAITON_PLATFORM": "1",
+        "VLLM_ENABLE_V1_MULTIPROCESSING": "1",
+        "VLLM_PLUGINS": "register_paiton_models",
+        "VLLM_ROCM_USE_AITER": "0",
+        "VLLM_ROCM_USE_AITER_UNIFIED_ATTENTION": "0",
+        "PAITON_FN_RS_ALIGN": "1",
+        "PAITON_FN_STEP_PREP_ALIGN": "inplace"
+      },
+      "engine_args": [
+        "--dtype",
+        "bfloat16",
+        "--max-model-len",
+        "262144",
+        "--max-num-seqs",
+        "8",
+        "--max-num-batched-tokens",
+        "2048",
+        "--kv-cache-memory-bytes",
+        "4831838208",
+        "--enable-prefix-caching",
+        "--block-size",
+        "2048",
+        "--mamba-cache-mode",
+        "align",
+        "--language-model-only",
+        "--reasoning-parser",
+        "qwen3",
+        "--enable-auto-tool-choice",
+        "--tool-call-parser",
+        "qwen3_xml",
+        "--seed",
+        "0",
+        "--tensor-parallel-size",
+        "2",
+        "--speculative-config",
+        "{\"method\": \"mtp\", \"num_speculative_tokens\": 3}"
+      ],
+      "disabled_pth": [
+        "/usr/local/lib/python3.12/dist-packages/000_paiton_runtime_compat.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_dflash_prefill_skip.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_draft_fp8_gemm.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_fixed.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_merged_prefill.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_scan.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_scan_xd.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_tiled.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_verify_fused.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_gdn_zerocopy.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_kv4.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_lmhead_w8.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_ngram_codraft.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_prefill_attention96.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_prefill_attention_long.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_prefill_tall.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_rms_decode.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_rms_prefill.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_silu_decode.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_silu_prefill.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzz_paiton_w3_decode.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_attn_pad_rows.pth",
+        "/usr/local/lib/python3.12/dist-packages/zzzzzz_paiton_gdn_norm_warmup.pth"
+      ],
+      "seed": "a8",
+      "requires": [
+        "mtp/mtp-draft-e4m3.safetensors"
+      ],
+      "note": "3-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 4.5 GiB per GPU (560,951 tokens)",
+      "host_pools_default": "auto",
+      "kv_pool_tokens": 560951,
+      "status": "DEV (rc2): not routed from --prefix-caching until its served gate passes",
+      "image_key": "image_4bit_native",
+      "native": {
+        "worker_cls": "paiton_vllm_plugin.flashnext.fnworker.PaitonFNWorker",
+        "mask_invalid": "99,98",
+        "card_budget_gib": 31.55,
+        "guard": "enforce",
+        "guard_module": "paiton_vllm_plugin.flashnext.fnguard",
+        "log_mount": "/native-log",
+        "engine_args_native": [
+          "--enforce-eager"
+        ],
+        "env_native": {
+          "PAITON_FN_NATIVE": "1",
+          "PAITON_FN_MODE_NAME": "3bit-long-cache-mtp-native",
+          "PAITON_FN_PF_R2": "1",
+          "PAITON_FN_PF_R2_MIXED": "1",
+          "VLLM_USE_V2_MODEL_RUNNER": "0",
+          "PAITON_FN_TAIL_BYPASS": "1",
+          "PAITON_FN_TIER_DYNAMIC": "0",
+          "PAITON_FN_ASYNC": "1",
+          "PAITON_FN_EARLY_TOKENS": "1",
+          "PAITON_FN_DROP_DEAD_ROWS": "1",
+          "PAITON_FN_PF_MIXED_MTP": "1",
+          "PAITON_FN_MALL_PF": "d1:mlp:4:40,d2:mlp:4,d3-8:win:4",
+          "PAITON_MOE_PF_W3": "down162+gu",
+          "PAITON_FN_ADMIT": "finish",
+          "PAITON_FN_ADMIT_MARGIN_MS": "5",
+          "PAITON_FN_PF_RS_LL": "1",
+          "PAITON_TP_COLLECTIVE_PATH": "/opt/paiton/runtime/tp-collective-rsll/tp_collective.so"
+        },
+        "note": "3-bit, native Paiton worker with MTP (K 3) and prefix caching: align mode, 2,048-token blocks, 262,144-token window, KV 4.5 GiB per GPU (560,951 tokens)",
+        "lib_dir_mount": "/opt/paiton/runtime/fnexec-pc",
+        "all_vram": true,
+        "all_vram_note": "the 3-bit manifest places every expert in VRAM: no dynamic tier, so the idle-KV lease, ACT lend and TIER_DYNAMIC=1 fail the executor start (E_ARGS); the launcher refuses them up front",
+        "native_only": true,
+        "drafters": {
+          "stock": "weights_3bit",
+          "distilled": "weights_3bit_mtpft"
+        },
+        "drafter_default": "distilled",
+        "manifest_by_drafter": {
+          "stock": "manifest-3bit-long-cache-mtp-native-stock.json"
+        },
+        "kv_tier": {
+          "kv_transfer_config": {
+            "kv_connector": "OffloadingConnector",
+            "kv_role": "kv_both",
+            "kv_connector_extra_config": {
+              "spec_name": "NativeCPUOffloadingSpec",
+              "spec_module_path": "paiton_vllm_plugin.flashnext.fnkvt"
+            }
+          },
+          "env": {
+            "PAITON_FN_KV_TIER": "1",
+            "PAITON_FN_EARLY_TOKENS": "0",
+            "PAITON_FN_MALL_PF": "off"
+          },
+          "min_gib_per_gpu": 1.0,
+          "status": "release candidate 20261023: on by default, sized at start from the host (--native-kv-tier auto; GIB or off override it)",
+          "note": "--native-kv-tier auto (default) = min(16, floor((MemAvailable [<= --memory] - the mode's resident RAM - its start margin - 8 GiB executor host reserve) / 2)) GiB per GPU, off below 2; cpu_bytes_to_use = 2 x GIB (both ranks); pageable layout (private memory, a 16 MiB pinned staging ring per rank); the executor refuses a tier that leaves < 8 GiB of MemAvailable / cgroup headroom",
+          "auto": {
+            "max_gib_per_gpu": 16,
+            "min_gib_per_gpu": 2,
+            "host_reserve_gib": 8
+          },
+          "trade": "with the RAM tier on, the executor needs PAITON_FN_EARLY_TOKENS=0 and PAITON_FN_MALL_PF=off (its block copies run on the side stream)"
+        },
+        "torch_reference_mode": "prefill-long"
       }
     }
   }
