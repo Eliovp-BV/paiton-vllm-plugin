@@ -10,7 +10,7 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**24 October: 3-bit accuracy update.** New 3-bit weights (revision `ae09a11f55638066b852aeff72e970d7a44e4148`), closer to
+**24 October: 3-bit accuracy update.** New 3-bit weights (revision `383fa4b221a992fc2437500328056ef05355c8eb`), closer to
 the 16-bit model. Same format, image, launcher and speed.
 
 | Against bf16 | Change |
@@ -160,7 +160,7 @@ terminal too.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision ae09a11f55638066b852aeff72e970d7a44e4148 \
+  --revision 383fa4b221a992fc2437500328056ef05355c8eb \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -169,7 +169,7 @@ Without `hf`, replace the `hf download` command with:
 
 ```bash
 python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="ae09a11f55638066b852aeff72e970d7a44e4148", local_dir=os.environ["PAITON_W3ROT_DIR"])'
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="383fa4b221a992fc2437500328056ef05355c8eb", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>
