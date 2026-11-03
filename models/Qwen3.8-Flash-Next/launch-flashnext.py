@@ -32,7 +32,7 @@ Usage: launch-flashnext.py [--mode ...] [--prefix-caching] [--port 18982] [--hos
        [--weights DIR] [--cache DIR] [--image REF] [--devices GPU-xxx,GPU-yyy] [--served-model-name Qwen3.8-Flash-Next]
 Weights: downloaded once from the Hugging Face repo in modes.json (pinned revision, SHA256SUMS verified) into --weights.
 """
-import argparse, json, os, pathlib, re, shlex, shutil, subprocess, sys
+import argparse, hashlib, json, math, os, pathlib, re, shlex, shutil, subprocess, sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 CFG = json.loads((HERE / 'modes.json').read_text()); COMMON = CFG['common']; MODES = CFG['modes']
@@ -793,6 +793,132 @@ def native_manifest_check(a, env, lib, weights=None):
     if a.dry_run: print('WARNING:', msg)
     else: sys.exit(msg)
 
+# --extend-cache [auto|ram|disk] (native cache modes, off unless given; session hibernation v1, ported from the 27B launcher):
+# sizes the prefix-cache tiers behind VRAM from this host. The RAM tier keeps a copy of what the GPU pool holds, so it adds
+# capacity only when it holds clearly more: auto keeps the RAM tier (--native-kv-tier auto) when it holds at least 1.25 x the
+# GPU pool, otherwise an NVMe/SSD disk tier behind a RAM staging tier that holds one whole session of the mode's window (a 262K
+# session = 128 attention blocks + 14 recurrent-state slots of 14.55 MB per GPU = 2 GiB), or more when the host has it. The disk
+# tier keeps sessions across server restarts: one folder per configuration (FINGERPRINT.json: image, executor and its KV files,
+# mode, window, weights, record format) under --disk-cache-dir (default ~/.cache/paiton/flashnext/kv-disk), mode 0700, at most
+# min(64 GiB, a quarter of the free space); a folder over its cap is removed at the next start, --wipe-disk-cache removes them
+# all. Spinning disks are refused (--disk-cache-allow-hdd). Block hashes are sha256 so a restart finds the same files.
+FN_BLOCK_STRIDE = 14548992          # bytes of one KV block (= one host-tier slot) per GPU in every native cache mode (kv-meta)
+FN_SESSION_STATE_SLOTS = 14         # recurrent-state slots a session keeps in the tier (7 groups at its end and one block earlier)
+EXTEND_CACHE_RAM_FACTOR = 1.25
+EXTEND_CACHE_DISK_MAX_GIB, EXTEND_CACHE_DISK_FREE_SHARE = 64.0, 0.25
+# The staging tier is small and the disk tier reads with O_DIRECT (no page cache), so it is sized from the free RAM after the mode's
+# resident RAM and a 4 GiB margin (not the RAM tier's start margin + 8 GiB executor reserve: a 64 GiB host keeps ~7 GiB beside the
+# 3-bit cache mode, 2c2-3bit-64g); the executor's own reserve shrinks with it (at least 2 GiB, 8 where the host has it).
+DISK_STAGING_MARGIN_GIB = 4.0
+DISK_CACHE_FORMAT = 1               # bump when the stored record changes outside the executor (the lib sha covers its own)
+SYS_DEV_BLOCK = '/sys/dev/block'
+
+def existing_parent(path):
+    path = pathlib.Path(path)
+    while not path.exists() and path != path.parent: path = path.parent
+    return path
+
+def storage_is_rotational(path):
+    """True on a spinning disk, False on NVMe/SSD, None when the device cannot be determined (network, virtual, pooled)."""
+    dev = os.stat(existing_parent(path)).st_dev
+    try: node = (pathlib.Path(SYS_DEV_BLOCK) / f'{os.major(dev)}:{os.minor(dev)}').resolve(strict=True)
+    except OSError: return None
+    for folder in (node, node.parent):   # a partition's queue belongs to its disk
+        try: return (folder / 'queue' / 'rotational').read_text().strip() == '1'
+        except OSError: continue
+    return None
+
+def folder_bytes(path):
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            try: total += os.lstat(os.path.join(root, name)).st_size
+            except OSError: pass
+    return total
+
+def disk_cache_base(a, cache):
+    base = pathlib.Path(os.path.expanduser(a.disk_cache_dir)).resolve() if a.disk_cache_dir else cache.parent / 'kv-disk'
+    if base == pathlib.Path('/') or ':' in str(base) or '\n' in str(base):
+        sys.exit(f'--disk-cache-dir {base}: not the root directory, no colons or newlines (Docker volume syntax)')
+    return base
+
+def extend_cache_plan(a, m, engine_args_kv, window, need_gib, user_tier=None):
+    """--extend-cache: sets a.native_kv_tier (GiB per GPU), a.disk_tier ({'base', 'cap_gib', 'reserve_gib'} or None); returns the
+    note. user_tier: --native-kv-tier GIB with --extend-cache disk (the RAM tier in front of the disk, at least one session)."""
+    kvt = m['native']['kv_tier']; pool_gib = engine_args_kv / 2 ** 30
+    ram = a.native_kv_tier or 0.0
+    if a.extend_cache == 'ram' or (a.extend_cache == 'auto' and ram >= EXTEND_CACHE_RAM_FACTOR * pool_gib):
+        if not ram: sys.exit(f'--extend-cache ram: no room for a RAM tier on this host ({a.native_kv_tier_why}); use --extend-cache disk')
+        return (f'--extend-cache {a.extend_cache}: system memory, {ram:g} GiB per GPU next to the GPU pool\'s {pool_gib:.1f} GiB'
+                + ('' if ram >= EXTEND_CACHE_RAM_FACTOR * pool_gib else f' (under {EXTEND_CACHE_RAM_FACTOR:g}x the pool: few hits for '
+                   'sessions taking turns; --extend-cache disk keeps them)') + '; no disk tier')
+    slots = -(-window // 2048) + FN_SESSION_STATE_SLOTS
+    staging = math.ceil(2 * slots * FN_BLOCK_STRIDE / 2 ** 30) / 2   # one session of the window, whole half GiB
+    avail = meminfo_gib('MemAvailable')
+    if avail is None: sys.exit('--extend-cache: /proc/meminfo unreadable; cannot size the staging tier')
+    spare = avail - need_gib - DISK_STAGING_MARGIN_GIB
+    why = (f'(available {avail:.0f} - resident {need_gib:.0f} - margin {DISK_STAGING_MARGIN_GIB:g}) = {spare:.1f} GiB for both GPUs')
+    if user_tier:
+        if user_tier < staging: sys.exit(f'--native-kv-tier {user_tier:g} with --extend-cache disk: at least {staging:g} GiB per GPU (one session)')
+        t = float(user_tier)
+    else:
+        t = float(min(kvt['auto']['max_gib_per_gpu'], max(staging, math.floor((spare - 8) / 2))))
+    if 2 * t > spare:
+        sys.exit(f'--extend-cache {a.extend_cache}: the disk tier needs a {t:g} GiB RAM staging tier per GPU (one {window:,}-token session '
+                 f'= {staging:g} GiB), this host has room for less: {why}')
+    reserve = max(2.0, min(8.0, math.floor(spare - 2 * t)))
+    base = a.disk_cache_base
+    rot = storage_is_rotational(base)
+    if rot and not a.disk_cache_allow_hdd:
+        sys.exit(f'--extend-cache: {base} is on a spinning disk; the disk tier needs NVMe or SSD storage (point --disk-cache-dir at '
+                 'one), or pass --disk-cache-allow-hdd')
+    cap = a.disk_cache_gib
+    if cap is None:
+        used = folder_bytes(base) / 2 ** 30 if base.is_dir() else 0.0
+        free = shutil.disk_usage(existing_parent(base)).free / 2 ** 30
+        cap = float(min(EXTEND_CACHE_DISK_MAX_GIB, math.floor(EXTEND_CACHE_DISK_FREE_SHARE * (free + used))))
+        if cap < 2 * staging:
+            sys.exit(f'--extend-cache: {free:.0f} GiB free under {base}; a quarter of it ({cap:g} GiB) holds less than one session '
+                     f'({2 * staging:g} GiB); free space or point --disk-cache-dir at a larger NVMe/SSD')
+    a.native_kv_tier, a.native_kv_tier_why = t, f'RAM staging tier of the disk tier: {why}; executor reserve {reserve:g} GiB'
+    a.disk_tier = {'base': base, 'cap_gib': cap, 'reserve_gib': reserve}
+    sessions = int(cap * 2 ** 30 / (2 * slots * FN_BLOCK_STRIDE))
+    return (f'--extend-cache {a.extend_cache}: NVMe/SSD under {base}, up to {cap:g} GiB (about {sessions} sessions of {window:,} tokens; '
+            f'checked at start, an over-full folder is removed then) behind a {t:g} GiB per GPU RAM tier (one session needs {staging:g})'
+            + (f'; system memory alone would hold {ram:g} GiB per GPU, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU pool\'s {pool_gib:.1f}'
+               if a.extend_cache == 'auto' else '')
+            + ('; the storage type of that folder is unknown: the disk tier wants NVMe or SSD' if rot is None else ''))
+
+def disk_cache_folder(a, m, image, lib, weights, window):
+    """The disk tier's folder of this configuration: base/flashnext-<sha>, FINGERPRINT.json = everything that changes a stored
+    record (image, executor library and its KV files, mode, window, weights, drafter, format)."""
+    image_id = image
+    if not a.dry_run:
+        try: image_id = subprocess.run(['docker', 'image', 'inspect', '--format', '{{.Id}}', image], capture_output=True, text=True,
+                                       timeout=30).stdout.strip() or image
+        except (OSError, subprocess.SubprocessError): pass
+    mode_name = m['native'].get('env_native', {}).get('PAITON_FN_MODE_NAME', a.mode)
+    files = {}
+    if lib is not None:
+        for f in [lib] + [lib.parent / f'{k}-{mode_name}.json' for k in ('kv-spec', 'kv-meta', 'manifest')]:
+            files[f.name] = sha256_file(f) if f.is_file() else None
+    wman = pathlib.Path(weights) / 'manifest.json'
+    value = {'format': DISK_CACHE_FORMAT, 'image': image_id, 'executor': files or 'image', 'mode': a.mode, 'window': window,
+             'weights': str(weights), 'weights_manifest': sha256_file(wman) if wman.is_file() else None,
+             'drafter': a.drafter, 'spec_tokens': a.spec_tokens}
+    name = 'flashnext-' + hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()[:16]
+    folder = a.disk_tier['base'] / name
+    used = folder_bytes(folder) / 2 ** 30 if folder.is_dir() else 0.0
+    if used > a.disk_tier['cap_gib']:   # the tier has no limit while it runs: an over-full folder of this configuration goes now
+        print(f'disk tier: {folder} holds {used:.1f} GiB, more than its {a.disk_tier["cap_gib"]:g} GiB cap; '
+              + ('a real start removes it first' if a.dry_run else 'removing it before the start'))
+        if not a.dry_run: shutil.rmtree(folder)
+    if not a.dry_run:
+        a.disk_tier['base'].mkdir(mode=0o700, parents=True, exist_ok=True); folder.mkdir(mode=0o700, exist_ok=True); folder.chmod(0o700)
+        (folder / 'FINGERPRINT.json').write_text(json.dumps(value, indent=1, sort_keys=True) + '\n')
+    print(f'disk tier: {folder} ({used:.1f} GiB stored; prompts derived data stays on this disk until --wipe-disk-cache)')
+    return folder
+
 def native_apply(a, m, env, engine_args, cache, weights=None):
     """--mode with a native block: --fn-worker native (default) wires the native worker (DESIGN 4.1 / 5): worker class, the three
     guard layers, libpaiton_fnexec and the init args through the environment. --fn-worker torch keeps the torch worker with the
@@ -837,6 +963,11 @@ def native_apply(a, m, env, engine_args, cache, weights=None):
     if a.native_kv_tier:   # opt-in RAM prefix tier through the native executor (fnexec_kvt_*): vLLM's OffloadingConnector
         kvt = nat['kv_tier']; cfg = json.loads(json.dumps(kvt['kv_transfer_config']))   # scheduler side unchanged, the glue's spec swaps the worker
         cfg['kv_connector_extra_config']['cpu_bytes_to_use'] = int(round(2 * a.native_kv_tier * (1 << 30)))   # total of both ranks, as CPUOffloadingSpec
+        if getattr(a, 'disk_tier', None):   # --extend-cache disk: vLLM's tiering manager, the native RAM tier first, files second
+            cfg['kv_connector_extra_config'].update(spec_name='NativeTieringOffloadingSpec', secondary_tiers=[
+                {'type': 'NativeFsTier', 'module_path': cfg['kv_connector_extra_config']['spec_module_path'], 'root_dir': '/kvdisk'}])
+            engine_args += ['--prefix-caching-hash-algo', 'sha256']   # the same block hashes after a restart (vLLM's fixed seed)
+            env['PAITON_FN_KVT_HOST_RESERVE_GIB'] = f"{a.disk_tier['reserve_gib']:g}"
         engine_args += ['--kv-transfer-config', json.dumps(cfg)]; env.update(kvt['env']); env['PAITON_FN_KVT_LAYOUT'] = a.native_kv_tier_layout
         print(f'native RAM prefix tier: {a.native_kv_tier:g} GiB per GPU ({2 * a.native_kv_tier:g} GiB of host RAM, {a.native_kv_tier_layout}); '
               + (f'auto {a.native_kv_tier_why}' if getattr(a, 'native_kv_tier_why', None) else 'as requested'))
@@ -924,6 +1055,16 @@ def main():
                     'mode\'s own memory (the start line "native RAM prefix tier:" prints the formula), off when RAM is short; off: VRAM hits only')
     ap.add_argument('--memory', type=float, default=None, metavar='GIB', help='cap the server container\'s RAM (docker --memory, no swap); '
                     'the RAM checks, the GTT limit (half of it) and the RAM prefix tier are then sized as on a host with GIB of RAM')
+    ap.add_argument('--extend-cache', nargs='?', const='auto', choices=('auto', 'ram', 'disk'), default=None,
+                    help='native cache modes (opt-in): size the prefix-cache tiers behind VRAM from this host. auto (no value): system '
+                    'memory when its tier holds at least 1.25x the GPU pool, otherwise NVMe/SSD (--disk-cache-dir) behind a RAM staging tier '
+                    'that holds one session; the disk tier keeps sessions across server restarts. ram or disk force one')
+    ap.add_argument('--disk-cache-dir', default=None, metavar='DIR', help='--extend-cache: where the disk tier keeps its per-configuration '
+                    'folders (default ~/.cache/paiton/flashnext/kv-disk; NVMe/SSD; the files derive from your prompts)')
+    ap.add_argument('--disk-cache-gib', type=float, default=None, metavar='GIB', help='--extend-cache: cap of this configuration\'s folder '
+                    '(default min(64, a quarter of the free space)); checked at start')
+    ap.add_argument('--disk-cache-allow-hdd', action='store_true', help='let --extend-cache put its disk tier on a spinning disk (slow restores)')
+    ap.add_argument('--wipe-disk-cache', action='store_true', help='remove every disk-tier folder under --disk-cache-dir (or the default) and exit')
     ap.add_argument('--native-kv-tier-layout', choices=('pageable', 'pinned'), default='pageable', help='--native-kv-tier host layout (default pageable: '
                     'private anonymous memory through a small pinned staging ring; pinned = direct DMA, charged to the GPU\'s GTT)')
     ap.add_argument('--prefix-cache-retention-interval', type=int, default=None, metavar='TOKENS', help='prefix-caching modes (development): keep the '
@@ -931,6 +1072,15 @@ def main():
                     'Default: vLLM\'s (MTP modes: dense; MTP off: only the latest replay boundary and shared-prefix junctions)')
     a = ap.parse_args(); m = MODES[a.mode]
     global MEM_CAP_GIB; MEM_CAP_GIB = a.memory
+    a.disk_tier = None
+    if a.wipe_disk_cache:
+        base = disk_cache_base(a, pathlib.Path(os.path.expanduser('~/.cache/paiton/flashnext/x')))
+        gone = sorted(p for p in base.glob('flashnext-*') if p.is_dir()) if base.is_dir() else []
+        for p in gone:
+            print(('would remove ' if a.dry_run else 'removing ') + str(p))
+            if not a.dry_run: shutil.rmtree(p)
+        print(f'--wipe-disk-cache: {len(gone)} folder(s) under {base}' if gone else f'--wipe-disk-cache: nothing under {base}'); return
+    user_kv_tier = a.native_kv_tier
     alias = next((k for k, v in MODES.items() if (v.get('native') or {}).get('serves_mode') == a.mode), None)
     # the native worker is the default of a mode whose native alias says so (native.is_default) once the alias's image carries the
     # executor (fnexec_in_image); --fn-worker torch keeps the torch worker, and --vision does too (no image input on the native worker yet),
@@ -1125,9 +1275,25 @@ def main():
             (ram_need_gib(tier_gib, pinned_gib, pageable_gib, filebacked_gib), 16.0 if pinned_gib else 8.0)
         a.native_kv_tier, a.native_kv_tier_why = kv_tier_auto(m['native']['kv_tier'], need + vx, marg)
         if not a.native_kv_tier: print(f'native RAM prefix tier: {a.native_kv_tier_why}; prefix caching stays on, in VRAM only')
+    if a.extend_cache:
+        if not kvt or (a.fn_worker or 'native') != 'native':
+            sys.exit(f'--extend-cache: --mode {a.mode} has no native prefix-cache tier (native cache modes: '
+                     + ', '.join(k for k, v in MODES.items() if (v.get('native') or {}).get('kv_tier')) + '; the native worker only)')
+        if user_kv_tier is not None and user_kv_tier != 'auto' and a.extend_cache != 'disk':
+            sys.exit('--extend-cache sizes the RAM tier itself; drop --native-kv-tier (with --extend-cache disk it sets the RAM tier in '
+                     'front of the disk)')
+        if not kvt.get('auto'): sys.exit(f'--extend-cache: --mode {a.mode} has no RAM tier sizing rule')
+        if a.native_kv_tier is None: a.native_kv_tier, a.native_kv_tier_why = 0.0, 'not sized'
+        ea = m['engine_args']; kvb = a.kv_cache_memory_bytes or int(ea[ea.index('--kv-cache-memory-bytes') + 1])
+        win = int(ea[ea.index('--max-model-len') + 1])
+        res0 = resident_gib(m, a.ple_host, a.expert_cold) if m.get('expert_tier') else None
+        need0 = res0 if res0 is not None else ram_need_gib(tier_gib, pinned_gib, pageable_gib, filebacked_gib)
+        a.disk_cache_base = disk_cache_base(a, pathlib.Path(a.cache or os.path.expanduser(f'~/.cache/paiton/flashnext/{a.mode}')))
+        print(extend_cache_plan(a, m, kvb, win, need0 + vx, user_kv_tier if isinstance(user_kv_tier, float) else None))
     vx += 2 * a.native_kv_tier if a.native_kv_tier else 0.0   # --native-kv-tier: both GPUs' tier in host RAM (pageable; pinned also counts here)
     res = resident_gib(m, a.ple_host, a.expert_cold) if m.get('expert_tier') else None
-    missing += ram_check(tier_gib, (16.0 if pinned_gib else 8.0) + vx, pinned_gib, pageable_gib, filebacked_gib,
+    start_margin = DISK_STAGING_MARGIN_GIB if a.disk_tier else (16.0 if pinned_gib else 8.0)   # disk tier: its staging rule above
+    missing += ram_check(tier_gib, start_margin + vx, pinned_gib, pageable_gib, filebacked_gib,
                          resident=res + vx if res is not None else None)
     if m.get('expert_tier'):
         tot = meminfo_gib('MemTotal')
@@ -1236,6 +1402,10 @@ def main():
     if a.memory: cmd += ['--memory', f'{int(a.memory * 1024)}m', '--memory-swap', f'{int(a.memory * 1024)}m']
     if a.detach: cmd += ['-d']
     native_mounts = native_apply(a, m, env, engine_args, cache, weights) if m.get('native') else []
+    if a.disk_tier:
+        lib = pathlib.Path(a.fnexec_lib).resolve() if a.fnexec_lib else None
+        win = int(engine_args[engine_args.index('--max-model-len') + 1])
+        native_mounts += ['-v', f'{disk_cache_folder(a, m, image, lib, weights, win)}:/kvdisk:rw']
     for k in ENV_OVERRIDES:   # caller's environment wins over the mode default (e.g. PAITON_FN_ROPE_TRIM=0 to keep the full rotary cache)
         if k in os.environ: env[k] = os.environ[k]
     for kv in a.dev_env:   # last word on the environment: overrides mode values (e.g. the native R2 defaults' opt-out)
