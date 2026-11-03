@@ -41,7 +41,8 @@ def test_auto_small_host_gets_the_disk_tier(lf, monkeypatch, tmp_path, capsys):
     cfg, eng = kvt_cfg(inner)
     x = cfg['kv_connector_extra_config']
     assert x['spec_name'] == 'NativeTieringOffloadingSpec' and x['cpu_bytes_to_use'] == 2 << 30
-    assert x['secondary_tiers'] == [{'type': 'NativeFsTier', 'module_path': 'paiton_vllm_plugin.flashnext.fnkvt', 'root_dir': '/kvdisk'}]
+    assert x['secondary_tiers'] == [{'type': 'NativeFsTier', 'module_path': 'paiton_vllm_plugin.flashnext.fnkvt', 'root_dir': '/kvdisk',
+                                     'max_bytes': 64 << 30}]
     assert eng[eng.index('--prefix-caching-hash-algo') + 1] == 'sha256' and env['PAITON_FN_KVT_HOST_RESERVE_GIB'] == '3'
     assert 'behind a 1 GiB per GPU RAM tier (one session needs 1)' in out and 'up to 64 GiB' in out
     disk = [v for v in vols if v.endswith(':/kvdisk:rw')]

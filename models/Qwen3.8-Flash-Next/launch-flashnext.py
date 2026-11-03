@@ -800,7 +800,8 @@ def native_manifest_check(a, env, lib, weights=None):
 # session = 128 attention blocks + 14 recurrent-state slots of up to 15.76 MB per GPU = 2.5 GiB), or more when the host has it. The disk
 # tier keeps sessions across server restarts: one folder per configuration (FINGERPRINT.json: image, executor and its KV files,
 # mode, window, weights, record format) under --disk-cache-dir (default ~/.cache/paiton/flashnext/kv-disk), mode 0700, at most
-# min(64 GiB, a quarter of the free space); a folder over its cap is removed at the next start, --wipe-disk-cache removes them
+# min(64 GiB, a quarter of the free space); past the cap the tier removes its oldest block files (and a folder found over its cap
+# at a start is removed), --wipe-disk-cache removes them
 # all. Spinning disks are refused (--disk-cache-allow-hdd). Block hashes are sha256 so a restart finds the same files.
 FN_BLOCK_STRIDE = 15761408          # bytes of one KV block (= one host-tier slot) per GPU: the MTP cache modes (kv-meta; MTP off: 14,548,992)
 FN_SESSION_STATE_SLOTS = 14         # recurrent-state slots a session keeps in the tier (7 groups at its end and one block earlier)
@@ -884,7 +885,7 @@ def extend_cache_plan(a, m, engine_args_kv, window, need_gib, user_tier=None):
     a.disk_tier = {'base': base, 'cap_gib': cap, 'reserve_gib': reserve}
     sessions = int(cap * 2 ** 30 / (2 * slots * FN_BLOCK_STRIDE))
     return (f'--extend-cache {a.extend_cache}: NVMe/SSD under {base}, up to {cap:g} GiB (about {sessions} sessions of {window:,} tokens; '
-            f'checked at start, an over-full folder is removed then) behind a {t:g} GiB per GPU RAM tier (one session needs {staging:g})'
+            f'past it the oldest blocks are removed) behind a {t:g} GiB per GPU RAM tier (one session needs {staging:g})'
             + (f'; system memory alone would hold {ram:g} GiB per GPU, under {EXTEND_CACHE_RAM_FACTOR:g}x the GPU pool\'s {pool_gib:.1f}'
                if a.extend_cache == 'auto' else '')
             + ('; the storage type of that folder is unknown: the disk tier wants NVMe or SSD' if rot is None else ''))
@@ -965,7 +966,8 @@ def native_apply(a, m, env, engine_args, cache, weights=None):
         cfg['kv_connector_extra_config']['cpu_bytes_to_use'] = int(round(2 * a.native_kv_tier * (1 << 30)))   # total of both ranks, as CPUOffloadingSpec
         if getattr(a, 'disk_tier', None):   # --extend-cache disk: vLLM's tiering manager, the native RAM tier first, files second
             cfg['kv_connector_extra_config'].update(spec_name='NativeTieringOffloadingSpec', secondary_tiers=[
-                {'type': 'NativeFsTier', 'module_path': cfg['kv_connector_extra_config']['spec_module_path'], 'root_dir': '/kvdisk'}])
+                {'type': 'NativeFsTier', 'module_path': cfg['kv_connector_extra_config']['spec_module_path'], 'root_dir': '/kvdisk',
+                 'max_bytes': int(a.disk_tier['cap_gib'] * 2 ** 30)}])   # past the cap the oldest block files go
             engine_args += ['--prefix-caching-hash-algo', 'sha256']   # the same block hashes after a restart (vLLM's fixed seed)
             env['PAITON_FN_KVT_HOST_RESERVE_GIB'] = f"{a.disk_tier['reserve_gib']:g}"
         engine_args += ['--kv-transfer-config', json.dumps(cfg)]; env.update(kvt['env']); env['PAITON_FN_KVT_LAYOUT'] = a.native_kv_tier_layout
