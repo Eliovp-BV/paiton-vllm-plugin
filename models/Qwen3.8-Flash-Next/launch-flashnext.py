@@ -797,12 +797,12 @@ def native_manifest_check(a, env, lib, weights=None):
 # sizes the prefix-cache tiers behind VRAM from this host. The RAM tier keeps a copy of what the GPU pool holds, so it adds
 # capacity only when it holds clearly more: auto keeps the RAM tier (--native-kv-tier auto) when it holds at least 1.25 x the
 # GPU pool, otherwise an NVMe/SSD disk tier behind a RAM staging tier that holds one whole session of the mode's window (a 262K
-# session = 128 attention blocks + 14 recurrent-state slots of 14.55 MB per GPU = 2 GiB), or more when the host has it. The disk
+# session = 128 attention blocks + 14 recurrent-state slots of up to 15.76 MB per GPU = 2.5 GiB), or more when the host has it. The disk
 # tier keeps sessions across server restarts: one folder per configuration (FINGERPRINT.json: image, executor and its KV files,
 # mode, window, weights, record format) under --disk-cache-dir (default ~/.cache/paiton/flashnext/kv-disk), mode 0700, at most
 # min(64 GiB, a quarter of the free space); a folder over its cap is removed at the next start, --wipe-disk-cache removes them
 # all. Spinning disks are refused (--disk-cache-allow-hdd). Block hashes are sha256 so a restart finds the same files.
-FN_BLOCK_STRIDE = 14548992          # bytes of one KV block (= one host-tier slot) per GPU in every native cache mode (kv-meta)
+FN_BLOCK_STRIDE = 15761408          # bytes of one KV block (= one host-tier slot) per GPU: the MTP cache modes (kv-meta; MTP off: 14,548,992)
 FN_SESSION_STATE_SLOTS = 14         # recurrent-state slots a session keeps in the tier (7 groups at its end and one block earlier)
 EXTEND_CACHE_RAM_FACTOR = 1.25
 EXTEND_CACHE_DISK_MAX_GIB, EXTEND_CACHE_DISK_FREE_SHARE = 64.0, 0.25

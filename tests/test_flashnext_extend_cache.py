@@ -58,14 +58,14 @@ def test_disk_tier_folder_fingerprint(lf, monkeypatch, tmp_path, capsys):
                                           '--disk-cache-dir', str(tmp_path / 'kv'), *extra, mode='4bit-long-cache-mtp-native')
         return next(v for v in vols if v.endswith(':/kvdisk:rw')).split(':')[0], out
     a, out = run()
-    assert 'behind a 16 GiB per GPU RAM tier (one session needs 2)' in out   # a 262K session: 142 slots of 14.55 MB
+    assert 'behind a 16 GiB per GPU RAM tier (one session needs 2.5)' in out   # a 262K session: 142 slots of 15.76 MB
     b, _ = run()
     lib.write_bytes(b'b')   # another executor build: another folder (its records may differ)
     c, _ = run()
     assert a == b != c
     d, out = run('--native-kv-tier', '10')   # the RAM tier in front of the disk, explicit
     assert 'behind a 10 GiB per GPU RAM tier' in out and d == c
-    with pytest.raises(SystemExit, match='at least 2 GiB per GPU'):
+    with pytest.raises(SystemExit, match='at least 2.5 GiB per GPU'):
         run('--native-kv-tier', '1')
 
 
