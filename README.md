@@ -138,6 +138,12 @@ current Qwen3.8 27B guide above.
 | [FLUX.2 klein 4B](models/FLUX.2-klein/README.md) | Text to image through ComfyUI, web or CLI | [Results](models/FLUX.2-klein/BENCHMARKS.md) |
 | [Qwen-Image-2.1](models/Qwen-Image-2.1/README.md) | Image generation and editing through an API or CLI | [Results](models/Qwen-Image-2.1/BENCHMARKS.md) |
 
+### 3D generation
+
+| Model and guide | Main use | Benchmarks |
+| --- | --- | --- |
+| [Idol](models/Idol/README.md) | One image to a 3D Gaussian splat (`.ply`) through a CLI | [Results](models/Idol/BENCHMARKS.md) |
+
 ### Video generation
 
 | Model and guide | Main use | Benchmarks |
