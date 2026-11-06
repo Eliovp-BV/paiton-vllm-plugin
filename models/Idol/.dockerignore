@@ -1,0 +1,15 @@
+*
+!Dockerfile
+!requirements.txt
+!LICENSE
+!NOTICE
+!README.md
+!THIRD_PARTY_NOTICES.md
+!paiton_idol/
+!paiton_idol/**
+!artifacts/
+!artifacts/*.so
+!artifacts/*.json
+!artifacts/SHA256SUMS
+**/__pycache__
+**/*.pyc

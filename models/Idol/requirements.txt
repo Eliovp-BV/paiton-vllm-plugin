@@ -1,0 +1,9 @@
+# Added to the pinned runtime (Python 3.12, ROCm 10.0, PyTorch 2.15 nightly, Transformers 5.17, Diffusers 0.41),
+# installed with --no-deps. Same versions as the measured setup.
+idol @ https://github.com/speridlabs/idol-sdk/archive/4702a7f00850e34b6e83a2170cc123c3e9570744.zip
+tensordict==0.15.4
+pyvers==0.2.3
+orjson==3.13.0
+cloudpickle==3.1.2
+plyfile==1.1.5
+timm==1.0.31

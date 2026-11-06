@@ -1,0 +1,10 @@
+{
+  "artifact": {"filename": "libidol_denoiser_gfx1201.so", "sha256": "4b7f8a1e85f042aabf8acacef8fcdf9770fc511b63a7cb4996673d973b3fc5c8", "size_bytes": 216024},
+  "abi": ["IdolCreate", "IdolSetCondition", "IdolStepEx", "IdolDestroy"],
+  "manifest_version": 1,
+  "model": {"repository": "speridlabs/idol", "revision": "2731c2291fc65a797c5cb627a5e5526fc1490902",
+            "file": "denoiser.safetensors", "weights": "stock fp32, read at load; fp16 copies made in memory"},
+  "target": {"arch": "gfx1201", "wavefront": 64},
+  "runtime_libraries": ["libamdhip64.so.7", "libhipblaslt.so.1", "librocblas.so.5"],
+  "framework_dependencies": []
+}

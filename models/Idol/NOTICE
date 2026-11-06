@@ -1,0 +1,12 @@
+Paiton Idol runtime
+Copyright ElioVP
+
+Idol was developed by Sperid Labs (speridlabs/idol, Apache-2.0). This package runs the unmodified idol-sdk
+(github.com/speridlabs/idol-sdk, commit 4702a7f, Apache-2.0) and replaces its denoiser sampler with a native
+implementation that reads the unmodified Idol weights. Model weights are downloaded separately from their pinned
+upstream repositories; none are redistributed here.
+
+DINOv3 is licensed under the DINOv3 License (Meta). The FLUX.2 autoencoder is downloaded from
+black-forest-labs/FLUX.2-klein-4B (Apache-2.0).
+
+This package does not imply endorsement by Sperid Labs, Meta or Black Forest Labs.
