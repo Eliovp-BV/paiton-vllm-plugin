@@ -8,7 +8,7 @@ and are not included or relicensed. Only the allowlisted native runtime binary a
 hipBLASLt, rocBLAS and the C/C++ runtime. It has no PyTorch or Triton binding or kernel dependency.
 
 The rest of the pipeline uses the unmodified idol-sdk (Apache-2.0) on PyTorch (BSD-style), Transformers and Diffusers
-(Apache-2.0), tensordict (MIT), pyvers (MIT), orjson (Apache-2.0 or MIT), cloudpickle (BSD-3-Clause), plyfile (GPL-3.0, an idol-sdk dependency, installed unmodified from PyPI; its source is on PyPI) and timm (Apache-2.0,
+(Apache-2.0), tensordict (MIT), pyvers (MIT), orjson (Apache-2.0 or MIT), cloudpickle (BSD-3-Clause), a write-only `plyfile.py` stand-in (own code, Apache-2.0, `plyshim/`; idol-sdk's `plyfile` dependency is not installed) and timm (Apache-2.0,
 used once to check the DINOv3 key mapping). These run in the PyTorch runtime inherited from the base image; keep the
 notices supplied with the installed dependencies.
 

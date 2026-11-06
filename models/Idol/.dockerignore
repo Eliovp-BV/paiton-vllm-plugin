@@ -13,3 +13,5 @@
 !artifacts/SHA256SUMS
 **/__pycache__
 **/*.pyc
+!plyshim/
+!plyshim/plyfile.py

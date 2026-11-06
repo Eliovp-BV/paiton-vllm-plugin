@@ -22,10 +22,12 @@ ENV PYTHONPATH=/opt/paiton/idol:/opt/paiton/idol-deps \
 COPY requirements.txt /opt/paiton/idol/requirements.txt
 RUN python3 -m pip install --no-cache-dir --no-deps --target /opt/paiton/idol-deps -r /opt/paiton/idol/requirements.txt
 COPY paiton_idol /opt/paiton/idol/paiton_idol
+# write-only stand-in for plyfile (GPL-3.0), used only by idol.gaussian.save_ply; own code, Apache-2.0
+COPY plyshim/plyfile.py /opt/paiton/idol/plyfile.py
 COPY artifacts /opt/paiton/idol/artifacts
 COPY LICENSE NOTICE README.md THIRD_PARTY_NOTICES.md /opt/paiton/idol/
 RUN cd /opt/paiton/idol/artifacts && sha256sum -c SHA256SUMS \
-    && python3 -c 'import idol, tensordict, plyfile, timm; from idol.pipeline import IdolPipeline; print("ok")'
+    && python3 -c 'import idol, tensordict, plyfile, timm; from idol.pipeline import IdolPipeline; assert plyfile.__file__ == "/opt/paiton/idol/plyfile.py", plyfile.__file__; print("ok")'
 WORKDIR /outputs
 ENTRYPOINT ["python3", "-m", "paiton_idol"]
 CMD ["--help"]
