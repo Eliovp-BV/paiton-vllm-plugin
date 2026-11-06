@@ -25,58 +25,60 @@ from the [speridlabs/idol model card](https://huggingface.co/speridlabs/idol) ("
 same code and settings on every GPU). R9700 rows: ours (release image), median of 8 images after one warm-up, see
 [BENCHMARKS.md](BENCHMARKS.md).
 
-| GPU | VRAM | Request time | Current price per GPU, USD (approximate) |
+| GPU | VRAM | Request time | Price per GPU, USD (approximate) |
 | --- | ---: | ---: | ---: |
 | B300 | 269 GB | 3.4 s | n/a [1] |
 | B200 | 179 GB | 3.6 s | n/a [1] |
 | H200 (NVL) | 140 GB | 6.6 s | ~33,700 [2] |
-| H100 | 80 GB | 6.7 s | ~32,400 [3] |
-| RTX 5090 | 32 GB | 14.1 s | ~7,550 [4] |
-| A100 | 80 GB | 16.3 s | ~17,800 [5] |
-| **Radeon AI PRO R9700, Paiton** | 32 GB | **16.4 s** | ~2,000 [6] |
-| L40S | 45 GB | 16.6 s | ~8,100 [7] |
+| H100 (PCIe 80 GB) | 80 GB | 6.7 s | ~31,000 [3] |
+| RTX 5090 | 32 GB | 14.1 s | ~3,300 [4] |
+| A100 | 80 GB | 16.3 s | ~19,800 [5] |
+| **Radeon AI PRO R9700, Paiton** | 32 GB | **16.4 s** | ~1,900 [6] |
+| L40S | 45 GB | 16.6 s | ~7,570 [7] |
 | RTX 4090 | 24 GB | 19.1 s | ~4,800 [8] |
-| Radeon AI PRO R9700, Paiton `--exact` | 32 GB | 19.4 s | ~2,000 [6] |
-| Radeon AI PRO R9700, stock Idol | 32 GB | 39.2 s | ~2,000 [6] |
-| RTX 3080 | 10 GB | 46.2 s | ~710 [9] |
-| L4 | 22 GB | 54.6 s | ~3,580 [10] |
+| Radeon AI PRO R9700, Paiton `--exact` | 32 GB | 19.4 s | ~1,900 [6] |
+| Radeon AI PRO R9700, stock Idol | 32 GB | 39.2 s | ~1,900 [6] |
+| RTX 3080 (10 GB) | 10 GB | 46.2 s | ~710 [9] |
+| L4 | 22 GB | 54.6 s | ~3,400 [10] |
 
-How the prices were picked: the lowest in-stock new price on a US price tracker or retailer listing in early November
-2026, one card per row; no launch prices, used or refurbished cards. Prices are approximate and change daily.
+Lowest new US price seen on the date shown; approximate, prices move daily. One rule for every row: the lowest new
+price from a named US retailer or price tracker, taking the lower competitor price when in doubt.
 
 ## Performance per dollar
 
-3D assets per hour per $1,000 of GPU = 3600 / request time / current price × 1000, one GPU, sorted best first.
+3D assets per hour per $1,000 of GPU = 3600 / request time / price × 1000, one GPU, sorted best first.
 
-| GPU | Request time | Current price used, USD | 3D assets per hour per $1,000 |
+| GPU | Request time | Price used, USD | 3D assets per hour per $1,000 |
 | --- | ---: | ---: | ---: |
-| RTX 3080 | 46.2 s | 710 | 109.7 |
-| **Radeon AI PRO R9700, Paiton** | 16.4 s | 2,000 | **109.5** |
-| Radeon AI PRO R9700, Paiton `--exact` | 19.4 s | 2,000 | 92.5 |
-| Radeon AI PRO R9700, stock Idol | 39.2 s | 2,000 | 45.9 |
+| **Radeon AI PRO R9700, Paiton** | 16.4 s | 1,900 | **115.3** |
+| RTX 3080 10 GB | 46.2 s | 710 | 109.7 |
+| Radeon AI PRO R9700, Paiton `--exact` | 19.4 s | 1,900 | 97.4 |
+| RTX 5090 | 14.1 s | 3,300 | 77.4 |
+| Radeon AI PRO R9700, stock Idol | 39.2 s | 1,900 | 48.3 |
 | RTX 4090 | 19.1 s | 4,800 | 39.3 |
-| RTX 5090 | 14.1 s | 7,550 | 33.8 |
-| L40S | 16.6 s | 8,096 | 26.8 |
-| L4 | 54.6 s | 3,584 | 18.4 |
-| H100 | 6.7 s | 32,412 | 16.6 |
-| H200 (NVL) | 6.6 s | 33,732 | 16.2 |
-| A100 | 16.3 s | 17,789 | 12.4 |
+| L40S | 16.6 s | 7,570 | 28.6 |
+| L4 | 54.6 s | 3,400 | 19.4 |
+| H100 PCIe 80 GB | 6.7 s | 31,000 | 17.3 |
+| H200 NVL | 6.6 s | 33,732 | 16.2 |
+| A100 80 GB | 16.3 s | 19,789 | 11.2 |
 | B300, B200 | 3.4 s, 3.6 s | n/a | n/a |
-
-The RTX 3080 and the R9700 with Paiton are level per dollar; the R9700 finishes each asset 2.8× sooner and has 32 GB.
 
 Sources (price, seller or tracker, date):
 
-1. No public single-GPU listing found (B300 and B200 sell in 8-GPU systems), checked 6 Nov 2026.
-2. 33,731.99, CDW listing, PNY H200 NVL (4-6 week lead time), 21 Sep 2026; ServerSupply lists 35,995.
-3. 32,411.99, CDW listing, PNY H100 80 GB PCIe (marked discontinued), 21 Sep 2026; Newegg 32,879 on 2 Sep 2026.
-4. 7,550, lowest in-stock new (Amazon, ASUS TUF OC), https://videocardprices.com/card/nvidia-rtx-5090/, 4 Nov 2026.
-5. 17,789, Newegg listing, PNY A100 80 GB PCIe, https://www.newegg.com/p/N82E16814133879, Nov 2026.
-6. 2,000, lowest in-stock new (B&H, ASUS Turbo), https://gpuprix.com/us/gpus/radeon-ai-pro-r9700, 4 Nov 2026.
-7. 8,095.99, Newegg listing, PNY L40S, https://www.newegg.com/p/pl?d=l40s, Nov 2026.
-8. 4,800, lowest in-stock new (Amazon, ASUS ROG Strix OC), https://gpuprix.com/us/gpus/geforce-rtx-4090, 4 Nov 2026.
-9. 709.67, lowest in-stock new (Amazon, ASUS TUF RTX 3080 V2 OC), https://videocardprices.com/card/nvidia-rtx-3080/, 5 Nov 2026.
-10. 3,583.99, CDW listing, PNY L4 24 GB, https://www.cdw.com/product/pny-nvidia-l4-graphic-card-24-gb-low-profile/7549280, Nov 2026.
+1. Sold in 8-GPU systems only; no single-GPU price, 6 Nov 2026.
+2. 33,731.99, CDW, PNY H200 NVL (4-6 week lead time), listing of 21 Sep 2026.
+3. ~31,000, CloudZero, "H100 GPU cost in 2026", https://www.cloudzero.com/blog/h100-gpu-cost/ (2026; no retail list price).
+4. 3,299.99, Best Buy, MSI RTX 5090 Gaming Trio, lowest tracked price in Tom's Hardware's tracker,
+   https://www.tomshardware.com/pc-components/gpus/lowest-gpu-prices-tracking, 2-5 Nov 2026. Typical listings are
+   about 5,300-7,000.
+5. 19,789, Newegg, PNY A100 80 GB PCIe, https://www.newegg.com/p/N82E16814133879, 6 Nov 2026.
+6. 1,900, Micro Center, Gigabyte Radeon AI PRO R9700 (in stock), https://www.microcenter.com/product/699521, 6 Nov 2026.
+7. 7,570, ASA Computers, NVIDIA L40S 48 GB, https://www.asacomputers.com/nvidia-l40s-48gb-graphics-card.html, 6 Nov 2026.
+8. 4,800, Amazon (ASUS ROG Strix OC) via gpuprix, https://gpuprix.com/us/gpus/geforce-rtx-4090, 4 Nov 2026.
+9. 709.67, Amazon, ASUS TUF RTX 3080 V2 OC 10 GB, via https://videocardprices.com/card/nvidia-rtx-3080/, 4 Nov 2026.
+   (The 12 GB RTX 3080 was about 640 on jawa.gg in October 2026.)
+10. 3,400, Newegg, NVIDIA L4 24 GB, https://www.newegg.com/p/N82E16888892004, 6 Nov 2026 (low confidence: the listing may
+    be stale).
 
 ## Model weights
 
