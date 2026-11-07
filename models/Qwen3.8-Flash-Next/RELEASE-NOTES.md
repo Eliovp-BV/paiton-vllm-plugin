@@ -3,7 +3,23 @@
 No custom engine was built: regular vLLM with the Paiton plugin and our own kernels. We keep tuning, we keep optimizing.
 Pages: [overview](README.md) · [3-bit](README-3bit.md) · [4-bit](README-4bit.md).
 
-## Next release (local): Paiton for coding agents
+## Release 20261107: session hibernation (opt-in)
+With `--extend-cache`, the native prefix-caching modes size the cache tiers behind VRAM from the host, and they can keep
+sessions on an NVMe/SSD (`--extend-cache disk`, or `auto` when a RAM tier would be too small). Sessions on disk survive a
+server restart. After a full restart, 33K-90K-token sessions resumed in 0.7-1.3 s on the 4-bit (cold: 5.4-15.1 s) and in
+0.29-0.39 s on the 3-bit with the server limited to 64 GB (cold: 3.8-6.9 s), with the same tokens as a cold start. With 11
+sessions taking turns (2.05M tokens), 11 of 11 resumed from RAM or disk; the RAM tier alone managed 9 of 11. These numbers
+come from two R9700 in a PCIe 4.0 x16 host with an NVMe SSD, and restore times depend on the PCIe generation and the drive.
+The [overview](README.md#session-hibernation-extend-cache) has the details, the privacy note and one known issue (short GPU
+queue evictions after some restarts, outputs unaffected).
+
+A cache tier costs about 11 % of single-request decode speed on the 4-bit (205.7 tok/s with the disk tier, 232.5 with no
+tier), the same as the RAM tier. The disk tier is off unless you pass `--extend-cache`.
+
+Image 20261107-hib-v1 serves every native mode. It is the 20261026-pc-rc4 image plus one layer with the executor's slot file
+I/O and the disk-tier glue. Without `--extend-cache` every mode keeps the rc4 limits and sizing.
+
+## Release 20261026: Paiton for coding agents
 - **3-bit prefix caching keeps speculative decoding.** `--mode decode --fn-worker native --prefix-caching`
   (`run-flashnext.sh --fn-worker native --prefix-caching`) now serves `--mode 3bit-long-cache-mtp-native`: 262,144-token window
   (was 98,304), speculative decoding on, RAM prefix tier sized from the host. Same weights. Measured 25 Oct (BetterBench standard;

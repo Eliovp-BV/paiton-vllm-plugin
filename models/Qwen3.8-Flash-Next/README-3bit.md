@@ -73,7 +73,7 @@ Paiton worker, with a KV cache of about 551K tokens (about 112K on the torch def
 
 No image input, request-API limits (no logprobs, structured outputs, penalties, ...) and the host requirement (about 60 GiB of free
 GTT): [overview](README.md#native-worker-opt-in). From 20261024 on, every native mode runs
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261026-pc-rc4` @ `sha256:328be15c6f1bc3ec99b1b7a436c4a38eeb82ec36d0589b7bbef38f0e465e11cf` (the 20261017-r1 image plus
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1` @ `sha256:{{PIN:FN_DIGEST}}` (the 20261017-r1 image plus
 the prefix-caching layers; this mode's executor and files are unchanged).
 
 **Prefix caching on the native worker: `--mode decode --fn-worker native --prefix-caching`** switches to
@@ -131,7 +131,7 @@ The first start of a mode takes about five to six minutes; wait for `launcher: R
   about 120 GiB of RAM or more), which removes the occasional memory pauses under load and costs ~1 GiB VRAM in decode.
 - Disk: about 116 GB for the weights; the image of the torch modes is 41 GB: `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261010-r2`
   @ `sha256:ea84a147c6dd44f47a41836ace6b39864fab940095c4c0ba13e82537dd9e2a4b` (pinned in modes.json; the launcher pulls it by digest).
-  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261026-pc-rc4` @ `sha256:328be15c6f1bc3ec99b1b7a436c4a38eeb82ec36d0589b7bbef38f0e465e11cf` instead.
+  `--fn-worker native` runs `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1` @ `sha256:{{PIN:FN_DIGEST}}` instead.
 - Native worker: about 60 GiB of free GTT for the host tables (about 128 GB of RAM or more at the default GTT limit); without it
   the launcher stops with the reason. Native prefix caching: `--prefix-caching` keeps speculative decoding where that GTT is free
   (tested as 200 and 128 GiB hosts, RAM prefix tier 16 GiB per GPU, about 89 GiB of host RAM in use with the tier); below it the launcher

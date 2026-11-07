@@ -37,6 +37,10 @@ The new 27B image, r2, moves the speculative-decoding drafter and parts of the 3
 decode step is about 3.5 % cheaper and overall speed is about the same. `prompt_logprobs` no longer stops the server.
 See the [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md).
 
+Qwen3.8 Flash Next can now keep prefix-cached sessions on an NVMe/SSD with `--extend-cache` (opt-in), so they survive a
+server restart. After a restart, 33K-90K-token sessions on the 4-bit came back in about 1 s instead of 5 to 15 s.
+See [session hibernation](models/Qwen3.8-Flash-Next/README.md#session-hibernation-extend-cache).
+
 ### What's new (24 October)
 
 - Qwen3.8 Flash Next has new 3-bit weights: GSM8K, HumanEval and MMLU-Pro scores with no significant difference to the

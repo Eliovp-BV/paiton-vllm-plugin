@@ -119,8 +119,9 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
 ## Native worker (opt-in)
 `--fn-worker native` runs the model in the native Paiton worker instead of the torch worker; vLLM keeps the API server, the
 scheduler and the KV cache manager. It is the fastest path; every native mode runs one image:
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261026-pc-rc4` @
-`sha256:328be15c6f1bc3ec99b1b7a436c4a38eeb82ec36d0589b7bbef38f0e465e11cf` (pinned; the launcher pulls it by digest). No
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1` @
+`sha256:{{PIN:FN_DIGEST}}` (pinned; the launcher pulls it by digest). It is the 26 October image plus
+[session hibernation](#session-hibernation-extend-cache). Without `--extend-cache` every mode keeps the 26 October limits and sizing. No
 automatic fallback: on a host that does not fit, the launcher stops and says why. No image input (`--vision` is torch-only).
 KV profiles, drafters, repeatability and the opt-in decode interleave: [BENCHMARKS.md](BENCHMARKS.md#native-worker-details).
 
@@ -154,6 +155,46 @@ On the 4-bit, `--native-kv-tier off` is faster for single requests (232.6 instea
 VRAM (about 311K tokens); on the 3-bit, 252.5 instead of 215.2 tok/s (about 561K tokens in VRAM). Modes, tier sizing, tested host sizes and limits:
 [BENCHMARKS.md](BENCHMARKS.md#native-prefix-caching-details).
 
+<a id="session-hibernation-extend-cache"></a>
+
+### Session hibernation with `--extend-cache` (opt-in, new 7 November)
+Add `--extend-cache` to a `--fn-worker native --prefix-caching` command. The launcher then sizes the cache tiers behind VRAM
+from your host, and it can keep sessions on an NVMe/SSD, where they survive a server restart:
+
+```bash
+bash models/Qwen3.8-Flash-Next/run-flashnext-4bit.sh --fn-worker native --prefix-caching --extend-cache
+```
+
+With `--extend-cache` (or `--extend-cache auto`) the launcher uses system RAM when the RAM tier would hold at least 1.25x the
+GPU pool. Otherwise it puts the tier on NVMe/SSD, behind a small RAM staging tier that holds one session.
+`--extend-cache ram` and `--extend-cache disk` force one or the other.
+
+The disk tier lives in `--disk-cache-dir` (default `~/.cache/paiton/flashnext/kv-disk`), one folder per configuration. Its
+cap is `--disk-cache-gib`, by default 64 GiB or a quarter of the free space, whichever is smaller; past the cap the oldest
+blocks are removed. The launcher refuses a spinning disk unless you pass `--disk-cache-allow-hdd`.
+
+The disk files are derived from your prompts and stay on that disk until you remove them. The folder is readable by your
+user only (mode 0700), and the files are not encrypted. `--wipe-disk-cache` removes every disk-tier folder and exits.
+
+We measured on two R9700 in a PCIe 4.0 x16 host with an NVMe SSD. Restore times from RAM and disk depend on the PCIe
+generation and the drive, so a PCIe 3.0 or 5.0 host will give different numbers.
+
+| Test | Result |
+|---|---|
+| Resume after a full server restart, 33K-90K-token sessions | 4-bit: 0.7-1.3 s from NVMe instead of 5.4-15.1 s cold. 3-bit with the server limited to 64 GB: 0.29-0.39 s instead of 3.8-6.9 s |
+| Output after a resume | the same tokens as a cold start in every test |
+| 11 sessions taking turns, 2.05M tokens, 1.5x the RAM tier | 11 of 11 resumed from RAM or disk, median 1.33 s (RAM tier only: 9 of 11) |
+| `kill -9` during a store, then a restart | no damaged hit: the session resumes, or reads its prompt again, with the same tokens |
+| Decode, one request, 4-bit | 205.7 tok/s with the disk tier, 232.5 tok/s with no tier: the same cost as the RAM tier (about 11 %) |
+| 64 GB host (3-bit without speculative decoding) | session resume works there (the RAM tier is off at this host size) |
+
+There is no image input, and the disk tier works only in the native prefix-caching modes. If your sessions fit in VRAM,
+`--native-kv-tier off` is faster for single requests (see above).
+
+Known issue: after a server restart with `--extend-cache disk`, the GPU driver can evict the GPU queues for 6-13 ms in total
+shortly after the server is ready. We saw it in 2 of 8 restart tests (3 of 24 resumes). Outputs were identical every time and
+resume times were not affected. We have not found the cause yet.
+
 ### Host requirements
 See **Host RAM per mode** under [Prerequisites](#prerequisites). `--memory GIB` caps the server container's RAM and sizes the
 checks and the RAM tier as on a host with GIB of RAM.
@@ -175,8 +216,9 @@ checks and the RAM tier as on a host with GIB of RAM.
 `--kv-cache-memory-bytes`, `--expert-vram-gib`, `--ple-host auto|pinned|pageable|filebacked`, `--ple-raw-dir DIR`,
 `--expert-cold auto|off|SHARE`, `--expert-cold-dir DIR`, `--port`, `--host ADDRESS`, `--api-key KEY`, `--name`, `--weights DIR`,
 `--cache DIR`, `--image REF`, `--devices GPU-...,GPU-...`, `--served-model-name`, `--detach`, `--settle-s`, `--keep-page-cache`,
+`--extend-cache [auto|ram|disk]`, `--disk-cache-dir DIR`, `--disk-cache-gib GIB`, `--disk-cache-allow-hdd`, `--wipe-disk-cache`,
 `--dry-run`. The launcher picks the image per mode: the 3-bit torch modes run the 3-bit image (`...-20261010-r2`), the 4-bit
-torch modes `...-20261017-r1`, every native mode `...-20261026-pc-rc4`.
+torch modes `...-20261017-r1`, every native mode `...-20261107-hib-v1`.
 
 <a id="how-the-numbers-were-taken"></a>
 
