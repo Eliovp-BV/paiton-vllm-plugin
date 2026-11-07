@@ -10,21 +10,43 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**24 October: 3-bit accuracy update.** New 3-bit weights (revision `383fa4b221a992fc2437500328056ef05355c8eb`), closer to
-the 16-bit model. Same format, image, launcher and speed.
+**7 November: new 3-bit weights and a new image.** Run `git pull`, then the 3-bit [download](#optional-the-3-bit-weights)
+again (revision `{{PIN:W3_REVISION}}`) and `sha256sum -c SHA256SUMS`.
 
-| Against bf16 | Change |
-| --- | --- |
-| KL divergence, served on the R9700 | −3.0 % [−6.4, −0.4] |
-| Long documents, 8K-32K tokens (emulated) | closer in every length bucket |
-| 131K-token documents, served | none worse, closer from 64K on |
-| GSM8K, HumanEval, MMLU-Pro | unchanged within noise |
-| Speed (BetterBench) | identical: 169.1 vs 169.3 tok/s (`--mode long-kv4`), 155.5 vs 155.9 (default) |
+- **3-bit weights, fewer agent loops.** We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 63)
+  on coding-agent conversations; the 3-bit codes, format and size are unchanged. On 80 random SWE-bench Verified tasks
+  (mini-swe-agent, 250-step limit, one R9700, `--mode long-kv4` on the 5 October image, thinking off), against a fresh run of the 24 October
+  weights on the same tasks:
 
-Already downloaded? Run the [download](#optional-the-3-bit-weights) again, then `sha256sum -c SHA256SUMS`. Earlier revisions
-stay downloadable: `3ef7eb149ec0bd9a0f7927491bf30f53f54ced01` (12 October) and `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7`
-(first release). The 3-bit task tables below were measured with the first weights (`7a2e3d70`). Details: the
-[model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4).
+  | | 24 October weights | 7 November weights | Paired test |
+  | --- | ---: | ---: | --- |
+  | Tasks solved | 41 | 49 | p 0.12: **not significant** on 80 tasks |
+  | Tasks where the agent looped (the same command 3+ times in a row) | 16 | 7 | p 0.078: borderline |
+  | Tasks stopped by the 250-step limit | 20 | 12 | p 0.13 |
+
+  For scale: the 16-bit model solved 58 of the same 80 (served with standard vLLM on a datacenter GPU). Agent runs at
+  temperature 0.7 vary from run to run; a full 500-task SWE-bench Verified run with the new weights follows after this
+  release. Task scores (65K mode, thinking on), against the 24 October weights: GSM8K 95.7 % (95.8), HumanEval 92.1 % (93.3),
+  MMLU-Pro (1,400 questions) 78.7 % (79.3); no difference is significant (exact McNemar p 0.87 / 0.73 / 0.51).
+- **Image r2: native kernels, same answers.** The DFlash2 drafter's attention and heads and parts of the 3-bit model's
+  GDN and gate paths now run on Paiton's own HIP kernels instead of Triton kernels. Greedy outputs are unchanged.
+
+  | One R9700, `run-3bit.sh` | 5 October r1 | 7 November r2 |
+  | --- | ---: | ---: |
+  | Decode, one request (tok/s) | {{RESULTS:decode_c1_r1}} | {{RESULTS:decode_c1_r2}} |
+  | Decode, eight requests, total (tok/s) | {{RESULTS:decode_c8_r1}} | {{RESULTS:decode_c8_r2}} |
+  | Time to first token, short prompt | {{RESULTS:ttft_r1}} | {{RESULTS:ttft_r2}} |
+  | Greedy outputs identical to r1 | – | {{RESULTS:greedy_identity}} |
+
+- **Fix: `prompt_logprobs` no longer stops the server.** On the 5 October image a request with `prompt_logprobs` in a
+  3-bit mode could end the server with an out-of-resources error. r2 computes those logprobs with the exact output head;
+  decode speed and other answers are unchanged.
+
+Earlier 3-bit revisions stay downloadable: `383fa4b221a992fc2437500328056ef05355c8eb` (24 October),
+`3ef7eb149ec0bd9a0f7927491bf30f53f54ced01` (12 October) and `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7` (first release).
+The 3-bit task tables further down were measured with the first weights (`7a2e3d70`) unless a row says otherwise. Details:
+the [model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4) and the
+[release notes](REFERENCE.md#release-notes-7-november-2026).
 
 <a id="what-you-get"></a><a id="pick-how-to-run-it"></a><a id="want-longer-context-run-this"></a><a id="long-context-200k-and-220k"></a>
 
@@ -102,9 +124,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **5 October r1** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-5-october-2026); the launcher's own updates since:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **7 November r2** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@{{PIN:R2_DIGEST}}`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-7-november-2026); the launcher's own updates since:
 [6 October](REFERENCE.md#launcher-update-6-october-2026-evening),
 [11 October](REFERENCE.md#launcher-update-11-october-2026),
 [26 October](REFERENCE.md#launcher-update-26-october-2026)). Earlier releases stay runnable:
@@ -122,7 +144,7 @@ downloads and the runtime cache are reused.
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"
 mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
 
 hf download unsloth/Qwen3.8-27B-NVFP4 \
@@ -161,7 +183,7 @@ terminal too.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision 383fa4b221a992fc2437500328056ef05355c8eb \
+  --revision {{PIN:W3_REVISION}} \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -170,7 +192,7 @@ Without `hf`, replace the `hf download` command with:
 
 ```bash
 python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="383fa4b221a992fc2437500328056ef05355c8eb", local_dir=os.environ["PAITON_W3ROT_DIR"])'
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="{{PIN:W3_REVISION}}", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>

@@ -23,9 +23,30 @@ The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
 
+<a id="release-notes-7-november-2026"></a>
+
+### Release notes: 7 November 2026 (image r2, current; new 3-bit weights)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2` (`{{PIN:R2_DIGEST}}`) is the 5 October r1
+image plus native kernels and one fix. Every mode's context, cache and request limits are unchanged. Update this repository
+to get the launcher that selects it; `--dry-run` prints the full Docker command.
+
+- **Native kernels, same answers.** The DFlash2 drafter's attention, its fp8 cache write and its output heads, and parts of the
+  3-bit model's GDN and gate paths run on Paiton's own HIP kernels instead of Triton kernels. Greedy outputs match r1.
+  Each piece has an environment switch in the image (`PAITON_DFA_NATIVE`, `PAITON_DFH_NATIVE`, `PAITON_DFV_NATIVE`,
+  `PAITON_W3_GDN_LEAN`, `PAITON_W3F_GATE_QUANT`, `PAITON_W3F_QK_ROPE`, `PAITON_W3F_DRAFT_CONV`); setting one to `0` restores the
+  previous kernel for that piece.
+- **Fix: `prompt_logprobs`.** On r1, a 3-bit request with `prompt_logprobs` sent the whole prompt through the speculative
+  verify head, which ran out of GPU resources and stopped the server (and would have returned approximate values). r2 uses
+  the exact output head for those logprobs; the verify head still serves decoding.
+- **New 3-bit weights** (Hugging Face revision `{{PIN:W3_REVISION}}`): see the [quickstart](README.md) for the measured
+  changes. Download them again; the earlier revisions stay downloadable.
+- **Runtime cache.** Give r2 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261107` in the quickstart).
+- **Earlier images** stay runnable with `--image` and keep their behaviour. See [Run an earlier release](README.md#run-an-earlier-release).
+
 <a id="release-notes-5-october-2026"></a>
 
-### Release notes: 5 October 2026 (image r1, current)
+### Release notes: 5 October 2026 (image r1)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1` (`sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80`)
 is the 4 October image with a faster start, native long-prompt attention and 4-bit decode kernels, images in the
@@ -1124,12 +1145,18 @@ Moved from the quickstart on 7 October 2026; the quickstart keeps only current r
 Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
 its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
 `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261004-r1`, `…-20261003-r1`,
+Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
 `…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
 and by its digest alone; an image under any other tag or an image ID counts as the current image.
 
 ```bash
-# 4 October r1, the previous release: every row except images in the coding mode (--mode long-kv4 --vision)
+# 5 October r1, the previous release: every row (drafter on Triton kernels; avoid prompt_logprobs with the 3-bit weights)
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80
+
+# 4 October r1: every row except images in the coding mode (--mode long-kv4 --vision)
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261004"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
@@ -1154,7 +1181,7 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
   --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
 ```
 
-To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"` again
+To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"` again
 and drop `--image`.
 
 The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
