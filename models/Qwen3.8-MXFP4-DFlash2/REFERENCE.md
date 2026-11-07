@@ -31,21 +31,25 @@ The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2` 
 image plus native kernels and one fix. Every mode's context, cache and request limits are unchanged. Update this repository
 to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
-- **Native kernels.** The DFlash2 drafter's attention, its fp8 cache write and its output heads, and parts of the 3-bit
-  model's GDN and gate paths run on Paiton's own HIP kernels instead of Triton kernels. Each decode step is
-  about 3.5 % cheaper and the drafter's acceptance is unchanged (32 prompts), so overall speed is about the same to
-  slightly faster, for the 3-bit and the MXFP4 weights. The arithmetic is not bit-identical to r1, so greedy text can
-  differ after some tokens.
-  Each piece has an environment switch in the image (`PAITON_DFA_NATIVE`, `PAITON_DFH_NATIVE`, `PAITON_DFV_NATIVE`,
-  `PAITON_W3_GDN_LEAN`, `PAITON_W3F_GATE_QUANT`, `PAITON_W3F_QK_ROPE`, `PAITON_W3F_DRAFT_CONV`); setting one to `0` restores the
-  previous kernel for that piece.
-- **Fix: `prompt_logprobs`.** On r1, a 3-bit request with `prompt_logprobs` sent the whole prompt through the speculative
-  verify head, which ran out of GPU resources and stopped the server (and would have returned approximate values). r2 uses
-  the exact output head for those logprobs; the verify head still serves decoding.
-- **New 3-bit weights** (Hugging Face revision `aee42dfdb78e851462743120a575bf2d6f7b9882`): see the [quickstart](README.md) for the measured
-  changes. Download them again; the earlier revisions stay downloadable.
-- **Runtime cache.** Give r2 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261107` in the quickstart).
-- **Earlier images** stay runnable with `--image` and keep their behaviour. See [Run an earlier release](README.md#run-an-earlier-release).
+Native kernels: the DFlash2 drafter's attention, its fp8 cache write and its output heads, and parts of the 3-bit
+model's GDN and gate paths run on Paiton's own HIP kernels instead of Triton kernels. Each decode step is
+about 3.5 % cheaper and the drafter's acceptance is unchanged (32 prompts), so overall speed is about the same to
+slightly faster, for the 3-bit and the MXFP4 weights. The arithmetic is not bit-identical to r1, so greedy text can
+differ after some tokens.
+Each piece has an environment switch in the image (`PAITON_DFA_NATIVE`, `PAITON_DFH_NATIVE`, `PAITON_DFV_NATIVE`,
+`PAITON_W3_GDN_LEAN`, `PAITON_W3F_GATE_QUANT`, `PAITON_W3F_QK_ROPE`, `PAITON_W3F_DRAFT_CONV`); setting one to `0` restores the
+previous kernel for that piece.
+
+Fix for `prompt_logprobs`: on r1, a 3-bit request with `prompt_logprobs` sent the whole prompt through the speculative
+verify head, which ran out of GPU resources and stopped the server (and would have returned approximate values). r2 uses
+the exact output head for those logprobs; the verify head still serves decoding.
+
+New 3-bit weights (Hugging Face revision `aee42dfdb78e851462743120a575bf2d6f7b9882`): see the [quickstart](README.md) for the measured
+changes. Download them again; the earlier revisions stay downloadable.
+
+Runtime cache: give r2 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261107` in the quickstart).
+
+Earlier images stay runnable with `--image` and keep their behaviour. See [Run an earlier release](README.md#run-an-earlier-release).
 
 <a id="release-notes-5-october-2026"></a>
 
@@ -451,7 +455,7 @@ On Linux, `ROCR_VISIBLE_DEVICES` also filters ROCr tools such as `rocminfo`;
 `HIP_VISIBLE_DEVICES` applies at the HIP layer. If you set both, HIP indices refer
 to the GPUs remaining after the ROCr filter. Check any existing exports before
 launching: setting both variables to `1` does not necessarily select the second
-physical card. Leave unused variables unset rather than assigning empty strings.
+physical card. Leave unused variables unset; don't assign empty strings.
 These controls do not make unsupported GPU architectures compatible with this image.
 
 For a GPU shared with a desktop, start with the smaller preset:
@@ -523,7 +527,7 @@ plus short concurrent requests), prefix caching, and thinking disabled
 pool, 1,024-token prefill chunks); its pool holds 231,067 tokens, so the launcher
 refuses `--context` above 220,000 with MXFP4 and names the 3-bit weights. Both
 apply the memory-allocation setting this configuration needs and leave little spare
-VRAM: select a dedicated R9700 rather than a card driving a busy desktop.
+VRAM: select a dedicated R9700, not a card driving a busy desktop.
 `run-rocm10-200k.sh` and `--profile chat` start the long-context mode with 200,000 tokens (the 3-bit weights then
 serve 200,000, not 262,144; use `--mode long`). `run-rocm10-200k.sh` names its container `paiton-qwen38-200k`.
 
@@ -893,7 +897,7 @@ are published to vLLM's KV-cache allocator, so the scheduler admits more tokens
 from the same memory; our earlier 4-bit version only reduced the bytes read. The
 16 full-attention layers use this cache. The Gated DeltaNet recurrent state and
 the DFlash2 drafter's cache are unchanged, and the scales take space, so the
-gain is about 1.8× as many attention tokens per byte rather than 2×.
+gain is about 1.8× as many attention tokens per byte, not 2×.
 
 **2 October image.** The cache uses a new 4-bit page format with its own attention decode, in the 65K mode and in
 `--mode long-kv4`. Compared with the previous 4-bit kernel (the 29 September image's), one decode step of an
@@ -1327,7 +1331,7 @@ columns, are in [benchmarks/2026-09-20-combined](benchmarks/2026-09-20-combined/
 
 ## Long coding conversations: prefix caching can remove most repeat-turn waiting
 
-**New APC investigation — 17 September 2026.** Automatic prefix caching reuses
+**New APC investigation, 17 September 2026.** Automatic prefix caching reuses
 computation for an unchanged conversation prefix. It can make a large practical
 difference when a coding agent sends the same growing history on every turn.
 Our released profiles currently disable it because compact native GDN replay
@@ -1356,7 +1360,7 @@ meet the stock-APC cache requirement at 200K.
 [APC results, raw evidence and limitations](benchmarks/2026-09-17-prefix-caching/README.md)
 · [Try stock-GDN APC and reproduce the controls](benchmarks/2026-09-17-prefix-caching/REPRODUCE.md).
 
-## 64K and 200K images, tool-call fix, and quick benchmark — 17 September 2026
+## 64K and 200K images, tool-call fix, and quick benchmark (17 September 2026)
 
 New v1.1.0 images add Qwen XML tool-call parsing and configurable context limits.
 The **64K profile** uses a 5 GiB cache and up to eight scheduled requests; the

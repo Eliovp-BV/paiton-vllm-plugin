@@ -13,7 +13,9 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 **7 November: new 3-bit weights and a new image.** Run `git pull`, then the 3-bit [download](#optional-the-3-bit-weights)
 again (revision `aee42dfdb78e851462743120a575bf2d6f7b9882`) and `sha256sum -c SHA256SUMS`.
 
-- **3-bit weights, fewer agent loops.** We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 63)
+#### 3-bit weights: fewer agent loops
+
+We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 63)
   on coding-agent conversations; the 3-bit codes, format and size are unchanged. On 80 random SWE-bench Verified tasks
   (mini-swe-agent, 250-step limit, one R9700, `--mode long-kv4` on the 5 October image, thinking off), against a fresh run of the 24 October
   weights on the same tasks:
@@ -38,7 +40,9 @@ again (revision `aee42dfdb78e851462743120a575bf2d6f7b9882`) and `sha256sum -c SH
 
   No change against the 24 October weights is significant (exact McNemar p 1.00 / 0.07 / 0.85). HumanEval moves
   between 92 and 97 from run to run with these weights, so read its +3.7 points as noise, not a gain.
-- **Image r2: native kernels.** The DFlash2 drafter's attention and heads and parts of the 3-bit model's GDN and gate
+#### Image r2: native kernels
+
+The DFlash2 drafter's attention and heads and parts of the 3-bit model's GDN and gate
   paths now run on Paiton's own HIP kernels instead of Triton kernels. Each decode step is about 3.5 % cheaper and the
   drafter's acceptance is unchanged, so overall speed is about the same to slightly faster. The arithmetic is not
   bit-identical to r1, so a greedy answer can differ from r1's after some tokens.
@@ -56,7 +60,9 @@ again (revision `aee42dfdb78e851462743120a575bf2d6f7b9882`) and `sha256sum -c SH
   Per prompt, the one-request difference is within noise (p 0.49); the step-time drop is clear (p < 0.001). The MXFP4
   weights run on r2 at the same speed as on r1 (one prompt: 76.7 vs 77.2 tok/s, 2.2 % cheaper per step).
 
-- **Fix: `prompt_logprobs` no longer stops the server.** On the 5 October image a request with `prompt_logprobs` in a
+#### Fix: `prompt_logprobs` no longer stops the server
+
+On the 5 October image a request with `prompt_logprobs` in a
   3-bit mode could end the server with an out-of-resources error. r2 computes those logprobs with the exact output head;
   decoding still uses the fast verify head.
 

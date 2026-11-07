@@ -29,20 +29,21 @@ download of 9.55 GB ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-the-3
 
 ### What's new (7 November)
 
-- **Qwen3.8 27B, new 3-bit weights.** Retuned on coding-agent conversations: on 80 SWE-bench Verified tasks the agent looped
-  on 7 tasks instead of 16 (borderline, p 0.078) and solved 49 instead of 41 (not significant on 80 tasks, p 0.12); GSM8K,
-  HumanEval and MMLU-Pro unchanged within noise. A full 500-task run follows. Run the 3-bit download again.
-  [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
-- **Qwen3.8 27B, image r2.** Native HIP kernels for the speculative-decoding drafter and parts of the 3-bit model: each
-  decode step about 3.5 % cheaper, overall speed about the same; `prompt_logprobs` no longer stops the server. [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
+Qwen3.8 27B has new 3-bit weights, retuned on coding-agent conversations. On 80 SWE-bench Verified tasks the agent looped
+on 7 tasks instead of 16 (borderline, p 0.078) and solved 49 instead of 41 (not significant on 80 tasks, p 0.12). GSM8K,
+HumanEval and MMLU-Pro are unchanged within noise, and a full 500-task run follows. Run the 3-bit download again.
+
+The new 27B image, r2, moves the speculative-decoding drafter and parts of the 3-bit model to native HIP kernels. Each
+decode step is about 3.5 % cheaper and overall speed is about the same. `prompt_logprobs` no longer stops the server.
+See the [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md).
 
 ### What's new (24 October)
 
-- **Qwen3.8 Flash Next, new 3-bit weights.** GSM8K, HumanEval and MMLU-Pro scores with no significant difference to the
+- Qwen3.8 Flash Next has new 3-bit weights: GSM8K, HumanEval and MMLU-Pro scores with no significant difference to the
   16-bit model, at full speed from VRAM. The launcher downloads them automatically into a new folder. [3-bit page](models/Qwen3.8-Flash-Next/README-3bit.md)
-- **Qwen3.8 Flash Next, prefix caching with speculative decoding** on the 4-bit (`--fn-worker native --prefix-caching`):
+- Qwen3.8 Flash Next 4-bit gets prefix caching with speculative decoding (`--fn-worker native --prefix-caching`):
   262K-token window, repeated long prompts in under 1 s. [Flash Next guide](models/Qwen3.8-Flash-Next/README.md)
-- **Qwen3.8 27B, 3-bit accuracy update.** Closer to the 16-bit model, same speed, task scores unchanged within noise; run
+- Qwen3.8 27B 3-bit accuracy update: closer to the 16-bit model, same speed, task scores unchanged within noise. Run
   the 3-bit download again. [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
 
 ## Requirements
@@ -163,7 +164,7 @@ current Qwen3.8 27B guide above.
 
 <a id="meeting-recordings"></a><a id="meeting-notes"></a>
 
-### Meeting notes — preview
+### Meeting notes (preview)
 
 [Meeting](models/Meeting/README.md) is a review candidate for transcripts,
 speaker labels and timestamped notes from recordings. Review generated notes
@@ -212,7 +213,7 @@ container releases; use the model's container guide for its published release pr
 | Reuse downloaded weights, configure caches or prepare offline | [Model weights and caches](docs/MODEL_WEIGHTS.md) |
 | Install into a supported vLLM environment | [Native installation](docs/NATIVE_EXECUTION.md) |
 | Use the older compatibility launcher | [Legacy vLLM launcher](docs/EXISTING_VLLM.md) |
-| Build or validate native runtime packages | [Native packaging — contributors](docs/NATIVE_PACKAGING.md) |
+| Build or validate native runtime packages | [Native packaging (contributors)](docs/NATIVE_PACKAGING.md) |
 | Download wheels, runtimes or model weights | [GitHub Releases](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases) · [Hugging Face](https://huggingface.co/EliovpAI) |
 
 ## Support
