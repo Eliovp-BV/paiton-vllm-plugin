@@ -33,8 +33,8 @@ download of 9.55 GB ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-the-3
   on 7 tasks instead of 16 (borderline, p 0.078) and solved 49 instead of 41 (not significant on 80 tasks, p 0.12); GSM8K,
   HumanEval and MMLU-Pro unchanged within noise. A full 500-task run follows. Run the 3-bit download again.
   [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
-- **Qwen3.8 27B, image r2.** Native HIP kernels for the speculative-decoding drafter and parts of the 3-bit model, the same
-  greedy answers; `prompt_logprobs` no longer stops the server. [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
+- **Qwen3.8 27B, image r2.** Native HIP kernels for the speculative-decoding drafter and parts of the 3-bit model: 1 to 3 %
+  less time per decode step; `prompt_logprobs` no longer stops the server. [27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md)
 
 ### What's new (24 October)
 

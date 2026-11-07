@@ -24,23 +24,32 @@ again (revision `{{PIN:W3_REVISION}}`) and `sha256sum -c SHA256SUMS`.
   | Tasks where the agent looped (the same command 3+ times in a row) | 16 | 7 | p 0.078: borderline |
   | Tasks stopped by the 250-step limit | 20 | 12 | p 0.13 |
 
-  For scale: the 16-bit model solved 58 of the same 80 (served with standard vLLM on a datacenter GPU). Agent runs at
+  For scale: the 16-bit model solved 58 of the same 80 (served on a datacenter GPU). Agent runs at
   temperature 0.7 vary from run to run; a full 500-task SWE-bench Verified run with the new weights follows after this
   release. Task scores (65K mode, thinking on), against the 24 October weights: GSM8K 95.7 % (95.8), HumanEval 92.1 % (93.3),
   MMLU-Pro (1,400 questions) 78.7 % (79.3); no difference is significant (exact McNemar p 0.87 / 0.73 / 0.51).
-- **Image r2: native kernels, same answers.** The DFlash2 drafter's attention and heads and parts of the 3-bit model's
-  GDN and gate paths now run on Paiton's own HIP kernels instead of Triton kernels. Greedy outputs are unchanged.
+- **Image r2: native kernels.** The DFlash2 drafter's attention and heads and parts of the 3-bit model's GDN and gate
+  paths now run on Paiton's own HIP kernels instead of Triton kernels. With the same weights each decode step is 3.2 %
+  faster for one request and 0.9 to 1.5 % faster for four to eight. The numbers are not bit-identical to r1, so a greedy
+  answer can differ from r1's after some tokens.
 
-  | One R9700, `run-3bit.sh` | 5 October r1 | 7 November r2 |
+  | One R9700 (300 W), `run-3bit.sh` (65K mode), 512 tokens per request | 5 October: r1 + 24 October weights | 7 November: r2 + new weights |
   | --- | ---: | ---: |
-  | Decode, one request (tok/s) | {{RESULTS:decode_c1_r1}} | {{RESULTS:decode_c1_r2}} |
-  | Decode, eight requests, total (tok/s) | {{RESULTS:decode_c8_r1}} | {{RESULTS:decode_c8_r2}} |
-  | Time to first token, short prompt | {{RESULTS:ttft_r1}} | {{RESULTS:ttft_r2}} |
-  | Greedy outputs identical to r1 | – | {{RESULTS:greedy_identity}} |
+  | Decode, one request (tok/s) | 109.2 | 103.0 |
+  | Decode, four requests, total (tok/s) | 310.8 | 322.8 |
+  | Decode, eight requests, total (tok/s) | 508.9 | 529.8 |
+  | Time per decode step, 1 / 4 / 8 requests (ms) | 27.58 / 34.54 / 43.37 | 26.58 / 33.71 / 42.85 |
+  | Prompt reading, 29K-token prompt (tok/s) | 3,991 | 4,031 |
+  | First start until ready | 174 s | 178-182 s |
+  | GSM8K / HumanEval / MMLU-Pro | 95.8 / 93.3 / 79.3 | {{RESULTS:acc_r2_s048}} |
+
+  The one-request row uses one prompt, and its speed depends on how many drafted tokens the model accepts on that
+  prompt's text; the new weights accept fewer there (2.74 instead of 3.01 tokens per step). The step time and the
+  four- and eight-request rows, which average over more text, show the kernel change. Mean of 10 rounds each.
 
 - **Fix: `prompt_logprobs` no longer stops the server.** On the 5 October image a request with `prompt_logprobs` in a
   3-bit mode could end the server with an out-of-resources error. r2 computes those logprobs with the exact output head;
-  decode speed and other answers are unchanged.
+  decoding still uses the fast verify head.
 
 Earlier 3-bit revisions stay downloadable: `383fa4b221a992fc2437500328056ef05355c8eb` (24 October),
 `3ef7eb149ec0bd9a0f7927491bf30f53f54ced01` (12 October) and `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7` (first release).

@@ -31,8 +31,9 @@ The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2` 
 image plus native kernels and one fix. Every mode's context, cache and request limits are unchanged. Update this repository
 to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
-- **Native kernels, same answers.** The DFlash2 drafter's attention, its fp8 cache write and its output heads, and parts of the
-  3-bit model's GDN and gate paths run on Paiton's own HIP kernels instead of Triton kernels. Greedy outputs match r1.
+- **Native kernels.** The DFlash2 drafter's attention, its fp8 cache write and its output heads, and parts of the 3-bit
+  model's GDN and gate paths run on Paiton's own HIP kernels instead of Triton kernels. With the same weights a decode
+  step is 0.9 to 3.2 % faster; the arithmetic is not bit-identical to r1, so greedy text can differ after some tokens.
   Each piece has an environment switch in the image (`PAITON_DFA_NATIVE`, `PAITON_DFH_NATIVE`, `PAITON_DFV_NATIVE`,
   `PAITON_W3_GDN_LEAN`, `PAITON_W3F_GATE_QUANT`, `PAITON_W3F_QK_ROPE`, `PAITON_W3F_DRAFT_CONV`); setting one to `0` restores the
   previous kernel for that piece.
