@@ -230,7 +230,7 @@
     },
     "image_4bit_native": {
       "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1",
-      "digest": "sha256:{{PIN:FN_DIGEST}}",
+      "digest": "sha256:4c952985709a7c8feccdda9ca68db087f83b3b24ab75a547e7167a32c618f93c",
       "fnexec_manifest_alias": {
         "8a5c91161dacb4690328c6fd64d1cdc8b1986f8fcc4ee3e70293c919b9de71ad": {
           "suffix": "w3a8-71faf406",

@@ -61,7 +61,7 @@ def test_native_wiring(lf, monkeypatch, tmp_path, capsys):
     assert env['PAITON_FN_MODE_NAME'] == '4bit-native' and env['PAITON_FN_HOST_LAYOUT'] == 'pinned'
     assert any(v.endswith(':/usr/local/lib/python3.12/dist-packages/zzzz_paiton_fn_native_guard.pth:ro') for v in vols)
     assert '--worker-cls paiton_vllm_plugin.flashnext.fnworker.PaitonFNWorker' in inner and '--enforce-eager' in inner
-    assert '--speculative-config' not in inner and 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1@sha256:{{PIN:FN_DIGEST}}' in argv
+    assert '--speculative-config' not in inner and 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1@sha256:4c952985709a7c8feccdda9ca68db087f83b3b24ab75a547e7167a32c618f93c' in argv
 
 
 def test_budget_default_and_reserve_passthrough(lf, monkeypatch, tmp_path, capsys):
@@ -540,7 +540,7 @@ def test_release_native_default(lf, monkeypatch, tmp_path, capsys):
     assert env['PAITON_FN_NATIVE'] == '1' and env['PAITON_FN_MODE_NAME'] == '4bit' and 'PAITON_FN_MANIFEST' not in env
     assert env['PAITON_FN_PF_RS_LL'] == '1' and env['PAITON_TP_COLLECTIVE_PATH'] == '/opt/paiton/runtime/tp-collective-rsll/tp_collective.so'
     assert env['PAITON_FN_ADMIT'] == 'finish' and env['PAITON_FN_FNEXEC_LIB'] == '/opt/paiton/runtime/fnexec/libpaiton_fnexec.so'
-    assert not any(v.endswith(':/opt/paiton/runtime/fnexec:ro') for v in vols) and 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1@sha256:{{PIN:FN_DIGEST}}' in argv
+    assert not any(v.endswith(':/opt/paiton/runtime/fnexec:ro') for v in vols) and 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1@sha256:4c952985709a7c8feccdda9ca68db087f83b3b24ab75a547e7167a32c618f93c' in argv
     # D1 switch: the stock drafter selects the image's stock manifest
     out, argv, env, vols, inner = native_default_env(lf, monkeypatch, tmp_path, capsys, '4bit', '--drafter', 'stock')
     assert env['PAITON_FN_MANIFEST'] == '/opt/paiton/runtime/fnexec/manifest-4bit-stock.json'

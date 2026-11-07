@@ -120,7 +120,7 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
 `--fn-worker native` runs the model in the native Paiton worker instead of the torch worker; vLLM keeps the API server, the
 scheduler and the KV cache manager. It is the fastest path; every native mode runs one image:
 `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1` @
-`sha256:{{PIN:FN_DIGEST}}` (pinned; the launcher pulls it by digest). It is the 26 October image plus
+`sha256:4c952985709a7c8feccdda9ca68db087f83b3b24ab75a547e7167a32c618f93c` (pinned; the launcher pulls it by digest). It is the 26 October image plus
 [session hibernation](#session-hibernation-extend-cache). Without `--extend-cache` every mode keeps the 26 October limits and sizing. No
 automatic fallback: on a host that does not fit, the launcher stops and says why. No image input (`--vision` is torch-only).
 KV profiles, drafters, repeatability and the opt-in decode interleave: [BENCHMARKS.md](BENCHMARKS.md#native-worker-details).

@@ -72,7 +72,7 @@ Measured 17 Oct. Re-measured on 24 Oct with the release image (default `--kv-pro
 It needs a GTT limit of at least about 98 GiB (about 196 GB of RAM at the default limit); smaller hosts keep the torch default and
 its 128 GB / 96 GB / 64 GB layouts. No `--vision`, request-API limits (no logprobs, structured outputs, penalties, ...):
 [overview](README.md#native-worker-opt-in). Image (every native mode): `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-flashnext-rocm10-vllm029-20261107-hib-v1`
-@ `sha256:{{PIN:FN_DIGEST}}`.
+@ `sha256:4c952985709a7c8feccdda9ca68db087f83b3b24ab75a547e7167a32c618f93c`.
 
 **Prefix caching on the native worker (new in 20261024-pc-rc2): `--mode 4bit --fn-worker native --prefix-caching`** switches to
 `--mode 4bit-long-cache-mtp-native`: 262,144-token window, prefix caching with 2,048-token blocks, speculative decoding on (MTP depth
