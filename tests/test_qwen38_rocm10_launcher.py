@@ -1552,6 +1552,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         import types
         for name in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1',
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:' + '0' * 64,
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
+                     'paiton-qwen38-local:qwen38-rocm10-vllm029-20261107-r2',
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1'):
             self.assertEqual(launcher.tier_bytes_per_token(types.SimpleNamespace(image=name, release='65k')), (24576, 19000), name)
         older = launcher.tier_bytes_per_token(types.SimpleNamespace(image='ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1', release='65k'))
@@ -2162,7 +2164,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str((740 + 88) * block))
         # earlier pinned images: bf16 head, the measured budget, no flag; an explicit fp8 needs an explicit image
-        self.overrides['IMAGES'] = {**launcher.IMAGES, '65k': launcher.IMAGES['65k'].replace('20261005-r1', '20261004-r1')}
+        self.overrides['IMAGES'] = {**launcher.IMAGES, '65k': launcher.PREVIOUS_IMAGES['20261004-r1']}
         command = self.dry_run('--mode', 'long-kv4')
         self.assertNotIn('PAITON_LMHEAD_W8=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(850 * block))

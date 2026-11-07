@@ -17,13 +17,15 @@ import time
 
 
 IMAGES = {
-    # The 5 October release: the 4 October image plus a seeded compile cache and kernel warm-up at start, native long-prompt
-    # attention and 4-bit decode kernels (identical outputs), images in the coding mode and 24 KB/token cache tiers. The
-    # previous release images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80',
+    # The 7 November release (r2): the 5 October r1 image plus native HIP kernels for the DFlash2 drafter's attention and
+    # heads and the 3-bit GDN/gate paths (same greedy outputs), and the prompt_logprobs fix (the int2 verify head is reset
+    # after sampling). The previous release images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@{{PIN:R2_DIGEST}}',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 5 October release: seeded compile cache, native long-prompt attention and 4-bit decode kernels, 24 KB/token tiers
+    '20261005-r1': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80',
     # the 4 October release (coding mode with RAM/SSD cache tiers at 40 KB/token)
     '20261004-r1': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1@sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d',
     # the 3 October release (coding mode, opt-in 512K); its 4-bit cache refuses the RAM/SSD cache tiers
@@ -164,6 +166,7 @@ KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
 KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261005-r1': 'sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80',
     '20261004-r1': 'sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d',
     '20261003-r1': 'sha256:fb71b59eb29f3341dd10e9972920e75073a03fefc7bf6d2f2e1966b91a730f53',
     '20261002-r1s': 'sha256:a1c1025052f84a009428709bfe7e9431281ab5d5c0f723a49d79eecafe519dad',
@@ -252,7 +255,7 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # that applies it. --mode long (text) gives the freed VRAM to its fp8 KV cache like long-kv4 (W3_LONG_LMHEAD_W8_POOL_BYTES);
 # the other 3-bit modes keep their measured KV budgets and gain the 1.18 GiB as headroom (65k with and without --vision,
 # --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
-LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1',)
+LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-vllm029-20261107-r2')   # r2 = r1 + layers
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -306,6 +309,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     # 24,371 B/token on a disk run, stored rounded up to 24 KiB; loaded unchanged
     'qwen38-rocm10-vllm029-20261005-rcnext-dev1': (24576, 19000),
     'qwen38-rocm10-vllm029-20261005-r1': (24576, 19000),       # the published 5 October image (same build)
+    'qwen38-rocm10-vllm029-20261107-r2': (24576, 19000),       # the 7 November image (r1 plus native drafter/3-bit kernels)
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
