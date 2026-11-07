@@ -27,7 +27,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 7 November 2026 (image r2, current; new 3-bit weights)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2` (`{{PIN:R2_DIGEST}}`) is the 5 October r1
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2` (`sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8`) is the 5 October r1
 image plus native kernels and one fix. Every mode's context, cache and request limits are unchanged. Update this repository
 to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
@@ -42,7 +42,7 @@ to get the launcher that selects it; `--dry-run` prints the full Docker command.
 - **Fix: `prompt_logprobs`.** On r1, a 3-bit request with `prompt_logprobs` sent the whole prompt through the speculative
   verify head, which ran out of GPU resources and stopped the server (and would have returned approximate values). r2 uses
   the exact output head for those logprobs; the verify head still serves decoding.
-- **New 3-bit weights** (Hugging Face revision `{{PIN:W3_REVISION}}`): see the [quickstart](README.md) for the measured
+- **New 3-bit weights** (Hugging Face revision `aee42dfdb78e851462743120a575bf2d6f7b9882`): see the [quickstart](README.md) for the measured
   changes. Download them again; the earlier revisions stay downloadable.
 - **Runtime cache.** Give r2 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261107` in the quickstart).
 - **Earlier images** stay runnable with `--image` and keep their behaviour. See [Run an earlier release](README.md#run-an-earlier-release).

@@ -11,7 +11,7 @@ Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R970
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
 **7 November: new 3-bit weights and a new image.** Run `git pull`, then the 3-bit [download](#optional-the-3-bit-weights)
-again (revision `{{PIN:W3_REVISION}}`) and `sha256sum -c SHA256SUMS`.
+again (revision `aee42dfdb78e851462743120a575bf2d6f7b9882`) and `sha256sum -c SHA256SUMS`.
 
 - **3-bit weights, fewer agent loops.** We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 63)
   on coding-agent conversations; the 3-bit codes, format and size are unchanged. On 80 random SWE-bench Verified tasks
@@ -143,7 +143,7 @@ cd paiton-vllm-plugin
 ```
 
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **7 November r2** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@{{PIN:R2_DIGEST}}`, and Docker pulls it on the first
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8`, and Docker pulls it on the first
 start ([what changed](REFERENCE.md#release-notes-7-november-2026); the launcher's own updates since:
 [6 October](REFERENCE.md#launcher-update-6-october-2026-evening),
 [11 October](REFERENCE.md#launcher-update-11-october-2026),
@@ -201,7 +201,7 @@ terminal too.
 export PAITON_W3ROT_DIR="$PWD/model-cache/qwen38-w3rot-int3"
 mkdir -p "$PAITON_W3ROT_DIR"
 hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
-  --revision {{PIN:W3_REVISION}} \
+  --revision aee42dfdb78e851462743120a575bf2d6f7b9882 \
   --local-dir "$PAITON_W3ROT_DIR"
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
@@ -210,7 +210,7 @@ Without `hf`, replace the `hf download` command with:
 
 ```bash
 python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="{{PIN:W3_REVISION}}", local_dir=os.environ["PAITON_W3ROT_DIR"])'
+get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="aee42dfdb78e851462743120a575bf2d6f7b9882", local_dir=os.environ["PAITON_W3ROT_DIR"])'
 ```
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>

@@ -20,7 +20,7 @@ IMAGES = {
     # The 7 November release (r2): the 5 October r1 image plus native HIP kernels for the DFlash2 drafter's attention and
     # heads and the 3-bit GDN/gate paths (not bit-identical to r1), and the prompt_logprobs fix (the int2 verify head is reset
     # after sampling). The previous release images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@{{PIN:R2_DIGEST}}',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
