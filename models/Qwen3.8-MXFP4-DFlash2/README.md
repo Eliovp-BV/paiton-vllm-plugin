@@ -27,8 +27,26 @@ We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 
   | Tasks stopped by the 250-step limit | 20 | 12 | p 0.13 |
 
   For scale: the 16-bit model solved 58 of the same 80 (served on a datacenter GPU). Agent runs at
-  temperature 0.7 vary from run to run; a full 500-task SWE-bench Verified run with the new weights follows after this
-  release.
+  temperature 0.7 vary from run to run.
+
+  **All 500 SWE-bench Verified tasks (8 November).** The same agent settings, `--mode long-kv4`, one R9700 per run:
+  the 7 November weights on image r2, the 24 October weights on the 5 October image (the run of 3-5 November), and the
+  16-bit model served on a datacenter GPU. One run each, paired per task with an exact McNemar test. The held-out 250
+  are the second half of the task list; none of them was used to train the new weights.
+
+  | | 16-bit model | 24 October weights | 7 November weights | 7 Nov vs 24 Oct | 7 Nov vs 16-bit |
+  | --- | ---: | ---: | ---: | --- | --- |
+  | Solved, all 500 | 390 | 284 | 323 | 81 vs 42 tasks solved by only one, p 0.0006 | 25 vs 92, p < 0.0001 |
+  | Solved, held-out 250 | 191 | 134 | 165 | 48 vs 17, p 0.0002 | 17 vs 43, p 0.001 |
+  | Looped, all 500 | 12 | 89 | 67 | p 0.03 | p < 0.0001 |
+  | Stopped by the step limit, all 500 | 8 | 107 | 69 | p 0.0003 | |
+
+  The new weights solve more tasks than the 24 October weights, and the difference is significant on all 500 and on the
+  held-out 250. They loop less and hit the step limit less, also significantly. They still solve significantly fewer
+  tasks than the 16-bit model, and loop on 67 tasks against its 12. The 80 tasks used to choose these weights lie inside
+  the held-out 250; on the other 170 the new weights solved 110 against 95 (p 0.04). On the 197 tasks used for training,
+  the two 3-bit weights are not significantly different (137 vs 145, p 0.26). The two 3-bit runs used different images,
+  so the solved and loop counts compare the weights, while time and energy mix both changes.
 
   Task scores (one R9700, 65K mode, thinking on, the new weights on image r2; paired on the same questions):
 

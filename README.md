@@ -31,7 +31,12 @@ download of 9.55 GB ([how](models/Qwen3.8-MXFP4-DFlash2/README.md#optional-the-3
 
 Qwen3.8 27B has new 3-bit weights, retuned on coding-agent conversations. On 80 SWE-bench Verified tasks the agent looped
 on 7 tasks instead of 16 (borderline, p 0.078) and solved 49 instead of 41 (not significant on 80 tasks, p 0.12). GSM8K,
-HumanEval and MMLU-Pro are unchanged within noise, and a full 500-task run follows. Run the 3-bit download again.
+HumanEval and MMLU-Pro are unchanged within noise. Run the 3-bit download again.
+
+Update 8 November: on all 500 SWE-bench Verified tasks the new 3-bit weights solved 323 against 284 for the 24 October
+weights (p 0.0006), and 165 against 134 on the 250 tasks held out from training (p 0.0002). Loops fell from 89 to 67
+tasks. The 16-bit model solved 390, so a significant gap remains. See the
+[27B guide](models/Qwen3.8-MXFP4-DFlash2/README.md#3-bit-weights-fewer-agent-loops).
 
 The new 27B image, r2, moves the speculative-decoding drafter and parts of the 3-bit model to native HIP kernels. Each
 decode step is about 3.5 % cheaper and overall speed is about the same. `prompt_logprobs` no longer stops the server.

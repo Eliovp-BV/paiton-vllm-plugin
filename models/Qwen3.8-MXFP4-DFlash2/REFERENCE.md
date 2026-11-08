@@ -46,6 +46,9 @@ the exact output head for those logprobs; the verify head still serves decoding.
 
 New 3-bit weights (Hugging Face revision `aee42dfdb78e851462743120a575bf2d6f7b9882`): see the [quickstart](README.md) for the measured
 changes. Download them again; the earlier revisions stay downloadable.
+8 November: the full 500-task SWE-bench Verified run of these weights on r2 solved 323 (24 October weights 284, p 0.0006;
+16-bit model 390); on the 250 tasks held out from training, 165 against 134 (p 0.0002). Table and caveats in the
+[quickstart](README.md#3-bit-weights-fewer-agent-loops).
 
 Runtime cache: give r2 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261107` in the quickstart).
 
