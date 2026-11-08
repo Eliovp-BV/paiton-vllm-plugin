@@ -52,12 +52,15 @@ We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 
 
   | | 16-bit model | 24 October weights, r1 | 7 November weights, r2 |
   | --- | ---: | ---: | ---: |
-  | GSM8K (1,319) | 96.9 | 95.8 | 95.8 |
-  | HumanEval (164) | 96.3 | 93.3 | 97.0 |
-  | MMLU-Pro (1,400) | 84.7 | 79.3 | 79.5 |
+  | GSM8K (1,319) | 95.5 | 95.8 | 95.8 |
+  | HumanEval (164) | 95.7 | 93.3 | 97.0 |
+  | MMLU-Pro (1,400) | 81.5 | 79.3 | 79.5 |
 
   No change against the 24 October weights is significant (exact McNemar p 1.00 / 0.07 / 0.85). HumanEval moves
-  between 92 and 97 from run to run with these weights, so read its +3.7 points as noise, not a gain.
+  between 92 and 97 from run to run with these weights, so read its +3.7 points as noise, not a gain. Against the 16-bit
+  model the new weights are within noise on GSM8K and HumanEval and 2.0 points lower on MMLU-Pro (p 0.02). The 16-bit
+  column was measured on a datacenter GPU with the same questions and seeds. Until 8 November this column showed the
+  16-bit scores of Qwen3.8 Flash Next by mistake; it now shows Qwen3.8 27B.
 #### Image r2: native kernels
 
 The DFlash2 drafter's attention and heads and parts of the 3-bit model's GDN and gate
