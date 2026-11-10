@@ -1,29 +1,27 @@
-# MiniMax H3 with Paiton on Radeon
+# MiniMax H3 on one R9700
 
-Powered by MiniMax H3.
+MiniMax H3 makes video with native stereo audio from a prompt and up to nine image, three video and three audio
+references, through ComfyUI, on one Radeon AI PRO R9700 (32 GB). No hosted generation is used. Powered by MiniMax H3.
 
-Local **video with native stereo audio** and up to **nine image, three video and three audio
-references** on one **32 GB gfx1201 R9700**. v1.1.0 uses the pruned Ref2VA W4A8
-denoiser, the required Qwen3-VL-32B intermediate-state encoder, the public eight-dimensional pruned
-AdaLN table, and the four/eight-step H3 Turbo adapters. No hosted generation is used.
+An 864×480 clip of 124 frames with audio takes **54.38 s** with Paiton in the four-step Turbo4 preset, against 64.15 s
+with the stock engine. The eight-step Turbo8 preset takes 80.60 s against 95.83 s ([benchmarks](BENCHMARKS.md)).
 
-## Model weights and existing downloads
+Start it:
 
-Run the examples from the repository root. The selected denoiser, text/vision encoder, VAEs and Turbo
-adapters are pinned in [checkpoints.lock.json](checkpoints.lock.json). The launcher downloads and verifies
-them on first use. To reuse an existing H3 data directory, set
-`export PAITON_H3_DATA="/absolute/path/to/h3-data"`; the directory contains `models/` and `cache/`.
-See [the model weights guide](../../docs/MODEL_WEIGHTS.md) for offline and Hugging Face cache mounts.
+```sh
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
+cd paiton-vllm-plugin
+./models/MiniMax-H3/launch.sh
+```
 
-Container image:
-`ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0@sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed`.
-Hugging Face runtime package:
-[`EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4@paiton-rdna4-v1.1.0`](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/tree/paiton-rdna4-v1.1.0).
+Then open ComfyUI at `http://127.0.0.1:8190`. The first launch builds the image and downloads the model components.
 
-**Release package.** The combined runtime is distributed under the licenses in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). H3 regional authorization was confirmed for this
-qualification. The compiled artifact ships inside the container image; its manifest and
-`release.lock.json` record the hash.
+[Start](#start-locally) · [Terminal generation](#terminal-generation-and-benchmarks) ·
+[Performance and limits](#qualified-performance-and-limits) · [Requirements](#requirements-and-model-precision) ·
+[Existing downloads](#model-weights-and-existing-downloads) · [Licenses](#licenses)
+
+v1.1.0 uses the pruned Ref2VA W4A8 denoiser, the required Qwen3-VL-32B intermediate-state encoder, the public
+eight-dimensional pruned AdaLN table, and the four/eight-step H3 Turbo adapters.
 
 ## Start locally
 
@@ -113,12 +111,12 @@ per-request latency (p50 51.70 s, p95 52.52 s). Each worker serves one request a
 
 ## Requirements and model precision
 
-- **32 GB VRAM** (31.9 GiB usable); sampled driver peaks 30.46–30.84 GiB. Most weights are outside
+- 32 GB VRAM (31.9 GiB usable); sampled driver peaks 30.46–30.84 GiB. Most weights are outside
   Torch's allocator; Torch memory is not total VRAM.
-- **16 GB system RAM** tested for one worker using smart memory, Dynamic VRAM, two offload streams,
+- 16 GB system RAM tested for one worker using smart memory, Dynamic VRAM, two offload streams,
   `--fast-disk`, and a 2 GB GPU reserve. Do not use `--high-ram` on this host. Two workers need the
   host-RAM guidance above.
-- **33.96 GB** selected weights per preset, **35.92 GB** for both adapters with shared components.
+- 33.96 GB selected weights per preset, **35.92 GB** for both adapters with shared components.
   Allow **60 GB free disk** for the image, weights, caches and outputs; reference weights need more.
 - Linux, `/dev/kfd`, `/dev/dri`, Docker/Compose. Pinned Torch **2.12.0+rocm7.14.0**, Triton
   **3.7.1 ROCm**, ComfyUI `efa6c8f804bff78b46a0fd458ebd2e47bba07a30`, kitchen **0.2.33**, AIMDO
@@ -135,6 +133,24 @@ The downloader preserves bytes and hard-links cached files when possible.
 `download --verify-only --rehash` checks complete files. The selected files need no local
 conversion/calibration. Original full-precision quality parity is unproven; publisher calibration
 claims are not independent H3 quality proof.
+
+## Model weights and existing downloads
+
+Run the examples from the repository root. The selected denoiser, text/vision encoder, VAEs and Turbo
+adapters are pinned in [checkpoints.lock.json](checkpoints.lock.json). The launcher downloads and verifies
+them on first use. To reuse an existing H3 data directory, set
+`export PAITON_H3_DATA="/absolute/path/to/h3-data"`; the directory contains `models/` and `cache/`.
+See [the model weights guide](../../docs/MODEL_WEIGHTS.md) for offline and Hugging Face cache mounts.
+
+Container image:
+`ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.1.0@sha256:bd8c49a2440139b8b65dce2041ff4877298fd39a5e34128f6d2b594ef450cbed`.
+Hugging Face runtime package:
+[`EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4@paiton-rdna4-v1.1.0`](https://huggingface.co/EliovpAI/MiniMax-H3-W4A8-Paiton-RDNA4/tree/paiton-rdna4-v1.1.0).
+
+**Release package.** The combined runtime is distributed under the licenses in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). H3 regional authorization was confirmed for this
+qualification. The compiled artifact ships inside the container image; its manifest and
+`release.lock.json` record the hash.
 
 ## Licenses
 

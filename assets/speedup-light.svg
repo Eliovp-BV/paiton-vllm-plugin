@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="482" viewBox="0 0 900 482" role="img" aria-label="Bar chart: how many times faster Paiton is than the stock engine on one Radeon AI PRO R9700, per model">
+<g font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#0b0b0b">
+<text x="0" y="18" font-size="16" font-weight="600">Paiton against the stock engine, same model on one Radeon AI PRO R9700</text>
+<text x="0" y="38" fill="#52514e">Times faster than stock (bar), with the measured values. The line marks stock = 1x.</text>
+<text x="238" y="68" text-anchor="end" font-weight="600">Qwen3.8 27B</text>
+<text x="238" y="82" text-anchor="end" font-size="11" fill="#52514e">chat and coding, MXFP4</text>
+<path d="M250 60H626.0a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="638.0" y="74"><tspan font-weight="700">25.2x</tspan><tspan fill="#52514e" dx="8">4.5 to 113.5 tok/s</tspan></text>
+<text x="238" y="102" text-anchor="end" font-weight="600">Qwen-Image-2.1 Turbo</text>
+<text x="238" y="116" text-anchor="end" font-size="11" fill="#52514e">1024 x 1024 image</text>
+<path d="M250 94H335.1a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="347.1" y="108"><tspan font-weight="700">5.9x</tspan><tspan fill="#52514e" dx="8">23.6 to 3.99 s</tspan></text>
+<text x="238" y="136" text-anchor="end" font-weight="600">Idol</text>
+<text x="238" y="150" text-anchor="end" font-size="11" fill="#52514e">one image to 3D</text>
+<path d="M250 128H282.0a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="294.0" y="142"><tspan font-weight="700">2.4x</tspan><tspan fill="#52514e" dx="8">39.2 to 16.4 s</tspan></text>
+<text x="238" y="170" text-anchor="end" font-weight="600">GPT-OSS-20B</text>
+<text x="238" y="184" text-anchor="end" font-size="11" fill="#52514e">512 tokens in, 256 out</text>
+<path d="M250 162H278.8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="290.8" y="176"><tspan font-weight="700">2.2x</tspan><tspan fill="#52514e" dx="8">4.82 to 2.21 s</tspan></text>
+<text x="238" y="204" text-anchor="end" font-weight="600">MiniCPM5-2B</text>
+<text x="238" y="218" text-anchor="end" font-size="11" fill="#52514e">one request</text>
+<path d="M250 196H269.3a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="281.3" y="210"><tspan font-weight="700">1.5x</tspan><tspan fill="#52514e" dx="8">127.6 to 197.0 tok/s</tspan></text>
+<text x="238" y="238" text-anchor="end" font-weight="600">Ornith 1.5 35B</text>
+<text x="238" y="252" text-anchor="end" font-size="11" fill="#52514e">chat</text>
+<path d="M250 230H265.1a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="277.1" y="244"><tspan font-weight="700">1.3x</tspan><tspan fill="#52514e" dx="8">35.1 to 44.6 tok/s</tspan></text>
+<text x="238" y="272" text-anchor="end" font-weight="600">Qwen3-Coder 30B</text>
+<text x="238" y="286" text-anchor="end" font-size="11" fill="#52514e">one request</text>
+<path d="M250 264H264.3a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="276.3" y="278"><tspan font-weight="700">1.2x</tspan><tspan fill="#52514e" dx="8">104.4 to 126.7 tok/s</tspan></text>
+<text x="238" y="306" text-anchor="end" font-weight="600">FLUX.2 klein 4B</text>
+<text x="238" y="320" text-anchor="end" font-size="11" fill="#52514e">one image</text>
+<path d="M250 298H264.0a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="276.0" y="312"><tspan font-weight="700">1.2x</tspan><tspan fill="#52514e" dx="8">1.26 to 1.05 s</tspan></text>
+<text x="238" y="340" text-anchor="end" font-weight="600">MiniMax H3</text>
+<text x="238" y="354" text-anchor="end" font-size="11" fill="#52514e">5 s video with audio</text>
+<path d="M250 332H263.8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="275.8" y="346"><tspan font-weight="700">1.2x</tspan><tspan fill="#52514e" dx="8">64.2 to 54.4 s</tspan></text>
+<text x="238" y="374" text-anchor="end" font-weight="600">FastWan 5B</text>
+<text x="238" y="388" text-anchor="end" font-size="11" fill="#52514e">832 x 480 video</text>
+<path d="M250 366H261.8a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="273.8" y="380"><tspan font-weight="700">1.0x</tspan><tspan fill="#52514e" dx="8">9.28 to 8.84 s</tspan></text>
+<text x="238" y="408" text-anchor="end" font-weight="600">Wan2.2 TI2V-5B</text>
+<text x="238" y="422" text-anchor="end" font-size="11" fill="#52514e">image to video</text>
+<path d="M250 400H260.9a4 4 0 0 1 4 4v8a4 4 0 0 1 -4 4H250z" fill="#eb6834"/>
+<text x="272.9" y="414"><tspan font-weight="700">1.0x</tspan><tspan fill="#52514e" dx="8">29.5 to 29.8 s</tspan></text>
+<path d="M265.1 52V430" stroke="#52514e" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="0" y="454" font-size="11" fill="#52514e">Each pair runs the same model on the same card. The top two rows compare whole setups: Paiton adds speculative decoding (27B)</text>
+<text x="0" y="469" font-size="11" fill="#52514e">and a quantized model that fits in VRAM (Qwen-Image). Dates, workloads and limits are in each model guide.</text>
+</g></svg>

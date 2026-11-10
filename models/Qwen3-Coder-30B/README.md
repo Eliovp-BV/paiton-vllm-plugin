@@ -1,116 +1,24 @@
-# Qwen3-Coder 30B for local coding on R9700
+# Qwen3-Coder 30B on one R9700
 
-## Model weights and existing downloads
+Qwen3-Coder 30B A3B writes, reviews and tests code and calls tools, served by vLLM with the Paiton plugin on one Radeon
+AI PRO R9700 (32 GB).
 
-Choose one option below. Run commands from the repository root. This release
-requires `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` at revision `4bd30395b72ea6045edd04806c4fea448d4467b3`, including its configuration,
-tokenizer and complete weight files. The compiled runtime is included in the
-container; the weights are separate.
+One request generates at **127 tok/s** with Paiton, against 104 tok/s with stock vLLM. Two requests at once reach
+173 tok/s in total, against 102 (8 September 2026, [benchmarks](BENCHMARKS.md)).
 
-### First download
-
-The launcher downloads the pinned checkpoint on first use and reuses its own
-persistent cache afterward:
+Start it:
 
 ```bash
-./models/Qwen3-Coder-30B/serve-docker.sh
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
+cd paiton-vllm-plugin
+./models/Qwen3-Coder-30B/serve-docker.sh --chat
 ```
 
-Use `--download-only` to prepare ahead of time. To reuse an earlier download,
-choose one of the following options before starting the container.
+The first start downloads the pinned 18.1 GB checkpoint, then opens a terminal chat. The API keeps running after you
+leave the chat.
 
-### Already in a local folder
-
-In the [supported native environment](#native-serving), point directly to it:
-
-```bash
-paiton --model-dir /absolute/path/to/qwen3-coder serve qwen3-coder
-```
-
-For Docker, bind your complete standalone checkpoint into the pinned snapshot
-location expected by this image. This does not copy or download the weights:
-
-```bash
-export PAITON_MODEL_DIR="/absolute/path/to/qwen3-coder"
-docker run --rm --name paiton-qwen3-coder-local \
-  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 0.0.0.0:8010:8010 \
-  --mount type=volume,src=paiton-qwen3-coder-local-runtime,dst=/models/cache \
-  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--cyankiwi--Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit/snapshots/4bd30395b72ea6045edd04806c4fea448d4467b3,readonly" \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
-```
-
-Use the exact checkpoint above. The mount path selects the release's expected
-location; it does not make a different model compatible. For a Hub snapshot
-containing links to blobs, use the cache option below instead.
-
-### Already in the Hugging Face cache
-
-For a previous `hf download cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` without `--local-dir`,
-mount the **Hub cache root**, keeping snapshots and blobs together. Select your
-configured cache, or replace the first line with
-`export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`:
-
-```bash
-export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
-docker run --rm --name paiton-qwen3-coder-cached \
-  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
-  -p 0.0.0.0:8010:8010 \
-  --mount type=volume,src=paiton-qwen3-coder-cached-runtime,dst=/models/cache \
-  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
-  ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
-```
-
-The required revision must already be complete. If it is missing, download that
-revision on the host with `hf download cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit --revision 4bd30395b72ea6045edd04806c4fea448d4467b3`,
-then retry. `--offline` prevents model downloads inside this container.
-These examples start the same API in the foreground. Run one server on this
-port at a time. [Cache paths and Docker mounts](../../docs/MODEL_WEIGHTS.md).
-
-## Native serving
-
-Activate the supported environment listed below, then install and serve:
-
-```bash
-python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
-paiton serve qwen3-coder
-```
-
-Paiton automatically downloads and verifies the native bundle and reuses the
-pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
-downloaded from the publisher. To reuse an existing local copy, run
-`paiton --model-dir /path/to/model serve qwen3-coder`; successful preparation
-remembers that path for later launches.
-
-Use `paiton --prepare-only serve qwen3-coder` to prepare without starting the
-server, then `paiton --offline serve qwen3-coder` for offline operation.
-Paiton options precede `serve`; vLLM options such as `--port` follow the model.
-See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
-offline use and troubleshooting. The existing container and Python commands
-below remain supported.
-
-- **Native bundle:** `coder-native-20260921`; downloaded and verified automatically.
-- **Checkpoint:** `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit`, revision `4bd30395b72ea6045edd04806c4fea448d4467b3`.
-- **Existing runtime:** Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
-- **Preset / profile:** `qwen3-coder` / `qwen3-coder-text-4k`.
-- **Serving behavior:** Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 4K context, qwen3_xml tools.
-- **API:** `http://127.0.0.1:8010/v1` (or `http://<this-machine-ip>:8010/v1` from another system), model name `qwen3-coder`. Wait for readiness; `curl http://127.0.0.1:8010/health` checks the server.
-
-The shorter command uses the shared native resolver and the same installed
-Python. `paiton --profile qwen3-coder-text-4k vllm serve /models/existing-qwen3-coder`
-also works. The source checkpoint is preserved. See the
-[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
-for exactly what was tested.
-
-
-Run Qwen3-Coder-30B-A3B-Instruct on one **Radeon AI PRO R9700, 32 GB**, with
-terminal chat and an OpenAI-compatible coding API. The prebuilt container
-includes Paiton and the compiled artifact; no compiler or local build is needed.
-
-**[Download the ready-to-run bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/qwen3-coder-30b-awq-rdna4-v1.0.0/paiton-qwen3-coder-r9700-v1.0.0.tar.gz)** ·
-[Checksums and release files](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/tag/qwen3-coder-30b-awq-rdna4-v1.0.0) ·
-[Hugging Face artifacts and launcher](https://huggingface.co/EliovpAI/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit-Paiton-RDNA4) ·
-[Measured performance and quality](BENCHMARKS.md)
+[Start coding](#start-coding) · [Connect a coding client](#connect-a-coding-client) ·
+[Requirements](#requirements-model-and-supported-scope) · [Existing downloads](#model-weights-and-existing-downloads)
 
 ## Start coding
 
@@ -148,8 +56,8 @@ To start only the API, omit `--chat`. Check progress with
 container. It reports a conflict if the existing container uses another image,
 mode, port or cache, instead of silently serving the wrong setup.
 
-For example: “Write a Python function that merges overlapping intervals,
-without mutating its input. Include tests for empty and touching intervals.”
+For example: "Write a Python function that merges overlapping intervals,
+without mutating its input. Include tests for empty and touching intervals."
 
 ## Connect a coding client
 
@@ -242,6 +150,118 @@ on the small quality suite. Numerical and text differences remain. See
 [BENCHMARKS.md](BENCHMARKS.md) for latency, counts, raw-data scope and limits.
 No LoRA, expert parallelism, speculation, other GPU or long-context performance
 is qualified. No power, clock, fan or voltage changes are required.
+
+## Model weights and existing downloads
+
+Choose one option below. Run commands from the repository root. This release
+requires `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` at revision `4bd30395b72ea6045edd04806c4fea448d4467b3`, including its configuration,
+tokenizer and complete weight files. The compiled runtime is included in the
+container; the weights are separate.
+
+### First download
+
+The launcher downloads the pinned checkpoint on first use and reuses its own
+persistent cache afterward:
+
+```bash
+./models/Qwen3-Coder-30B/serve-docker.sh
+```
+
+Use `--download-only` to prepare ahead of time. To reuse an earlier download,
+choose one of the following options before starting the container.
+
+### Already in a local folder
+
+In the [supported native environment](#native-serving), point directly to it:
+
+```bash
+paiton --model-dir /absolute/path/to/qwen3-coder serve qwen3-coder
+```
+
+For Docker, bind your complete standalone checkpoint into the pinned snapshot
+location expected by this image. This does not copy or download the weights:
+
+```bash
+export PAITON_MODEL_DIR="/absolute/path/to/qwen3-coder"
+docker run --rm --name paiton-qwen3-coder-local \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 0.0.0.0:8010:8010 \
+  --mount type=volume,src=paiton-qwen3-coder-local-runtime,dst=/models/cache \
+  --mount "type=bind,src=$PAITON_MODEL_DIR,dst=/models/cache/huggingface/hub/models--cyankiwi--Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit/snapshots/4bd30395b72ea6045edd04806c4fea448d4467b3,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
+```
+
+Use the exact checkpoint above. The mount path selects the release's expected
+location; it does not make a different model compatible. For a Hub snapshot
+containing links to blobs, use the cache option below instead.
+
+### Already in the Hugging Face cache
+
+For a previous `hf download cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit` without `--local-dir`,
+mount the **Hub cache root**, keeping snapshots and blobs together. Select your
+configured cache, or replace the first line with
+`export HF_HUB_CACHE="/absolute/path/to/your/hub-cache"`:
+
+```bash
+export HF_HUB_CACHE="${HF_HUB_CACHE:-${HUGGINGFACE_HUB_CACHE:-${HF_HOME:-${XDG_CACHE_HOME:-$HOME/.cache}/huggingface}/hub}}"
+docker run --rm --name paiton-qwen3-coder-cached \
+  --device /dev/kfd --device /dev/dri --group-add video --ipc=host \
+  -p 0.0.0.0:8010:8010 \
+  --mount type=volume,src=paiton-qwen3-coder-cached-runtime,dst=/models/cache \
+  --mount "type=bind,src=$HF_HUB_CACHE,dst=/models/cache/huggingface/hub,readonly" \
+  ghcr.io/eliovp/paiton-vllm-plugin:qwen3-coder-30b-awq-rdna4-v1.0.0 --offline
+```
+
+The required revision must already be complete. If it is missing, download that
+revision on the host with `hf download cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit --revision 4bd30395b72ea6045edd04806c4fea448d4467b3`,
+then retry. `--offline` prevents model downloads inside this container.
+These examples start the same API in the foreground. Run one server on this
+port at a time. [Cache paths and Docker mounts](../../docs/MODEL_WEIGHTS.md).
+
+## Native serving
+
+Activate the supported environment listed below, then install and serve:
+
+```bash
+python -m pip install https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/v0.3.4/paiton_vllm_plugin-0.3.4-py3-none-any.whl
+paiton serve qwen3-coder
+```
+
+Paiton automatically downloads and verifies the native bundle and reuses the
+pinned checkpoint in your Hugging Face cache. Missing checkpoint files are
+downloaded from the publisher. To reuse an existing local copy, run
+`paiton --model-dir /path/to/model serve qwen3-coder`; successful preparation
+remembers that path for later launches.
+
+Use `paiton --prepare-only serve qwen3-coder` to prepare without starting the
+server, then `paiton --offline serve qwen3-coder` for offline operation.
+Paiton options precede `serve`; vLLM options such as `--port` follow the model.
+See the [native setup guide](../../docs/NATIVE_EXECUTION.md) for installation,
+offline use and troubleshooting. The existing container and Python commands
+below remain supported.
+
+- Native bundle: `coder-native-20260921`; downloaded and verified automatically.
+- Checkpoint: `cyankiwi/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit`, revision `4bd30395b72ea6045edd04806c4fea448d4467b3`.
+- Existing runtime: Python 3.12, vLLM `0.28.0.dev0+eliovp.quark48606.g39bd959b5.rocm714`, Torch `2.12.0+rocm7.14.0`, ROCm SDK 7.14.0; one `gfx1201` R9700. Full ABI/package pins appear in `paiton models`.
+- Preset / profile: `qwen3-coder` / `qwen3-coder-text-4k`.
+- Serving behavior: Explicit released C2 text profile, APC off, no speculation, graph sizes 1/2. Original checkpoint quantization unchanged; native expert decode with existing upstream prefill and attention. 4K context, qwen3_xml tools.
+- API: `http://127.0.0.1:8010/v1` (or `http://<this-machine-ip>:8010/v1` from another system), model name `qwen3-coder`. Wait for readiness; `curl http://127.0.0.1:8010/health` checks the server.
+
+The shorter command uses the shared native resolver and the same installed
+Python. `paiton --profile qwen3-coder-text-4k vllm serve /models/existing-qwen3-coder`
+also works. The source checkpoint is preserved. See the
+[validation and compatibility notes](../../docs/NATIVE_EXECUTION.md#validation-status)
+for exactly what was tested.
+
+
+Run Qwen3-Coder-30B-A3B-Instruct on one **Radeon AI PRO R9700, 32 GB**, with
+terminal chat and an OpenAI-compatible coding API. The prebuilt container
+includes Paiton and the compiled artifact; no compiler or local build is needed.
+
+**[Download the ready-to-run bundle](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/download/qwen3-coder-30b-awq-rdna4-v1.0.0/paiton-qwen3-coder-r9700-v1.0.0.tar.gz)** ·
+[Checksums and release files](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases/tag/qwen3-coder-30b-awq-rdna4-v1.0.0) ·
+[Hugging Face artifacts and launcher](https://huggingface.co/EliovpAI/Qwen3-Coder-30B-A3B-Instruct-AWQ-4bit-Paiton-RDNA4) ·
+[Measured performance and quality](BENCHMARKS.md)
 
 ## Reproduce benchmarks or rebuild
 

@@ -1,4 +1,15 @@
-# Local meeting audio — standalone package
+# Meeting notes on one R9700 (preview)
+
+Meeting turns a recording of a meeting into a transcript with speaker labels and timestamped notes, on your own machine
+with one Radeon AI PRO R9700 (32 GB). It is a preview: check the notes against the recording. It works on recordings
+you import; it does not capture a live call.
+
+On a 39-minute test recording, speech recognition took **77 s** with the Paiton decoder, against 87 s stock, with the
+same word error rate (20.4 %). That is the speech-recognition step, not the whole pipeline
+([benchmarks](BENCHMARKS.md)).
+
+The models need a one-time preparation, including your own access approval for pyannote:
+[prepare the models](#model-weights-and-existing-downloads), then [import a recording](#recording-import).
 
 ## Model weights and existing downloads
 
@@ -112,38 +123,9 @@ Choose an unused result name. The ordinary `run-docker.sh` does not add this
 external Hub mount, so retain the explicit command for this layout.
 [Cache path guide](../../docs/MODEL_WEIGHTS.md).
 
-## Serving interface
-
-Keep the existing recording workflow: after [preparation](REPRODUCE.md), run
-`./models/Meeting/run-docker.sh --paiton /path/to/meeting.mp4 /path/to/new-result`
-from the repository root. The package manages its own stages, including its
-text helper; no separately served chat endpoint is required. Existing flags,
-cache locations and commands remain available. The separate `paiton serve`
-command is explained in the [main launch guide](../../README.md#quick-start).
-
-
-**Release candidate, 1.0.0rc1 — image published on GHCR; source branch ready for PR review.** The tested Paiton pipeline meets the declared median speed-parity gate. Studio integration is a separate task; this package runs independently through its CLI/container.
-
-Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test and a repeated 39-minute meeting benchmark. Summaries are partial drafts for review against the recording.
-
-The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
-
-| Component | Pinned choice | Local implementation |
-|---|---|---|
-| Speech recognition | NVIDIA Parakeet TDT 0.6B v3 | Transformers, FP16 SDPA; optional Paiton prediction LSTM |
-| Voice activity | Silero VAD | CPU TorchScript, silence gating without shifting the audio clock |
-| Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
-| Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native vLLM with a Transformers alternative, evidence-linked partial notes |
-
-The final cached complete-pipeline median is **291.03 seconds stock / 284.50 seconds Paiton**, a **6.53-second (2.24%) reduction** on the 39:05 meeting (four runs each). The original 20% objective was not met. The launcher enables Paiton by default; `--stock` runs the matched native baseline. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries, and [RELEASE.md](RELEASE.md) for the published image digest and artifact status.
-
-Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
-
-No separate forced-alignment model is shipped: word timing and punctuation come from Parakeet, followed by speaker-turn attribution. Timestamp limitations are measured separately from WER.
-
 ## Recording import
 
-Export a consented recording from Teams or another meeting application, then run this package locally. Tested formats include WAV, FLAC, MP3, M4A/MP4 with AAC, and Ogg/WebM with Opus. The input is read-only; choose a new output directory for each run. Select separate audio tracks/channels rather than automatically combining duplicate microphone/system feeds. Decoding is bounded to eight hours; supported containers can still contain unsupported codecs.
+Export a consented recording from Teams or another meeting application, then run this package locally. Tested formats include WAV, FLAC, MP3, M4A/MP4 with AAC, and Ogg/WebM with Opus. The input is read-only; choose a new output directory for each run. Select separate audio tracks/channels; do not automatically combine duplicate microphone/system feeds. Decoding is bounded to eight hours; supported containers can still contain unsupported codecs.
 
 ```bash
 # After the one-time model preparation and local image build:
@@ -166,7 +148,7 @@ The package CLI provides one-command `process`, plus `inspect`, `normalize`, `tr
 
 `benchmark-asr` records one first-processing pass plus at least three warm runs, transcripts, raw timings and sampled driver/allocator telemetry. RTF means processing seconds divided by audio seconds; its reciprocal is audio hours processed per wall-clock hour. This command measures the ASR stage, not end-to-end meeting processing. See [BENCHMARKS.md](BENCHMARKS.md) for measured model switching, summary latency and image-specific limitations.
 
-JSON, plain transcript, SRT, VTT and plain-text summary exports preserve source IDs/timestamps. Speaker names are user-entered labels; no voice-based identity recognition is claimed. Summary owners and deadlines remain unspecified unless supported by the transcript. Summary generation treats spoken instructions as untrusted data and rejects invalid references or incomplete model output. Hierarchical reduction carries source quotes and IDs; a separate local audit checks claims against nearby transcript context. Unresolved-issue entries additionally require an explicit question or uncertainty cue in the cited English text, so facts and suggestions are conservatively omitted from that category. These checks do not prove factuality: outputs remain partial drafts for review against playback. This initial version accepts incomplete coverage; the full transcript remains available. No measured 60–75% recall claim is made.
+JSON, plain transcript, SRT, VTT and plain-text summary exports preserve source IDs/timestamps. Speaker names are user-entered labels; no voice-based identity recognition is claimed. Summary owners and deadlines remain unspecified unless supported by the transcript. Summary generation treats spoken instructions as untrusted data and rejects invalid references or incomplete model output. Hierarchical reduction carries source quotes and IDs; a separate local audit checks claims against nearby transcript context. Unresolved-issue entries also require an explicit question or uncertainty cue in the cited English text, so facts and suggestions are conservatively omitted from that category. These checks do not prove factuality: outputs remain partial drafts for review against playback. This initial version accepts incomplete coverage; the full transcript remains available. No measured 60–75% recall claim is made.
 
 Recordings, transcripts and summaries remain local. Delete a CLI output directory to remove its derived content; the original recording is preserved. Intermediate stage files are removed unless `--keep-intermediates` is requested. No meeting content is sent to an external API.
 
@@ -191,6 +173,35 @@ A short excerpt from that actual output:
 | Open issue: the launch date remains undecided. | `s000007` |
 
 The compact Granite adapter uses bounded context and hierarchical summaries. Large Qwen3.8 and GPT-OSS models are excluded from this small configuration. Summary coverage is intentionally accepted as partial for this initial version; included claims still need review against source timestamps. See [SELECTION.md](SELECTION.md), [QUANTIZATION.md](QUANTIZATION.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Serving interface
+
+Keep the existing recording workflow: after [preparation](REPRODUCE.md), run
+`./models/Meeting/run-docker.sh --paiton /path/to/meeting.mp4 /path/to/new-result`
+from the repository root. The package manages its own stages, including its
+text helper; no separately served chat endpoint is required. Existing flags,
+cache locations and commands remain available. The separate `paiton serve`
+command is explained in the [main launch guide](../../README.md#quick-start).
+
+
+**Release candidate, 1.0.0rc1: image published on GHCR; source branch ready for PR review.** The tested Paiton pipeline meets the declared median speed-parity gate. Studio integration is a separate task; this package runs independently through its CLI/container.
+
+Recording import, codec handling, ASR, anonymous diarization and compiler execution have local tests. The complete CLI passed a generated spoken regression test and a repeated 39-minute meeting benchmark. Summaries are partial drafts for review against the recording.
+
+The pipeline separates audio capture/import, Silero voice activity detection, Parakeet speech recognition, pyannote speaker diarization and a small local text summarizer. A speech recognizer does not capture Teams audio or identify participants by name. English is the primary qualification language. Parakeet v3 supports multiple languages upstream; this package has not yet qualified them all.
+
+| Component | Pinned choice | Local implementation |
+|---|---|---|
+| Speech recognition | NVIDIA Parakeet TDT 0.6B v3 | Transformers, FP16 SDPA; optional Paiton prediction LSTM |
+| Voice activity | Silero VAD | CPU TorchScript, silence gating without shifting the audio clock |
+| Speaker turns | pyannote community-1 | Separate offline GPU stage; overlapping and uncertain turns retained |
+| Partial summary | Granite 4.2 3B (3.7B actual parameters) | Compact text helper; native vLLM with a Transformers alternative, evidence-linked partial notes |
+
+The final cached complete-pipeline median is **291.03 seconds stock / 284.50 seconds Paiton**, a **6.53-second (2.24%) reduction** on the 39:05 meeting (four runs each). The original 20% objective was not met. The launcher enables Paiton by default; `--stock` runs the matched native baseline. See [BENCHMARKS.md](BENCHMARKS.md) for variability and stage boundaries, and [RELEASE.md](RELEASE.md) for the published image digest and artifact status.
+
+Exact revisions and licenses are in [models.lock.json](models.lock.json). Accept community-1 access conditions with your own Hugging Face account before running the download preparation step. The runtime uses cached files and has no network access. Model weights are not included in this candidate's source package.
+
+No separate forced-alignment model is shipped: word timing and punctuation come from Parakeet, followed by speaker-turn attribution. Timestamp limitations are measured separately from WER.
 
 ## Licenses and attribution
 

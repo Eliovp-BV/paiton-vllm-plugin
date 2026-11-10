@@ -356,3 +356,8 @@ I/O and the disk-tier glue. Without `--extend-cache` every mode keeps the rc4 li
 ### How the numbers were taken
 BetterBench 0.6.0 standard profile on this machine against our OpenAI-compatible server; prefill with exact bf16 activations (no compressed
 wire).
+
+## Notes moved from the guides (10 November 2026)
+
+- Prefix caching on the 4-bit native worker (`--mode 4bit --fn-worker native --prefix-caching`) was new in 20261024-pc-rc2.
+- Session hibernation with `--extend-cache` was new on 7 November.

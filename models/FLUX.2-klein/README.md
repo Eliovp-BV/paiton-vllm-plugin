@@ -1,4 +1,135 @@
-# FLUX.2 klein with Paiton on Radeon
+# FLUX.2 klein 4B on one R9700
+
+FLUX.2 klein 4B makes an image from a text prompt, through ComfyUI, a web page or the command line, on one Radeon AI PRO
+R9700 (32 GB).
+
+One image takes **1.05 s** with Paiton, against 1.26 s with the strongest stock setup we tested. The pipeline peaks at
+12.9 GiB of Torch memory, against 19.3 GiB (7 September 2026, [benchmarks](BENCHMARKS.md)).
+
+Start it:
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
+cd paiton-vllm-plugin
+./models/FLUX.2-klein/launch.sh
+```
+
+Then open [ComfyUI](http://127.0.0.1:8188/?paiton=1), edit the prompt and click **Run**. The first launch downloads and
+prepares the model.
+
+[ComfyUI](#start-comfyui-with-one-command) · [Example images](#example-images) · [Terminal](#generate-from-a-terminal) ·
+[Requirements](#requirements-and-supported-scope) · [Existing downloads](#model-weights-and-existing-downloads)
+
+## Start ComfyUI with one command
+
+```bash
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FLUX.2-klein/launch.sh
+```
+
+The helper pulls the pinned containers, downloads and prepares the model once,
+keeps a persistent cache, and starts [ComfyUI](http://127.0.0.1:8188/?paiton=1).
+The first visit opens a connected workflow. Edit the prompt and click **Run**.
+Choose **Paiton** or **Stock (Diffusers)** in the image node. The preview and
+standard Save Image node work normally. Images are saved in `paiton-images/`.
+
+![Included ComfyUI workflow with engine selection and preview](assets/comfyui-workflow.png)
+
+The first image loads and compiles the model and can take several minutes.
+Later images reuse the loaded engine. Switching engines unloads the previous
+model and pays the loading/setup cost again. For a comparison, use the same
+prompt and seed and set the seed control to **fixed**.
+
+From this model directory, use `./launch.sh --logs` to follow startup and
+`./launch.sh --stop` to stop the services. Stopping preserves images, model
+caches and ComfyUI user settings. `./launch.sh --build` builds the same containers
+locally from the pinned recipes instead of pulling them.
+
+For a smaller prompt-and-image interface:
+
+```bash
+./launch.sh --ui simple
+```
+
+Open [the simple interface](http://127.0.0.1:7860). It keeps Paiton loaded while
+the command runs; right-click an image to save it. Stop with Ctrl-C.
+
+Both interfaces listen on all interfaces (0.0.0.0); use `--host 127.0.0.1` (or `PAITON_BIND=127.0.0.1`) to keep them local; add a firewall if the machine is reachable from untrusted networks.
+
+## Example images
+
+| Wildlife photograph | Product concept | Watercolor illustration |
+| --- | --- | --- |
+| ![Fox](assets/fox-paiton.png) | ![Cup and lemon](assets/product-paiton.png) | ![Bookshop](assets/bookshop-paiton.png) |
+
+These are retained Paiton outputs from the benchmark prompts and seeds.
+
+## Generate from a terminal
+
+Stop ComfyUI with `./launch.sh --stop` before starting a separate terminal
+pipeline. From this directory, download the published runtime and prepare the cache:
+
+```bash
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1
+docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1
+./run.sh download
+./run.sh generate --prompt 'A teal ceramic coffee cup beside a lemon, soft window light, product photograph' --seed 42
+```
+
+The PNG appears in `outputs/image.png`. `--count 4` tries four consecutive seeds
+in one loaded process. `--output /outputs/example.png` chooses a filename.
+Warm generation timings exclude process startup, PNG encoding and file writing.
+
+## Requirements and supported scope
+
+- Linux, a working AMD GPU driver, and one Radeon AI PRO R9700 with 32 GB VRAM.
+- Docker Engine with the Compose plugin and access to `/dev/kfd` and `/dev/dri`.
+- 16 GB system RAM was tested; 24 GB provides more compilation headroom.
+- Allow 60 GB of free disk for containers, source weights, prepared tensors,
+  compilation caches and outputs. The download is 5.46 GB and the prepared
+  tensors occupy about 12 GB.
+- Internet access for container setup and the first download. Cached generation
+  runs locally without a paid service, model API or cloud GPU.
+
+This release qualifies text-to-image, batch one, 1024 × 1024, four steps,
+guidance 1.0 and a 512-token text sequence. Editing, adapters, other resolutions
+and other GPUs are outside this profile. The ComfyUI bundle runs its interface
+and image handling on the CPU; the selected local engine performs generation on
+the Radeon. General ComfyUI GPU workflows are not qualified by this bundle.
+
+The `paiton-flux2-cache` Docker volume retains prepared tensors, and
+`paiton-flux2-cache-runtime` retains source weights and compilation caches.
+Set `PAITON_CACHE` to another volume prefix or an absolute host directory.
+With a host directory, source and compilation caches live in its `cache/` subdirectory. `PAITON_OUTPUTS` selects the host image directory. The ComfyUI user
+volume is `paiton-flux2-comfy-user`. `PAITON_UI_PORT` changes its host port.
+Image tags can be overridden with `PAITON_IMAGE`, `PAITON_TOOLS_IMAGE` and
+`PAITON_COMFYUI_IMAGE` for local builds.
+
+## Reproduce the comparison
+
+Stop the interface first and run these sequentially on an otherwise idle GPU:
+
+```bash
+./launch.sh --stop
+./run.sh benchmark --backend stock --suite --output /outputs/stock
+./run.sh benchmark --backend paiton --suite --output /outputs/paiton
+```
+
+Each command performs two warmups and two measured runs for each of three fixed
+prompts, with seeds 42, 31415 and 2026. Use fresh output directories. Removing
+`--suite` selects the fox prompt at seed 42. The timed interval includes text
+encoding, all four denoising steps, VAE decoding and conversion to a PIL image.
+It excludes PNG encoding and writing. Outputs, final latents, wall/component
+timings, memory peaks, process RSS, versions and hardware telemetry are retained.
+
+Stock uses Diffusers, SDNQ attention and matrix kernels, prepared immutable
+transformer weights, a channels-last VAE, whole-module compilation and graph
+capture. Both paths expose only the text-encoder outputs consumed by FLUX so the
+standard compiler can eliminate unused work. Stock weight freezing and vendor
+convolution autotuning were evaluated; neither improved the complete pipeline
+in the retained qualification. The Paiton path uses compiled transformer and
+decoder artifacts with equivalent prepared INT8 values. Both retain BF16 text
+encoding and VAE arithmetic, INT8 QK/BF16 PV transformer attention with FP32
+softmax, and the same scheduler and generation settings. Neither uses offload.
 
 ## Model weights and existing downloads
 
@@ -35,7 +166,7 @@ docker run --rm --name paiton-flux2-local \
   ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1 serve --port 7860
 ```
 
-Open `http://127.0.0.1:7860` (or `http://<this-machine-ip>:7860` from another system). This starts the simple interface, rather than the
+Open `http://127.0.0.1:7860` (or `http://<this-machine-ip>:7860` from another system). This starts the simple interface, not the
 ComfyUI launcher above, and needs no source-weight download.
 
 If your folder instead contains the original Diffusers/SDNQ snapshot, prepare
@@ -86,6 +217,21 @@ requires completing that download on the host first. This cache mount applies
 to this Docker command, not to later invocations of `launch.sh`.
 [Cache path guide](../../docs/MODEL_WEIGHTS.md).
 
+## Use the node in an existing ComfyUI installation
+
+Copy `comfyui/custom_nodes/paiton_flux2` into the installation's `custom_nodes/`
+directory and restart ComfyUI. Start this package's engine services with the
+launch helper, then open `comfyui/custom_nodes/paiton_flux2/example_workflows/Generate.json`
+in your existing interface. For ComfyUI running directly on the same host, the
+node's default engine addresses are `http://127.0.0.1:7861` and
+`http://127.0.0.1:7862`. Container installations can set `PAITON_FLUX2_ENDPOINT`
+and `PAITON_STOCK_ENDPOINT` to reachable addresses for these local services.
+Both services must be running for engine switching. The node returns a standard
+ComfyUI `IMAGE` for preview, saving and downstream image processing.
+
+The bundled configuration is the tested route. Avoid keeping other GPU models
+loaded while using the R9700 generation engine.
+
 ## Serving interface
 
 For this image generation package, keep using the existing launcher from the repository
@@ -113,132 +259,6 @@ The complete pipeline stays on the GPU without CPU offload. These overlapping
 measurements include compilation and warmup; 12.9 GiB is not total VRAM use.
 
 ![Full-pipeline memory: 12.9 GiB peak Torch allocation with Paiton](assets/pipeline-memory.png)
-
-## Start ComfyUI with one command
-
-```bash
-git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git && cd paiton-vllm-plugin && ./models/FLUX.2-klein/launch.sh
-```
-
-The helper pulls the pinned containers, downloads and prepares the model once,
-keeps a persistent cache, and starts [ComfyUI](http://127.0.0.1:8188/?paiton=1).
-The first visit opens a connected workflow. Edit the prompt and click **Run**.
-Choose **Paiton** or **Stock (Diffusers)** in the image node. The preview and
-standard Save Image node work normally. Images are saved in `paiton-images/`.
-
-![Included ComfyUI workflow with engine selection and preview](assets/comfyui-workflow.png)
-
-The first image loads and compiles the model and can take several minutes.
-Later images reuse the loaded engine. Switching engines unloads the previous
-model and pays the loading/setup cost again. For a comparison, use the same
-prompt and seed and set the seed control to **fixed**.
-
-From this model directory, use `./launch.sh --logs` to follow startup and
-`./launch.sh --stop` to stop the services. Stopping preserves images, model
-caches and ComfyUI user settings. `./launch.sh --build` builds the same containers
-locally from the pinned recipes instead of pulling them.
-
-For a smaller prompt-and-image interface:
-
-```bash
-./launch.sh --ui simple
-```
-
-Open [the simple interface](http://127.0.0.1:7860). It keeps Paiton loaded while
-the command runs; right-click an image to save it. Stop with Ctrl-C.
-
-Both interfaces listen on all interfaces (0.0.0.0); use `--host 127.0.0.1` (or `PAITON_BIND=127.0.0.1`) to keep them local; add a firewall if the machine is reachable from untrusted networks.
-
-## Example images
-
-| Wildlife photograph | Product concept | Watercolor illustration |
-| --- | --- | --- |
-| ![Fox](assets/fox-paiton.png) | ![Cup and lemon](assets/product-paiton.png) | ![Bookshop](assets/bookshop-paiton.png) |
-
-These are retained Paiton outputs from the benchmark prompts and seeds.
-
-## Requirements and supported scope
-
-- Linux, a working AMD GPU driver, and one Radeon AI PRO R9700 with 32 GB VRAM.
-- Docker Engine with the Compose plugin and access to `/dev/kfd` and `/dev/dri`.
-- 16 GB system RAM was tested; 24 GB provides more compilation headroom.
-- Allow 60 GB of free disk for containers, source weights, prepared tensors,
-  compilation caches and outputs. The download is 5.46 GB and the prepared
-  tensors occupy about 12 GB.
-- Internet access for container setup and the first download. Cached generation
-  runs locally without a paid service, model API or cloud GPU.
-
-This release qualifies text-to-image, batch one, 1024 × 1024, four steps,
-guidance 1.0 and a 512-token text sequence. Editing, adapters, other resolutions
-and other GPUs are outside this profile. The ComfyUI bundle runs its interface
-and image handling on the CPU; the selected local engine performs generation on
-the Radeon. General ComfyUI GPU workflows are not qualified by this bundle.
-
-The `paiton-flux2-cache` Docker volume retains prepared tensors, and
-`paiton-flux2-cache-runtime` retains source weights and compilation caches.
-Set `PAITON_CACHE` to another volume prefix or an absolute host directory.
-With a host directory, source and compilation caches live in its `cache/` subdirectory. `PAITON_OUTPUTS` selects the host image directory. The ComfyUI user
-volume is `paiton-flux2-comfy-user`. `PAITON_UI_PORT` changes its host port.
-Image tags can be overridden with `PAITON_IMAGE`, `PAITON_TOOLS_IMAGE` and
-`PAITON_COMFYUI_IMAGE` for local builds.
-
-## Generate from a terminal
-
-Stop ComfyUI with `./launch.sh --stop` before starting a separate terminal
-pipeline. From this directory, download the published runtime and prepare the cache:
-
-```bash
-docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-klein-rdna4-v1.0.1
-docker pull ghcr.io/eliovp/paiton-vllm-plugin:flux2-tools-rdna4-v1.0.1
-./run.sh download
-./run.sh generate --prompt 'A teal ceramic coffee cup beside a lemon, soft window light, product photograph' --seed 42
-```
-
-The PNG appears in `outputs/image.png`. `--count 4` tries four consecutive seeds
-in one loaded process. `--output /outputs/example.png` chooses a filename.
-Warm generation timings exclude process startup, PNG encoding and file writing.
-
-## Reproduce the comparison
-
-Stop the interface first and run these sequentially on an otherwise idle GPU:
-
-```bash
-./launch.sh --stop
-./run.sh benchmark --backend stock --suite --output /outputs/stock
-./run.sh benchmark --backend paiton --suite --output /outputs/paiton
-```
-
-Each command performs two warmups and two measured runs for each of three fixed
-prompts, with seeds 42, 31415 and 2026. Use fresh output directories. Removing
-`--suite` selects the fox prompt at seed 42. The timed interval includes text
-encoding, all four denoising steps, VAE decoding and conversion to a PIL image.
-It excludes PNG encoding and writing. Outputs, final latents, wall/component
-timings, memory peaks, process RSS, versions and hardware telemetry are retained.
-
-Stock uses Diffusers, SDNQ attention and matrix kernels, prepared immutable
-transformer weights, a channels-last VAE, whole-module compilation and graph
-capture. Both paths expose only the text-encoder outputs consumed by FLUX so the
-standard compiler can eliminate unused work. Stock weight freezing and vendor
-convolution autotuning were evaluated; neither improved the complete pipeline
-in the retained qualification. The Paiton path uses compiled transformer and
-decoder artifacts with equivalent prepared INT8 values. Both retain BF16 text
-encoding and VAE arithmetic, INT8 QK/BF16 PV transformer attention with FP32
-softmax, and the same scheduler and generation settings. Neither uses offload.
-
-## Use the node in an existing ComfyUI installation
-
-Copy `comfyui/custom_nodes/paiton_flux2` into the installation's `custom_nodes/`
-directory and restart ComfyUI. Start this package's engine services with the
-launch helper, then open `comfyui/custom_nodes/paiton_flux2/example_workflows/Generate.json`
-in your existing interface. For ComfyUI running directly on the same host, the
-node's default engine addresses are `http://127.0.0.1:7861` and
-`http://127.0.0.1:7862`. Container installations can set `PAITON_FLUX2_ENDPOINT`
-and `PAITON_STOCK_ENDPOINT` to reachable addresses for these local services.
-Both services must be running for engine switching. The node returns a standard
-ComfyUI `IMAGE` for preview, saving and downstream image processing.
-
-The bundled configuration is the tested route. Avoid keeping other GPU models
-loaded while using the R9700 generation engine.
 
 ## Pinned software and model
 

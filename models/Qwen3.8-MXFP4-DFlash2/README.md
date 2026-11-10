@@ -1,97 +1,48 @@
 # Qwen3.8 27B on one R9700
 
-Qwen3.8 27B with DFlash2 speculative decoding in vLLM, on one Radeon AI PRO R9700 (32 GB). Two weight choices:
+Qwen3.8 27B with DFlash2 speculative decoding in regular vLLM, on one Radeon AI PRO R9700 (32 GB). It answers at
+about **180 tok/s** for one request, takes up to 262,144 tokens per request, and reads images.
 
-- **MXFP4**: the most accurate, from the base download alone.
-- **3-bit W3A4**: the fastest, with the most context (up to 262,144 tokens per request, 524,288 experimental) and images
-  in every long mode except the 524K one. An extra 9.55 GB download. MMLU-Pro 60.6 against MXFP4's 62.6 with the first 3-bit weights; the
-  updates since recover about 0.5 to 1 point.
+There are two weight choices:
+
+| Weights | Launcher | Speed, one request | What it is for |
+| --- | --- | ---: | --- |
+| 3-bit W3A4 | `run-3bit.sh` | 180 tok/s | The fastest, with the most context: up to 262,144 tokens per request (524,288 experimental), and images in every long mode except the 524K one. An extra 9.55 GB download. |
+| MXFP4 | `run-mxfp4.sh` | 156 tok/s | The most accurate, from the base download alone. |
+
+MMLU-Pro was 60.6 against MXFP4's 62.6 with the first 3-bit weights; the updates since recover about 0.5 to 1 point.
+
+To run it: [set up](#set-up), [download the weights](#download-the-weights), then start a row of
+[What you get](#what-you-get), for example:
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
+```
 
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**7 November: new 3-bit weights and a new image.** Run `git pull`, then the 3-bit [download](#optional-the-3-bit-weights)
-again (revision `aee42dfdb78e851462743120a575bf2d6f7b9882`) and `sha256sum -c SHA256SUMS`.
+**Current release: 7 November.** Image r2 with the 7 November 3-bit weights (revision
+`aee42dfdb78e851462743120a575bf2d6f7b9882`). If your 3-bit download is older, run `git pull`, then the 3-bit
+[download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
 
-#### 3-bit weights: fewer agent loops
+| 3-bit weights on one R9700 | 16-bit model (datacenter GPU) | 3-bit, this release |
+| --- | ---: | ---: |
+| GSM8K (1,319) | 95.5 | 95.8 |
+| HumanEval (164) | 95.7 | 97.0 |
+| MMLU-Pro (1,400) | 81.5 | 79.5 |
+| SWE-bench Verified, tasks solved of 500 | 390 | 323 |
+| SWE-bench Verified, tasks where the agent looped | 12 | 67 |
 
-We retuned part of the 3-bit scales (the MLP gate and up scales of layers 32 to 63)
-  on coding-agent conversations; the 3-bit codes, format and size are unchanged. On 80 random SWE-bench Verified tasks
-  (mini-swe-agent, 250-step limit, one R9700, `--mode long-kv4` on the 5 October image, thinking off), against a fresh run of the 24 October
-  weights on the same tasks:
+Task scores: 65K mode, thinking on, the same questions and seeds for both columns. GSM8K and HumanEval are within noise
+of the 16-bit model (HumanEval moves between 92 and 97 from run to run); MMLU-Pro is 2.0 points lower (p 0.02).
+SWE-bench Verified: mini-swe-agent, 250-step limit, `--mode long-kv4`, one run each; the 3-bit weights solve
+significantly fewer tasks than the 16-bit model.
 
-  | | 24 October weights | 7 November weights | Paired test |
-  | --- | ---: | ---: | --- |
-  | Tasks solved | 41 | 49 | p 0.12: **not significant** on 80 tasks |
-  | Tasks where the agent looped (the same command 3+ times in a row) | 16 | 7 | p 0.078: borderline |
-  | Tasks stopped by the 250-step limit | 20 | 12 | p 0.13 |
+The other 3-bit task tables on this page were measured with the first 3-bit weights (`7a2e3d70`) unless a row says
+otherwise. Comparisons with earlier weights and images, release notes and earlier 3-bit revisions are in the
+[history](HISTORY.md).
 
-  For scale: the 16-bit model solved 58 of the same 80 (served on a datacenter GPU). Agent runs at
-  temperature 0.7 vary from run to run.
-
-  **All 500 SWE-bench Verified tasks (8 November).** The same agent settings, `--mode long-kv4`, one R9700 per run:
-  the 7 November weights on image r2, the 24 October weights on the 5 October image (the run of 3-5 November), and the
-  16-bit model served on a datacenter GPU. One run each, paired per task with an exact McNemar test. The held-out 250
-  are the second half of the task list; none of them was used to train the new weights.
-
-  | | 16-bit model | 24 October weights | 7 November weights | 7 Nov vs 24 Oct | 7 Nov vs 16-bit |
-  | --- | ---: | ---: | ---: | --- | --- |
-  | Solved, all 500 | 390 | 284 | 323 | 81 vs 42 tasks solved by only one, p 0.0006 | 25 vs 92, p < 0.0001 |
-  | Solved, held-out 250 | 191 | 134 | 165 | 48 vs 17, p 0.0002 | 17 vs 43, p 0.001 |
-  | Looped, all 500 | 12 | 89 | 67 | p 0.03 | p < 0.0001 |
-  | Stopped by the step limit, all 500 | 8 | 107 | 69 | p 0.0003 | |
-
-  The new weights solve more tasks than the 24 October weights, and the difference is significant on all 500 and on the
-  held-out 250. They loop less and hit the step limit less, also significantly. They still solve significantly fewer
-  tasks than the 16-bit model, and loop on 67 tasks against its 12. The 80 tasks used to choose these weights lie inside
-  the held-out 250; on the other 170 the new weights solved 110 against 95 (p 0.04). On the 197 tasks used for training,
-  the two 3-bit weights are not significantly different (137 vs 145, p 0.26). The two 3-bit runs used different images,
-  so the solved and loop counts compare the weights, while time and energy mix both changes.
-
-  Task scores (one R9700, 65K mode, thinking on, the new weights on image r2; paired on the same questions):
-
-  | | 16-bit model | 24 October weights, r1 | 7 November weights, r2 |
-  | --- | ---: | ---: | ---: |
-  | GSM8K (1,319) | 95.5 | 95.8 | 95.8 |
-  | HumanEval (164) | 95.7 | 93.3 | 97.0 |
-  | MMLU-Pro (1,400) | 81.5 | 79.3 | 79.5 |
-
-  No change against the 24 October weights is significant (exact McNemar p 1.00 / 0.07 / 0.85). HumanEval moves
-  between 92 and 97 from run to run with these weights, so read its +3.7 points as noise, not a gain. Against the 16-bit
-  model the new weights are within noise on GSM8K and HumanEval and 2.0 points lower on MMLU-Pro (p 0.02). The 16-bit
-  column was measured on a datacenter GPU with the same questions and seeds. Until 8 November this column showed the
-  16-bit scores of Qwen3.8 Flash Next by mistake; it now shows Qwen3.8 27B.
-#### Image r2: native kernels
-
-The DFlash2 drafter's attention and heads and parts of the 3-bit model's GDN and gate
-  paths now run on Paiton's own HIP kernels instead of Triton kernels. Each decode step is about 3.5 % cheaper and the
-  drafter's acceptance is unchanged, so overall speed is about the same to slightly faster. The arithmetic is not
-  bit-identical to r1, so a greedy answer can differ from r1's after some tokens.
-
-  | One R9700 (300 W), `run-3bit.sh` (65K mode) | 5 October: r1 + 24 October weights | 7 November: r2 + new weights |
-  | --- | ---: | ---: |
-  | Decode, one request at a time, 32 prompts (tok/s) | 162.1 | 165.4 |
-  | Decode, four requests, 32 prompts (tok/s, total) | 343.8 | 354.5 |
-  | Time per decode step, one request (ms) | 28.65 | 27.66 (−3.5 %) |
-  | Decode, eight requests, one prompt (tok/s, total) | 508.9 | 529.8 |
-  | Prompt reading, 29K-token prompt (tok/s) | 3,991 | 4,031 |
-  | First start until ready | 174 s | 178-182 s |
-
-  The 32 prompts are chat, coding, GSM8K, HumanEval and MMLU-Pro requests (greedy, up to 512 tokens, natural stop).
-  Per prompt, the one-request difference is within noise (p 0.49); the step-time drop is clear (p < 0.001). The MXFP4
-  weights run on r2 at the same speed as on r1 (one prompt: 76.7 vs 77.2 tok/s, 2.2 % cheaper per step).
-
-#### Fix: `prompt_logprobs` no longer stops the server
-
-On the 5 October image a request with `prompt_logprobs` in a
-  3-bit mode could end the server with an out-of-resources error. r2 computes those logprobs with the exact output head;
-  decoding still uses the fast verify head.
-
-Earlier 3-bit revisions stay downloadable: `383fa4b221a992fc2437500328056ef05355c8eb` (24 October),
-`3ef7eb149ec0bd9a0f7927491bf30f53f54ced01` (12 October) and `7a2e3d702144f744c1c5a46eaa42c7a2309d5cf7` (first release).
-The 3-bit task tables further down were measured with the first weights (`7a2e3d70`) unless a row says otherwise. Details:
-the [model card](https://huggingface.co/EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4) and the
-[release notes](REFERENCE.md#release-notes-7-november-2026).
 
 <a id="what-you-get"></a><a id="pick-how-to-run-it"></a><a id="want-longer-context-run-this"></a><a id="long-context-200k-and-220k"></a>
 
@@ -121,13 +72,15 @@ What each row gives up:
 | --- | --- |
 | `run-3bit.sh --mode long-kv4` | 2.4 GiB of pinned system RAM ([system RAM](#system-ram)); reading a new prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
 | `… --extend-cache` | system RAM, or up to 64 GiB of NVMe/SSD space; no images. On hosts with 16 or 32 GB of RAM the GPU part holds 451,879 tokens ([what each host gets](#extend-cache)) |
-| `run-3bit.sh --mode long` | about 3 to 4 % speed on short requests against `run-3bit.sh` ([measured](REFERENCE.md#mode-long-short-requests)); half the cache of `--mode long-kv4` |
+| `run-3bit.sh --mode long` | about 3 to 4 % speed on short requests against `run-3bit.sh` ([measured](HISTORY.md#mode-long-short-requests)); half the cache of `--mode long-kv4` |
 | `run-3bit.sh --mode long-512k` | the model's long-context scaling on every request, short ones included; 2.4 GiB of pinned system RAM with no fallback; a cold 500K-token read takes about 6 minutes |
 | `run-3bit.sh` | a little accuracy: MMLU-Pro 60.6 instead of 62.6 (previous weights `7a2e3d70`; the 12 October update recovers about 0.5 to 1 point) |
 | `run-mxfp4.sh --mode long` | one request at a time; no images |
 | `run-mxfp4.sh` | speed and room against 3-bit: 156 instead of 180 tok/s, 174,634 instead of 393,216 cache tokens |
 
-**Speed and accuracy at a glance** (one R9700, thinking off; all numbers in [Benchmarks](#current-benchmark-results)):
+### Speed and accuracy at a glance
+
+One R9700, thinking off. All numbers, with dates and conditions, are in [Benchmarks](#current-benchmark-results).
 
 | | `run-mxfp4.sh` | `run-3bit.sh` | `run-3bit.sh --mode long-kv4` |
 | --- | ---: | ---: | ---: |
@@ -137,12 +90,10 @@ What each row gives up:
 | New question about a 258K-token document already read | – | – | 2.7 s to the first token (134 s for the first read) |
 | GSM8K / HumanEval / MMLU-Pro (3-bit columns: previous weights `7a2e3d70`) | 95.68 / 95.12 / 62.57 | 95.22 / 94.51 / 60.57 | 95.45 / 92.68 / 59.93 |
 
-The coding mode's short-prompt speed, accuracy and cached-document rows were measured before its FP8 output head
-became the default (6 October); the FP8 head measured the same text prediction and the same or faster decode. The
-long-context decode row is an upper range (a prompt the drafter predicts well); long real text decodes at about
+The long-context decode row is an upper range (a prompt the drafter predicts well); long real text decodes at about
 72 to 76 tok/s at 258K.
 
-**Long coding sessions** (6 October, previous weights `7a2e3d70`): in 20-turn sessions that grow from 100K to 181K tokens, with a new coding task
+Long coding sessions (6 October, previous weights `7a2e3d70`): in 20-turn sessions that grow from 100K to 181K tokens, with a new coding task
 every turn, `--mode long-kv4` solved **87.5 %** of the tasks with **no decline from the first turns to the last**,
 started cached turns in 3.1 to 4.1 s and decoded code at about 210 tok/s (MXFP4 `--mode long`: 83.75 %, 3.3 to 4.4 s,
 about 165 tok/s). [The full table](#long-coding-sessions).
@@ -159,7 +110,7 @@ You need:
   [Options](#advanced-options)), and AMD device access (`/dev/kfd` and `/dev/dri`).
 - About **75 GB free disk**, including the container, target, drafter and optional 3-bit weights; the optional
   [`--extend-cache`](#extend-cache) SSD folder takes up to 64 GiB more.
-- **16 GB of system RAM** is enough for every row (tested). Two rows pin 2.4 GiB of it; see
+- 16 GB of system RAM is enough for every row (tested). Two rows pin 2.4 GiB of it; see
   [system RAM](#system-ram).
 
 Clone the repository, then run every command below from its root, in the same terminal:
@@ -171,11 +122,8 @@ cd paiton-vllm-plugin
 
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **7 November r2** image,
 `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-7-november-2026); the launcher's own updates since:
-[6 October](REFERENCE.md#launcher-update-6-october-2026-evening),
-[11 October](REFERENCE.md#launcher-update-11-october-2026),
-[26 October](REFERENCE.md#launcher-update-26-october-2026)). Earlier releases stay runnable:
-[run an earlier release](REFERENCE.md#run-an-earlier-release).
+start ([what changed](REFERENCE.md#release-notes-7-november-2026)). Earlier releases stay runnable:
+[run an earlier release](HISTORY.md#run-an-earlier-release).
 
 <a id="model-weights-and-existing-downloads"></a>
 
@@ -202,14 +150,8 @@ hf download tcclaviger/Qwen3.8-27B-DFlash2-FP8 \
 
 <a id="download-without-hf"></a>
 
-**Without `hf` on your PATH** (`pip install --user huggingface_hub` puts the `hf` command in `~/.local/bin`, which
-some shells do not search), the Python package downloads the same pinned revisions into the same folders:
-
-```bash
-python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("unsloth/Qwen3.8-27B-NVFP4", revision="f0b7c9e722f5565102fff8481c99e4d86ae099c7", local_dir=os.environ["PAITON_TARGET_DIR"])
-get("tcclaviger/Qwen3.8-27B-DFlash2-FP8", revision="ee0cb26a8279b7910cc28d82a8a3e15e4728d56f", local_dir=os.environ["PAITON_DRAFT_DIR"])'
-```
+No `hf` command on your PATH? The Python package downloads the same pinned revisions:
+[download without `hf`](REFERENCE.md#download-without-the-hf-command).
 
 Already downloaded these revisions? Set the variables to your complete local
 folders instead. Each needs its own `config.json` and weights; keep the target's
@@ -233,12 +175,7 @@ hf download EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4 \
 (cd "$PAITON_W3ROT_DIR" && sha256sum -c SHA256SUMS)
 ```
 
-Without `hf`, replace the `hf download` command with:
-
-```bash
-python3 -c 'import os; from huggingface_hub import snapshot_download as get
-get("EliovpAI/Qwen3.8-27B-W3Rot-INT3-Paiton-RDNA4", revision="aee42dfdb78e851462743120a575bf2d6f7b9882", local_dir=os.environ["PAITON_W3ROT_DIR"])'
-```
+Without `hf`: [download without `hf`](REFERENCE.md#download-without-the-hf-command).
 
 <a id="ways-to-run"></a><a id="start-the-server"></a>
 
@@ -256,7 +193,11 @@ The server runs in the foreground; add `--detach` to run it in the background (`
 follows its log). The first start takes about **three to four minutes** (the image ships a seeded compile cache; later starts about
 two minutes); wait for `/health` to succeed.
 
-**API:** `http://127.0.0.1:18982/v1` (or `http://<this-machine-ip>:18982/v1` from another system) · **Model:** `Qwen3.8` · **API key:** none unless you set `--api-key` (enter any value if a client asks)
+| Setting | Value |
+| --- | --- |
+| API | `http://127.0.0.1:18982/v1`, or `http://<this-machine-ip>:18982/v1` from another system |
+| Model name | `Qwen3.8` |
+| API key | none unless you set `--api-key` (enter any value if a client asks) |
 
 The server listens on all interfaces (0.0.0.0); use `--host 127.0.0.1` to keep it local; add `--api-key KEY` or a firewall if the machine is reachable from untrusted networks.
 
@@ -269,13 +210,15 @@ curl --fail http://127.0.0.1:18982/v1/chat/completions \
   -d '{"model":"Qwen3.8","messages":[{"role":"user","content":"Write a Python function to remove duplicates from a list."}],"max_tokens":256,"stream":true,"chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-- **Thinking** is off by default with the 3-bit weights (`run-3bit.sh`, every mode) and in every `--mode long*` row;
-  it stays on by default in the MXFP4 65,536-token rows. Each request can set it
-  with `"chat_template_kwargs":{"enable_thinking":true}` (or `false`); `--thinking on|off` changes the server
-  default. All benchmarks use thinking off.
-- **Long prompts:** send a prompt of hundreds of thousands of tokens from a file (`-d @request.json`) and give the
-  client a timeout of several minutes: reading 500K tokens for the first time takes about 6 minutes.
-- **Stop** with `docker stop paiton-qwen38` before switching to another row.
+Thinking is off by default with the 3-bit weights (`run-3bit.sh`, every mode) and in every `--mode long*` row. It
+stays on by default in the MXFP4 65,536-token rows. Each request can set it with
+`"chat_template_kwargs":{"enable_thinking":true}` (or `false`); `--thinking on|off` changes the server default. All
+benchmarks use thinking off.
+
+Send a prompt of hundreds of thousands of tokens from a file (`-d @request.json`) and give the client a timeout of
+several minutes: reading 500K tokens for the first time takes about 6 minutes.
+
+Stop the server with `docker stop paiton-qwen38` before switching to another row.
 
 ### Coding agents
 
@@ -286,7 +229,7 @@ started in 3.1 to 4.1 s instead of 32 s for the first, cold turn ([measurements]
 
 - Cache hits need an unchanged start of the prompt: the same system prompt and earlier turns, no timestamp at the
   top. Each response's `usage.prompt_tokens_details.cached_tokens` shows how many prompt tokens came from the cache.
-- **Short questions during a long read** (text only): the server reads a long prompt in 2,048-token steps, so a
+- Short questions during a long read (text only): the server reads a long prompt in 2,048-token steps, so a
   short request from another user is answered meanwhile, in about 0.7 s instead of about 5.9 s during a 64K read; the
   long read takes about 1 % longer. `--long-prefill-threshold off` restores the previous behaviour. With images
   (`--vision`) the long read keeps its previous steps.
@@ -343,22 +286,15 @@ What `auto` picks (one line at start states the choice and the capacities):
 GPU cache holds, so a tier only slightly larger serves little. The token counts are computed from the 24 KB a cached
 token takes in a tier.
 
-- **Same output.** A reopened document gives output bit-identical to the same document served from the GPU cache,
-  at every length tested (32K to about 258K tokens). A hit the server cannot place is read again instead.
-- **RAM tier size.** A RAM tier of N GiB restores a recently read document of up to about N × 55K tokens; with
-  several large documents competing, older ones are read again, correctly, just not faster. A RAM tier smaller than
-  the GPU cache (chosen with `--extend-cache ram` or `--host-cache-gib`) gets a warning at start; `--extend-cache
-  disk` keeps documents across the session instead.
-- **The disk folder** is `PAITON_CACHE_DIR/kv-disk`, or `--disk-cache-dir DIR`. It is capped at 64 GiB or a quarter
-  of the free space, whichever is smaller, checked at start; a folder that grew past its cap is removed at the next
-  start. It stores about 24 KB per newly read prompt token (64 GiB holds about 2.8M new tokens). A restore passes
-  through the RAM staging tier, which sets the largest document it restores (the table above) and how many big
-  documents come back at the same moment (4 GiB stages about two 100K-token documents). Spinning disks are refused.
-- **First reads are a little slower:** every new prompt block is also written to the tier, about 8 % for a
-  131K-token prompt in our test. Decode speed is unchanged within noise.
-- **16 GB hosts:** a RAM tier with the embedding table in system RAM needs 32 GB, so the launcher moves the table to
-  the GPU there. It refuses to start when free memory is short, naming the shortfall, and warns when memory is tight.
-- **Only with `--mode long-kv4`**, without images.
+| Topic | What to know |
+| --- | --- |
+| Same output | A reopened document gives output bit-identical to the same document served from the GPU cache, at every length tested (32K to about 258K tokens). A hit the server cannot place is read again instead. |
+| RAM tier size | A RAM tier of N GiB restores a recently read document of up to about N × 55K tokens. With several large documents competing, older ones are read again, correctly, just not faster. A RAM tier smaller than the GPU cache (chosen with `--extend-cache ram` or `--host-cache-gib`) gets a warning at start; `--extend-cache disk` keeps documents across the session instead. |
+| The disk folder | `PAITON_CACHE_DIR/kv-disk`, or `--disk-cache-dir DIR`. It is capped at 64 GiB or a quarter of the free space, whichever is smaller, checked at start; a folder that grew past its cap is removed at the next start. It stores about 24 KB per newly read prompt token (64 GiB holds about 2.8M new tokens). Spinning disks are refused. |
+| Restores from disk | A restore passes through the RAM staging tier, which sets the largest document it restores (the table above) and how many big documents come back at the same moment (4 GiB stages about two 100K-token documents). |
+| First reads | A little slower: every new prompt block is also written to the tier, about 8 % for a 131K-token prompt in our test. Decode speed is unchanged within noise. |
+| 16 GB hosts | A RAM tier with the embedding table in system RAM needs 32 GB, so the launcher moves the table to the GPU there. It refuses to start when free memory is short, naming the shortfall, and warns when memory is tight. |
+| Where it works | Only with `--mode long-kv4`, without images. |
 
 More: [cache tiers in the reference](REFERENCE.md#cache-tiers).
 
@@ -395,7 +331,7 @@ starting it.
 | `--max-num-seqs COUNT` | Fewer concurrent requests than the row's (1 to 8; above the row's default, such as the 1 of MXFP4 `--mode long` and `--profile desktop`, is untested). |
 | `--long-prefill-threshold TOKENS\|off` | Cap on the prefill tokens a long prompt takes per step, so short requests from other users are answered while it is processed. 2048 by default in `--mode long-kv4` (without `--vision`), off elsewhere; `off` restores the previous read behaviour. |
 | `--lm-head bf16` | 3-bit rows: the bf16 output head instead of the checkpoint's FP8 head (the default on the 5 October image and later); `--mode long-kv4` then holds 569,878 instead of 628,877 tokens, `--mode long` 281,665 instead of 316,325, and the start command is the previous launcher's (in `--mode long-kv4` and `long-512k` together with `--host-pools userptr`). |
-| `--host-pools userptr` | `--mode long-kv4` and `long-512k`: ROCm's default user-pointer memory for the pinned embedding table instead of GTT memory (the default where the GPU's GTT size holds it; [why](REFERENCE.md#launcher-update-11-october-2026)). |
+| `--host-pools userptr` | `--mode long-kv4` and `long-512k`: ROCm's default user-pointer memory for the pinned embedding table instead of GTT memory (the default where the GPU's GTT size holds it; [why](HISTORY.md#launcher-update-11-october-2026)). |
 | `--thinking on` / `--thinking off` | The server default for thinking (off with the 3-bit weights and in the `--mode long*` rows, on in the MXFP4 65,536-token rows). Requests can override it. |
 | `--kv-cache fp8` | `run-3bit.sh` without `--mode`: the FP8 instead of the 4-bit KV cache (250,578 tokens). |
 | `--no-system-memory-weights` | `--mode long-kv4` with nothing pinned, for a host short of free RAM: the embedding table stays on the GPU and the cache holds 451,879 tokens (one full-length request plus short ones); prefix caching stays on. |
@@ -466,7 +402,7 @@ short context (paired per question; all differences are within the 95 % interval
 
 3-bit weights, thinking off. Measured on the 3 October release with the bf16 output head unless noted; later images
 give identical outputs with `--lm-head bf16`, and the FP8 head (the default since 6 October) measured the same text
-prediction.
+prediction and the same or faster decode.
 
 **Decode at long context** (6 October launcher, FP8 output head; our decode load is a shared prompt the drafter
 predicts well, so these are an upper range; real text at 258K decodes at 72 to 76 tok/s):
@@ -483,16 +419,16 @@ predicts well, so these are an upper range; real text at 258K decodes at 72 to 7
 | Time to first token p50 at 1 / 8 requests | 87.1 / 147.8 ms |
 | Cold prefill at 2K / 8K / 32K / 64K depth | 3,641 / 3,856 / 3,824 / 3,536 tok/s |
 
-- **A new question about a 258K-token document already read:** 2.7 s to the first token instead of 134 s for the
+- A new question about a 258K-token document already read: 2.7 s to the first token instead of 134 s for the
   first read, with the same output as a cold read.
-- **Accuracy** with standard-length questions (greedy; previous weights `7a2e3d70`): GSM8K 95.45, HumanEval 92.68, MMLU-Pro 59.93, needle at
+- Accuracy with standard-length questions (greedy; previous weights `7a2e3d70`): GSM8K 95.45, HumanEval 92.68, MMLU-Pro 59.93, needle at
   61,440 tokens 80/80, within noise of the 65,536-token rows; the MMLU-Pro gap to MXFP4 is the 3-bit weights' own.
   An answer from the cache scores like a cold read.
-- **`--mode long-512k`:** reading a 300K-token document cold takes 158 s, a 500K-token one 361 s; follow-up
+- `--mode long-512k`: reading a 300K-token document cold takes 158 s, a 500K-token one 361 s; follow-up
   questions take 2.8 to 2.9 s and 4.2 to 4.4 s. Needles at 300K and 500K: 4/4 each.
 
 [Coding mode details](REFERENCE.md#coding-mode) · [`--mode long-512k` details](REFERENCE.md#mode-long-512k) ·
-[comparisons with earlier images](REFERENCE.md#earlier-coding-mode-comparisons).
+[comparisons with earlier images](HISTORY.md#earlier-coding-mode-comparisons).
 
 <a id="long-coding-sessions"></a>
 
@@ -548,7 +484,9 @@ with eight image requests at once and repeated cold 4K images; the first token o
 
 - [Release reference](REFERENCE.md): image pins, release notes, detailed benchmarks, long-context checks and KV
   tuning.
-- [Run an earlier release](REFERENCE.md#run-an-earlier-release) with `--image`, and the command lines of earlier
+- Launcher updates since the 5 October image: [6 October](HISTORY.md#launcher-update-6-october-2026-evening),
+  [11 October](HISTORY.md#launcher-update-11-october-2026), [26 October](HISTORY.md#launcher-update-26-october-2026).
+- [Run an earlier release](HISTORY.md#run-an-earlier-release) with `--image`, and the command lines of earlier
   releases.
 - Native serving without the container: `paiton serve qwen38-nvfp4` serves a separate preset (text only, 65K, FP8 KV,
   without DFlash2 or the 3-bit weights; bundle `qwen38-rocm10-native-20260921`, profile `qwen38-nvfp4-w4a8-text-65k`,
