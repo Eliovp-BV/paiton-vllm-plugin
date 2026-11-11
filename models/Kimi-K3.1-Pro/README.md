@@ -10,7 +10,7 @@ its answers on your own prompts, or read a complete forward pass of the architec
 
 The optimized Paiton engine for these GPUs is proprietary and not part of this repository. On the same 4 GPUs it is
 70 to 180 times faster per token and serves 16 requests at once; on 6 MI355X at 800 W it reaches 944 tokens per
-second per GPU on 8K-in, 1K-out requests. See https://eliovp.com for its results.
+second per GPU on 8K-in, 1K-out requests. See https://eliovp.com/blog/paiton-kimi-k31-pro-amd-instinct-mi355x for its results.
 
 [Start](#start) · [Requirements](#requirements) · [Use the API](#use-the-api) · [Settings](#settings) ·
 [How it works](#how-it-works) · [Limits](#limits) · [Benchmarks](BENCHMARKS.md)
