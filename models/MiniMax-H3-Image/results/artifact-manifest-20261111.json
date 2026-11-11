@@ -22,24 +22,19 @@
   },
   "runtime": {
    "branch": "feat/h3i-runtime-20261111",
-   "commit": "2b469b805ac616594c026f43fd103ba9910f9c0c",
-   "dirty_files": 0,
-   "note": "h3i_run compiled from git show 2b469b80:native/minimax_h3_image/runner.hip (working-tree edits excluded)"
+   "commit": "56191a1c3020cdb4f580b02014891f995be3fb4d",
+   "dirty_files": 0
   }
  },
  "files": {
-  "convert/dit_convert.py": "7460a56216b0dc3557e5b9385e0caf49b5ab306234c1bf9bb499a12600394d5a",
-  "convert/real_weights.py": "7e983d27b50b92f32c80a0e3541818f26e3bbb0391dc5cdad4c148fdf4199bd5",
-  "convert/te_convert.py": "2f7b37acc27a9a2d04ac39a0cf5da330023c7d1f7d87b08166719bd3203af9d3",
-  "convert/vae_pack.py": "4cf89bf9f31f5d9985388ae9aa2cde8ce5d818d551327a14542b192e752bcccf",
-  "lib/h3i_attention_bf16_gfx1201.so": "d1339c2b834dc1e975da705efc3f2c103cc0f7052b4373dd110e3861b96afe2b",
-  "lib/h3i_attention_full8_gfx1201.so": "03702454967050ea0669f56c92b476d04a82930c60905d339dceff5be87997aa",
-  "lib/h3i_attention_qk8_gfx1201.so": "b4db81eaae527c8af9e05fa1d6947fd8dae66be6a0581dbd7c8f7b35a9703f39",
-  "lib/h3i_qk_prologue_gfx1201.so": "aa12965ead05def579c161d721b914cc7432abba83084fcda16f40509e5332d8",
-  "lib/h3i_run": "8b6e9d4a8034eed4465d5d48bc238393965694514dead2f674cdc503e854d5f4",
-  "lib/minimax_h3_image_gemm_gfx1201.so": "374cd66815286fa649f56bbf0a412d98933077df4d55b9d36b5a9d714a0edd17",
-  "lib/minimax_h3_image_rows_gfx1201.so": "ba52b00d0b1c49e757ba8472f45397e75e3d4c4f3306b4d8f4f765667ef51243",
-  "lib/minimax_h3_image_te_gfx1201.so": "77beff8c4d1ce0251d0078885cc47f0b177a022d8bfc333f382e6ff01f275c73",
-  "lib/minimax_h3_image_vae_gfx1201.so": "06dbf32aa4c1cd3f25bf518f1564302003a917f12fcc326efa34c623608ce81e"
+  "lib/h3i_attention_bf16_gfx1201.so": "195d4415a19eca81626b2496d3602d0b36d1de6ec5e6c194849dafe94a7d7057",
+  "lib/h3i_attention_full8_gfx1201.so": "48f29db36e3682dd4ed7106f39ae5eef659b1d8ecb7944c655b1fcdfbc89da90",
+  "lib/h3i_attention_qk8_gfx1201.so": "1129332481d39978760bb1124b2d2fd5a9cab08f000a4f08848ee2b6249da9cd",
+  "lib/h3i_qk_prologue_gfx1201.so": "cc69f87e7e13cf2be77866d21b48c8bf55cedadeea5748f87903e200ac9493f4",
+  "lib/h3i_run": "5a8a9c273c0070191906507a229fc29190141f2fd84fba582a4b4b5dfe08245f",
+  "lib/minimax_h3_image_gemm_gfx1201.so": "e53978b8cb095f9d82f6730ee8edb4aefb92b7d1467311db5331d9f51138ba5a",
+  "lib/minimax_h3_image_rows_gfx1201.so": "e398cccb91b8f447c2a638686cb0df50db4f715e8b55320a50a5149a0d6e4f18",
+  "lib/minimax_h3_image_te_gfx1201.so": "5cdb7c96e559f82e609f4017f46e7b363910a0bbf0efe645b89893e8b91757f5",
+  "lib/minimax_h3_image_vae_gfx1201.so": "475992dc354f6bc6e403d9dccc56232a9a63eb7394a13bdcb22269375663135e"
  }
 }

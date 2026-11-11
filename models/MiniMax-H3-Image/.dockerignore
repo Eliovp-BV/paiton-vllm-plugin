@@ -9,8 +9,6 @@
 !artifacts/manifest.json
 !artifacts/lib/
 !artifacts/lib/*
-!artifacts/convert/
-!artifacts/convert/*.py
 !client.py
 !LICENSE
 !NOTICE

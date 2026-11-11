@@ -3,7 +3,7 @@ Copyright ElioVP
 
 MiniMax-H3-Image is licensed under the MiniMax-H3-Image Community License Agreement, Copyright © 2026 MiniMax. All Rights Reserved.
 
-The model weights are not part of this package. They download from MiniMaxAI/MiniMax-H3-Image at the revision pinned in
-checkpoints.lock.json and are converted on your machine. The converted files are modified files of MiniMax-H3-Image:
-the transformer and text encoder projections are rounded to FP8 and the VAE decoder to int8.
-This package does not imply endorsement by MiniMax.
+The model weights are not part of this package. The container downloads them from
+EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4 at the revision pinned in checkpoints.lock.json. Those files are modified
+files of MiniMax-H3-Image (FP8 transformer and text encoder, int8 VAE decoder); the weights repository lists the
+changes in MODIFICATIONS.md. This package does not imply endorsement by MiniMax.

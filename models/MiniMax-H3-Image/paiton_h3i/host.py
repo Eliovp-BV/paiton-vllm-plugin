@@ -94,10 +94,12 @@ class TorchCpuGenerator:
         return (self.bits.random_raw(n) & 0xFFFFFF).astype(np.float32) * np.float32(2.0**-24)
 
     @staticmethod
-    def _box_muller(u):   # u: [k][16]; first 8 lanes become radius*cos, last 8 radius*sin
-        u1, u2 = 1.0 - u[:, :8].astype(np.float64), u[:, 8:].astype(np.float64)
-        r, th = np.sqrt(-2.0 * np.log(u1)), 2.0 * np.pi * u2
-        return np.concatenate([r * np.cos(th), r * np.sin(th)], axis=1).astype(np.float32)
+    def _box_muller(u):   # u: [k][16]; first 8 lanes become radius*cos, last 8 radius*sin, in float32 like torch
+        # shortcut: numpy float32 log/sin/cos, torch uses Sleef: 86 % of values bit-exact, the rest 1 ulp off; port Sleef
+        # u10 if bit-exact seed parity is ever needed
+        u1, u2 = np.float32(1) - u[:, :8], u[:, 8:]
+        r, th = np.sqrt(np.float32(-2) * np.log(u1)), np.float32(2 * np.pi) * u2
+        return np.concatenate([r * np.cos(th), r * np.sin(th)], axis=1)
 
     def randn(self, n):
         if n < 16:
@@ -116,12 +118,18 @@ def patchify(z, lh, lw):
     return np.ascontiguousarray(z.reshape(24, lh // 2, 2, lw // 2, 2).transpose(1, 3, 0, 2, 4).reshape(-1, 96))
 
 
-def request_noise(seed, lh, lw, ref_grids=()):
-    """Draws in the reference order: one posterior eps per reference, the target noise, one noise per reference."""
+def request_noise(seed, lh, lw, ref_latents=()):
+    """Draws in the reference order: one posterior eps per reference ([24][h][w], the encoder's latent size), the
+    target noise, then one noise per reference drawn at the patch-cropped size and returned zero-padded to [24][h][w]
+    (the runner's layout; it reads only the cropped part)."""
     gen = TorchCpuGenerator(seed)
-    eps = [gen.randn(24 * h * w).reshape(24, h, w) for h, w in ref_grids]
+    eps = [gen.randn(24 * h * w).reshape(24, h, w) for h, w in ref_latents]
     target = patchify(gen.randn(24 * lh * lw), lh, lw)
-    noise = [gen.randn(24 * h * w).reshape(24, h, w) for h, w in ref_grids]
+    noise = []
+    for h, w in ref_latents:
+        padded = np.zeros((24, h, w), np.float32)
+        padded[:, : h // 2 * 2, : w // 2 * 2] = gen.randn(24 * (h // 2 * 2) * (w // 2 * 2)).reshape(24, h // 2 * 2, w // 2 * 2)
+        noise.append(padded)
     return target, eps, noise
 
 

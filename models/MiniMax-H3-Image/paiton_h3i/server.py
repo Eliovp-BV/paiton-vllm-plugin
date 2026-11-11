@@ -23,6 +23,7 @@ MODEL_ID = "MiniMax-H3-Image"
 MAX_BODY = 256 << 20
 MAX_CANVAS = 4736 * 3552           # largest canvas measured on 32 GB (16.8 MP); the runner also refuses what does not fit
 MAX_IMAGE_PIXELS = 64 << 20        # decoded reference size guard
+MAX_REFS = 16                      # the model's limit; the runner refuses requests over its token or VRAM budget
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 
@@ -57,8 +58,8 @@ class Engine:
 
     def generate(self, prompt, size, seed, references=()):
         width, height = _size(size)
-        if len(references) > 1:
-            raise ValueError("this build takes one reference image per edit")   # shortcut: runner edit path has one reference
+        if len(references) > MAX_REFS:
+            raise ValueError(f"an edit takes at most {MAX_REFS} reference images")
         ch, cw = host.canvas_size(height, width)
         if ch * cw > MAX_CANVAS:
             raise ValueError(f"size {width}x{height} needs a {cw}x{ch} canvas, above the {MAX_CANVAS:,} pixel limit of this build")
@@ -66,24 +67,28 @@ class Engine:
         refs = [host.load_reference(image) for image in references]
         vision = [host.vision_pixels(vis) for _, vis in refs]
         ids = host.token_ids(self.tokenizer, prompt, [grid for _, grid in vision])
-        ref_grids = [(vae.height // 16, vae.width // 16) for vae, _ in refs]
-        target, eps, noise = host.request_noise(seed, lh, lw, ref_grids)
+        ref_latents = [(vae.height // 16, vae.width // 16) for vae, _ in refs]   # VAE encoder output size
+        ref_grids = [(h // 2 * 2, w // 2 * 2) for h, w in ref_latents]            # cropped to whole patches
+        target, eps, noise = host.request_noise(seed, lh, lw, ref_latents)
         with self.busy, tempfile.TemporaryDirectory(prefix="h3i-") as tmp:
             t = Path(tmp)
             ids.tofile(t / "ids.bin")
             ref_rows = sum(h // 2 * (w // 2) for h, w in ref_grids)   # the runner fills the reference rows itself
             np.concatenate([np.zeros((ref_rows, 96), np.float32), target]).tofile(t / "noise.bin")
             args = ["--lat", f"{lh}x{lw}", "--ids", str(t / "ids.bin"), "--noise", str(t / "noise.bin"), "--png", str(t / "out.png")]
-            if refs:
-                (vae, _), (pix, (gh, gw)) = refs[0], vision[0]
-                pix.tofile(t / "pixels.bin")
-                host.vae_pixels(vae).tofile(t / "image.bin")
-                eps[0].tofile(t / "eps.bin")
-                noise[0].tofile(t / "ref_noise.bin")
-                args += ["--refs", f"{ref_grids[0][0]}x{ref_grids[0][1]}", "--edit-pixels", str(t / "pixels.bin"),
-                         "--edit-grid", f"{gh}x{gw}", "--edit-image", str(t / "image.bin"),
-                         "--edit-size", f"{vae.height // 16 * 16}x{vae.width // 16 * 16}",
-                         "--edit-eps", str(t / "eps.bin"), "--edit-noise", str(t / "ref_noise.bin")]
+            if refs:   # one comma-separated entry per reference, in reference order
+                lists = {k: [] for k in ("refs", "pixels", "grid", "image", "size", "eps", "noise")}
+                for i, ((vae, _), (pix, (gh, gw)), (rh, rw)) in enumerate(zip(refs, vision, ref_grids)):
+                    for key, data in (("pixels", pix), ("image", host.vae_pixels(vae)), ("eps", eps[i]), ("noise", noise[i])):
+                        data.tofile(t / f"{key}{i}.bin")
+                        lists[key].append(str(t / f"{key}{i}.bin"))
+                    lists["refs"].append(f"{rh}x{rw}")
+                    lists["grid"].append(f"{gh}x{gw}")
+                    lists["size"].append(f"{vae.height // 16 * 16}x{vae.width // 16 * 16}")
+                args += ["--refs", ",".join(lists["refs"]), "--edit-pixels", ",".join(lists["pixels"]),
+                         "--edit-grid", ",".join(lists["grid"]), "--edit-image", ",".join(lists["image"]),
+                         "--edit-size", ",".join(lists["size"]), "--edit-eps", ",".join(lists["eps"]),
+                         "--edit-noise", ",".join(lists["noise"])]
             started = time.time()
             metrics = self.runner.run(args)
             png = (t / "out.png").read_bytes()

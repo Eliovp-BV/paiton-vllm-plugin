@@ -1,178 +1,288 @@
 {
-  "repository": "MiniMaxAI/MiniMax-H3-Image",
-  "revision": "00dd081ebdd33315adf2c4d84f64aa327ddf3039",
-  "license": "MiniMax-H3-Image Community License",
-  "download_bytes": 135350544683,
+  "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+  "revision": "UNPUBLISHED",
+  "base_model": {
+    "repository": "MiniMaxAI/MiniMax-H3-Image",
+    "revision": "00dd081ebdd33315adf2c4d84f64aa327ddf3039",
+    "license": "MiniMax-H3-Image Community License"
+  },
+  "quality_gate": "qgate 11 Nov 2026, GPTQ bundle k6-work/w8gptq",
+  "download_bytes": 47997158482,
   "files": [
     {
-      "file": "transformer/config.json",
-      "bytes": 630,
-      "sha256": "67ceb1d7752942ee984405c26c1187ff58c073b698839ea0ca289e34b8dc61a9"
+      "file": "dit/dit.bin",
+      "bytes": 20311639360,
+      "sha256": "42a82e2de04fc47fbeed1886baf866a8a1c9c7d64cdd52acb158074b6baf9568"
     },
     {
-      "file": "transformer/model-00001-of-00012.safetensors",
-      "bytes": 5441123104,
-      "sha256": "200667b632a6004bb8442008c4a8e975d64a7dbbc3d5569ed482650c3d61ff7b"
+      "file": "dit/dit.idx",
+      "bytes": 23247,
+      "sha256": "d1b125b327d7f8f5eaa70086be9b4953d0f10b86d46cb73f6f07a42949e15360"
     },
     {
-      "file": "transformer/model-00002-of-00012.safetensors",
-      "bytes": 5839159856,
-      "sha256": "2227018562b2d92db391bce2fe641ea7f887585b581d6a73092a8fcfc59ef348"
+      "file": "dit/vae_latents.bin",
+      "bytes": 192,
+      "sha256": "d21c1b7d8728b9a826aec663d7c79d9ea2a5f1118dce073484f4a437a1286768"
     },
     {
-      "file": "transformer/model-00003-of-00012.safetensors",
-      "bytes": 5472861152,
-      "sha256": "165469f7dccbb9fb6cbdc7a88e89d2a0220697af4da7ee40a96b369ccfa5abc9"
+      "file": "te/L00.bin",
+      "bytes": 487916288,
+      "sha256": "516e492cc5dccc04ef965136bc15fc2cd6b7eb47a7d8f6d30e91c4302c1b464a"
     },
     {
-      "file": "transformer/model-00004-of-00012.safetensors",
-      "bytes": 5472860360,
-      "sha256": "2bf7dff80d49203cee29834ce6bd86077b09c4b73174d1c4f696f8fecab83ed3"
+      "file": "te/L01.bin",
+      "bytes": 487916288,
+      "sha256": "cb9ee591b65051fc07ce9c7d57a278c4953ebf2497bb8cadc5a973c1ba39243d"
     },
     {
-      "file": "transformer/model-00005-of-00012.safetensors",
-      "bytes": 5839159904,
-      "sha256": "dcc7c79d46fa1ca910396fa001657985057db491af1bfadeda4cf3a82da329f2"
+      "file": "te/L02.bin",
+      "bytes": 487916288,
+      "sha256": "67ee7f4e04913cc4e065992af756ae90a1e34602628187b424601fd189fbb645"
     },
     {
-      "file": "transformer/model-00006-of-00012.safetensors",
-      "bytes": 5472861168,
-      "sha256": "12c76e39604f04d11d282172719bad6ad374e98479b8892f4ea0c9d2695b3086"
+      "file": "te/L03.bin",
+      "bytes": 487916288,
+      "sha256": "9260e34b75122fab316a2d77abb2109ee315a992e5421247cd633d137d600205"
     },
     {
-      "file": "transformer/model-00007-of-00012.safetensors",
-      "bytes": 5472860360,
-      "sha256": "59ed575a374c0304da09beb234225c17b5ecc1e491b76f72455f0b3b7a1fbbff"
+      "file": "te/L04.bin",
+      "bytes": 487916288,
+      "sha256": "46527ff3cf1b7cdfb0ac7105665df1ca109b89c27039a6090eeae3be48a97ae8"
     },
     {
-      "file": "transformer/model-00008-of-00012.safetensors",
-      "bytes": 5839159904,
-      "sha256": "b71af5f2f42fee2530b4154caba6ce595ce98072d831090a6b63a546420c0072"
+      "file": "te/L05.bin",
+      "bytes": 487916288,
+      "sha256": "5326e086b5e7d06bff409d70cfc097f711a04d5634c6a825b246948fe82dcb98"
     },
     {
-      "file": "transformer/model-00009-of-00012.safetensors",
-      "bytes": 5472861168,
-      "sha256": "a2764f44f306f6eecfd3d52567bcebe64ddfafb0a2fbdaf089efc1e74cbe82f8"
+      "file": "te/L06.bin",
+      "bytes": 487916288,
+      "sha256": "8218dce9d7b2cf285b20a5492079277bbe7745cbe417f90ca33e796d2e22f848"
     },
     {
-      "file": "transformer/model-00010-of-00012.safetensors",
-      "bytes": 5472860360,
-      "sha256": "0e82a47b5fd0498674718c7a0b3830d042d349f6b5fe16cd2b35cccca5063365"
+      "file": "te/L07.bin",
+      "bytes": 487916288,
+      "sha256": "e98b59aeef037a5982249a1efefce01581f481f96bc361cbc13bea817f99fc91"
     },
     {
-      "file": "transformer/model-00011-of-00012.safetensors",
-      "bytes": 5839159904,
-      "sha256": "d728554ce210b10062e70db51080d2f6d6e41c6d0fa033dc77b021db20745d2b"
+      "file": "te/L08.bin",
+      "bytes": 487916288,
+      "sha256": "d30d02970fc92b7c95bdcbdfc1caa4e4e8f6920f4573bb35496029845744ea61"
     },
     {
-      "file": "transformer/model-00012-of-00012.safetensors",
-      "bytes": 4644160496,
-      "sha256": "8d9e1c67066a5fa646f2e87f0868f73cb50be66cc1739e51eb12791fd9123b83"
+      "file": "te/L09.bin",
+      "bytes": 487916288,
+      "sha256": "8a67e28ecaf0c0ba787652a2ab18646fa6227ee3188cd04e3d6aab57a35039b4"
     },
     {
-      "file": "transformer/model.safetensors.index.json",
-      "bytes": 38049,
-      "sha256": "067f163d406bc30980a618e87318c2de1dc4bfa6fcbc26c420988c77074467fb"
+      "file": "te/L10.bin",
+      "bytes": 487916288,
+      "sha256": "4653ed8872706c092b0602c2fb2ed738369ebda5f4a5e19b436d5e48b71394a3"
     },
     {
-      "file": "text_encoder/model-00001-of-00014.safetensors",
-      "bytes": 4932328944,
-      "sha256": "6b9dfbc930e505402ae9d7e5091a9d7d656cda5f34614f01cfe70bfb0cca27cb"
+      "file": "te/L11.bin",
+      "bytes": 487916288,
+      "sha256": "9fdbdd95a7b06e8347110a043f1c1b56c34ffdbf135b39da3259389e83bcba0d"
     },
     {
-      "file": "text_encoder/model-00002-of-00014.safetensors",
-      "bytes": 4875990528,
-      "sha256": "d8bb44b4ff303fe76fe9e894022fb3dc71b15a2e716592790fe0e3c3e60478fa"
+      "file": "te/L12.bin",
+      "bytes": 487916288,
+      "sha256": "9a498c36a3bbc885595770dd6c4185c9f7c9ec1f6ef493730ee9805ea415ac2f"
     },
     {
-      "file": "text_encoder/model-00003-of-00014.safetensors",
-      "bytes": 4875990552,
-      "sha256": "54f22e8b3168f8dc962fac0d313607ebf52a12b433d4cf3098a0d82d9f042940"
+      "file": "te/L13.bin",
+      "bytes": 487916288,
+      "sha256": "8ef701b83e8a8ef38efe755fb62a47e0e6f70422baa1974dae784dc605eea0da"
     },
     {
-      "file": "text_encoder/model-00004-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "ad09c74d3c13ee29b5d0d84548fd8a3424a651564eaccd519946c296e59c557f"
+      "file": "te/L14.bin",
+      "bytes": 487916288,
+      "sha256": "42296fcbf4507efd64c381bb263868a791930ed7882e544f89bc8c0e102edd80"
     },
     {
-      "file": "text_encoder/model-00005-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "fc993c8a0e2a5b0570f383e1a95dc3a1281d1b224b6f3ee908f4827941e1dfc2"
+      "file": "te/L15.bin",
+      "bytes": 487916288,
+      "sha256": "dd7e3c112581b2adf90aa9b9d04561159a2d21874a8fd7205cf03f111d41dc6c"
     },
     {
-      "file": "text_encoder/model-00006-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "82f05620d1f718a90c362b221d6a184ff1a0f53301d706882d3df49695fa1974"
+      "file": "te/L16.bin",
+      "bytes": 487916288,
+      "sha256": "73c9b1b4eedf7587830002cdc840e918146497978be9342a5294c98523deddb8"
     },
     {
-      "file": "text_encoder/model-00007-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "fb91da8cb01ff4de3eef0eab1c3e769a734b3a1aafc61734068638a0d6c86934"
+      "file": "te/L17.bin",
+      "bytes": 487916288,
+      "sha256": "2dc4fcd23954b2d3af592e9fa5f8eaf26bf6d54700fcacc1111fbff473102c96"
     },
     {
-      "file": "text_encoder/model-00008-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "431ca56535c8781944ce3801f5eb61c45531e853ecc5846d936ebaf4761b764f"
+      "file": "te/L18.bin",
+      "bytes": 487916288,
+      "sha256": "271f0a189a8f210c59d2a5fa2c7e8feafa688c8b458c9f2c02f891a861d3744d"
     },
     {
-      "file": "text_encoder/model-00009-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "3825e3f4302f4d2f7d76aa7430d2ce0864fde6b9e540a5806bf0d8e38e4d9f47"
+      "file": "te/L19.bin",
+      "bytes": 487916288,
+      "sha256": "8ca1046f528562b670638a1b7bb86429ecbc173b563ab2875bcb2b65408b5026"
     },
     {
-      "file": "text_encoder/model-00010-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "aded5a4d1d5e22dbd8b6f79266b6eb88c840411b09527c53917a1419ace22e2f"
+      "file": "te/L20.bin",
+      "bytes": 487916288,
+      "sha256": "5c5cc696651c7d2f660f1af19a325f04e271342a9c7dbd48900e9439462ee743"
     },
     {
-      "file": "text_encoder/model-00011-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "3820ffe8d8d6477f6fe8d614ef3c87abb264ee39accebf43a1507b970d80946f"
+      "file": "te/L21.bin",
+      "bytes": 487916288,
+      "sha256": "7e351c1ff4eb382f450d3e385b0b2ee518d9af59b48647d0927cbda70e6bb585"
     },
     {
-      "file": "text_encoder/model-00012-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "05ad2d08ce71963121c9b03f1d9ec5d7641052f4b23c6c12b80d71065eb8e98e"
+      "file": "te/L22.bin",
+      "bytes": 487916288,
+      "sha256": "b101b33934469915672ed1277e9878e679c2a6f6b176523b17795b8afb8fdeb4"
     },
     {
-      "file": "text_encoder/model-00013-of-00014.safetensors",
-      "bytes": 4875990584,
-      "sha256": "b64f2289871261fdd1abbd3b78bcd66011b341de3dc8eeb2ed1a473ee7c8d95c"
+      "file": "te/L23.bin",
+      "bytes": 487916288,
+      "sha256": "eb05458484bf031729c74dea923f56547800f98aa2e101857ff53f462d605ad8"
     },
     {
-      "file": "text_encoder/model-00014-of-00014.safetensors",
-      "bytes": 3270697008,
-      "sha256": "e45b6c9998c77ee5a6577f9f47bc76416c1d4d387169e50c4c9d3134ea51b13b"
+      "file": "te/L24.bin",
+      "bytes": 487916288,
+      "sha256": "7c1c00d9e87167695b16b73073ce49840b3b565af2dd5b2dcaa6eecf8af32300"
     },
     {
-      "file": "text_encoder/model.safetensors.index.json",
-      "bytes": 97831,
-      "sha256": "06c952c569285870b811989b794b9766493e280fb77fbcb957fc4e5fcf25403a"
+      "file": "te/L25.bin",
+      "bytes": 487916288,
+      "sha256": "d9343216191d0156acf679e7e40334f1c7c658c7a32166a6cbd14c713dc1ce7f"
     },
     {
-      "file": "text_encoder/config.json",
-      "bytes": 1474,
-      "sha256": "d2dd0c60d01b9e195d9447c52da61c7302d28828524914c044d9c6e1b81d0427"
+      "file": "te/L26.bin",
+      "bytes": 487916288,
+      "sha256": "e12b4e88e154c0789f6e78143883bce42c6443b26dc1d72564ec533e94e07065"
     },
     {
-      "file": "vae/config.json",
-      "bytes": 1826,
-      "sha256": "7fcc21bec549804ff0a04d8246e7f90e679d4f8d4b0a27a252bbd18c30e3e4bb"
+      "file": "te/L27.bin",
+      "bytes": 487916288,
+      "sha256": "40f7c9e3c7f8f8820ef6e87500e2126b0ddbead26df6095e697aafd617e09deb"
     },
     {
-      "file": "vae/diffusion_pytorch_model.safetensors",
-      "bytes": 2336964672,
-      "sha256": "a7c8bb1e181865e7cf87c29d3d6bc728d944ce4862b92d0e1cbdcc36b3b180b2"
+      "file": "te/L28.bin",
+      "bytes": 487916288,
+      "sha256": "e2b70a923d3c8a8601b9dd9e2a03f233a860761335c2cf3e6911b5f32009d726"
     },
     {
-      "file": "pdd_fused_heads.safetensors",
-      "bytes": 12388808,
-      "sha256": "c07093a098e3bef4d43cd29c33e239a0c45424c5ff40dfcc864df00b8d664738"
+      "file": "te/L29.bin",
+      "bytes": 487916288,
+      "sha256": "0a816d103e96571b900e0633925358651b0fef098c4ebcc15760be8dfd213826"
     },
     {
-      "file": "pdd_config.json",
-      "bytes": 174,
-      "sha256": "cbc0cf1fbb7a7f9525987db453c1bf8218b95ebc686c9c5b74cbb5bbc4852e0b"
+      "file": "te/L30.bin",
+      "bytes": 487916288,
+      "sha256": "db7f08e27fd191c20d909ca6910cf3f630e1243a42a3d8479d211c71493dd185"
+    },
+    {
+      "file": "te/L31.bin",
+      "bytes": 487916288,
+      "sha256": "aa9ad3511339b3d42c7b11be35103619adbd46b2f3989baa0c707e7c85819a7c"
+    },
+    {
+      "file": "te/L32.bin",
+      "bytes": 487916288,
+      "sha256": "51156bd61f0e100e39a8b50af835e5418194f52de35d9603b39f21be334d00f0"
+    },
+    {
+      "file": "te/L33.bin",
+      "bytes": 487916288,
+      "sha256": "c1188d0b1d0918a556e67d2a73881372acefda73e2e7e429f0263c0e2a958b22"
+    },
+    {
+      "file": "te/L34.bin",
+      "bytes": 487916288,
+      "sha256": "a30df46138c9bb13d7005afd7f52ebb0c8ba95f5db07ab1ff94a329fdbdb8788"
+    },
+    {
+      "file": "te/L35.bin",
+      "bytes": 487916288,
+      "sha256": "dd5a84359eea8cf8c692d2fc592aa749a76c82baf1d864997e0c01d1f8d2928f"
+    },
+    {
+      "file": "te/L36.bin",
+      "bytes": 487916288,
+      "sha256": "adf3576cfbc73b1e3b8580000147494b48282765ace4d085c323cda7db5b85cc"
+    },
+    {
+      "file": "te/L37.bin",
+      "bytes": 487916288,
+      "sha256": "faa307604d29a5e3906581d3a09994b5b86c2cffb62bd8acabf9133508487ed6"
+    },
+    {
+      "file": "te/L38.bin",
+      "bytes": 487916288,
+      "sha256": "7b661cc8e6ae8a47cbb7b592299ebb7a5efe75628b8469cc932ec0d5fbc36adf"
+    },
+    {
+      "file": "te/L39.bin",
+      "bytes": 487916288,
+      "sha256": "480096085e4fd1474d7547a8fddf3b3b2d3a9d5db40f5a91b32420385ee15b88"
+    },
+    {
+      "file": "te/L40.bin",
+      "bytes": 487916288,
+      "sha256": "16c791f8bed317ad80caedb16bdb3c869a4661c4722f801692aac1789382ce58"
+    },
+    {
+      "file": "te/L41.bin",
+      "bytes": 487916288,
+      "sha256": "2098c9499dd87cad0cd05c2c628ce3b9154d0a7884cc7e18d64a0d74d1b78b01"
+    },
+    {
+      "file": "te/L42.bin",
+      "bytes": 487916288,
+      "sha256": "5c3008a922cab36939f30bc8965cfa26c5e478f257ad9663edb0fdfbb00833a5"
+    },
+    {
+      "file": "te/L43.bin",
+      "bytes": 487916288,
+      "sha256": "5bb38edaf743cfd34bd8650c68b105b863a0a36bfcec836dfafb27fadb4d1041"
+    },
+    {
+      "file": "te/L44.bin",
+      "bytes": 487916288,
+      "sha256": "7a054f11a8490c4c89b8b10c3051e49b8ef66947d5f175077bb490371a2ac5a8"
+    },
+    {
+      "file": "te/L45.bin",
+      "bytes": 487916288,
+      "sha256": "189eddc218cc3f33c0cb97b253e7c8daed571b933deca585ccec9424cf512cf7"
+    },
+    {
+      "file": "te/L46.bin",
+      "bytes": 487916288,
+      "sha256": "e36b5b4143ee7663747221269037e74b8769fa3bf9ce58c34b1e333e8e467ad0"
+    },
+    {
+      "file": "te/L47.bin",
+      "bytes": 487916288,
+      "sha256": "c1b65a5858b4c339467eb71d9886ddff1b580f8d54e2b8d2f69fab76d143dfe3"
+    },
+    {
+      "file": "te/L48.bin",
+      "bytes": 487916288,
+      "sha256": "37d71318c1e5215c07e01287f9c0c13100517b693eb75ceb268f9582e42bf362"
+    },
+    {
+      "file": "te/L49.bin",
+      "bytes": 487916288,
+      "sha256": "f95dfa1f59fe432064ec3da435652abb6f49484af475cba4b396c9658e7009ce"
+    },
+    {
+      "file": "te/embed.bf16",
+      "bytes": 1555824640,
+      "sha256": "039c55afb2b6998277e215d99d775f46512263c273a436a31a1a2aa1629a08a5"
+    },
+    {
+      "file": "te/vision.bin",
+      "bytes": 1196777216,
+      "sha256": "e417181e7a52b5e6724a773a3e2ab3f3387f88f96cb5b0a00115a8b33fc34a3b"
     },
     {
       "file": "tokenizer/tokenizer.json",
@@ -180,9 +290,14 @@
       "sha256": "a5d85b6dcc535e6b93115a9ef287e6132fdbf30270da6218194ba742261173c7"
     },
     {
-      "file": "LICENSE",
-      "bytes": 18208,
-      "sha256": "0ec3bb5e6d9e885fa2aaf15e84689e50fd51f42b53fa24d3a64ed9d8c76d423b"
+      "file": "vae/dec8.bin",
+      "bytes": 407305232,
+      "sha256": "543a52df2c50b12873ce82e9acb4756e7518c5f65703625fe5c3326128a66d95"
+    },
+    {
+      "file": "vae/enc.bin",
+      "bytes": 122741792,
+      "sha256": "e9f0507b50adb37362f50e88161e93367fdab44c096462e43373eb1f44f74ae0"
     }
   ]
 }

@@ -1,4 +1,4 @@
-"""python -m paiton_h3i [serve|prepare]: prepare the weights on first use, then serve the HTTP API."""
+"""python -m paiton_h3i [serve|prepare]: download the weights on first use, then serve the HTTP API."""
 import argparse
 import os
 from pathlib import Path
@@ -24,9 +24,9 @@ def main():
         return
     lib = APP / "lib"
     runner = server.Runner([str(lib / "h3i_run"), "--weights", str(bundle / "dit"), "--libs", str(lib), "--te", str(bundle / "te"),
-                            "--te-resident", args.te_resident, "--vae", str(bundle / "dec8.bin"), "--vae-enc", str(bundle / "enc.bin"),
-                            "--vae-tiles", "64", "--serve"])
-    tokenizer = Tokenizer.from_file(str(args.cache / "minimax-h3-image" / "tokenizer" / "tokenizer.json"))
+                            "--te-resident", args.te_resident, "--vae", str(bundle / "vae" / "dec8.bin"),
+                            "--vae-enc", str(bundle / "vae" / "enc.bin"), "--vae-tiles", "64", "--serve"])
+    tokenizer = Tokenizer.from_file(str(bundle / "tokenizer" / "tokenizer.json"))
     server.serve(server.Engine(runner, tokenizer), args.host, args.port)
 
 

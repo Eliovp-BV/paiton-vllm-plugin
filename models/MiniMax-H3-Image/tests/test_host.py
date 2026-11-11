@@ -71,3 +71,35 @@ def test_edit_front_end():
     assert np.abs(noise[0] - _golden(f"{front}/ref_scale_noise6.safetensors")["noise"][0]).max() < 1e-5
     rows = _golden(f"{GOLDENS}/edit_4096/call0.safetensors")["hidden_states"][0][lh // 2 * (lw // 2):]
     assert np.abs(target - rows).max() < 1e-5
+
+
+QGATE = os.environ.get("H3I_QGATE")
+
+
+@pytest.mark.skipif(not (QGATE and MODEL), reason="set H3I_QGATE and H3I_MODEL")
+@pytest.mark.parametrize("case", ["e02_sofa_cat", "e05_fox_in_town", "e06_robot_serves_ramen"])
+def test_multi_reference_edit(case):
+    import json
+    from PIL import Image
+    from tokenizers import Tokenizer
+    spec = {c["name"]: c for c in json.loads(Path(f"{QGATE}/cases_edit.json").read_text())}[case]
+    paths = spec["image"] if isinstance(spec["image"], list) else [spec["image"]]
+    refs = [host.load_reference(Image.open(f"{QGATE}/ref/{p}")) for p in paths]
+    vision = [host.vision_pixels(vis) for _, vis in refs]
+    front = f"{QGATE}/ref/{case}/front"
+    te = _golden(f"{front}/te_inputs.safetensors")
+    assert [tuple(g[1:]) for g in te["image_grid_thw"]] == [g for _, g in vision]
+    assert np.abs(np.concatenate([p for p, _ in vision]) - te["pixel_values"]).max() <= 2**-7
+    tok = Tokenizer.from_file(f"{MODEL}/tokenizer/tokenizer.json")
+    assert host.token_ids(tok, spec["prompt"], [g for _, g in vision]).tolist() == te["input_ids"][0].tolist()
+    grids = [(v.height // 16, v.width // 16) for v, _ in refs]
+    target, eps, noise = host.request_noise(spec["seed"], spec["height"] // 16, spec["width"] // 16, grids)
+    noise_files = sorted(Path(front).glob("ref_scale_noise*.safetensors"), key=lambda p: int(p.stem[15:]))
+    for i, (vae, _) in enumerate(refs):
+        enc = _golden(f"{front}/vae_encode{i}.safetensors")
+        assert np.abs(host.vae_pixels(vae) - enc["pixels"][0]).max() < 1e-5
+        post = _golden(f"{front}/posterior_sample{i}.safetensors")["x"][0]
+        assert np.abs(enc["mean"][0] + enc["std"][0] * eps[i] - post).max() < 1e-4
+        assert np.abs(noise[i] - _golden(str(noise_files[i]))["noise"][0]).max() < 1e-5
+    rows = _golden(f"{QGATE}/ref/{case}/call0.safetensors")["hidden_states"][0]
+    assert np.abs(target - rows[-len(target):]).max() < 1e-5
