@@ -1,0 +1,6 @@
+# Host-side runtime of the server and the first-run converters. No PyTorch, no Triton.
+# ROCm 10.0 HIP runtime (libamdhip64, HSA) for the native libraries, from AMD's wheel index.
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-core/rocm_sdk_core-10.0.0-py3-none-linux_x86_64.whl#sha256=3bf4a72d11aa2a4ee1e90572c73630f937d38c1b7af4dda45b483b54655138a7
+numpy==2.4.2 --hash=sha256:9e35d3e0144137d9fdae62912e869136164534d64a169f86438bc9561b6ad49f
+pillow==12.1.0 --hash=sha256:a6dfc2af5b082b635af6e08e0d1f9f1c4e04d17d4e2ca0ef96131e85eda6eb17
+tokenizers==0.23.2 --hash=sha256:41c2f84d172449b4dadb9cdc508e3e364076613c35b16e76ecfe47a60d1e3305
