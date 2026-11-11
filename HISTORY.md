@@ -5,6 +5,13 @@ are in its own history file: [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/HISTORY.
 [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/RELEASE-NOTES.md), [Qwen-Image-2.1](models/Qwen-Image-2.1/HISTORY.md).
 Releases with their notes: [GitHub Releases](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases).
 
+## What's new (11 November)
+
+Kimi-K3.1-Pro community build: Moonshot AI's 1.56 TB model on 4 AMD Instinct MI355X with one container. It is plain
+PyTorch with no Paiton engine, so it is slow (2 to 5 seconds per token, one request at a time), and it is meant for
+trying the model and reading its forward pass. [Guide](models/Kimi-K3.1-Pro/README.md) ·
+[benchmarks against Paiton](models/Kimi-K3.1-Pro/BENCHMARKS.md)
+
 ## What's new (7 November)
 
 Qwen3.8 27B has new 3-bit weights, retuned on coding-agent conversations. On 80 SWE-bench Verified tasks the agent looped

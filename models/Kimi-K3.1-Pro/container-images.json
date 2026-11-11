@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "image": "ghcr.io/eliovp/paiton-vllm-plugin:kimi31pro-rocm10.1.0-pytorch2.13.0-cdna4-v1",
+  "digest": "sha256:c1a165ebe962b450aed7a02a8deeead63e928bf2e925e543a765d3471f91ff20",
+  "source_revision": "5ed463576ac11772204452f62f1ce2a12cac2c53",
+  "base_image": "rocm/pytorch@sha256:b11c021675620aa82d1eaa2d1e78387dde7521bb5b972ce0ad47b6b004d4e7aa",
+  "platform": "linux/amd64",
+  "gpu_arch": "gfx950",
+  "model": "moonshotai/Kimi-K3.1-Pro",
+  "model_revision": "d9e99b0792a5e93b78ea9bea62a68167e36ddd9e"
+}

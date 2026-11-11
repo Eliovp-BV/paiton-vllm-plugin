@@ -131,7 +131,7 @@ folder. For another model, follow its guide below.
 
 | Requirement | What you need |
 | --- | --- |
-| **GPU** | Radeon AI PRO R9700, 32 GB. Most guides use one card; Flash Next requires two. Other GPUs have not been qualified. |
+| **GPU** | Radeon AI PRO R9700, 32 GB. Most guides use one card; Flash Next requires two. The [AMD Instinct](#amd-instinct) builds list their own GPUs. Other GPUs have not been qualified. |
 | **Host** | Linux with a working AMD GPU driver. Check the model guide for any required driver version. |
 | **Containers** | Docker with access to `/dev/kfd` and `/dev/dri`. ComfyUI launchers also require Docker Compose. |
 | **Memory and storage** | Check your model's guide before downloading. Requirements depend on the model and selected profile. |
@@ -194,12 +194,17 @@ current Qwen3.8 27B guide above.
 speaker labels and timestamped notes from recordings. Review generated notes
 against the recording. Live Teams capture and Studio integration are unsupported.
 [Benchmarks and limits](models/Meeting/BENCHMARKS.md).
-<a id="amd-instinct-mi350p"></a>
+<a id="amd-instinct-mi350p"></a><a id="amd-instinct"></a>
 
-### AMD Instinct MI350P
+### AMD Instinct (CDNA4)
 
-A one-command public default for Qwen3.8 Flash Next on one AMD Instinct MI350P, with stock vLLM, is in
-[docs/MI350P.md](docs/MI350P.md). The optimized Paiton engine for that GPU is not part of this repository.
+Public, unoptimized builds for AMD Instinct GPUs. The optimized Paiton engines for these GPUs are not part of this
+repository.
+
+| Model and guide | GPUs | Main use | Benchmarks |
+| --- | --- | --- | --- |
+| [Qwen3.8 Flash Next](docs/MI350P.md) | 1x MI350P | Stock vLLM with AMD's MXFP4 checkpoint, one command | [Guide](docs/MI350P.md) |
+| [Kimi-K3.1-Pro](models/Kimi-K3.1-Pro/README.md) | 4x MI355X | Plain PyTorch community build of the 1.56 TB model; slow, one request at a time | [Results](models/Kimi-K3.1-Pro/BENCHMARKS.md) |
 
 <a id="run-in-your-vllm-environment"></a><a id="native-cli"></a><a id="native-serving-presets"></a><a id="existing-commands-remain-supported"></a>
 
@@ -224,6 +229,7 @@ container releases; use the model's container guide for its published release pr
 | Use the older compatibility launcher | [Legacy vLLM launcher](docs/EXISTING_VLLM.md) |
 | Build or validate native runtime packages | [Native packaging (contributors)](docs/NATIVE_PACKAGING.md) |
 | Run Qwen3.8 Flash Next on an AMD Instinct MI350P | [MI350P public default](docs/MI350P.md) |
+| Run Kimi-K3.1-Pro on 4 AMD Instinct GPUs | [Kimi-K3.1-Pro community build](models/Kimi-K3.1-Pro/README.md) |
 | Earlier announcements and results | [History](HISTORY.md) |
 | Download wheels, runtimes or model weights | [GitHub Releases](https://github.com/Eliovp-BV/paiton-vllm-plugin/releases) · [Hugging Face](https://huggingface.co/EliovpAI) |
 

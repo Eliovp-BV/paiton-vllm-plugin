@@ -75,6 +75,24 @@ def test_docker_launchers_publish_on_every_interface(tmp_path, script, args, env
         assert not any("k-test-123" in arg for arg in argv[:-1]) and argv[-1] == "ENV VLLM_API_KEY=k-test-123"
 
 
+
+@needs_kfd
+def test_kimi31_launcher_publishes_on_every_interface(tmp_path):
+    checkpoint = tmp_path / "kimi"
+    checkpoint.mkdir()
+    (checkpoint / "config.json").write_text("{}")
+    (checkpoint / "model.safetensors.index.json").write_text("{}")
+    env = {"PAITON_MODEL_DIR": str(checkpoint)}
+    _, runs = run_launcher(tmp_path, "Kimi-K3.1-Pro/serve-docker.sh", **env)
+    assert len(runs) == 1 and published(runs[0]) == ["0.0.0.0:8031:8000"]
+    assert not any("PAITON_API_KEY" in arg for arg in runs[0][:-1])
+    _, runs = run_launcher(tmp_path, "Kimi-K3.1-Pro/serve-docker.sh", PAITON_BIND="127.0.0.1", **env)
+    assert published(runs[0]) == ["127.0.0.1:8031:8000"]
+    _, runs = run_launcher(tmp_path, "Kimi-K3.1-Pro/serve-docker.sh", PAITON_API_KEY="k-test-123", **env)
+    argv = runs[0]
+    assert "PAITON_API_KEY" in argv and argv[argv.index("PAITON_API_KEY") - 1] == "-e"
+    assert not any("k-test-123" in arg for arg in argv)
+
 def test_qwen38_dry_run_shows_every_interface(tmp_path):
     hub = tmp_path / "hub"
     hub.mkdir()
