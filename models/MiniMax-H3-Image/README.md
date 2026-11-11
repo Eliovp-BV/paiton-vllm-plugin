@@ -1,13 +1,11 @@
-# MiniMax-H3-Image on one R9700
-
-DRAFT, not published.
+# MiniMax-H3-Image on a single R9700
 
 [MiniMax-H3-Image](https://huggingface.co/MiniMaxAI/MiniMax-H3-Image) is MiniMax's 33B image model: text to image and
-image editing, 4 to 16 MP output, 6 sampling steps. This package runs it on one Radeon AI PRO R9700 (32 GB) with
+image editing, 4 to 16 MP output, 6 sampling steps. This package runs it on a single Radeon AI PRO R9700 (32 GB) with
 Paiton's native HIP kernels. There is no PyTorch and no Triton in the container. The server takes the same requests as
 MiniMax's own examples (`/v1/images/generations` and `/v1/images/edits` on port 30000).
 
-| Request | Time on one R9700 |
+| Request | Time |
 | --- | ---: |
 | text to image, 2048 x 2048 | 6.9 s |
 | text to image, 1024 x 1024 (made at 2048 x 2048, then resized) | 7.1 s |
@@ -114,7 +112,7 @@ A 30-case quality gate (24 text-to-image prompts from 4 to 17 MP, 6 edits with 1
 weights with the BF16 model in diffusers on the same token ids and noise. The CLIP-L text-image score is 32.18 against
 32.31 for BF16, within the case-to-case spread. Mean image similarity to the BF16 image is 0.979 (CLIP-L) and 0.945
 (DINOv2). The images differ from the BF16 ones mainly in layout, because a 6-step sampler follows a different path
-after small numeric changes; text, hands and faces render correctly. Edits stay closest to BF16.
+after small numeric changes; text and faces render correctly. Edits stay closest to BF16.
 
 ## Limits of this build
 
