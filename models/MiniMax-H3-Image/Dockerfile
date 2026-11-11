@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # Native MiniMax-H3-Image for one Radeon AI PRO R9700 (gfx1201). The image holds the compiled Paiton libraries, the
 # runner binary and a small Python server. No PyTorch, no Triton, no compiler source.
-# The converted weights download from Hugging Face on the first start (see README.md).
+# The converted weights download from Hugging Face on the first start (see README.md). Maintainer build only:
+# artifacts/ (from stage_artifacts.sh) is never committed, so a plain checkout cannot build this image.
 FROM ubuntu:24.04@sha256:1e0a86e57d247923571b75e0aaf48a1449cf8c543d51fb3e07a4a7d7bfa79316
 
 LABEL org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \

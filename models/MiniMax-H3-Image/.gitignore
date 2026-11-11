@@ -1,1 +1,3 @@
 artifacts/
+*.so
+h3i_run

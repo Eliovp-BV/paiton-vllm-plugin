@@ -33,15 +33,15 @@ card runs at its 300 W limit and uses up to 27.6 GiB.
 
 ## Start
 
-Build the image from this directory, then start the server:
-
-```bash
-docker build -t paiton-minimax-h3-image:rdna4-v0.1.0 models/MiniMax-H3-Image
-```
+From a checkout of this repository:
 
 ```bash
 ./models/MiniMax-H3-Image/launch.sh
 ```
+
+`launch.sh` runs the published image `ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-image-rdna4-v0.1.0`. The compiled
+Paiton runtime (the native libraries and the runner) is only in that image, not in this repository, so the image cannot
+be rebuilt from a checkout.
 
 The first start downloads the FP8 weights from
 [EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4)

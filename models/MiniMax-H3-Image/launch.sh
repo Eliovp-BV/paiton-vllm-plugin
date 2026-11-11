@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Start the MiniMax-H3-Image server. The first start downloads 135 GB and converts it (see README.md).
+# Start the MiniMax-H3-Image server. The first start downloads the 48 GB FP8 weights (see README.md).
 #   PAITON_DETACH=1 ./launch.sh      # run in the background; follow with: docker logs -f paiton-minimax-h3-image
 set -euo pipefail
-image="${PAITON_IMAGE:-paiton-minimax-h3-image:rdna4-v0.1.0}"
+image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-image-rdna4-v0.1.0}"
 cache="${PAITON_CACHE:-paiton-minimax-h3-image-cache}"   # a Docker volume name or an absolute host path
 port="${PAITON_PORT:-30000}"
 bind="${PAITON_BIND:-127.0.0.1}"                          # 0.0.0.0 serves other machines too
