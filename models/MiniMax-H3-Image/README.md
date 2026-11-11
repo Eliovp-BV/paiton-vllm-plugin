@@ -44,7 +44,7 @@ be rebuilt from a checkout.
 The first start downloads the FP8 weights from
 [EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4)
 (48 GB, every file SHA-256 checked against `checkpoints.lock.json`). The first SHA-256 check of the 48 GB took 30 s on
-our test host; later starts skip it and are ready in about 20 s. The server prints `READY` when it takes requests.
+our test host; later starts skip it and are ready in about 20 s. The server takes requests once it prints `READY http://0.0.0.0:30000`.
 
 Settings for `launch.sh`, all optional:
 
