@@ -58,7 +58,7 @@ def main():
         for i in range(a.runs):
             t = time.time()
             m = generate(a.url, a.prompt or BENCH_PROMPT, a.size, a.seed + i)["metrics"]
-            print(json.dumps(dict(run=i, size=a.size, client_s=round(time.time() - t, 3), **m)))
+            print(json.dumps(dict(run=i, client_s=round(time.time() - t, 3), **m)))   # metrics carry size and canvas
     elif not a.prompt:
         p.error("a prompt is required")
     elif a.command == "generate":
