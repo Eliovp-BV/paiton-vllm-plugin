@@ -7,8 +7,13 @@
     "license": "MiniMax-H3-Image Community License"
   },
   "quality_gate": "qgate 11 Nov 2026, GPTQ bundle k6-work/w8gptq",
-  "download_bytes": 47997158482,
+  "download_bytes": 47997158862,
   "files": [
+    {
+      "file": "config.json",
+      "bytes": 380,
+      "sha256": "d131c926cfff4eb14c55f24e1aaf67a0ef1d37cca402d4dc3aea587bac383e35"
+    },
     {
       "file": "dit/dit.bin",
       "bytes": 20311639360,
