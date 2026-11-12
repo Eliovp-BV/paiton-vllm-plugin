@@ -229,8 +229,13 @@ class KimiK31:
         k = F.normalize(outs["k"].view(T, H, dk), dim=-1)
         v = outs["v"].view(T, H, dk)
         f = self.lin(self.lin(x, pre + ".f_a_proj"), pre + ".f_b_proj").view(T, H, dk)
-        A = self.W(pre + ".A_log").exp()
-        A = A.view(1, -1, dk) if A.numel() == H * dk else (A.view(1, H, 1) if A.numel() == H else A.view(1, 1, dk))
+        # A_log holds one decay scale per head. The checkpoint stores it padded: 128 entries for 96 heads, entries 0-95 are the
+        # heads' values and the rest are zero. Entry h belongs to head h (the vLLM loader reads it the same way); reading the
+        # 128 entries as per-channel values shared by all heads gives every KDA layer wrong decay rates, and the error grows
+        # with context length.
+        A = self.W(pre + ".A_log").flatten()
+        assert A.numel() >= H, f"{pre}.A_log has {A.numel()} entries for {H} heads"
+        A = A.view(1, H, dk).exp() if A.numel() == H * dk else A[:H].exp().view(1, H, 1)
         g = la["gate_lower_bound"] * torch.sigmoid(A * (f + self.W(pre + ".dt_bias").view(1, H, dk)))
         beta = torch.sigmoid(self.lin(x, pre + ".b_proj"))
         o = torch.empty(T, H, dk, device=self.dev)

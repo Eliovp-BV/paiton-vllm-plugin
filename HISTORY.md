@@ -12,6 +12,11 @@ PyTorch with no Paiton engine, so it is slow (2 to 5 seconds per token, one requ
 trying the model and reading its forward pass. [Guide](models/Kimi-K3.1-Pro/README.md) ·
 [benchmarks against Paiton](models/Kimi-K3.1-Pro/BENCHMARKS.md)
 
+Update 12 November: the build read KDA's decay scale `A_log` as one value per channel; the checkpoint stores one value
+per head (96 values, padded to 128 with zeros). Short prompts were only slightly off, but answers to long prompts
+(about 100K tokens and up) lost track of the question. `model.py` now reads it per head, and `tests/test_tiny.py`
+checks it. The container image will be rebuilt with the fix.
+
 ## What's new (7 November)
 
 Qwen3.8 27B has new 3-bit weights, retuned on coding-agent conversations. On 80 SWE-bench Verified tasks the agent looped
