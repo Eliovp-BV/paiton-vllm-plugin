@@ -58,6 +58,7 @@ text stays ready, so a follow-up question about it starts in seconds instead of 
 | `run-3bit.sh --mode long-kv4`: **coding agents, long documents, screenshots** | 262,144 | **628,877** | **555,128** | 2 (plus one of 100K) | yes |
 | `run-3bit.sh --mode long-kv4 --extend-cache` | 262,144 | 628,877 on the GPU, plus about 0.7M to 2.8M in system RAM or on an NVMe/SSD | – | 2 | yes, also after a restart |
 | `run-3bit.sh --mode long` | 262,144 (245,000 with images) | 316,325 | 253,298 | 1, plus short ones | yes |
+| `run-3bit.sh --mode long --extend-cache disk`: chats that survive a restart | 262,144 | as `--mode long` on the GPU, plus about 930K on an NVMe/SSD | – | 1, plus short ones | yes, also after a restart |
 | `run-3bit.sh --mode long-512k` (experimental) | 524,288 | 594,290 | – | 1, plus short ones | yes |
 | `run-3bit.sh`: fast everyday chat | 65,536 | 393,216 | 278,050 | 6 | no |
 | `run-mxfp4.sh --mode long`: most accurate, one long document | 200,000 | one request | – | 1 | yes |
@@ -73,6 +74,7 @@ What each row gives up:
 | `run-3bit.sh --mode long-kv4` | 2.4 GiB of pinned system RAM ([system RAM](#system-ram)); reading a new prompt is about 3 % slower than without prefix caching (7 to 13 % for short prompts, a fraction of a second) |
 | `… --extend-cache` | system RAM, or up to 64 GiB of NVMe/SSD space; no images. On hosts with 16 or 32 GB of RAM the GPU part holds 451,879 tokens ([what each host gets](#extend-cache)) |
 | `run-3bit.sh --mode long` | about 3 to 4 % speed on short requests against `run-3bit.sh` ([measured](HISTORY.md#mode-long-short-requests)); half the cache of `--mode long-kv4` |
+| `… --mode long --extend-cache disk` | up to 64 GiB of NVMe/SSD space and 7.5 GiB of pinned system RAM (less on hosts with less RAM, which then restore shorter chats); about 10 s more at start; no images |
 | `run-3bit.sh --mode long-512k` | the model's long-context scaling on every request, short ones included; 2.4 GiB of pinned system RAM with no fallback; a cold 500K-token read takes about 6 minutes |
 | `run-3bit.sh` | a little accuracy: MMLU-Pro 60.6 instead of 62.6 (previous weights `7a2e3d70`; the 12 October update recovers about 0.5 to 1 point) |
 | `run-mxfp4.sh --mode long` | one request at a time; no images |
@@ -294,7 +296,38 @@ token takes in a tier.
 | Restores from disk | A restore passes through the RAM staging tier, which sets the largest document it restores (the table above) and how many big documents come back at the same moment (4 GiB stages about two 100K-token documents). |
 | First reads | A little slower: every new prompt block is also written to the tier, about 8 % for a 131K-token prompt in our test. Decode speed is unchanged within noise. |
 | 16 GB hosts | A RAM tier with the embedding table in system RAM needs 32 GB, so the launcher moves the table to the GPU there. It refuses to start when free memory is short, naming the shortfall, and warns when memory is tight. |
-| Where it works | Only with `--mode long-kv4`, without images. |
+| Where it works | With `--mode long-kv4`, and with `--mode long` and the 3-bit weights ([chats that survive a restart](#chats-restart)); without images. |
+
+<a id="chats-restart"></a>
+
+#### Chats that survive a restart: `--mode long --extend-cache disk`
+
+`--mode long` with the 3-bit weights takes `--extend-cache` too. With `disk`, every chat the server reads is also
+written to an NVMe/SSD folder. When the server is stopped (for example to free the GPU for another model) and started
+again, the next question in a chat loads that chat from disk instead of reading it again.
+
+```bash
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long --extend-cache disk
+```
+
+Measured on one R9700 after a full restart (FP8 cache, 3-bit weights, a 400-token question after the chat):
+
+| Chat length | First answer after a restart | Without the disk tier |
+| --- | --- | --- |
+| 32K tokens | 0.8 s | 8.5 s |
+| 64K tokens | 1.3 s | 19.3 s |
+| 128K tokens | 2.3 s | 46.8 s |
+| 190K tokens | 3.2 s | 79.1 s |
+
+| Topic | What to know |
+| --- | --- |
+| Same output | The answer is bit-identical to the same chat served from the GPU cache. |
+| RAM it needs | 7.5 GiB of pinned system RAM as staging, which restores a whole 200K-token chat. Hosts with less RAM get 6, 4.5 or 3 GiB, which restore chats up to about 160K, 120K or 80K tokens; a longer chat is read again, correctly, just not faster. |
+| Disk it needs | About 73 KB per newly read token (the FP8 cache is larger than the 4-bit one). The 64 GiB cap holds about 930K tokens; the cap works as described above. |
+| Speed | Decode speed and first reads are unchanged within our measurement noise (first reads up to 4 % slower in one run). The server takes about 10 s longer to start. |
+| `auto` | Picks system RAM on hosts with a lot of it. RAM does not survive a restart, so pass `disk` to keep chats across restarts. |
+| A crashed server | A server killed while it writes the cache starts again cleanly and reuses what was written. |
+| Where it works | With the 3-bit weights and text only; the launcher refuses it with `--vision`, `--system-memory-weights` or the MXFP4 weights. |
 
 More: [cache tiers in the reference](REFERENCE.md#cache-tiers).
 

@@ -403,7 +403,8 @@ BetterBench and accuracy are the "2 October image" columns of the [quickstart's 
 
 #### RAM and SSD cache tiers: `--extend-cache`
 
-`--extend-cache [auto|ram|disk]` (`--mode long-kv4` only, opt-in) keeps prefix-cache blocks that leave the GPU in
+`--extend-cache [auto|ram|disk]` (`--mode long-kv4`, and `--mode long` with the 3-bit weights; opt-in) keeps
+prefix-cache blocks that leave the GPU in
 system RAM, or on an NVMe/SSD behind a small RAM staging tier, and restores them on the next hit instead of reading
 the document again. It needs the 4 October image: with the 4-bit cache, a hit from RAM or disk must resume on a
 recurrent-state block, and this image's prefix-cache connector makes sure it does.
@@ -421,6 +422,22 @@ largest document a disk restore covers. What `auto` picks for each host size is 
 **Measured** on a 16 GB host with a SATA SSD, `--extend-cache` (auto: 4 GiB staging, the embedding table on the
 GPU), after a full server restart: a 130K-token document came back in 6.8 s instead of 46.9 s cold, a 200K-token
 document in 9.0 s instead of 86.4 s, both identical to a fresh read. NVMe should be faster; we have not measured it.
+
+With `--mode long` (3-bit weights, FP8 cache, text only), `--extend-cache disk` keeps a chat's cache on NVMe across a
+server restart. The staging tier is 7.5 GiB, enough to restore a whole 200K-token chat; hosts with less RAM get 6, 4.5
+or 3 GiB (about 160K, 120K or 80K tokens). Measured on one R9700 with an NVMe drive, after a full restart:
+
+| Conversation | Resume | Read again from scratch |
+| --- | --- | --- |
+| 32K tokens | 0.8 s | 8.5 s |
+| 64K tokens | 1.3 s | 19.3 s |
+| 128K tokens | 2.3 s | 46.8 s |
+| 190K tokens | 3.2 s | 79.1 s |
+
+The output is bit-identical to the same chat served from the GPU cache. Decode speed does not change. The FP8 cache
+takes more room than the 4-bit one: about 73 KB on disk per newly read token, so the 64 GiB cap holds about 930K
+tokens. A server killed while it writes the cache restarts cleanly and reuses what was written. `auto` picks system RAM
+on hosts with a lot of it, and RAM does not survive a restart, so pass `disk` to keep chats across restarts.
 
 - **Correctness.** Every reopened document gives output bit-identical to the same document served from the GPU
   cache, at every length tested (32K to about 258K tokens). A safety fallback recomputes any hit it cannot place.
@@ -447,8 +464,8 @@ document in 9.0 s instead of 86.4 s, both identical to a fresh read. NVMe should
 - **Setting the tiers by hand:** `--host-cache-gib` and `--disk-cache-dir` still work; see
   [System memory and experimental options](#system-memory-and-experimental-options). `--extend-cache` sets them
   itself and refuses `--host-cache-gib`.
-- **Refused:** in `--mode long`, `--mode long-512k` and the 65,536-token mode, with the MXFP4 weights, and on the
-  3 October image and older (given by tag or by digest).
+- **Refused:** in `--mode long-512k` and the 65,536-token mode, with the MXFP4 weights, in `--mode long` with
+  `--vision` or `--system-memory-weights`, and on the 3 October image and older (given by tag or by digest).
 
 <a id="mode-long-512k"></a>
 

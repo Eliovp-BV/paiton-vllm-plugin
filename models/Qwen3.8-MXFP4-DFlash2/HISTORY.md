@@ -4,6 +4,13 @@ Earlier results, release notes and comparisons, moved here from the [guide](READ
 [release reference](REFERENCE.md) on 10 November 2026. Nothing on this page describes the current release unless it
 says so; the current numbers are in the [guide](README.md#current-benchmark-results).
 
+## 14 November 2026: chats that survive a restart
+
+`--mode long` with the 3-bit weights now takes `--extend-cache disk`. Before, `--extend-cache` worked only in
+`--mode long-kv4`. The image is unchanged (r2); the update is the launcher, so run `git pull`. After a full server
+restart a 128K-token chat answered its next question in 2.3 s instead of 46.8 s, with output bit-identical to a GPU
+cache hit. Details and limits: [the guide](README.md#chats-restart).
+
 ## 7 November 2026: the new 3-bit weights and image r2 against the 24 October release
 
 **7 November: new 3-bit weights and a new image.** Run `git pull`, then the 3-bit [download](README.md#optional-the-3-bit-weights)
