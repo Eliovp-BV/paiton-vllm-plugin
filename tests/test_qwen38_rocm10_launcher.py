@@ -1478,6 +1478,34 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir(exist_ok=True)
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
 
+    def test_extend_cache_in_the_fp8_long_mode(self):
+        """--mode long with the 3-bit weights: the fp8 sizes, the embedding on the GPU, the same tier argv."""
+        self._w3rot()
+        options = ('--dry-run', '--mode', 'long', '--weights', 'w3a4', '--context', '200000', '--max-num-seqs', '1',
+                   '--image', 'paiton-qwen38-local:dev', '--extend-cache', 'disk')
+        self._host(32, 30)
+        self.overrides.setdefault('SYS_DEV_BLOCK', str(self.root / 'sys-dev-block'))
+        result = self.run_launcher(*options)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        command = json.loads(result.stdout)
+        self.assertEqual(value(command, '--kv-offloading-size'), '7.5')
+        self.assertEqual(value(command, '--ipc'), 'private')
+        self.assertEqual(value(command, '--kv-cache-dtype'), 'fp8')
+        self.assertEqual(value(command, '--prefix-caching-hash-algo'), 'sha256')
+        self.assertIn('TieringOffloadingSpec', value(command, '--kv-transfer-config'))
+        self.assertTrue(any(x.endswith(':/kvdisk:rw') for x in command))
+        self.assertNotIn('PAITON_HOST_EMBED=1', command)
+        self.assertIn('GPU pool 306,563 tokens with the embedding on the GPU', result.stderr)
+        self.assertIn('documents up to ~210,000 tokens restore from disk', result.stderr)
+        self._host(15.5, 13.5)                         # a 16 GB host: the largest staging tier that fits
+        result = self.run_launcher(*options)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(value(json.loads(result.stdout), '--kv-offloading-size'), '3')
+        for extra in (('--vision',), ('--system-memory-weights',)):
+            self.assertIn('works with the 3-bit W3A4 weights', self.refused(*options[1:], *extra))
+        self.assertIn('use it with --mode long or --mode long-kv4',
+                      self.refused('--image', 'paiton-qwen38-local:dev', '--extend-cache', 'disk'))
+
     def test_extend_cache_picks_system_memory_only_where_it_adds_capacity(self):
         self._w3rot()
         disk_root = Path(self.environment['PAITON_CACHE_DIR']).resolve() / 'kv-disk'
@@ -1680,9 +1708,8 @@ class Rocm10LauncherTests(unittest.TestCase):
         image = ('--image', 'paiton-qwen38-local:dev')
         for options, reason in (
                 (('--mode', 'long-kv4', '--extend-cache', '--host-cache-gib', '2'), 'sizes the host tier itself'),
-                (('--mode', 'long', '--extend-cache'), 'use it with --mode long-kv4'),
-                (('--mode', 'long-512k', '--extend-cache'), 'use it with --mode long-kv4'),
-                (('--extend-cache',), 'use it with --mode long-kv4'),
+                (('--mode', 'long-512k', '--extend-cache'), 'use it with --mode long or --mode long-kv4'),
+                (('--extend-cache',), 'use it with --mode long or --mode long-kv4'),
                 (('--mode', 'long-kv4', '--prefix-caching', 'off', '--extend-cache'), 'needs prefix caching'),
                 (('--mode', 'long-kv4', '--extend-cache', 'ram', '--disk-cache-dir', str(self.root / 'd')),
                  'drop --disk-cache-dir')):

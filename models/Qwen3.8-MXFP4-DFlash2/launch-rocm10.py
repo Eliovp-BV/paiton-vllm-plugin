@@ -276,7 +276,8 @@ W3_LONG_LMHEAD_W8_KV_CACHE_BYTES = W3_LONG_KV_CACHE_BYTES + LMHEAD_W8_POOL_BYTES
 DISK_CACHE_FORMAT = 1
 DISK_CACHE_DEFAULT_GIB = 64.0
 DISK_TIER_SHM_HEADROOM_GIB = 1.0
-# --extend-cache [auto|ram|disk] (experimental, --mode long-kv4, off unless given): sizes the prefix-cache tiers itself.
+# --extend-cache [auto|ram|disk] (experimental, --mode long-kv4 and --mode long with the 3-bit weights (text, embedding on
+# the GPU; FP8_LONG_* below), off unless given): sizes the prefix-cache tiers itself.
 # The host tier is inclusive (it keeps a copy of what the GPU pool holds), so system memory adds capacity only when its
 # tier holds clearly more than the GPU pool: auto picks system memory when the tier holds at least 1.25 x the pool's
 # tokens (a RAM tier only slightly larger than the pool serves almost nothing to a cycling working set: 64 GiB vs 1.92M
@@ -321,6 +322,14 @@ def kv4_pool_tokens(args):
 EXTEND_CACHE_STAGING_GIB = (4.5, 4.0, 3.5, 3.0, 2.5, 2.0)     # the largest that fits; 4.5 restores a 256K document
 EXTEND_CACHE_DISK_MAX_GIB = 64.0
 EXTEND_CACHE_DISK_FREE_SHARE = 0.25
+# --mode long --extend-cache (3-bit weights, fp8 KV, the embedding on the GPU), measured 14 Nov 2026 on one R9700 with
+# the 20261107-r2 image and --context 200000: 16.96 GB on disk for ~232K tokens
+# (~73 KB/token: attention, drafter and the GDN states at every 880-token boundary), restores load 33.6-36.3 KB/token
+# (32K/64K/128K; only the hit boundary's GDN state), GPU pool 306,563 tokens with the tier on. Staging: 7.5 GiB restores
+# a whole 200K chat at 38,000 B/token (5 % over the measured load for slot rounding).
+FP8_LONG_TIER_BYTES = (73728, 38000)
+FP8_LONG_POOL_TOKENS = 306563
+FP8_LONG_STAGING_GIB = (7.5, 6.0, 4.5, 3.0)
 SYS_DEV_BLOCK = Path('/sys/dev/block')
 PROC_MEMINFO = Path('/proc/meminfo')
 DEV_SHM = '/dev/shm'
@@ -625,16 +634,19 @@ def storage_is_rotational(path):
     return None
 
 
-def extend_cache_settings(args, environment):
-    """--extend-cache: (the tier flags it stands for, the note that explains the choice)."""
+def extend_cache_settings(args, environment, fp8=False):
+    """--extend-cache: (the tier flags it stands for, the note that explains the choice). fp8: --mode long (3-bit
+    weights, the embedding on the GPU), else --mode long-kv4."""
     choice = args.extend_cache
     if getattr(args, 'host_cache_gib', None):
         raise ValueError('--extend-cache sizes the host tier itself; drop --host-cache-gib, or drop --extend-cache and '
                          'set --host-cache-gib and --disk-cache-dir by hand')
     if choice == 'ram' and getattr(args, 'disk_cache_dir', None):
         raise ValueError('--extend-cache ram keeps the cache in system memory; drop --disk-cache-dir')
-    stored, loaded = tier_bytes_per_token(args)
-    if getattr(args, 'system_memory_weights', False):
+    stored, loaded = FP8_LONG_TIER_BYTES if fp8 else tier_bytes_per_token(args)
+    if fp8:
+        placements = (False,)
+    elif getattr(args, 'system_memory_weights', False):
         placements = (True,)
     elif getattr(args, 'no_system_memory_weights', False):
         placements = (False,)
@@ -653,28 +665,29 @@ def extend_cache_settings(args, environment):
 
     def where(embedding_in_ram):
         return 'in system memory' if embedding_in_ram else 'on the GPU'
-    gpu = kv4_pool_tokens(args)
-    adds = [e for e in placements if tokens(tier[e]) >= EXTEND_CACHE_RAM_FACTOR * gpu[e]]
+    gpu = {False: FP8_LONG_POOL_TOKENS} if fp8 else kv4_pool_tokens(args)
+    stagings = FP8_LONG_STAGING_GIB if fp8 else EXTEND_CACHE_STAGING_GIB
+    adds =[e for e in placements if tokens(tier[e]) >= EXTEND_CACHE_RAM_FACTOR * gpu[e]]
     if choice == 'ram' or (choice == 'auto' and adds):
         # the embedding stays in system memory (the larger GPU pool) whenever the tier adds capacity that way; a forced
         # ram choice that adds little takes the largest tier
         e = adds[0] if adds else max(placements, key=lambda e: (tokens(tier[e]), e))
-        if tier[e] < EXTEND_CACHE_STAGING_GIB[-1]:
+        if tier[e] < stagings[-1]:
             raise ValueError(f'--extend-cache ram: this host can pin {tier[e]:g} GiB for the cache tier '
-                             f'({pin_limit_text(e)}), less than {EXTEND_CACHE_STAGING_GIB[-1]:g} GiB; use '
+                             f'({pin_limit_text(e)}), less than {stagings[-1]:g} GiB; use '
                              '--extend-cache disk')
         note = (f'--extend-cache {choice}: system memory, a {tier[e]:g} GiB tier (~{tokens(tier[e]):,} tokens) next to '
                 f'the GPU pool\'s {gpu[e]:,} tokens, the embedding {where(e)}; no disk tier; pinning it adds about '
                 f'{round(HOST_PIN_SECONDS_PER_GIB * tier[e])} s to every start (--host-cache-gib for a smaller tier)')
         return {'extend_cache': None, 'host_cache_gib': tier[e], 'system_memory_weights': e,
                 'no_system_memory_weights': not e}, note
-    for staging in EXTEND_CACHE_STAGING_GIB:         # the staging tier every disk hit passes through
+    for staging in stagings:         # the staging tier every disk hit passes through
         e = next((e for e in placements if tier[e] >= staging), None)
         if e is not None:
             break
     else:
         raise ValueError(f'--extend-cache: this host can pin at most {max(tier.values()):g} GiB, not the '
-                         f'{EXTEND_CACHE_STAGING_GIB[-1]:g} GiB staging tier the disk cache needs '
+                         f'{stagings[-1]:g} GiB staging tier the disk cache needs '
                          f'({pin_limit_text(placements[-1])})')
     folder = getattr(args, 'disk_cache_dir', None)
     if not folder:
@@ -818,7 +831,8 @@ def parser():
                           help=f'refuse to start when the --disk-cache-dir folder of this configuration exceeds GIB '
                                f'(default {DISK_CACHE_DEFAULT_GIB:g})')
     advanced.add_argument('--extend-cache', nargs='?', const='auto', choices=('auto', 'ram', 'disk'),
-                          help='experimental, --mode long-kv4: extend the prefix cache beyond the GPU. auto (also the '
+                          help='experimental, --mode long-kv4 and --mode long (3-bit, text): extend the prefix cache beyond '
+                               'the GPU; the disk tier keeps conversations across a server restart. auto (also the '
                                'flag alone) uses system memory where the host has enough of it to add capacity, '
                                'otherwise NVMe/SSD under PAITON_CACHE_DIR/kv-disk (or --disk-cache-dir); ram or disk '
                                'force one. Sizes the host tier, the disk cap and the embedding placement itself and '
@@ -1053,8 +1067,9 @@ def apply_mode(args, environment):
     """--mode as the legacy flags it stands for (MODES), so the Docker argv is identical. An explicit flag that
     contradicts the preset raises ValueError; compatible refinements pass through to the usual checks."""
     mode = getattr(args, 'mode', None)
-    if getattr(args, 'extend_cache', None) and mode != 'long-kv4':
-        raise ValueError('--extend-cache extends the prefix cache of the coding mode; use it with --mode long-kv4')
+    if getattr(args, 'extend_cache', None) and mode not in ('long', 'long-kv4'):
+        raise ValueError('--extend-cache extends the prefix cache of the long-context modes; use it with --mode long '
+                         'or --mode long-kv4')
     if mode is None:
         return args
     name = f'--mode {mode}'
@@ -1092,7 +1107,17 @@ def apply_mode(args, environment):
             else:
                 reason = f'serves up to --context {limit}, the model\'s limit'
             raise ValueError(f'{name} {reason}')
-        return argparse.Namespace(**{**vars(args), **settings, 'context': context})
+        notes = []
+        if getattr(args, 'extend_cache', None):
+            # measured with the 3-bit weights, text only, the embedding on the GPU
+            if weights != 'w3a4' or args.vision or getattr(args, 'system_memory_weights', False):
+                raise ValueError(f'{name} --extend-cache works with the 3-bit W3A4 weights, text only, with the '
+                                 'embedding on the GPU: use --weights w3a4 and drop --vision and '
+                                 '--system-memory-weights')
+            tiers, note = extend_cache_settings(args, environment, fp8=True)
+            args = argparse.Namespace(**{**vars(args), **tiers})
+            notes.append(note)
+        return argparse.Namespace(**{**vars(args), **settings, 'context': context, 'launcher_notes': notes})
     if args.kv_cache == 'fp8':
         raise ValueError(f'{name} uses the 4-bit KV cache; for the fp8 KV cache use --mode long')
     if getattr(args, 'system_memory_weights', False) and getattr(args, 'no_system_memory_weights', False):
