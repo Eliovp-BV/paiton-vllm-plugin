@@ -1,6 +1,6 @@
 {
   "repository": "EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4",
-  "revision": "unpublished",
+  "revision": "9cb3b0c6f20ef405b3a88c24dcebf1046f13804e",
   "base_model": {
     "repository": "MiniMaxAI/MiniMax-H3",
     "revision": "42ed227ee7df40d41602854ae760620d6eb651fe",
