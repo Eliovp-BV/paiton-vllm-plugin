@@ -70,7 +70,7 @@ Settings for `launch.sh`, all optional:
 With the server running:
 
 ```bash
-./models/LTX-2.5/run.sh generate "A red fox trots through fresh snow in a pine forest at dawn, birds calling in the distance" --out fox.mp4
+./models/LTX-2.5/run.sh generate "A street drummer plays a fast rhythm on a city sidewalk at dusk while the crowd claps and cheers" --out drummer.mp4
 ```
 
 ```bash
