@@ -1,6 +1,6 @@
 {
   "repository": "EliovpAI/LTX-2.5-FP8-Paiton-RDNA4",
-  "revision": "unpinned",
+  "revision": "e123b9e5f1b01e1c1612fd974a9d78e974650f5b",
   "base_model": {
     "repository": "Lightricks/LTX-2.5",
     "revision": "unpinned (local download of 14 Nov 2026)",

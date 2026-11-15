@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Start the LTX-2.5 server. The first start downloads the 80 GB weights (see README.md).
+# Start the LTX-2.5 server. The first start downloads the 38 GB weights (see README.md).
 #   PAITON_DETACH=1 ./launch.sh      # run in the background; follow with: docker logs -f paiton-ltx-2.5
 set -euo pipefail
-image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:ltx-2.5-rdna4-v0.1.0}"
+image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:ltx-2.5-rdna4-v0.1.0@sha256:ec204b710b4536f1cb31785272d4996795522145d8abc7ccbc9442b9769c97a8}"
 cache="${PAITON_CACHE:-paiton-ltx-2.5-cache}"            # a Docker volume name or an absolute host path
 port="${PAITON_PORT:-30000}"
 bind="${PAITON_BIND:-127.0.0.1}"                          # 0.0.0.0 serves other machines too
