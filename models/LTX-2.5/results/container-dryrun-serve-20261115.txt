@@ -1,13 +1,13 @@
-# Container dry run, serve mode, 15 Nov 2026: local pre-release image (runner in serve mode, built from uncommitted source), FP8 RTN weights, one R9700 at 300 W, host 251 GiB RAM
-READY after 25.428362337 s
-{"run": 0, "client_s": 19.392, "runner_s": 18.45, "te_s": 0.45, "s1_s": 5.74, "up_s": 0.11, "s2_s": 8.99, "vae_s": 2.75, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 19.284, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
-{"run": 1, "client_s": 18.532, "runner_s": 17.94, "te_s": 0.45, "s1_s": 5.19, "up_s": 0.11, "s2_s": 9.03, "vae_s": 2.76, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 18.515, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
-{"run": 2, "client_s": 18.563, "runner_s": 18.0, "te_s": 0.45, "s1_s": 5.2, "up_s": 0.11, "s2_s": 9.08, "vae_s": 2.76, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 18.533, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
-{"out": "i2v_704.mp4", "runner_s": 20.52, "te_s": 0.45, "s1_s": 6.45, "up_s": 0.11, "s2_s": 10.35, "vae_s": 2.76, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 21.295, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
-{"run": 0, "client_s": 50.098, "runner_s": 49.12, "te_s": 0.45, "s1_s": 12.57, "up_s": 0.24, "s2_s": 28.42, "vae_s": 6.66, "audio_s": 0.23, "write_s": 0.55, "vram_gib": 24.65, "vram_peak_gib": 27.15, "wall_s": 50.002, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
-{"run": 1, "client_s": 49.978, "runner_s": 49.02, "te_s": 0.45, "s1_s": 12.54, "up_s": 0.24, "s2_s": 28.49, "vae_s": 6.66, "audio_s": 0.23, "write_s": 0.41, "vram_gib": 24.65, "vram_peak_gib": 27.15, "wall_s": 49.917, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
-{"out": "i2v_1080.mp4", "runner_s": 51.61, "te_s": 0.45, "s1_s": 13.77, "up_s": 0.24, "s2_s": 29.84, "vae_s": 6.66, "audio_s": 0.23, "write_s": 0.41, "vram_gib": 24.65, "vram_peak_gib": 27.15, "wall_s": 52.74, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
-{"out": "t2v_704.mp4", "runner_s": 18.03, "te_s": 0.45, "s1_s": 5.18, "up_s": 0.11, "s2_s": 9.09, "vae_s": 2.78, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.65, "vram_peak_gib": 25.99, "wall_s": 18.575, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+# Container dry run, serve mode, 15 Nov 2026: local pre-release image with the runner built from committed source, FP8 RTN weights, cache without dit/dit.idx and no prior SHA-256 marks (first start), one R9700 at 300 W, host 251 GiB RAM
+READY after 52.826612249 s
+{"run": 0, "client_s": 19.5, "runner_s": 18.54, "te_s": 0.5, "s1_s": 5.77, "up_s": 0.1, "s2_s": 8.97, "vae_s": 2.72, "audio_s": 0.22, "write_s": 0.26, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 19.375, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 1, "client_s": 18.47, "runner_s": 17.85, "te_s": 0.5, "s1_s": 5.16, "up_s": 0.11, "s2_s": 8.93, "vae_s": 2.73, "audio_s": 0.23, "write_s": 0.19, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 18.454, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 2, "client_s": 18.422, "runner_s": 17.86, "te_s": 0.45, "s1_s": 5.13, "up_s": 0.11, "s2_s": 9.01, "vae_s": 2.75, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 18.393, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"out": "i2v_704.mp4", "runner_s": 20.98, "te_s": 0.45, "s1_s": 6.73, "up_s": 0.11, "s2_s": 10.46, "vae_s": 2.75, "audio_s": 0.23, "write_s": 0.26, "vram_gib": 24.64, "vram_peak_gib": 25.98, "wall_s": 22.173, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 0, "client_s": 50.246, "runner_s": 49.27, "te_s": 0.58, "s1_s": 12.5, "up_s": 0.24, "s2_s": 28.48, "vae_s": 6.63, "audio_s": 0.23, "write_s": 0.61, "vram_gib": 24.65, "vram_peak_gib": 27.14, "wall_s": 50.158, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
+{"run": 1, "client_s": 49.954, "runner_s": 48.77, "te_s": 0.5, "s1_s": 12.47, "up_s": 0.24, "s2_s": 28.3, "vae_s": 6.64, "audio_s": 0.23, "write_s": 0.39, "vram_gib": 24.65, "vram_peak_gib": 27.14, "wall_s": 49.888, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
+{"out": "i2v_1080.mp4", "runner_s": 52.01, "te_s": 0.52, "s1_s": 13.9, "up_s": 0.24, "s2_s": 30.08, "vae_s": 6.65, "audio_s": 0.23, "write_s": 0.4, "vram_gib": 24.65, "vram_peak_gib": 27.14, "wall_s": 53.27, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"out": "t2v_704.mp4", "runner_s": 18.04, "te_s": 0.47, "s1_s": 5.18, "up_s": 0.11, "s2_s": 9.09, "vae_s": 2.76, "audio_s": 0.23, "write_s": 0.19, "vram_gib": 24.65, "vram_peak_gib": 25.98, "wall_s": 18.616, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
 {"error": "size 704x1280 is outside this build's 1920x1088 limit (no portrait sizes)"} HTTP 400
 {"error": "width and height must be multiples of 64 and at least 256"} HTTP 400
 {"error": "num_frames must be 8k+1 between 9 and 121"} HTTP 400
@@ -21,7 +21,7 @@ READY after 25.428362337 s
 i2v_1080.mp4 5356452 ae933364c20cfa23 h264,1920,1088,121 aac,48000,236 
 i2v_704.mp4 2417110 08a84556a76bc771 h264,1280,704,121 aac,48000,236 
 t2v_704.mp4 8475210 c958c58ae25fbc1f h264,1280,704,121 aac,48000,236 
-LOAD 1.04 s, 0 resident blocks, slot 0.00 GiB
-K3 warm-up 7.21 s
+LOAD 0.71 s, 0 resident blocks, slot 0.00 GiB
+K3 warm-up 7.09 s
 K3 transient: 4.33 GiB reserved under the cap; trimmed (weights kept): dec 1 ups 0 enc 0
-TE init 3.80 s, 6 of 65 units resident
+TE init 4.47 s, 6 of 65 units resident
