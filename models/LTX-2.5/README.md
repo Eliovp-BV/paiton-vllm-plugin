@@ -23,9 +23,8 @@ after `launch.sh` once the weights are on disk.
 ## Requirements
 
 - One AMD Radeon AI PRO R9700 (gfx1201, 32 GB) and a ROCm-capable kernel driver. Nothing else should run on that card.
-- Host RAM: the text encoder units that do not fit next to the transformer (about 12.5 GB of its 14.1 GB) are kept in
-  pinned host memory and streamed to the card for every request. We tested on a host with 251 GB; 32 GB is the
-  smallest size we would try.
+- Host RAM: the text encoder pins 14.1 GB of host memory and streams the layers that do not fit next to the
+  transformer to the card for every request. We tested on a host with 251 GB; 32 GB is the smallest size we would try.
 - Disk: 38 GB under the cache volume.
 - Docker, and on the first start a network connection to Hugging Face.
 

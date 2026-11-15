@@ -7,13 +7,8 @@
     "license": "LTX-2.x Community License Agreement (11 Aug 2026, amended 29 Oct 2026)"
   },
   "quality_gate": "none yet: FP8 RTN DiT (K5 bundle 15 Nov 2026); GPTQ DiT replaces dit/dit8.bin before release",
-  "download_bytes": 37826430006,
+  "download_bytes": 37826086555,
   "files": [
-    {
-      "file": "dit/dit.idx",
-      "bytes": 343451,
-      "sha256": "19d9e79af173fffac922521ac1024a14d53794ac45854de6adfa3ab1a92e5bd5"
-    },
     {
       "file": "dit/dit8.bin",
       "bytes": 18695356416,

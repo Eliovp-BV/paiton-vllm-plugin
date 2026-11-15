@@ -19,8 +19,9 @@ def test_lock():
     cmd = runner_command(Path("/lib"), Path("/b"))
     opened = [v[3:] for v in cmd if v.startswith("/b/") and not v.endswith(("/dit", "/te"))]
     assert opened and all(f in names for f in opened), opened
-    for d in ("dit/dit8.bin", "dit/dit8.idx", "dit/dit.idx", "dit/tables.bin", "dit/tables.idx", "te/tokenizer.json"):
+    for d in ("dit/dit8.bin", "dit/dit8.idx", "dit/dit_rest.bin", "dit/dit_rest.idx", "dit/tables.bin", "dit/tables.idx", "te/tokenizer.json"):
         assert d in names
+    assert "dit/dit.idx" not in names   # BF16 reference path only
 
 
 if __name__ == "__main__":
