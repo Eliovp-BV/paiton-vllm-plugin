@@ -103,10 +103,10 @@ time of each stage.
 | Text encoder (Gemma 4 12B, feature extractor, connectors) | FP8 weights and activations; layers that do not fit stream from host memory |
 | Latent upscaler, video VAE decoder and encoder, audio VAE and vocoder | Native kernels, FP8 convolutions in the VAE decoder resnet blocks |
 
-Against the BF16 reference pipeline run with the same text-encoder output and the same noise, the frames of a 1280 x 704 text-to-video
-clip have a PSNR of 32.7 dB (SSIM 0.97) and those of a 1920 x 1088 clip 27.4 dB (SSIM 0.92). The stock pipeline with
-`--quantization fp8-cast` reaches 25.3 dB at 1280 x 704. The differences are drift in background detail; the
-composition follows the BF16 video.
+Any quantized version of this 11-step sampler, the stock pipeline's FP8 cast mode included, follows a different path
+from the BF16 one after small numeric changes, so its frames differ from the BF16 video in layout and detail. We
+therefore compare this build with the stock FP8 cast mode on the same prompts and seeds, not with the BF16 frames.
+QUALITY_GATE_PENDING: numbers from the raw-noise gate (8 cases, RTN and GPTQ weights) go here.
 
 ## Limits of this build
 
