@@ -3,6 +3,7 @@
     python3 -m paiton_h3v prepare [--preset turbo8]     download and check the weights, then exit
     python3 -m paiton_h3v generate --prompt .. --ref a.png --out clip.mp4 [--preset turbo4]
     python3 -m paiton_h3v serve [--preset turbo4]       one JSON request per stdin line (see h3v.py)
+    python3 -m paiton_h3v http [--preset turbo4] [--port 30000]   HTTP API (see server.py)
 """
 import os
 from pathlib import Path
@@ -37,6 +38,9 @@ def main():
         return
     os.environ["H3V_HOME"] = str(make_home(bundle))
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    if args[0] == "http":
+        import server   # noqa: E402
+        return server.main(args[1:])
     import h3v   # noqa: E402  (h3v.py imports front.py from the same folder)
     sys.argv = ["h3v.py", *args]
     h3v.main()

@@ -1,0 +1,18 @@
+{
+  "1": {"class_type": "LoadImage", "inputs": {"image": "ref1.png"}},
+  "2": {"class_type": "LoadImage", "inputs": {"image": "ref2.png"}},
+  "3": {
+    "class_type": "PaitonH3Ref2VA",
+    "inputs": {
+      "images": ["1", 0],
+      "image_2": ["2", 0],
+      "prompt": "Picture 1 and Picture 2 walk side by side through a rainy city street at night, neon reflections on the wet ground, gentle rain sounds.",
+      "width": 864,
+      "height": 480,
+      "seconds": 5.0,
+      "seed": 1,
+      "server": "http://127.0.0.1:30000"
+    }
+  },
+  "4": {"class_type": "SaveVideo", "inputs": {"video": ["3", 0], "filename_prefix": "paiton_h3v", "format": "mp4", "codec": "h264"}}
+}
