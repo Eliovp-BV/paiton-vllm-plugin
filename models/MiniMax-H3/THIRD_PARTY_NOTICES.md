@@ -53,3 +53,18 @@ The H3 fusion artifact contains a modified D128 INT8 attention kernel and requir
 derived from comfy-kitchen v0.2.33 (e9ea99cf2f0af1d0c49c04690d4153a91c2b8668), Copyright (c) 2025
 Comfy Org., Apache License 2.0. Changes are listed in `MODIFICATIONS.md`; the original attention
 quantization and online softmax arithmetic are retained.
+
+## v1.2 native image (`native/Dockerfile`)
+
+The v1.2 image holds the compiled Paiton libraries and runner, the Python front end in `native/paiton_h3v/` and the
+packages below. It holds no model weights, no ComfyUI, no PyTorch, no Triton and no compiler source. It contains no
+comfy-kitchen or Triton-derived code.
+
+| Component | License and source |
+|---|---|
+| MiniMax H3 Ref2VA weights converted for Paiton (FP8 transformer with the Turbo LoRA merged in, text encoder, VAEs, tokenizer) | MiniMax H3 Community License, copy in `LICENSES/MiniMax-H3-Community.txt`; downloaded on first use from [EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4), which lists the modified files |
+| Paiton libraries, runner, front end and scripts | Apache-2.0, `LICENSE` and `NOTICE` |
+| ROCm 10.0 runtime (`rocm-sdk-core` wheel) | AMD license files inside the wheel (`/usr/local/lib/python3.12/dist-packages/_rocm_sdk_core`) |
+| numpy 2.4.2, Pillow 12.1.0, tokenizers 0.23.2 | BSD-3-Clause (numpy, with 0BSD, MIT, Zlib and CC0-1.0 parts), MIT-CMU (Pillow), Apache-2.0 (tokenizers); license files in each package's `dist-info` |
+| FFmpeg 6.1.1 (Ubuntu package `ffmpeg`, with libx264) | GPL-2.0-or-later as built by Ubuntu; the runner calls the `ffmpeg` and `ffprobe` programs and does not link to them. Source: `apt-get source ffmpeg` on Ubuntu 24.04; license files under `/usr/share/doc` |
+| Ubuntu 24.04 base image | Package licenses under `/usr/share/doc` |
