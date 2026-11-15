@@ -66,5 +66,5 @@ comfy-kitchen or Triton-derived code.
 | Paiton libraries, runner, front end and scripts | Apache-2.0, `LICENSE` and `NOTICE` |
 | ROCm 10.0 runtime (`rocm-sdk-core` wheel) | AMD license files inside the wheel (`/usr/local/lib/python3.12/dist-packages/_rocm_sdk_core`) |
 | numpy 2.4.2, Pillow 12.1.0, tokenizers 0.23.2 | BSD-3-Clause (numpy, with 0BSD, MIT, Zlib and CC0-1.0 parts), MIT-CMU (Pillow), Apache-2.0 (tokenizers); license files in each package's `dist-info` |
-| FFmpeg 6.1.1 (Ubuntu package `ffmpeg`, with libx264) | GPL-2.0-or-later as built by Ubuntu; the runner calls the `ffmpeg` and `ffprobe` programs and does not link to them. Source: `apt-get source ffmpeg` on Ubuntu 24.04; license files under `/usr/share/doc` |
+| FFmpeg 6.1.1 (Ubuntu package `ffmpeg`, with libx264) | GPL-2.0-or-later as built by Ubuntu; the runner calls the `ffmpeg` and `ffprobe` programs and does not link to them. Source: https://launchpad.net/ubuntu/+source/ffmpeg (or `apt-get source ffmpeg` on Ubuntu 24.04); license files under `/usr/share/doc` |
 | Ubuntu 24.04 base image | Package licenses under `/usr/share/doc` |
