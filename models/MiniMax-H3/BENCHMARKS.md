@@ -5,6 +5,100 @@
 denoising artifact ships inside the container image; its manifest and `release.lock.json` record the
 hash. Local release candidate; not published.
 
+## v1.2 native runner (release candidate)
+
+15 November 2026. One Radeon AI PRO R9700 (gfx1201, 32 GB) at its 300 W limit, ROCm 10.0 runtime, compiler commit
+`2ce8e584`. Weights: the BF16 Ref2VA transformer with the Turbo LoRA merged in, rounded to FP8 e4m3 (round to nearest,
+one scale per output channel), AdaLN modulation tables computed exactly for the fixed timesteps. Attention uses int8 Q
+and K with FP8 P and V. Text encoder: Qwen3-VL-32B layers 0 to 49 in FP8, streamed from pinned host memory. Video VAE
+decoder INT8, video VAE encoder BF16, audio VAE FP32.
+
+Source of every number in this section: the runner's M2 run of 15 Nov 2026 00:25 UTC (one process, weights loaded
+once, seed 771, Turbo4), except where a row says otherwise. To compare like with like against the BF16 reference
+clips, the runner started from the same step-0 noise as the reference.
+
+### Time per request
+
+"Request" is the time from the prepared inputs to the finished MP4: text encoder, reference encoding, the denoising
+steps, video decode, audio decode and the ffmpeg mux. It leaves out loading the weights (once per process: transformer
+4.5 to 8 s, text encoder copy to pinned memory 17 to 21 s) and the input preparation on the CPU (under 2 s for image
+references). v1.1.0 numbers are the warm wall times of the ComfyUI path from the v1.1.0 tables below.
+
+| Case | Packed tokens | Text encoder | Ref encode | Denoise (per step) | Video decode | Audio decode | Mux | Request | v1.1.0 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| G1: 864×480, 1 image ref | 16,268 | 0.97 s | 0.08 s | 20.36 s (5.09 s) | 7.75 s | 0.18 s | 1.06 s | **30.4 s** | 50.6 s |
+| G2: 864×480, 3 image refs | 17,888 | 1.09 s | 0.20 s | 23.33 s (5.83 s) | 7.79 s | 0.18 s | 0.74 s | **33.4 s** | 85.3 s |
+| G3: 864×480, 9 image refs | 22,750 | 1.66 s | 0.55 s | 33.16 s (8.29 s) | 7.84 s | 0.17 s | 0.80 s | **44.3 s** | 178.7 s |
+| G4: 1344×768, 9 image refs at 512 px | 44,625 | 1.60 s | 0.60 s | 95.34 s (23.84 s) | 14.71 s | 0.14 s | 1.64 s | **114.1 s** | 258.4 s |
+| G5: 864×480, 1 video ref with soundtrack | 60,305 | 3.14 s | 34.85 s | 156.69 s (39.17 s) | 7.84 s | 0.13 s | 0.98 s | **203.8 s** | not measured |
+
+All clips are 124 frames at 24 fps (5.17 s). Turbo8 (runner DONE entry, 15 Nov 01:00 UTC): G1 51.4 s, of which 41.4 s
+are 8 steps of 5.18 s; G4 steps take 23.84 s each. v1.1.0 Turbo8 took 109.2 s for G1.
+
+Peak VRAM (amd-smi, after the memory changes of the M3 run, 15 Nov 00:45 UTC): G1 24.77 GiB, G4 25.88 GiB, G5 26.76
+GiB. The runner frees each phase before the next one and keeps the total under a 27.5 GiB cap; v1.1.0 peaked at 30.5 to
+30.8 GiB.
+
+Packaged path (the container from `native/launch.sh` built from a fresh clone of the release branch, 15 Nov 2026
+00:42 UTC, G1 prompt and reference with seed 3 and the runner's own noise): `prepare` checked the 50.9 GB of Turbo4
+files in 33.4 s; `generate` took 46.6 s from the command to the MP4, of which the request was 30.28 s (text encoder
+0.95 s, reference 0.16 s, denoise 20.37 s, video decode 7.73 s, audio 0.18 s, mux 0.86 s); peak 24.70 GiB. The output
+has 124 frames of H.264 at 864×480 and 32 kHz stereo AAC.
+
+### Largest request
+
+About 107 KB of denoiser buffers per packed token come on top of 19.3 GiB for the weights and context. The runner checks
+a request against the 27.5 GiB cap before it allocates (M3 run, `--plan-only`, 1344×768 with the nine G4 references):
+
+| Frames (s) | Packed tokens | Denoise buffers | Result |
+|---:|---:|---:|---|
+| 124 (5.2) | 44,625 | 4.9 GiB | runs, 25.8 GiB |
+| 192 (8.0) | 65,011 | 6.54 GiB | fits, 25.82 GiB |
+| 226 (9.4) | 75,205 | 7.55 GiB | fits, 26.83 GiB |
+| 260 (10.8) | 85,397 | 8.57 GiB | refused (would need 27.9 GiB) |
+| 362 (15.1) | 115,977 | 11.60 GiB | refused (would need 30.9 GiB) |
+
+The limit is about 82,000 tokens. 15 s at 768p needs a smaller denoiser (W4A8) and a chunked feed-forward; neither is
+in v1.2.
+
+### Quality against the BF16 model
+
+Reference clips: the BF16 Ref2VA pipeline in diffusers 0.40 on an MI355X, Turbo LoRA fused, same prompts, references,
+seed and step-0 noise. Both sides then run free, so small numeric differences grow over the four steps; frame-by-frame
+equality is not expected. One seed (771) per case.
+
+Scores on 8 evenly spaced frames per clip. CLIP-T is the CLIP-L text-image score of each clip against its prompt.
+CLIP-I and DINOv2 are the mean similarity of each frame to the same frame of the BF16 clip (1.0 = same image). Audio:
+log-spectrogram L1 distance to the BF16 soundtrack, next to the distance of silence to it.
+
+| Case | CLIP-T BF16 / v1.2 | CLIP-I | DINOv2 | Frame PSNR | Audio log-spec L1 (silence) |
+|---|---|---:|---:|---:|---|
+| G1 | 29.52 / 29.77 | 0.980 | 0.985 | 18.0 dB | 0.33 (3.21) |
+| G2 | 34.68 / 34.35 | 0.977 | 0.968 | 17.5 dB | 0.18 (3.21) |
+| G3 | 26.31 / 25.70 | 0.842 | 0.770 | 13.4 dB | 0.33 (3.34) |
+| G4 | 25.80 / 25.71 | 0.905 | 0.875 | 14.8 dB | 0.22 (3.44) |
+| G5 | 29.87 / 29.86 | 0.985 | 0.984 | 17.4 dB | 0.16 (3.32) |
+
+The prompt match (CLIP-T) is the same as BF16 within the spread between cases. G1, G2 and G5 stay close to the BF16
+clip. G3 and G4, with nine references, keep the subjects and the scene but place them differently: in G3 the woman,
+the panda and the cafe are all there, in another arrangement. Audio has the loudness and spectral envelope of the BF16
+soundtrack; the waveform itself is not expected to match after free running.
+
+With each step started from the BF16 latents instead (teacher forcing), the velocity cosine to BF16 is 0.986 to 0.999
+for G1 and 0.970 to 0.998 for G4 (M1 run, 14 Nov 23:55 UTC). Exact BF16 attention on all 50 blocks moved the error of
+the worst step only from 0.167 to 0.151 (relative L2, G1) for 31 % more step time, so v1.2 keeps int8 and FP8
+attention. The FP8 weight rounding is the larger error source.
+
+The table shows Turbo4 with seed 771. A second run added seed 772 (Turbo4) and Turbo8 (seed 771), 15 clips in all
+(QG run, 15 Nov 2026). Over the 15 clips the mean CLIP-I is 0.932 and the mean DINOv2 0.871. Per case, CLIP-T stays
+within 0.25 of BF16 on average; single clips fall up to 1.85 lower (G4 Turbo8, where the layout changes). One seed can
+move CLIP-I and DINOv2 of a case by more than 0.2.
+
+Limits of this comparison: five cases, 8 frames per clip. The denoiser weights are rounded to nearest. A calibrated
+rounding (GPTQ) lowered the per-step error but gave no clear gain on these scores, so v1.2 keeps round to nearest. The input preparation, the text
+encoder and the decoders were checked separately against the reference: the packed layout is identical on all five
+cases, the text-encoder output cosine is 0.998 to 0.999 for text tokens and 0.983 to 0.987 for image tokens.
+
 ## Equality with the stock engine
 
 Latent tensors are **bitwise identical** at 1 reference; decoded frames and PCM are identical at

@@ -16,7 +16,139 @@ cd paiton-vllm-plugin
 
 Then open ComfyUI at `http://127.0.0.1:8190`. The first launch builds the image and downloads the model components.
 
-[Start](#start-locally) · [Terminal generation](#terminal-generation-and-benchmarks) ·
+## v1.2: native runner (release candidate)
+
+v1.2 runs a whole Ref2VA request on the R9700 with Paiton's own HIP kernels: text encoder, reference encoding, the
+denoiser, the video and audio decoders. Python only prepares the inputs (NumPy, Pillow, tokenizers) and ffmpeg writes
+the MP4. There is no PyTorch, Triton or ComfyUI in the container. It serves an HTTP API, and a small ComfyUI node sends
+requests to it. v1.1.0 above stays available.
+
+Time per request, Turbo4, one R9700 at 300 W, weights already loaded:
+
+| Request | v1.2 | v1.1.0 |
+|---|---:|---:|
+| 864×480, 124 frames, 1 image reference | 30.4 s | 50.6 s |
+| 864×480, 124 frames, 3 image references | 33.4 s | 85.3 s |
+| 864×480, 124 frames, 9 image references | 44.3 s | 178.7 s |
+| 1344×768, 124 frames, 9 image references at 512 px | 114.1 s | 258.4 s |
+| 864×480, 124 frames, 1 video reference with its soundtrack | 203.8 s | not measured |
+
+Turbo8 takes 51.4 s for the first row. How these were measured, the per-phase split and the quality comparison with
+the BF16 model are in [BENCHMARKS.md](BENCHMARKS.md#v12-native-runner-release-candidate).
+
+### Run it
+
+```sh
+git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
+cd paiton-vllm-plugin
+PAITON_DETACH=1 ./models/MiniMax-H3/native/launch.sh http
+docker logs -f paiton-minimax-h3-v12        # wait for "READY http://..."; the first start downloads the weights
+curl -o panda.mp4 -F image=@panda.png \
+  -F prompt='The red panda from <Picture 1> walks through a sunlit forest. Audio: birds and a stream.' \
+  http://127.0.0.1:30000/v1/videos/generations
+```
+
+The server keeps the weights of one preset loaded (Turbo4 by default, `launch.sh http --preset turbo8` for Turbo8)
+and runs one request at a time; more requests wait. It listens on `127.0.0.1:30000`. Set `PAITON_PORT` for another
+port and `PAITON_BIND=0.0.0.0` to accept requests from other machines (it has no authentication). Stop it with
+`docker stop paiton-minimax-h3-v12`.
+
+### HTTP API
+
+`POST /v1/videos/generations` takes `multipart/form-data` or JSON and answers with the MP4 (`video/mp4`, H.264 and
+32 kHz stereo AAC). The header `X-Paiton-Metrics` holds the time per phase and the VRAM peak as JSON.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `prompt` | required | the text; refer to the references as `<Picture 1>` to `<Picture 9>` (and `<Video 1>`) |
+| `image` | 1 to 9 | one file field per reference image, in prompt order (JSON: `images`, a list of base64 strings) |
+| `video` | none | one video reference; its soundtrack must be 32 kHz (JSON: `video`, base64). Images and video together: at most 9 |
+| `width`, `height` | 864, 480 | multiples of 32, at most 1344×768 |
+| `seconds` or `num_frames` | 5 s (124 frames) | 24 fps; `num_frames` must be 17 n + 5; up to 15 s at 864×480 |
+| `seed` | 0 | the same seed and inputs give the same clip |
+| `preset` | the server's | must match the preset the server was started with |
+
+A request that breaks these rules, or does not fit the card (about 82,000 tokens; see the limits below), gets a
+400 reply with a JSON `error` before anything runs on the GPU. `GET /health` reports `ready`, `busy` and the preset.
+
+The same with JSON:
+
+```sh
+python3 - <<'PY'
+import base64, json, urllib.request
+body = json.dumps({"prompt": "The red panda from <Picture 1> naps in the sun.", "seconds": 5, "seed": 1,
+                   "images": [base64.b64encode(open("panda.png", "rb").read()).decode()]}).encode()
+request = urllib.request.Request("http://127.0.0.1:30000/v1/videos/generations", body, {"Content-Type": "application/json"})
+open("nap.mp4", "wb").write(urllib.request.urlopen(request).read())
+PY
+```
+
+### ComfyUI
+
+Copy `native/comfyui/paiton_h3v_client` into ComfyUI's `custom_nodes` folder and restart ComfyUI. The node
+**MiniMax H3 Ref2VA (Paiton server)** takes an IMAGE (a batch counts as several references), up to eight more
+optional images, the prompt, size, length, seed and the server address, and returns a VIDEO for `SaveVideo` or a
+preview. All the work runs in the Paiton server, so ComfyUI can run on the CPU or on another machine.
+`native/comfyui/workflows/ref2va-server.api.json` is an example with two references.
+
+### Command line
+
+`generate` runs one request without a server:
+
+```sh
+./models/MiniMax-H3/native/launch.sh prepare
+./models/MiniMax-H3/native/launch.sh generate --prompt 'The red panda from <Picture 1> walks through a sunlit forest. Audio: birds and a stream.' \
+  --ref panda.png --out panda.mp4
+```
+
+`launch.sh` runs the image `ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.2.0` and mounts the current
+directory, so references and the output must be inside it. `prepare` downloads the weights for one preset from
+[EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4) (the text
+encoder from [EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4),
+which uses the same files) and checks every file against the SHA-256 in `native/checkpoints.lock.json`: 50.9 GB for Turbo4, 20.5 GB more for Turbo8.
+Each `generate` starts the container and loads the weights again: on our test host the first example took 46.6 s
+from the command to the MP4, 30.3 s of it for the request itself. To keep the weights loaded, use `serve`, which reads
+one JSON request per line and answers `DONE <file>` or `ERROR <message>`:
+
+```sh
+echo '{"prompt": "...", "refs": ["panda.png"], "width": 864, "height": 480, "num_frames": 124, "seed": 1, "out": "a.mp4"}' \
+  | ./models/MiniMax-H3/native/launch.sh serve
+```
+
+Options of `generate`: `--preset turbo4|turbo8` (default `turbo4`), `--width`/`--height` (default 864×480; use
+1344×768 for 768p), `--frames` (default 124, 24 fps), `--seed`, and `--ref` once per reference, in the order
+`<Picture 1>`, `<Picture 2>`, ... of the prompt. A reference ending in `.mp4`, `.mov`, `.mkv` or `.webm` is a video
+reference; its soundtrack is used as reference audio. Settings for `launch.sh`: `PAITON_CACHE` (host folder for the
+weights, default `~/.cache/paiton/minimax-h3-v12`), `PAITON_RENDER` (one render node such as `/dev/dri/renderD128` on a
+machine with several GPUs), `HF_TOKEN`.
+
+### Requirements
+
+- One Radeon AI PRO R9700 (gfx1201, 32 GB) with a ROCm kernel driver, Docker, and nothing else on that card. The
+  runner keeps VRAM under a 27.5 GiB cap; the measured peak was 26.8 GiB.
+- Host RAM: the text encoder's 50 layers (24.4 GB) are copied into pinned host memory only when 16 GiB of available
+  memory is left after the copy, so about 41 GB available or more. With less, the runner streams the layers from the
+  weight files on disk. Both modes give byte-identical output; on our test host the streamed text encoder took 2.8 s
+  per request instead of 0.8 s, with the files in the page cache. We have not run it on a host with less than 64 GB.
+- Disk: 51 GB for the Turbo4 weights, 71 GB for both presets, 2.9 GB for the image, plus room for the outputs.
+
+### Limits of v1.2
+
+- A request is limited to about 82,000 packed tokens, the most that fits under the VRAM cap with the FP8 denoiser.
+  1344×768 with nine references fits up to about 9.4 s (226 frames). 15 s at 768p does not fit. A request that does
+  not fit is refused before it allocates memory.
+- No audio-only references (v1.1.0 accepts three). The soundtrack of a video reference must already be 32 kHz; other
+  rates are refused.
+- Turbo4 and Turbo8 only; Base50 stays on v1.1.0.
+- The same seed gives a different clip than v1.1.0 or the diffusers pipeline, because the noise comes from a different
+  random generator.
+- The denoiser uses FP8 weights. With many references the clip can differ from the BF16 model's clip in layout (who
+  stands where), while the prompt match stays the same. See [BENCHMARKS.md](BENCHMARKS.md#quality-against-the-bf16-model).
+
+The v1.2 weights are converted from MiniMax H3 with the Turbo adapters merged in, and stay under the MiniMax H3
+Community License (see [Licenses](#licenses)). The compiled libraries and the runner are only in the container image.
+
+v1.1.0 with ComfyUI: [Start](#start-locally) · [Terminal generation](#terminal-generation-and-benchmarks) ·
 [Performance and limits](#qualified-performance-and-limits) · [Requirements](#requirements-and-model-precision) ·
 [Existing downloads](#model-weights-and-existing-downloads) · [Licenses](#licenses)
 
