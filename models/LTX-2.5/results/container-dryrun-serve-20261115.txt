@@ -85,3 +85,29 @@ READY after 27.734173134 s
 i2v_1080.mp4 5351001 9f683d436a8b62af h264,1920,1088,121 aac,48000,236 
 i2v_704.mp4 2416957 46f28e910adfca73 h264,1280,704,121 aac,48000,236 
 t2v_704.mp4 8466347 ac1578fc84c521b3 h264,1280,704,121 aac,48000,236 
+
+## Final image paiton-ltx25:p1-final3-20261115, timing run 15 Nov 2026 (GPU 0, 300 W, warm, 3 runs per case)
+== t2v 1280x704
+{"run": 0, "client_s": 18.562, "runner_s": 17.69, "te_s": 0.46, "s1_s": 5.14, "up_s": 0.1, "s2_s": 8.96, "vae_s": 2.64, "audio_s": 0.23, "write_s": 0.17, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.462, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 1, "client_s": 18.084, "runner_s": 17.53, "te_s": 0.47, "s1_s": 5.11, "up_s": 0.1, "s2_s": 8.92, "vae_s": 2.53, "audio_s": 0.23, "write_s": 0.16, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.059, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 2, "client_s": 18.157, "runner_s": 17.6, "te_s": 0.44, "s1_s": 5.13, "up_s": 0.1, "s2_s": 8.98, "vae_s": 2.53, "audio_s": 0.23, "write_s": 0.19, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.122, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+== i2v 1280x704
+{"run": 0, "client_s": 21.24, "runner_s": 20.16, "te_s": 0.44, "s1_s": 6.48, "up_s": 0.1, "s2_s": 10.21, "vae_s": 2.53, "audio_s": 0.23, "write_s": 0.17, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 21.12, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 1, "client_s": 22.003, "runner_s": 20.9, "te_s": 0.47, "s1_s": 7.11, "up_s": 0.1, "s2_s": 10.29, "vae_s": 2.52, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 21.915, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 2, "client_s": 20.949, "runner_s": 20.08, "te_s": 0.46, "s1_s": 6.31, "up_s": 0.1, "s2_s": 10.27, "vae_s": 2.52, "audio_s": 0.23, "write_s": 0.18, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 20.858, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+== t2v 1920x1088
+{"run": 0, "client_s": 48.853, "runner_s": 47.96, "te_s": 0.44, "s1_s": 12.35, "up_s": 0.23, "s2_s": 28.06, "vae_s": 6.11, "audio_s": 0.23, "write_s": 0.54, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 48.759, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 1, "client_s": 48.874, "runner_s": 47.94, "te_s": 0.44, "s1_s": 12.39, "up_s": 0.23, "s2_s": 28.11, "vae_s": 6.12, "audio_s": 0.23, "write_s": 0.43, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 48.805, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 2, "client_s": 48.876, "runner_s": 48.04, "te_s": 0.44, "s1_s": 12.4, "up_s": 0.23, "s2_s": 28.19, "vae_s": 6.13, "audio_s": 0.23, "write_s": 0.42, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 48.854, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+== i2v 1920x1088
+{"run": 0, "client_s": 52.032, "runner_s": 50.72, "te_s": 0.44, "s1_s": 13.6, "up_s": 0.23, "s2_s": 29.73, "vae_s": 6.12, "audio_s": 0.23, "write_s": 0.37, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 51.904, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 1, "client_s": 51.933, "runner_s": 50.73, "te_s": 0.44, "s1_s": 13.74, "up_s": 0.23, "s2_s": 29.52, "vae_s": 6.13, "audio_s": 0.23, "write_s": 0.44, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 51.838, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 2, "client_s": 52.795, "runner_s": 51.45, "te_s": 0.44, "s1_s": 13.7, "up_s": 0.23, "s2_s": 30.33, "vae_s": 6.11, "audio_s": 0.23, "write_s": 0.41, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 52.691, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+
+## Whole-card VRAM (sysfs mem_info_vram_used, 50 ms samples) next to the runner's own peak
+card used at READY 24.82 GiB
+runner peak 26.11 GiB, wall 18.102 s | t2v 704 card peak 26.64 GiB
+runner peak 26.11 GiB, wall 20.968 s | i2v 704 card peak 26.64 GiB
+runner peak 27.28 GiB, wall 48.865 s | t2v 1088 card peak 27.36 GiB
+runner peak 27.28 GiB, wall 51.738 s | i2v 1088 card peak 27.36 GiB
+card used before start .17 GiB of 31.85
