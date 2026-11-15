@@ -18,37 +18,46 @@ import time
 
 MODEL_ID = "LTX-2.5"
 MAX_BODY = 64 << 20
-MAX_PIXELS = 1088 * 1920           # largest size measured on 32 GB; the runner keeps its peak under a 27.5 GiB cap
+MAX_WIDTH, MAX_HEIGHT = 1920, 1088  # the runner's buffers are sized once for this box (largest size measured on 32 GB)
 MIN_SIDE = 256
 MAX_FRAMES = 121                   # 5 s at 24 fps, the length measured at both sizes
 MAX_TOKENS, BOS = 1024, 2          # LTXGemmaTokenizer: at most 1024 ids, <bos> first, no padding (the encoder runs these rows)
 
 
 class Runner:
-    """shortcut: one runner process per request, so weights, text encoder and VAE load every time (~10-25 s extra);
-    switch to the runner's serve mode (weights loaded once) when it has one."""
+    """The native runner (--serve 1) keeps the weights loaded and takes one request per stdin line."""
 
     def __init__(self, command):
-        self.command = command
+        self.proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=sys.stderr, text=True, bufsize=1)
+        self._read_until(("READY",))   # printed once the weights are on the card
+
+    def _read_until(self, ends):
+        lines = []
+        for line in self.proc.stdout:
+            line = line.rstrip("\n")
+            if not line.startswith("STEP"):
+                print(line, file=sys.stderr, flush=True)
+            lines.append(line)
+            if line.split(" ", 1)[0] in ends:
+                return lines
+        raise RuntimeError(f"the native runner exited (code {self.proc.wait()})")
 
     def run(self, args):
-        proc = subprocess.Popen(self.command + args, stdout=subprocess.PIPE, stderr=sys.stderr, text=True, bufsize=1)
-        lines = []
-        for line in proc.stdout:
-            if not line.startswith("STEP"):
-                print(line, end="", file=sys.stderr, flush=True)
-            lines.append(line.rstrip("\n"))
-        if proc.wait():
-            raise RuntimeError(f"the native runner failed (exit {proc.returncode}): {lines[-1] if lines else 'no output'}")
+        self.proc.stdin.write(" ".join(args) + "\n")
+        self.proc.stdin.flush()
+        lines = self._read_until(("DONE", "ERROR"))
+        if lines[-1].startswith("ERROR"):
+            raise ValueError(lines[-1][6:])
         return parse_request_line(next(line for line in lines if line.startswith("REQUEST ")))
 
 
 def parse_request_line(line):
-    """'REQUEST 0: 23.34 s | te 0.50 s1 6.50 ... write 1.77 | VRAM 27.51 GiB' -> {runner_s, te_s, s1_s, ..., vram_gib}."""
-    head, stages, vram = line.split("|")
-    words = stages.split()
+    """'REQUEST 0: 18.96 s | te 0.45 s1 5.89 ... write 0.17 | VRAM 24.64 GiB, peak 25.98 GiB | prev mux 0.00 s'
+    -> {runner_s, te_s, s1_s, ..., vram_gib, vram_peak_gib}."""
+    head, stages, vram = line.split("|")[:3]
+    words, v = stages.split(), vram.replace(",", " ").split()
     metrics = {f"{k}_s": float(v) for k, v in zip(words[::2], words[1::2])}
-    return dict(runner_s=float(head.split()[2]), **metrics, vram_gib=float(vram.split()[1]))
+    return dict(runner_s=float(head.split()[2]), **metrics, vram_gib=float(v[1]), vram_peak_gib=float(v[4]))
 
 
 def token_ids(tokenizer, prompt):
@@ -93,8 +102,8 @@ def _size(value):
     # two stages: stage 1 runs at half size on the 32-pixel latent grid, so both sides are multiples of 64
     if width % 64 or height % 64 or min(width, height) < MIN_SIDE:
         raise ValueError(f"width and height must be multiples of 64 and at least {MIN_SIDE}")
-    if width * height > MAX_PIXELS:
-        raise ValueError(f"size {width}x{height} is above the {MAX_PIXELS:,} pixel limit of this build (1920x1088)")
+    if width > MAX_WIDTH or height > MAX_HEIGHT:
+        raise ValueError(f"size {width}x{height} is outside this build's {MAX_WIDTH}x{MAX_HEIGHT} limit (no portrait sizes)")
     return width, height
 
 
@@ -176,6 +185,8 @@ def serve(engine, host_addr, port):
 
         def do_GET(self):
             if self.path == "/health":
+                if engine.runner.proc.poll() is not None:   # the runner died: report it so the health check fails
+                    return self.reply(503, dict(status="runner exited", model=MODEL_ID))
                 self.reply(200, dict(status="ready", busy=engine.busy.locked(), model=MODEL_ID))
             elif self.path == "/v1/models":
                 self.reply(200, dict(object="list", data=[dict(id=MODEL_ID, object="model", owned_by="Lightricks")]))

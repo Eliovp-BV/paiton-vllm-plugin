@@ -17,8 +17,8 @@ def raises(fn, *args):
 
 
 def test_fields():
-    assert server._size("1280x704") == (1280, 704) and server._size("1088x1920") == (1088, 1920)
-    for bad in ("1280", "1280x720", "1920x1152", "128x128", "ax b"):
+    assert server._size("1280x704") == (1280, 704) and server._size("1920x1088") == (1920, 1088)
+    for bad in ("1280", "1280x720", "1920x1152", "704x1280", "128x128", "ax b"):
         raises(server._size, bad)
     assert server._frames(121) == 121 and server._frames("9") == 9
     for bad in (120, 1, 129):
@@ -43,8 +43,10 @@ def test_request_bodies():
 
 
 def test_request_line_and_tokens():
-    m = server.parse_request_line("REQUEST 0: 23.34 s | te 0.50 s1 6.50 up 0.10 s2 11.42 vae 2.72 audio 0.22 write 1.77 | VRAM 27.51 GiB")
-    assert m == dict(runner_s=23.34, te_s=0.5, s1_s=6.5, up_s=0.1, s2_s=11.42, vae_s=2.72, audio_s=0.22, write_s=1.77, vram_gib=27.51)
+    m = server.parse_request_line("REQUEST 0: 18.96 s | te 0.45 s1 5.89 up 0.11 s2 9.38 vae 2.74 audio 0.23 write 0.17 "
+                                  "| VRAM 24.64 GiB, peak 25.98 GiB | prev mux 0.00 s")
+    assert m == dict(runner_s=18.96, te_s=0.45, s1_s=5.89, up_s=0.11, s2_s=9.38, vae_s=2.74, audio_s=0.23, write_s=0.17,
+                     vram_gib=24.64, vram_peak_gib=25.98)
 
     class Tok:
         def __init__(self, ids):

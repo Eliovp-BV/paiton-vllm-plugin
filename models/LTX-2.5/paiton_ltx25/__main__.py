@@ -8,11 +8,12 @@ from tokenizers import Tokenizer
 from . import server, weights
 
 APP = Path(__file__).resolve().parent.parent
-DIT_BF16 = "dit/ltx-2.5-22b-distilled-transformer-bf16.safetensors"   # the runner maps it for the few BF16 tensors left
+# buffers sized once for the largest request; --out is only the startup default, every request names its own
+BOX = ["--height", "1088", "--width", "1920", "--frames", "121", "--out", os.environ.get("TMPDIR", "/tmp")]
 
 
 def runner_command(lib, bundle):
-    return [str(lib / "ltx_run"), "--mode", "gen", "--fps", "24", "--bundle", str(bundle / "dit"), "--dit", str(bundle / DIT_BF16),
+    return [str(lib / "ltx_run"), "--mode", "gen", "--serve", "1", *BOX, "--fps", "24", "--bundle", str(bundle / "dit"),
             "--fp8", "1", "--gemm-so", str(lib / "ltx25_gemm_gfx1201.so"), "--rows-so", str(lib / "ltx25_rows_gfx1201.so"),
             "--attn-so", str(lib / "ltx25_attention_gfx1201.so"),
             "--te-so", str(lib / "ltx25_te_gfx1201.so"), "--te-dir", str(bundle / "te"),

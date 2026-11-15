@@ -186,6 +186,7 @@ current Qwen3.8 27B guide above.
 | [FastWan FullAttn 5B](models/FastWan/README.md) | Text to silent video through ComfyUI | [Results](models/Wan2.2/BENCHMARKS.md) |
 | [Wan2.2 TI2V-5B](models/Wan2.2/README.md) | Text or image to silent video through ComfyUI | [Results](models/Wan2.2/BENCHMARKS.md) |
 | [MiniMax H3](models/MiniMax-H3/README.md) | Video with stereo audio through ComfyUI | [Results](models/MiniMax-H3/BENCHMARKS.md) |
+| [LTX-2.5](models/LTX-2.5/README.md) | Text or image to video with audio, 704p and 1080p, through an API or CLI | [Results](models/LTX-2.5/README.md) |
 
 <a id="meeting-recordings"></a><a id="meeting-notes"></a>
 

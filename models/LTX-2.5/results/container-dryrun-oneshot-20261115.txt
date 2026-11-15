@@ -1,0 +1,27 @@
+# Container dry run, 15 Nov 2026: local pre-release image, one runner process per request (before serve mode), FP8 RTN weights, one R9700 at 300 W
+Checking EliovpAI/LTX-2.5-FP8-Paiton-RDNA4 at unpinned (79.8 GB on first use)
+READY http://0.0.0.0:30000
+LOAD 0.70 s, 0 resident blocks, slot 0.00 GiB
+K3 warm-up 3.07 s
+K3 transient: 3.17 GiB reserved under the cap; trimmed (weights kept): dec 1 ups 0 enc 0
+TE init 6.22 s, 11 of 65 units resident
+REQUEST 0: 23.76 s | te 0.42 s1 6.01 up 2.72 s2 10.59 vae 2.74 audio 0.22 write 1.03 | VRAM 23.97 GiB
+LOAD 0.29 s, 0 resident blocks, slot 0.00 GiB
+K3 warm-up 3.03 s
+K3 transient: 3.17 GiB reserved under the cap; trimmed (weights kept): dec 1 ups 0 enc 0
+TE init 5.69 s, 11 of 65 units resident
+REQUEST 0: 24.00 s | te 0.41 s1 6.25 up 2.73 s2 10.67 vae 2.73 audio 0.23 write 0.94 | VRAM 23.97 GiB
+LOAD 0.37 s, 0 resident blocks, slot 0.00 GiB
+K3 warm-up 3.10 s
+K3 transient: 3.17 GiB reserved under the cap; trimmed (weights kept): dec 1 ups 0 enc 0
+TE init 4.97 s, 11 of 65 units resident
+REQUEST 0: 26.72 s | te 0.41 s1 7.25 up 3.18 s2 12.19 vae 2.73 audio 0.23 write 0.70 | VRAM 23.97 GiB
+LOAD 0.31 s, 0 resident blocks, slot 0.00 GiB
+K3 warm-up 7.01 s
+K3 transient: 4.33 GiB reserved under the cap; trimmed (weights kept): dec 1 ups 0 enc 0
+TE init 4.15 s, 2 of 65 units resident
+REQUEST 0: 66.09 s | te 0.50 s1 14.30 up 3.43 s2 37.50 vae 6.63 audio 0.23 write 3.43 | VRAM 22.95 GiB
+t2v_704_a.mp4 8385882 bytes sha256 63156a7e9bd47347 h264,1280,704,121 aac,48000,236 
+t2v_704_b.mp4 8385882 bytes sha256 63156a7e9bd47347 h264,1280,704,121 aac,48000,236 
+i2v_704.mp4 2440172 bytes sha256 4435ec254315e289 h264,1280,704,121 aac,48000,236 
+t2v_1080.mp4 9661468 bytes sha256 cb245bf0305d3ca6 h264,1920,1088,121 aac,48000,236 
