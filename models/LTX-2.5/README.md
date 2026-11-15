@@ -17,7 +17,7 @@ Paiton: server-side time per request from HTTP request to mp4, warm (median of 3
 text to video, 1 for image to video), measured through this container on 15 Nov 2026 (text encoder, both stages,
 upscale, VAE decode, audio decode, H.264 and AAC encoding). Stock: the Lightricks `ltx-pipelines` distilled pipeline
 in BF16 on the same card, warm, with `--offload cpu` because the BF16 weights do not fit in 32 GB. The card runs at
-its 300 W limit; peak VRAM was 26.0 GiB at 1280 x 704 and 27.2 GiB at 1920 x 1088. The first start after the download
+its 300 W limit; peak VRAM was 26.1 GiB at 1280 x 704 and 27.3 GiB at 1920 x 1088. The first start after the download
 checks every SHA-256 and is ready in about 55 s; later starts take about 25 s.
 
 ## Requirements

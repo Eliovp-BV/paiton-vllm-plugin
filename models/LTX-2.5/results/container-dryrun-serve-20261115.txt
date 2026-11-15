@@ -70,3 +70,18 @@ READY after 31.576582651 s
 i2v_1080.mp4 5356452 ae933364c20cfa23 h264,1920,1088,121 aac,48000,236 
 i2v_704.mp4 2417110 08a84556a76bc771 h264,1280,704,121 aac,48000,236 
 t2v_704.mp4 8475210 c958c58ae25fbc1f h264,1280,704,121 aac,48000,236 
+
+# K3 674d0519 (VAE decoder FP8 default extended; rebuilt from git archive) with runner 7c2d3932, K1 bf08fa36, K2 c32fcf79, K4 8e560487. mp4s differ from the previous build by design: audio PCM identical; video PSNR new vs previous mp4 37.6 dB (t2v 704, worst frame 35.9), 47.8 dB (i2v 704), 48.8 dB (i2v 1080), H.264 re-encode included
+READY after 27.734173134 s
+{"run": 0, "client_s": 19.076, "runner_s": 18.22, "te_s": 0.47, "s1_s": 5.82, "up_s": 0.1, "s2_s": 8.9, "vae_s": 2.49, "audio_s": 0.22, "write_s": 0.22, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.972, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 1, "client_s": 18.325, "runner_s": 17.55, "te_s": 0.51, "s1_s": 5.13, "up_s": 0.1, "s2_s": 8.89, "vae_s": 2.51, "audio_s": 0.23, "write_s": 0.19, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.286, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"run": 2, "client_s": 18.733, "runner_s": 17.81, "te_s": 0.48, "s1_s": 5.16, "up_s": 0.1, "s2_s": 8.98, "vae_s": 2.52, "audio_s": 0.23, "write_s": 0.33, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 18.697, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"out": "i2v_704.mp4", "runner_s": 21.21, "te_s": 0.6, "s1_s": 6.76, "up_s": 0.1, "s2_s": 10.78, "vae_s": 2.52, "audio_s": 0.23, "write_s": 0.23, "vram_gib": 24.77, "vram_peak_gib": 26.11, "wall_s": 22.548, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"run": 0, "client_s": 50.892, "runner_s": 48.54, "te_s": 0.51, "s1_s": 12.42, "up_s": 0.23, "s2_s": 28.16, "vae_s": 6.09, "audio_s": 0.23, "write_s": 0.9, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 50.71, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
+{"run": 1, "client_s": 49.571, "runner_s": 48.17, "te_s": 0.58, "s1_s": 12.34, "up_s": 0.23, "s2_s": 28.19, "vae_s": 6.11, "audio_s": 0.23, "write_s": 0.5, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 49.456, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 18}
+{"out": "i2v_1080.mp4", "runner_s": 50.88, "te_s": 0.5, "s1_s": 13.71, "up_s": 0.23, "s2_s": 29.59, "vae_s": 6.11, "audio_s": 0.23, "write_s": 0.51, "vram_gib": 24.78, "vram_peak_gib": 27.28, "wall_s": 52.748, "size": "1920x1088", "num_frames": 121, "fps": 24, "mode": "i2v", "text_tokens": 18}
+{"out": "t2v_704.mp4", "runner_s": 17.65, "te_s": 0.46, "s1_s": 5.11, "up_s": 0.1, "s2_s": 8.98, "vae_s": 2.54, "audio_s": 0.23, "write_s": 0.23, "vram_gib": 24.78, "vram_peak_gib": 26.12, "wall_s": 18.373, "size": "1280x704", "num_frames": 121, "fps": 24, "mode": "t2v", "text_tokens": 24}
+{"status": "ready", "busy": false, "model": "LTX-2.5"}
+i2v_1080.mp4 5351001 9f683d436a8b62af h264,1920,1088,121 aac,48000,236 
+i2v_704.mp4 2416957 46f28e910adfca73 h264,1280,704,121 aac,48000,236 
+t2v_704.mp4 8466347 ac1578fc84c521b3 h264,1280,704,121 aac,48000,236 
