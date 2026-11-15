@@ -89,8 +89,13 @@ for G1 and 0.970 to 0.998 for G4 (M1 run, 14 Nov 23:55 UTC). Exact BF16 attentio
 the worst step only from 0.167 to 0.151 (relative L2, G1) for 31 % more step time, so v1.2 keeps int8 and FP8
 attention. The FP8 weight rounding is the larger error source.
 
-Limits of this comparison: one seed per case, five cases, Turbo4 only for the scores. The denoiser weights are rounded
-to nearest; a calibrated rounding (GPTQ) was in progress and is not in these numbers. The input preparation, the text
+The table shows Turbo4 with seed 771. A second run added seed 772 (Turbo4) and Turbo8 (seed 771), 15 clips in all
+(QG run, 15 Nov 2026). Over the 15 clips the mean CLIP-I is 0.932 and the mean DINOv2 0.871. Per case, CLIP-T stays
+within 0.25 of BF16 on average; single clips fall up to 1.85 lower (G4 Turbo8, where the layout changes). One seed can
+move CLIP-I and DINOv2 of a case by more than 0.2.
+
+Limits of this comparison: five cases, 8 frames per clip. The denoiser weights are rounded to nearest. A calibrated
+rounding (GPTQ) lowered the per-step error but gave no clear gain on these scores, so v1.2 keeps round to nearest. The input preparation, the text
 encoder and the decoders were checked separately against the reference: the packed layout is identical on all five
 cases, the text-encoder output cosine is 0.998 to 0.999 for text tokens and 0.983 to 0.987 for image tokens.
 
