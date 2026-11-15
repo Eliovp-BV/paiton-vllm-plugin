@@ -10,5 +10,5 @@ shipped = {str(p.relative_to(root)) for d in ("lib",) for p in (root / d).rglob(
 assert shipped == set(manifest["files"]), f"unlisted or missing artifacts: {sorted(shipped ^ set(manifest['files']))}"
 for name, sha in manifest["files"].items():
     assert hashlib.sha256((root / name).read_bytes()).hexdigest() == sha, f"SHA-256 mismatch: {name}"
-dirty = [k for k, v in manifest["components"].items() if v["dirty_files"]]
-print(f"artifacts OK ({len(shipped)} files); components with uncommitted changes: {dirty or 'none'}")
+built = ", ".join(f"{k} {v['commit'][:8]}" for k, v in manifest["components"].items())
+print(f"artifacts OK ({len(shipped)} files); built from {built}")
