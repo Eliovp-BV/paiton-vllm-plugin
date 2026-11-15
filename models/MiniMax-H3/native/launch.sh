@@ -6,7 +6,7 @@
 #   ./launch.sh prepare [--preset turbo8]                                # download and check the weights, then exit
 # PAITON_PORT / PAITON_BIND (0.0.0.0 serves other machines too) / PAITON_DETACH=1 apply to http.
 set -euo pipefail
-image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.2.0}"
+image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.2.0@sha256:c656184d9d21240544e5b772daa5f2fc0de89fe95463498e34ada645465e287b}"
 cache="${PAITON_CACHE:-$HOME/.cache/paiton/minimax-h3-v12}"   # absolute host path for the downloaded weights
 [ -e /dev/kfd ] || { echo "ROCm /dev/kfd is required" >&2; exit 1; }
 mkdir -p "$cache"
