@@ -52,7 +52,6 @@ def prepare(cache, preset):
     rows = [row for row in lock["files"] if row.get("preset", preset) == preset]
     bundle = cache / lock["repository"].split("/")[-1]
     token = os.environ.get("HF_TOKEN")
-    pinned = len(lock["revision"]) == 40 and all(c in "0123456789abcdef" for c in lock["revision"])
     log(f"Checking {lock['repository']} at {lock['revision']}, preset {preset} "
         f"({sum(row['bytes'] for row in rows) / 1e9:.1f} GB on first use)")
     for row in rows:
@@ -64,10 +63,12 @@ def prepare(cache, preset):
             continue
         path.parent.mkdir(parents=True, exist_ok=True)
         if not (path.is_file() and path.stat().st_size == row["bytes"]):
-            if not pinned:
-                raise ValueError(f"{rel} is missing and the weights repository revision is not pinned yet")
+            # a row may come from another repository (the text encoder is shared with MiniMax-H3-Image)
+            repo, revision = row.get("repository", lock["repository"]), row.get("revision", lock["revision"])
+            if not (len(revision) == 40 and all(c in "0123456789abcdef" for c in revision)):
+                raise ValueError(f"{rel} is missing and the revision of {repo} is not pinned yet")
             log(f"Downloading {rel} ({row['bytes'] / 1e9:.2f} GB)")
-            _download(lock["repository"], lock["revision"], row["file"], path, token)
+            _download(repo, revision, row.get("source", row["file"]), path, token)
         if path.stat().st_size != row["bytes"] or _sha256(path) != row["sha256"]:
             path.unlink()
             raise ValueError(f"SHA-256 or size mismatch for {rel}; the file was removed, start again to download it")

@@ -48,8 +48,9 @@ cd paiton-vllm-plugin
 
 `launch.sh` runs the image `ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.2.0` and mounts the current
 directory, so references and the output must be inside it. `prepare` downloads the weights for one preset from
-[EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4) and
-checks every file against the SHA-256 in `native/checkpoints.lock.json`: 50.9 GB for Turbo4, 20.5 GB more for Turbo8.
+[EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4) (the text
+encoder from [EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4),
+which uses the same files) and checks every file against the SHA-256 in `native/checkpoints.lock.json`: 50.9 GB for Turbo4, 20.5 GB more for Turbo8.
 Each `generate` starts the container and loads the weights again: on our test host the first example took 46.6 s
 from the command to the MP4, 30.3 s of it for the request itself. To keep the weights loaded, use `serve`, which reads
 one JSON request per line and answers `DONE <file>` or `ERROR <message>`:

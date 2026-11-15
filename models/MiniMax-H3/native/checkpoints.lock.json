@@ -1,5 +1,5 @@
 {
-  "repository": "EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4",
+  "repository": "EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4",
   "revision": "unpublished",
   "base_model": {
     "repository": "MiniMaxAI/MiniMax-H3",
@@ -10,12 +10,12 @@
     "compiler_commit": "2ce8e584",
     "image": "ghcr.io/eliovp/paiton-vllm-plugin:minimax-h3-rdna4-v1.2.0"
   },
-  "download_bytes": 71404315787,
+  "download_bytes": 71404315884,
   "files": [
     {
       "file": "config.json",
-      "bytes": 589,
-      "sha256": "3a16cab7f1cca8d53a995cf4766fd5337cb629a3a7b2d0957c8eacccca691543"
+      "bytes": 686,
+      "sha256": "b21c582a2573144a310ce8eb6cc78bb416c4103f205e4742366190e690f0e3ae"
     },
     {
       "file": "audio.bin",
@@ -40,262 +40,418 @@
     {
       "file": "te-w8/L00.bin",
       "bytes": 487916288,
-      "sha256": "516e492cc5dccc04ef965136bc15fc2cd6b7eb47a7d8f6d30e91c4302c1b464a"
+      "sha256": "516e492cc5dccc04ef965136bc15fc2cd6b7eb47a7d8f6d30e91c4302c1b464a",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L00.bin"
     },
     {
       "file": "te-w8/L01.bin",
       "bytes": 487916288,
-      "sha256": "cb9ee591b65051fc07ce9c7d57a278c4953ebf2497bb8cadc5a973c1ba39243d"
+      "sha256": "cb9ee591b65051fc07ce9c7d57a278c4953ebf2497bb8cadc5a973c1ba39243d",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L01.bin"
     },
     {
       "file": "te-w8/L02.bin",
       "bytes": 487916288,
-      "sha256": "67ee7f4e04913cc4e065992af756ae90a1e34602628187b424601fd189fbb645"
+      "sha256": "67ee7f4e04913cc4e065992af756ae90a1e34602628187b424601fd189fbb645",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L02.bin"
     },
     {
       "file": "te-w8/L03.bin",
       "bytes": 487916288,
-      "sha256": "9260e34b75122fab316a2d77abb2109ee315a992e5421247cd633d137d600205"
+      "sha256": "9260e34b75122fab316a2d77abb2109ee315a992e5421247cd633d137d600205",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L03.bin"
     },
     {
       "file": "te-w8/L04.bin",
       "bytes": 487916288,
-      "sha256": "46527ff3cf1b7cdfb0ac7105665df1ca109b89c27039a6090eeae3be48a97ae8"
+      "sha256": "46527ff3cf1b7cdfb0ac7105665df1ca109b89c27039a6090eeae3be48a97ae8",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L04.bin"
     },
     {
       "file": "te-w8/L05.bin",
       "bytes": 487916288,
-      "sha256": "5326e086b5e7d06bff409d70cfc097f711a04d5634c6a825b246948fe82dcb98"
+      "sha256": "5326e086b5e7d06bff409d70cfc097f711a04d5634c6a825b246948fe82dcb98",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L05.bin"
     },
     {
       "file": "te-w8/L06.bin",
       "bytes": 487916288,
-      "sha256": "8218dce9d7b2cf285b20a5492079277bbe7745cbe417f90ca33e796d2e22f848"
+      "sha256": "8218dce9d7b2cf285b20a5492079277bbe7745cbe417f90ca33e796d2e22f848",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L06.bin"
     },
     {
       "file": "te-w8/L07.bin",
       "bytes": 487916288,
-      "sha256": "e98b59aeef037a5982249a1efefce01581f481f96bc361cbc13bea817f99fc91"
+      "sha256": "e98b59aeef037a5982249a1efefce01581f481f96bc361cbc13bea817f99fc91",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L07.bin"
     },
     {
       "file": "te-w8/L08.bin",
       "bytes": 487916288,
-      "sha256": "d30d02970fc92b7c95bdcbdfc1caa4e4e8f6920f4573bb35496029845744ea61"
+      "sha256": "d30d02970fc92b7c95bdcbdfc1caa4e4e8f6920f4573bb35496029845744ea61",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L08.bin"
     },
     {
       "file": "te-w8/L09.bin",
       "bytes": 487916288,
-      "sha256": "8a67e28ecaf0c0ba787652a2ab18646fa6227ee3188cd04e3d6aab57a35039b4"
+      "sha256": "8a67e28ecaf0c0ba787652a2ab18646fa6227ee3188cd04e3d6aab57a35039b4",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L09.bin"
     },
     {
       "file": "te-w8/L10.bin",
       "bytes": 487916288,
-      "sha256": "4653ed8872706c092b0602c2fb2ed738369ebda5f4a5e19b436d5e48b71394a3"
+      "sha256": "4653ed8872706c092b0602c2fb2ed738369ebda5f4a5e19b436d5e48b71394a3",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L10.bin"
     },
     {
       "file": "te-w8/L11.bin",
       "bytes": 487916288,
-      "sha256": "9fdbdd95a7b06e8347110a043f1c1b56c34ffdbf135b39da3259389e83bcba0d"
+      "sha256": "9fdbdd95a7b06e8347110a043f1c1b56c34ffdbf135b39da3259389e83bcba0d",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L11.bin"
     },
     {
       "file": "te-w8/L12.bin",
       "bytes": 487916288,
-      "sha256": "9a498c36a3bbc885595770dd6c4185c9f7c9ec1f6ef493730ee9805ea415ac2f"
+      "sha256": "9a498c36a3bbc885595770dd6c4185c9f7c9ec1f6ef493730ee9805ea415ac2f",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L12.bin"
     },
     {
       "file": "te-w8/L13.bin",
       "bytes": 487916288,
-      "sha256": "8ef701b83e8a8ef38efe755fb62a47e0e6f70422baa1974dae784dc605eea0da"
+      "sha256": "8ef701b83e8a8ef38efe755fb62a47e0e6f70422baa1974dae784dc605eea0da",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L13.bin"
     },
     {
       "file": "te-w8/L14.bin",
       "bytes": 487916288,
-      "sha256": "42296fcbf4507efd64c381bb263868a791930ed7882e544f89bc8c0e102edd80"
+      "sha256": "42296fcbf4507efd64c381bb263868a791930ed7882e544f89bc8c0e102edd80",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L14.bin"
     },
     {
       "file": "te-w8/L15.bin",
       "bytes": 487916288,
-      "sha256": "dd7e3c112581b2adf90aa9b9d04561159a2d21874a8fd7205cf03f111d41dc6c"
+      "sha256": "dd7e3c112581b2adf90aa9b9d04561159a2d21874a8fd7205cf03f111d41dc6c",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L15.bin"
     },
     {
       "file": "te-w8/L16.bin",
       "bytes": 487916288,
-      "sha256": "73c9b1b4eedf7587830002cdc840e918146497978be9342a5294c98523deddb8"
+      "sha256": "73c9b1b4eedf7587830002cdc840e918146497978be9342a5294c98523deddb8",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L16.bin"
     },
     {
       "file": "te-w8/L17.bin",
       "bytes": 487916288,
-      "sha256": "2dc4fcd23954b2d3af592e9fa5f8eaf26bf6d54700fcacc1111fbff473102c96"
+      "sha256": "2dc4fcd23954b2d3af592e9fa5f8eaf26bf6d54700fcacc1111fbff473102c96",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L17.bin"
     },
     {
       "file": "te-w8/L18.bin",
       "bytes": 487916288,
-      "sha256": "271f0a189a8f210c59d2a5fa2c7e8feafa688c8b458c9f2c02f891a861d3744d"
+      "sha256": "271f0a189a8f210c59d2a5fa2c7e8feafa688c8b458c9f2c02f891a861d3744d",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L18.bin"
     },
     {
       "file": "te-w8/L19.bin",
       "bytes": 487916288,
-      "sha256": "8ca1046f528562b670638a1b7bb86429ecbc173b563ab2875bcb2b65408b5026"
+      "sha256": "8ca1046f528562b670638a1b7bb86429ecbc173b563ab2875bcb2b65408b5026",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L19.bin"
     },
     {
       "file": "te-w8/L20.bin",
       "bytes": 487916288,
-      "sha256": "5c5cc696651c7d2f660f1af19a325f04e271342a9c7dbd48900e9439462ee743"
+      "sha256": "5c5cc696651c7d2f660f1af19a325f04e271342a9c7dbd48900e9439462ee743",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L20.bin"
     },
     {
       "file": "te-w8/L21.bin",
       "bytes": 487916288,
-      "sha256": "7e351c1ff4eb382f450d3e385b0b2ee518d9af59b48647d0927cbda70e6bb585"
+      "sha256": "7e351c1ff4eb382f450d3e385b0b2ee518d9af59b48647d0927cbda70e6bb585",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L21.bin"
     },
     {
       "file": "te-w8/L22.bin",
       "bytes": 487916288,
-      "sha256": "b101b33934469915672ed1277e9878e679c2a6f6b176523b17795b8afb8fdeb4"
+      "sha256": "b101b33934469915672ed1277e9878e679c2a6f6b176523b17795b8afb8fdeb4",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L22.bin"
     },
     {
       "file": "te-w8/L23.bin",
       "bytes": 487916288,
-      "sha256": "eb05458484bf031729c74dea923f56547800f98aa2e101857ff53f462d605ad8"
+      "sha256": "eb05458484bf031729c74dea923f56547800f98aa2e101857ff53f462d605ad8",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L23.bin"
     },
     {
       "file": "te-w8/L24.bin",
       "bytes": 487916288,
-      "sha256": "7c1c00d9e87167695b16b73073ce49840b3b565af2dd5b2dcaa6eecf8af32300"
+      "sha256": "7c1c00d9e87167695b16b73073ce49840b3b565af2dd5b2dcaa6eecf8af32300",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L24.bin"
     },
     {
       "file": "te-w8/L25.bin",
       "bytes": 487916288,
-      "sha256": "d9343216191d0156acf679e7e40334f1c7c658c7a32166a6cbd14c713dc1ce7f"
+      "sha256": "d9343216191d0156acf679e7e40334f1c7c658c7a32166a6cbd14c713dc1ce7f",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L25.bin"
     },
     {
       "file": "te-w8/L26.bin",
       "bytes": 487916288,
-      "sha256": "e12b4e88e154c0789f6e78143883bce42c6443b26dc1d72564ec533e94e07065"
+      "sha256": "e12b4e88e154c0789f6e78143883bce42c6443b26dc1d72564ec533e94e07065",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L26.bin"
     },
     {
       "file": "te-w8/L27.bin",
       "bytes": 487916288,
-      "sha256": "40f7c9e3c7f8f8820ef6e87500e2126b0ddbead26df6095e697aafd617e09deb"
+      "sha256": "40f7c9e3c7f8f8820ef6e87500e2126b0ddbead26df6095e697aafd617e09deb",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L27.bin"
     },
     {
       "file": "te-w8/L28.bin",
       "bytes": 487916288,
-      "sha256": "e2b70a923d3c8a8601b9dd9e2a03f233a860761335c2cf3e6911b5f32009d726"
+      "sha256": "e2b70a923d3c8a8601b9dd9e2a03f233a860761335c2cf3e6911b5f32009d726",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L28.bin"
     },
     {
       "file": "te-w8/L29.bin",
       "bytes": 487916288,
-      "sha256": "0a816d103e96571b900e0633925358651b0fef098c4ebcc15760be8dfd213826"
+      "sha256": "0a816d103e96571b900e0633925358651b0fef098c4ebcc15760be8dfd213826",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L29.bin"
     },
     {
       "file": "te-w8/L30.bin",
       "bytes": 487916288,
-      "sha256": "db7f08e27fd191c20d909ca6910cf3f630e1243a42a3d8479d211c71493dd185"
+      "sha256": "db7f08e27fd191c20d909ca6910cf3f630e1243a42a3d8479d211c71493dd185",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L30.bin"
     },
     {
       "file": "te-w8/L31.bin",
       "bytes": 487916288,
-      "sha256": "aa9ad3511339b3d42c7b11be35103619adbd46b2f3989baa0c707e7c85819a7c"
+      "sha256": "aa9ad3511339b3d42c7b11be35103619adbd46b2f3989baa0c707e7c85819a7c",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L31.bin"
     },
     {
       "file": "te-w8/L32.bin",
       "bytes": 487916288,
-      "sha256": "51156bd61f0e100e39a8b50af835e5418194f52de35d9603b39f21be334d00f0"
+      "sha256": "51156bd61f0e100e39a8b50af835e5418194f52de35d9603b39f21be334d00f0",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L32.bin"
     },
     {
       "file": "te-w8/L33.bin",
       "bytes": 487916288,
-      "sha256": "c1188d0b1d0918a556e67d2a73881372acefda73e2e7e429f0263c0e2a958b22"
+      "sha256": "c1188d0b1d0918a556e67d2a73881372acefda73e2e7e429f0263c0e2a958b22",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L33.bin"
     },
     {
       "file": "te-w8/L34.bin",
       "bytes": 487916288,
-      "sha256": "a30df46138c9bb13d7005afd7f52ebb0c8ba95f5db07ab1ff94a329fdbdb8788"
+      "sha256": "a30df46138c9bb13d7005afd7f52ebb0c8ba95f5db07ab1ff94a329fdbdb8788",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L34.bin"
     },
     {
       "file": "te-w8/L35.bin",
       "bytes": 487916288,
-      "sha256": "dd5a84359eea8cf8c692d2fc592aa749a76c82baf1d864997e0c01d1f8d2928f"
+      "sha256": "dd5a84359eea8cf8c692d2fc592aa749a76c82baf1d864997e0c01d1f8d2928f",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L35.bin"
     },
     {
       "file": "te-w8/L36.bin",
       "bytes": 487916288,
-      "sha256": "adf3576cfbc73b1e3b8580000147494b48282765ace4d085c323cda7db5b85cc"
+      "sha256": "adf3576cfbc73b1e3b8580000147494b48282765ace4d085c323cda7db5b85cc",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L36.bin"
     },
     {
       "file": "te-w8/L37.bin",
       "bytes": 487916288,
-      "sha256": "faa307604d29a5e3906581d3a09994b5b86c2cffb62bd8acabf9133508487ed6"
+      "sha256": "faa307604d29a5e3906581d3a09994b5b86c2cffb62bd8acabf9133508487ed6",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L37.bin"
     },
     {
       "file": "te-w8/L38.bin",
       "bytes": 487916288,
-      "sha256": "7b661cc8e6ae8a47cbb7b592299ebb7a5efe75628b8469cc932ec0d5fbc36adf"
+      "sha256": "7b661cc8e6ae8a47cbb7b592299ebb7a5efe75628b8469cc932ec0d5fbc36adf",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L38.bin"
     },
     {
       "file": "te-w8/L39.bin",
       "bytes": 487916288,
-      "sha256": "480096085e4fd1474d7547a8fddf3b3b2d3a9d5db40f5a91b32420385ee15b88"
+      "sha256": "480096085e4fd1474d7547a8fddf3b3b2d3a9d5db40f5a91b32420385ee15b88",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L39.bin"
     },
     {
       "file": "te-w8/L40.bin",
       "bytes": 487916288,
-      "sha256": "16c791f8bed317ad80caedb16bdb3c869a4661c4722f801692aac1789382ce58"
+      "sha256": "16c791f8bed317ad80caedb16bdb3c869a4661c4722f801692aac1789382ce58",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L40.bin"
     },
     {
       "file": "te-w8/L41.bin",
       "bytes": 487916288,
-      "sha256": "2098c9499dd87cad0cd05c2c628ce3b9154d0a7884cc7e18d64a0d74d1b78b01"
+      "sha256": "2098c9499dd87cad0cd05c2c628ce3b9154d0a7884cc7e18d64a0d74d1b78b01",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L41.bin"
     },
     {
       "file": "te-w8/L42.bin",
       "bytes": 487916288,
-      "sha256": "5c3008a922cab36939f30bc8965cfa26c5e478f257ad9663edb0fdfbb00833a5"
+      "sha256": "5c3008a922cab36939f30bc8965cfa26c5e478f257ad9663edb0fdfbb00833a5",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L42.bin"
     },
     {
       "file": "te-w8/L43.bin",
       "bytes": 487916288,
-      "sha256": "5bb38edaf743cfd34bd8650c68b105b863a0a36bfcec836dfafb27fadb4d1041"
+      "sha256": "5bb38edaf743cfd34bd8650c68b105b863a0a36bfcec836dfafb27fadb4d1041",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L43.bin"
     },
     {
       "file": "te-w8/L44.bin",
       "bytes": 487916288,
-      "sha256": "7a054f11a8490c4c89b8b10c3051e49b8ef66947d5f175077bb490371a2ac5a8"
+      "sha256": "7a054f11a8490c4c89b8b10c3051e49b8ef66947d5f175077bb490371a2ac5a8",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L44.bin"
     },
     {
       "file": "te-w8/L45.bin",
       "bytes": 487916288,
-      "sha256": "189eddc218cc3f33c0cb97b253e7c8daed571b933deca585ccec9424cf512cf7"
+      "sha256": "189eddc218cc3f33c0cb97b253e7c8daed571b933deca585ccec9424cf512cf7",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L45.bin"
     },
     {
       "file": "te-w8/L46.bin",
       "bytes": 487916288,
-      "sha256": "e36b5b4143ee7663747221269037e74b8769fa3bf9ce58c34b1e333e8e467ad0"
+      "sha256": "e36b5b4143ee7663747221269037e74b8769fa3bf9ce58c34b1e333e8e467ad0",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L46.bin"
     },
     {
       "file": "te-w8/L47.bin",
       "bytes": 487916288,
-      "sha256": "c1b65a5858b4c339467eb71d9886ddff1b580f8d54e2b8d2f69fab76d143dfe3"
+      "sha256": "c1b65a5858b4c339467eb71d9886ddff1b580f8d54e2b8d2f69fab76d143dfe3",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L47.bin"
     },
     {
       "file": "te-w8/L48.bin",
       "bytes": 487916288,
-      "sha256": "37d71318c1e5215c07e01287f9c0c13100517b693eb75ceb268f9582e42bf362"
+      "sha256": "37d71318c1e5215c07e01287f9c0c13100517b693eb75ceb268f9582e42bf362",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L48.bin"
     },
     {
       "file": "te-w8/L49.bin",
       "bytes": 487916288,
-      "sha256": "f95dfa1f59fe432064ec3da435652abb6f49484af475cba4b396c9658e7009ce"
+      "sha256": "f95dfa1f59fe432064ec3da435652abb6f49484af475cba4b396c9658e7009ce",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/L49.bin"
     },
     {
       "file": "te-w8/embed.bf16",
       "bytes": 1555824640,
-      "sha256": "039c55afb2b6998277e215d99d775f46512263c273a436a31a1a2aa1629a08a5"
+      "sha256": "039c55afb2b6998277e215d99d775f46512263c273a436a31a1a2aa1629a08a5",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/embed.bf16"
     },
     {
       "file": "te-w8/vision.bin",
       "bytes": 1196777216,
-      "sha256": "e417181e7a52b5e6724a773a3e2ab3f3387f88f96cb5b0a00115a8b33fc34a3b"
+      "sha256": "e417181e7a52b5e6724a773a3e2ab3f3387f88f96cb5b0a00115a8b33fc34a3b",
+      "repository": "EliovpAI/MiniMax-H3-Image-FP8-Paiton-RDNA4",
+      "revision": "b33b88f27c8919ca05632ccde801087796d603dd",
+      "source": "te/vision.bin"
     },
     {
       "file": "weights/turbo4/dit.bin",

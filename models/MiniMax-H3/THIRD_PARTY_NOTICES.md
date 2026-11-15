@@ -62,7 +62,7 @@ comfy-kitchen or Triton-derived code.
 
 | Component | License and source |
 |---|---|
-| MiniMax H3 Ref2VA weights converted for Paiton (FP8 transformer with the Turbo LoRA merged in, text encoder, VAEs, tokenizer) | MiniMax H3 Community License, copy in `LICENSES/MiniMax-H3-Community.txt`; downloaded on first use from [EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-Ref2VA-FP8-Paiton-RDNA4), which lists the modified files |
+| MiniMax H3 Ref2VA weights converted for Paiton (FP8 transformer with the Turbo LoRA merged in, text encoder, VAEs, tokenizer) | MiniMax H3 Community License, copy in `LICENSES/MiniMax-H3-Community.txt`; downloaded on first use from [EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/MiniMax-H3-FP8-Paiton-RDNA4), which lists the modified files |
 | Paiton libraries, runner, front end and scripts | Apache-2.0, `LICENSE` and `NOTICE` |
 | ROCm 10.0 runtime (`rocm-sdk-core` wheel) | AMD license files inside the wheel (`/usr/local/lib/python3.12/dist-packages/_rocm_sdk_core`) |
 | numpy 2.4.2, Pillow 12.1.0, tokenizers 0.23.2 | BSD-3-Clause (numpy, with 0BSD, MIT, Zlib and CC0-1.0 parts), MIT-CMU (Pillow), Apache-2.0 (tokenizers); license files in each package's `dist-info` |
