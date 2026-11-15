@@ -109,18 +109,20 @@ from the BF16 one after small numeric changes, so its frames differ from the BF1
 SSIM against a BF16 run with the same noise therefore measure how far the sampler drifted from that run, not how good
 the video looks. With the current FP8 weights (round to nearest):
 
-| Case, 121 frames | PSNR | SSIM |
+| Case, 121 frames | This build, PSNR / SSIM | Stock `--quantization fp8-cast`, PSNR / SSIM |
 | --- | ---: | ---: |
-| text to video, 1280 x 704 | 25.7 dB | 0.918 |
-| image to video, 1280 x 704 | 24.5 dB | 0.881 |
-| text to video, 1920 x 1088 | 18.8 dB | 0.734 |
-| 4 more prompts at both sizes (8 cases) | 16.8 to 25.5 dB | 0.45 to 0.87 |
-| stock pipeline, `--quantization fp8-cast`, text to video, 1280 x 704 | 25.3 dB | 0.90 |
-| stock pipeline, `--quantization fp8-cast`, text to video, 1920 x 1088 | R0_1080_PENDING | R0_1080_PENDING |
+| text to video, 1280 x 704 | 25.7 dB / 0.918 | 25.3 dB / 0.90 |
+| image to video, 1280 x 704 | 24.5 dB / 0.881 | - |
+| text to video, 1920 x 1088 | 18.9 dB / 0.724 | 18.7 dB / 0.726 |
+| 4 more prompts, 1920 x 1088 | 18.0 to 25.5 dB | 19.4 to 26.4 dB |
+| mean of the 5 prompts at 1920 x 1088 | 21.25 dB / 0.726 | 22.35 dB / 0.759 |
+| audio of the same 5 prompts, mean log-spectral distance (lower is closer) | 4.69 dB | 4.75 dB |
 
-At 1280 x 704 this build is as close to the BF16 run as the stock FP8 cast mode. R0_1080_PENDING. We also tried
-GPTQ rounding for the transformer weights; the videos showed no consistent gain, so this release keeps round to
-nearest.
+At 1280 x 704 this build is as close to the BF16 run as the stock FP8 cast mode. At 1920 x 1088 it drifts about as
+much: 1.1 dB lower on the mean of five prompts, with two prompts lower (by 1.9 and 4.1 dB) and three equal or higher.
+Side by side, the frames of the two FP8 runs show different camera paths and positions, with no blocking, banding or
+noise. We also tried GPTQ rounding for the transformer weights; the videos showed no consistent gain, so this release
+keeps round to nearest.
 
 ## Limits of this build
 
