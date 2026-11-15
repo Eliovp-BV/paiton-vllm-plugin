@@ -104,9 +104,20 @@ time of each stage.
 | Latent upscaler, video VAE decoder and encoder, audio VAE and vocoder | Native kernels, FP8 convolutions in the VAE decoder resnet blocks |
 
 Any quantized version of this 11-step sampler, the stock pipeline's FP8 cast mode included, follows a different path
-from the BF16 one after small numeric changes, so its frames differ from the BF16 video in layout and detail. We
-therefore compare this build with the stock FP8 cast mode on the same prompts and seeds, not with the BF16 frames.
-QUALITY_GATE_PENDING: numbers from the raw-noise gate (8 cases, RTN and GPTQ weights) go here.
+from the BF16 one after small numeric changes, so its frames differ from the BF16 video in layout and detail. PSNR and
+SSIM against a BF16 run with the same noise therefore measure how far the sampler drifted from that run, not how good
+the video looks. With the current FP8 weights (round to nearest):
+
+| Case, 121 frames | PSNR | SSIM |
+| --- | ---: | ---: |
+| text to video, 1280 x 704 | 25.7 dB | 0.918 |
+| image to video, 1280 x 704 | 24.5 dB | 0.881 |
+| text to video, 1920 x 1088 | 18.8 dB | 0.734 |
+| 4 more prompts at both sizes (8 cases) | 16.8 to 25.5 dB | 0.45 to 0.87 |
+| stock pipeline, `--quantization fp8-cast`, text to video, 1280 x 704 | 25.3 dB | 0.90 |
+
+In the one case measured for both, this build is as close to the BF16 run as the stock FP8 cast mode.
+GPTQ_UPDATE_PENDING: the release weights use GPTQ rounding; replace these rows with the GPTQ gate before publishing.
 
 ## Limits of this build
 
