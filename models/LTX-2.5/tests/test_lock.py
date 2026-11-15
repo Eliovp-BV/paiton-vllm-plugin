@@ -22,6 +22,7 @@ def test_lock():
     for d in ("dit/dit8.bin", "dit/dit8.idx", "dit/dit_rest.bin", "dit/dit_rest.idx", "dit/tables.bin", "dit/tables.idx", "te/tokenizer.json"):
         assert d in names
     assert "dit/dit.idx" not in names   # BF16 reference path only
+    assert files[0]["file"] == "config.json"   # Hugging Face counts downloads of this file (no library tag)
 
 
 if __name__ == "__main__":

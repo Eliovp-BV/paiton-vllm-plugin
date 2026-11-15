@@ -10,3 +10,7 @@ The model weights are not part of this package. The container downloads them fro
 the revision pinned in checkpoints.lock.json. The transformer and text encoder files there are modified files of
 Lightricks/LTX-2.5 (FP8 weights in Paiton layouts); the weights repository lists the changes in MODIFICATIONS.md.
 This package does not imply endorsement by Lightricks.
+
+The native runner and libraries in the container image (lib/ltx_run, lib/ltx25_*.so) implement the LTX-2.x model
+architecture. ElioVP's code in them is Apache-2.0; as derivative model architectures under Section 1.5 (ii) of the
+LTX-2.x Community License Agreement they are also subject to that agreement.

@@ -42,7 +42,8 @@ rebuilt from a checkout.
 
 The first start downloads the weights from
 [EliovpAI/LTX-2.5-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/LTX-2.5-FP8-Paiton-RDNA4) and checks every file
-against its SHA-256 in `checkpoints.lock.json`. Later starts skip the check. The server takes requests once it prints
+against its SHA-256 in `checkpoints.lock.json`. Later starts skip the check. The first file it fetches is the
+repository's small `config.json`, once per install; Hugging Face counts requests for that file as downloads. The server takes requests once it prints
 `READY http://0.0.0.0:30000`.
 
 Settings for `launch.sh`, all optional:
@@ -115,9 +116,11 @@ the video looks. With the current FP8 weights (round to nearest):
 | text to video, 1920 x 1088 | 18.8 dB | 0.734 |
 | 4 more prompts at both sizes (8 cases) | 16.8 to 25.5 dB | 0.45 to 0.87 |
 | stock pipeline, `--quantization fp8-cast`, text to video, 1280 x 704 | 25.3 dB | 0.90 |
+| stock pipeline, `--quantization fp8-cast`, text to video, 1920 x 1088 | R0_1080_PENDING | R0_1080_PENDING |
 
-In the one case measured for both, this build is as close to the BF16 run as the stock FP8 cast mode.
-GPTQ_UPDATE_PENDING: the release weights use GPTQ rounding; replace these rows with the GPTQ gate before publishing.
+At 1280 x 704 this build is as close to the BF16 run as the stock FP8 cast mode. R0_1080_PENDING. We also tried
+GPTQ rounding for the transformer weights; the videos showed no consistent gain, so this release keeps round to
+nearest.
 
 ## Limits of this build
 
@@ -130,8 +133,9 @@ GPTQ_UPDATE_PENDING: the release weights use GPTQ rounding; replace these rows w
 
 ## License
 
-The Paiton code in this directory is Apache-2.0 (`LICENSE`, `NOTICE`). The model is under the LTX-2.x Community
-License Agreement. Companies with US$10 million or more in annual revenue need a paid license from Lightricks for
+The Paiton code in this directory and in the container is Apache-2.0 (`LICENSE`, `NOTICE`). The model is under the
+LTX-2.x Community License Agreement, and so are the native runner and libraries in the container: they implement
+the LTX-2.x architecture, which Section 1.5 (ii) of the agreement counts as a Derivative. Companies with US$10 million or more in annual revenue need a paid license from Lightricks for
 anything beyond non-commercial testing and research. Every use is subject to the use restrictions in Attachment A and
 Lightricks' Acceptable Use Policy, including stating that generated content is machine generated when you publish it.
 Details in `THIRD_PARTY_NOTICES.md`; full text in `LICENSES/LTX-2.x-Community-License.txt`.

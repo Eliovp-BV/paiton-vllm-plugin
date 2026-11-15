@@ -6,9 +6,14 @@
     "revision": "unpinned (local download of 14 Nov 2026)",
     "license": "LTX-2.x Community License Agreement (11 Aug 2026, amended 29 Oct 2026)"
   },
-  "quality_gate": "none yet: FP8 RTN DiT (K5 bundle 15 Nov 2026); GPTQ DiT replaces dit/dit8.bin before release",
-  "download_bytes": 37826086555,
+  "quality_gate": "FP8 round-to-nearest DiT (K5 bundle 15 Nov 2026): drift from BF16 with the same raw noise, compared with the stock fp8-cast mode (README, Quality); GPTQ rounding tested and not shipped (no consistent video gain)",
+  "download_bytes": 37826086962,
   "files": [
+    {
+      "file": "config.json",
+      "bytes": 407,
+      "sha256": "09d9095a3ab599345949b934c87fe5463256e4652785cab74070b90364852d8d"
+    },
     {
       "file": "dit/dit8.bin",
       "bytes": 18695356416,
