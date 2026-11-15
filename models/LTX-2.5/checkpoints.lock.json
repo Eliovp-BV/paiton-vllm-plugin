@@ -1,0 +1,398 @@
+{
+  "repository": "EliovpAI/LTX-2.5-FP8-Paiton-RDNA4",
+  "revision": "unpinned",
+  "base_model": {
+    "repository": "Lightricks/LTX-2.5",
+    "revision": "unpinned (local download of 14 Nov 2026)",
+    "license": "LTX-2.x Community License Agreement (11 Aug 2026, amended 29 Oct 2026)"
+  },
+  "quality_gate": "none yet: FP8 RTN DiT (K5 bundle 15 Nov 2026); GPTQ DiT replaces dit/dit8.bin before release",
+  "download_bytes": 79841453453,
+  "files": [
+    {
+      "file": "dit/dit.idx",
+      "bytes": 343451,
+      "sha256": "19d9e79af173fffac922521ac1024a14d53794ac45854de6adfa3ab1a92e5bd5"
+    },
+    {
+      "file": "dit/dit8.bin",
+      "bytes": 18695356416,
+      "sha256": "737d619568db6979213b1266723d265b645ab550a47951d9330c4aea3997e798"
+    },
+    {
+      "file": "dit/dit8.idx",
+      "bytes": 101744,
+      "sha256": "3c248976840bbadaa33c8387710d3de038555ade8cd54680e35046b98143bbb2"
+    },
+    {
+      "file": "dit/ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+      "bytes": 42018190584,
+      "sha256": "31eb3cad89b9e54e99dd3baf286f70825ac4f6c660a70d9184d895be76d7bff4"
+    },
+    {
+      "file": "dit/tables.bin",
+      "bytes": 170311744,
+      "sha256": "0ad22c94855d25c02d02128e0ac44658f6dbad7e2c2174309c0d8a22d67e60d1"
+    },
+    {
+      "file": "dit/tables.idx",
+      "bytes": 98,
+      "sha256": "5e03699b62eae794a0bcfa4d28b9f4a00bdda7c1927c2006c3e042b76cc13ca2"
+    },
+    {
+      "file": "te/U00.bin",
+      "bytes": 248000064,
+      "sha256": "8a6507149b044f0ad89f2a04e858bd9a10883583e1bef43c5dbaf17323fc50ac"
+    },
+    {
+      "file": "te/U01.bin",
+      "bytes": 248000064,
+      "sha256": "13becc66a01fe0bb7b6f174f56d895825f0e9f9a59828a9dd1e9e8ca2dfda156"
+    },
+    {
+      "file": "te/U02.bin",
+      "bytes": 248000064,
+      "sha256": "395bed94340acce9a89d105e7a8b24a6a2e1855dc31c3b2375f8d7c4719474da"
+    },
+    {
+      "file": "te/U03.bin",
+      "bytes": 248000064,
+      "sha256": "fec5a18821af2ca2aee9c2ff783212710a3b327fdd69a0c0de45ab805997c2c8"
+    },
+    {
+      "file": "te/U04.bin",
+      "bytes": 248000064,
+      "sha256": "8a14bc6f953675df94d8d420c44d306b7e823d70584ef00fed82ebff02b9c41d"
+    },
+    {
+      "file": "te/U05.bin",
+      "bytes": 265697856,
+      "sha256": "c2717422314eb6da6ec23606ae7318ac51ef1d1f0199849e033ef5bcbcc7ab70"
+    },
+    {
+      "file": "te/U06.bin",
+      "bytes": 248000064,
+      "sha256": "90c6c12eb4ece425e295a92d52fb8f438f6a6975472842435efc4c0295cd4443"
+    },
+    {
+      "file": "te/U07.bin",
+      "bytes": 248000064,
+      "sha256": "2c8ab57b23ee7f33e0677395935fece8884860e8aa3572e1a0056e6f10060660"
+    },
+    {
+      "file": "te/U08.bin",
+      "bytes": 248000064,
+      "sha256": "643f36a184f2678ba57b54fdce0f21ff9d18273095e993b123d6c1f1c9696f08"
+    },
+    {
+      "file": "te/U09.bin",
+      "bytes": 248000064,
+      "sha256": "609681767b7533200cb3f225748012071e33cb9772bc601284391ac6240dcf0e"
+    },
+    {
+      "file": "te/U10.bin",
+      "bytes": 248000064,
+      "sha256": "13099af642e2e6702b829c9192f90440d390a4d9cc2c0c4954665e20ba109bc4"
+    },
+    {
+      "file": "te/U11.bin",
+      "bytes": 265697856,
+      "sha256": "40bc1fb43dfb0a2164b9a4196c0e4f1df8826478dfd0bfbba59ff1d90571b207"
+    },
+    {
+      "file": "te/U12.bin",
+      "bytes": 248000064,
+      "sha256": "2615c35fc010e23c3ce8c9e839f46ef8292c78ed3a3b1885c8f1daf2997c888a"
+    },
+    {
+      "file": "te/U13.bin",
+      "bytes": 248000064,
+      "sha256": "6377b972b68529bdf7744ab1db179aa8e7ca93a55c4d52461a8cf7fab5a5e8cc"
+    },
+    {
+      "file": "te/U14.bin",
+      "bytes": 248000064,
+      "sha256": "5ed217f2d4a269d60746730ae76bee9f72826a7a79da0021e8ea9a3edf55b228"
+    },
+    {
+      "file": "te/U15.bin",
+      "bytes": 248000064,
+      "sha256": "fe90ddcb3b64c18d9c0b047287e639718c898537a994e6b459ece4138d12c9f8"
+    },
+    {
+      "file": "te/U16.bin",
+      "bytes": 248000064,
+      "sha256": "a0484297e6645d84eebec94c63619afeef31764a42b61764c286c4b13823d0d0"
+    },
+    {
+      "file": "te/U17.bin",
+      "bytes": 265697856,
+      "sha256": "88b0decccfdffd3b9f2759ed1a45dd832c0ecd54c64b91c937aadb086942d476"
+    },
+    {
+      "file": "te/U18.bin",
+      "bytes": 248000064,
+      "sha256": "0ae4a6be15b44f81638ab52439dab6effbe8c9a8c2bb666450076b2a64060153"
+    },
+    {
+      "file": "te/U19.bin",
+      "bytes": 248000064,
+      "sha256": "694f7704858cb10e7e12489aba3855f8477d2d76dc24a71b63fcb0c724fa53a6"
+    },
+    {
+      "file": "te/U20.bin",
+      "bytes": 248000064,
+      "sha256": "c26fa00e371dcff5125175c568cd679e76ac721c3328b50f462a340f52c7f874"
+    },
+    {
+      "file": "te/U21.bin",
+      "bytes": 248000064,
+      "sha256": "3ccb7ccb3d212f0d6c423d8a83b7cb44134a898ae75ba514693681859cd9ea2a"
+    },
+    {
+      "file": "te/U22.bin",
+      "bytes": 248000064,
+      "sha256": "007ef1f31fc224697ab1761fb54bb639449d35e625fd79b91ef74f99a9ebc74a"
+    },
+    {
+      "file": "te/U23.bin",
+      "bytes": 265697856,
+      "sha256": "4a0483d5b5e4818677c1e03a8152ff8c7cf6848811249e0078cf841b0ce0f9fe"
+    },
+    {
+      "file": "te/U24.bin",
+      "bytes": 248000064,
+      "sha256": "d40c0b0162a5f02df971df74c0bc8b1b6f1cfbd680449e80ab8dae6a19d898f6"
+    },
+    {
+      "file": "te/U25.bin",
+      "bytes": 248000064,
+      "sha256": "9a982d95f52dec57926bfb932a2ffce651d39b5925ce7e3e4befd9467f0e3675"
+    },
+    {
+      "file": "te/U26.bin",
+      "bytes": 248000064,
+      "sha256": "d4d864a6775e565445ea2477de6b36e90ee4957f77ce8055f028b7033ad72b53"
+    },
+    {
+      "file": "te/U27.bin",
+      "bytes": 248000064,
+      "sha256": "365d9a622f1f65e0d2a612aaaa2eb4ab5ad1643870ac9ce9308534f0648d085a"
+    },
+    {
+      "file": "te/U28.bin",
+      "bytes": 248000064,
+      "sha256": "1cb930a00b6c8fe0af0c1e0f443e8568bb1efb8915636351fcd755e86d5f3491"
+    },
+    {
+      "file": "te/U29.bin",
+      "bytes": 265697856,
+      "sha256": "94a626ac8a065e8557a9b83466663f51e209aa92effae1c76b9e483427ba0707"
+    },
+    {
+      "file": "te/U30.bin",
+      "bytes": 248000064,
+      "sha256": "daf0931cb32cdedb2c032da108dbf056ab18f58247c6141d476d26e9568a5d43"
+    },
+    {
+      "file": "te/U31.bin",
+      "bytes": 248000064,
+      "sha256": "345d27d52540a8456e2842178488688c7f84b85b80266579369fe0800c9e3dc1"
+    },
+    {
+      "file": "te/U32.bin",
+      "bytes": 248000064,
+      "sha256": "10ab0ce3cdee3e0a66bd20a0c77a0aaffcf10fcf447496b6b4fa3f9cfb9f5ecd"
+    },
+    {
+      "file": "te/U33.bin",
+      "bytes": 248000064,
+      "sha256": "92bf1b4fe41cdc55d5a395216a5c1d0473fa8e727dba0acb68df37da4ca4117d"
+    },
+    {
+      "file": "te/U34.bin",
+      "bytes": 248000064,
+      "sha256": "d0212f115256c11b4f6b3c033ddd54323e00183fa1712ecae467188b83f87973"
+    },
+    {
+      "file": "te/U35.bin",
+      "bytes": 265697856,
+      "sha256": "045821b2d83e4d6e0ab6460e5bec19e67dade3d098246c0a7deebb2c57bda63d"
+    },
+    {
+      "file": "te/U36.bin",
+      "bytes": 248000064,
+      "sha256": "942171b830ff16d4e9257ecf94517dd4525336bf6233b3e19a1e85e37a33ff04"
+    },
+    {
+      "file": "te/U37.bin",
+      "bytes": 248000064,
+      "sha256": "9570f812acecc246efa134a7031548ea73ab2f7b2939ba9041c82f95d1991c2e"
+    },
+    {
+      "file": "te/U38.bin",
+      "bytes": 248000064,
+      "sha256": "f02bfa6a50c6c7819b24d16cb5c99aa81355f73489d704ccf5ae89533489db77"
+    },
+    {
+      "file": "te/U39.bin",
+      "bytes": 248000064,
+      "sha256": "f8fd73e45dec601d16311667b467164acbc823c2cd70110b2d6faf9545ee1a91"
+    },
+    {
+      "file": "te/U40.bin",
+      "bytes": 248000064,
+      "sha256": "28f8b22a72de41b8852f3f3761efafff1ded44fce28c7a833b60930b7c375bb1"
+    },
+    {
+      "file": "te/U41.bin",
+      "bytes": 265697856,
+      "sha256": "bf509d51bbf4831c6ee7cbfcb59ef0e2029156579419eaa38dbd367563e63e01"
+    },
+    {
+      "file": "te/U42.bin",
+      "bytes": 248000064,
+      "sha256": "7c701741ede4339233582b5c84140c1fb5f68fc2c0a8e6f5645137a9217e99e0"
+    },
+    {
+      "file": "te/U43.bin",
+      "bytes": 248000064,
+      "sha256": "52828fa6e013f206296f52871f8a014a0ef8a22d098c2be3a35c044fcf5f8d92"
+    },
+    {
+      "file": "te/U44.bin",
+      "bytes": 248000064,
+      "sha256": "61731bcb1d5cb83d28ed06da300cf01ce6c639d31a1bb3b73aec5c8f84020aaf"
+    },
+    {
+      "file": "te/U45.bin",
+      "bytes": 248000064,
+      "sha256": "17302caa8c1609abf574ffa488872fddbdecf19b5292fb681f465f82cd004d2b"
+    },
+    {
+      "file": "te/U46.bin",
+      "bytes": 248000064,
+      "sha256": "607f953729f19443cb0e6528b1d2d08af1a5a835315b57693409dd83589bc828"
+    },
+    {
+      "file": "te/U47.bin",
+      "bytes": 265697856,
+      "sha256": "1a2a3636898dfa84f076798a5b7616e019bbe4a83cb818544a833e0e3927cacd"
+    },
+    {
+      "file": "te/U48.bin",
+      "bytes": 23657984,
+      "sha256": "80a959b3828383e3abfe976d44051294dc8b16fc10ffb2aef83f6900fc912a27"
+    },
+    {
+      "file": "te/U49.bin",
+      "bytes": 203228672,
+      "sha256": "d354378a4699fcdba2a0dac603f2565320ce4cb3b2ac6d872e41f09bafcd8af7"
+    },
+    {
+      "file": "te/U50.bin",
+      "bytes": 202180096,
+      "sha256": "8611fed176888a84f5d202f800f2e4983f1bed0afcd62021dd3209be1a228c0b"
+    },
+    {
+      "file": "te/U51.bin",
+      "bytes": 202180096,
+      "sha256": "54ebc099cc81bf8d1a3efd59dbd0b25b491b225f644ced36df004ae478bb1c94"
+    },
+    {
+      "file": "te/U52.bin",
+      "bytes": 202180096,
+      "sha256": "c40a01696cd54ea62798b48ae34a739e95452e00d74687549c1b2ac90d3b1c2c"
+    },
+    {
+      "file": "te/U53.bin",
+      "bytes": 202180096,
+      "sha256": "f9929e3f613f0731d32d9e9d80a0285d1e4a94e641b24c20111dd8cac148d147"
+    },
+    {
+      "file": "te/U54.bin",
+      "bytes": 202180096,
+      "sha256": "a9135e4e91b83800f5cffca860eeba6a63f9f1994fe96ef88faf8c70ef69c3dc"
+    },
+    {
+      "file": "te/U55.bin",
+      "bytes": 202180096,
+      "sha256": "bfebeb883e33bb5feccb47686dbcd0214b26f80c2f7cf10a78a05f184b7cd4f8"
+    },
+    {
+      "file": "te/U56.bin",
+      "bytes": 202180096,
+      "sha256": "340f360d9ff782210f2511d5a0b53139d3e191e31c81b61c8fc0f3b007112ed6"
+    },
+    {
+      "file": "te/U57.bin",
+      "bytes": 51283456,
+      "sha256": "ac4e8475b8094210ec7e04ffc4474f691c755eb278457e6c127e2001cf8d40ee"
+    },
+    {
+      "file": "te/U58.bin",
+      "bytes": 50759168,
+      "sha256": "7a8e7011afdfd746e2b9b104870c3bbf1ba94755fc302e83dccf00bee3cb64b2"
+    },
+    {
+      "file": "te/U59.bin",
+      "bytes": 50759168,
+      "sha256": "d9d85d1cbe9b2dcc5d9ad671a1e037ffd304b9138f1073d58a95ac52e103a0d4"
+    },
+    {
+      "file": "te/U60.bin",
+      "bytes": 50759168,
+      "sha256": "ddee4408a8b4f7ca68a0e567fed226a1e374c09a363170d9851c7bcac996e606"
+    },
+    {
+      "file": "te/U61.bin",
+      "bytes": 50759168,
+      "sha256": "74bb986ebb72462d2d6c7c5e068918f3a42e6bb53c9d35e8c64b3bb7aff375bc"
+    },
+    {
+      "file": "te/U62.bin",
+      "bytes": 50759168,
+      "sha256": "b6863c8e8dd64ec4720e530ad97e3bf5ac097f09d5734636f6d8cfe80cc1b50e"
+    },
+    {
+      "file": "te/U63.bin",
+      "bytes": 50759168,
+      "sha256": "ba25ba6ef2a43b3dc3f89c4485e8f54a4b9abb62abe83fccc194f4210c31c66e"
+    },
+    {
+      "file": "te/U64.bin",
+      "bytes": 50759168,
+      "sha256": "ea6ac8137938aae2f3955337e79c5b0b8d945e81c7b3661fa38f51ab0ed9c2cc"
+    },
+    {
+      "file": "te/duration.bin",
+      "bytes": 4468288,
+      "sha256": "ecff8b79faf32c3483100c0ecd970330a3846f5ea5e2c6b22b5d8f8edbd0070c"
+    },
+    {
+      "file": "te/embed.bf16",
+      "bytes": 2013265920,
+      "sha256": "ead0aaaed3d443e6731be1f3e9a7033db61a5e11813191eba9e646dfa2491a73"
+    },
+    {
+      "file": "te/tokenizer.json",
+      "bytes": 32169626,
+      "sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f"
+    },
+    {
+      "file": "vae/ltx-2.5-audio-vae-bf16.safetensors",
+      "bytes": 364866540,
+      "sha256": "c52733d37f6a7fb7949c3dc0fb468c6cb2169e4d836983a73babb9f0d54837a5"
+    },
+    {
+      "file": "vae/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
+      "bytes": 995778752,
+      "sha256": "eb5a71fe4068ee87ccdb1c3aa635e547ca76bd2d30ae20ae889f2c325c0677e8"
+    },
+    {
+      "file": "vae/ltx-2.5-video-vae-conv-bf16.safetensors",
+      "bytes": 1452269922,
+      "sha256": "685b06ee3d9b2039647698fc4ea33175112462fc374e2777312c907897dfce8d"
+    }
+  ]
+}

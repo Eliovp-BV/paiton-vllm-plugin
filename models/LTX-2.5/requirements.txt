@@ -1,0 +1,7 @@
+# Host-side runtime of the server. No PyTorch, no Triton.
+# ROCm 10.0 HIP runtime (libamdhip64, HSA) for the native libraries, and hipBLAS (rocm-sdk-libraries + the gfx1201
+# device wheel) that the runner opens for its patchify and output projections, from AMD's wheel index.
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-core/rocm_sdk_core-10.0.0-py3-none-linux_x86_64.whl#sha256=3bf4a72d11aa2a4ee1e90572c73630f937d38c1b7af4dda45b483b54655138a7
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-libraries/rocm_sdk_libraries-10.0.0-py3-none-linux_x86_64.whl#sha256=bbe83a550cb8ceeb306abf6d57df6617857a1b19384549526db2ec81a4374e57
+https://stable.repo.amd.com/rocm/core/whl-next/rocm-sdk-device-gfx1201/rocm_sdk_device_gfx1201-10.0.0-py3-none-linux_x86_64.whl#sha256=81856692c18e5d6ccce486193d0f4a54b368d2e84ff5a0811b644f6f788ed4b2
+tokenizers==0.23.2 --hash=sha256:41c2f84d172449b4dadb9cdc508e3e364076613c35b16e76ecfe47a60d1e3305

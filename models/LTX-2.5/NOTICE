@@ -1,0 +1,12 @@
+Paiton LTX-2.5 runtime
+Copyright ElioVP
+
+LTX-2.5 is licensed under the LTX-2.x Community License Agreement (license date 11 August 2026, amended 29 October
+2026), Copyright Lightricks Ltd. A copy is in LICENSES/LTX-2.x-Community-License.txt. Use of LTX-2.5 and of the
+weights this package downloads is subject to Section 4 and Attachment A (use restrictions and the Acceptable Use
+Policy) of that agreement in their entirety.
+
+The model weights are not part of this package. The container downloads them from EliovpAI/LTX-2.5-FP8-Paiton-RDNA4 at
+the revision pinned in checkpoints.lock.json. The transformer and text encoder files there are modified files of
+Lightricks/LTX-2.5 (FP8 weights in Paiton layouts); the weights repository lists the changes in MODIFICATIONS.md.
+This package does not imply endorsement by Lightricks.
