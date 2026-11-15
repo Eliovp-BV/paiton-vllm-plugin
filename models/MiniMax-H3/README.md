@@ -16,12 +16,12 @@ cd paiton-vllm-plugin
 
 Then open ComfyUI at `http://127.0.0.1:8190`. The first launch builds the image and downloads the model components.
 
-## v1.2: native runner, no ComfyUI (release candidate)
+## v1.2: native runner (release candidate)
 
 v1.2 runs a whole Ref2VA request on the R9700 with Paiton's own HIP kernels: text encoder, reference encoding, the
 denoiser, the video and audio decoders. Python only prepares the inputs (NumPy, Pillow, tokenizers) and ffmpeg writes
-the MP4. There is no PyTorch, Triton or ComfyUI in the container. v1.1.0 above stays available, and ComfyUI remains the
-way to use a graphical workflow.
+the MP4. There is no PyTorch, Triton or ComfyUI in the container. It serves an HTTP API, and a small ComfyUI node sends
+requests to it. v1.1.0 above stays available.
 
 Time per request, Turbo4, one R9700 at 300 W, weights already loaded:
 
@@ -41,6 +41,61 @@ the BF16 model are in [BENCHMARKS.md](BENCHMARKS.md#v12-native-runner-release-ca
 ```sh
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
+PAITON_DETACH=1 ./models/MiniMax-H3/native/launch.sh http
+docker logs -f paiton-minimax-h3-v12        # wait for "READY http://..."; the first start downloads the weights
+curl -o panda.mp4 -F image=@panda.png \
+  -F prompt='The red panda from <Picture 1> walks through a sunlit forest. Audio: birds and a stream.' \
+  http://127.0.0.1:30000/v1/videos/generations
+```
+
+The server keeps the weights of one preset loaded (Turbo4 by default, `launch.sh http --preset turbo8` for Turbo8)
+and runs one request at a time; more requests wait. It listens on `127.0.0.1:30000`. Set `PAITON_PORT` for another
+port and `PAITON_BIND=0.0.0.0` to accept requests from other machines (it has no authentication). Stop it with
+`docker stop paiton-minimax-h3-v12`.
+
+### HTTP API
+
+`POST /v1/videos/generations` takes `multipart/form-data` or JSON and answers with the MP4 (`video/mp4`, H.264 and
+32 kHz stereo AAC). The header `X-Paiton-Metrics` holds the time per phase and the VRAM peak as JSON.
+
+| Field | Default | Meaning |
+|---|---|---|
+| `prompt` | required | the text; refer to the references as `<Picture 1>` to `<Picture 9>` (and `<Video 1>`) |
+| `image` | 1 to 9 | one file field per reference image, in prompt order (JSON: `images`, a list of base64 strings) |
+| `video` | none | one video reference; its soundtrack must be 32 kHz (JSON: `video`, base64). Images and video together: at most 9 |
+| `width`, `height` | 864, 480 | multiples of 32, at most 1344×768 |
+| `seconds` or `num_frames` | 5 s (124 frames) | 24 fps; `num_frames` must be 17 n + 5; up to 15 s at 864×480 |
+| `seed` | 0 | the same seed and inputs give the same clip |
+| `preset` | the server's | must match the preset the server was started with |
+
+A request that breaks these rules, or does not fit the card (about 82,000 tokens; see the limits below), gets a
+400 reply with a JSON `error` before anything runs on the GPU. `GET /health` reports `ready`, `busy` and the preset.
+
+The same with JSON:
+
+```sh
+python3 - <<'PY'
+import base64, json, urllib.request
+body = json.dumps({"prompt": "The red panda from <Picture 1> naps in the sun.", "seconds": 5, "seed": 1,
+                   "images": [base64.b64encode(open("panda.png", "rb").read()).decode()]}).encode()
+request = urllib.request.Request("http://127.0.0.1:30000/v1/videos/generations", body, {"Content-Type": "application/json"})
+open("nap.mp4", "wb").write(urllib.request.urlopen(request).read())
+PY
+```
+
+### ComfyUI
+
+Copy `native/comfyui/paiton_h3v_client` into ComfyUI's `custom_nodes` folder and restart ComfyUI. The node
+**MiniMax H3 Ref2VA (Paiton server)** takes an IMAGE (a batch counts as several references), up to eight more
+optional images, the prompt, size, length, seed and the server address, and returns a VIDEO for `SaveVideo` or a
+preview. All the work runs in the Paiton server, so ComfyUI can run on the CPU or on another machine.
+`native/comfyui/workflows/ref2va-server.api.json` is an example with two references.
+
+### Command line
+
+`generate` runs one request without a server:
+
+```sh
 ./models/MiniMax-H3/native/launch.sh prepare
 ./models/MiniMax-H3/native/launch.sh generate --prompt 'The red panda from <Picture 1> walks through a sunlit forest. Audio: birds and a stream.' \
   --ref panda.png --out panda.mp4
