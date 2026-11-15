@@ -1,0 +1,14 @@
+**
+!native/requirements.txt
+!native/checkpoints.lock.json
+!native/verify_artifacts.py
+!native/paiton_h3v/
+!native/paiton_h3v/*.py
+!native/artifacts/
+!native/artifacts/manifest.json
+!native/artifacts/lib/
+!native/artifacts/lib/*
+!LICENSE
+!NOTICE
+!THIRD_PARTY_NOTICES.md
+!LICENSES/MiniMax-H3-Community.txt
