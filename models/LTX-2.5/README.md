@@ -26,13 +26,20 @@ later starts take about 25 s.
 - Host RAM: the text encoder pins 14.1 GB of host memory and streams the layers that do not fit next to the
   transformer to the card for every request. We tested on a host with 251 GB; 32 GB is the smallest size we would try.
 - Disk: 38 GB under the cache volume.
-- Docker, and on the first start a network connection to Hugging Face.
+- Docker, and on the first start a network connection to Hugging Face and a Hugging Face token with access to the
+  gated weights repository.
 
 ## Start
+
+The weights repository is gated: open
+[EliovpAI/LTX-2.5-FP8-Paiton-RDNA4](https://huggingface.co/EliovpAI/LTX-2.5-FP8-Paiton-RDNA4) while logged in to
+Hugging Face and accept the license terms (access is granted at once), then create a read token under Settings,
+Access Tokens.
 
 From a checkout of this repository:
 
 ```bash
+export HF_TOKEN=<your Hugging Face read token>
 ./models/LTX-2.5/launch.sh
 ```
 
