@@ -22,9 +22,11 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**Current release: 7 November.** Image r2 with the 7 November 3-bit weights (revision
-`aee42dfdb78e851462743120a575bf2d6f7b9882`). If your 3-bit download is older, run `git pull`, then the 3-bit
-[download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
+**Current release: 18 November.** Image r3 with the 7 November 3-bit weights (revision
+`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). r3 reads prompts faster: a 100 to 500-token prompt gets its first
+token 9 to 20 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in 99 s instead of 103 s. Greedy output is
+the same as r2, token for token ([measured](HISTORY.md#image-r3)). If your 3-bit download is older than 7 November, run
+`git pull`, then the 3-bit [download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
 
 | 3-bit weights on one R9700 | 16-bit model (datacenter GPU) | 3-bit, this release |
 | --- | ---: | ---: |
@@ -122,9 +124,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **7 November r2** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-7-november-2026)). Earlier releases stay runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **18 November r3** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@{{PIN:R3_DIGEST}}`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-18-november-2026)). Earlier releases stay runnable:
 [run an earlier release](HISTORY.md#run-an-earlier-release).
 
 <a id="model-weights-and-existing-downloads"></a>
@@ -139,7 +141,7 @@ downloads and the runtime cache are reused.
 ```bash
 export PAITON_TARGET_DIR="$PWD/model-cache/qwen38-nvfp4"
 export PAITON_DRAFT_DIR="$PWD/model-cache/qwen38-dflash2"
-export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"
 mkdir -p "$PAITON_TARGET_DIR" "$PAITON_DRAFT_DIR" "$PAITON_CACHE_DIR"
 
 hf download unsloth/Qwen3.8-27B-NVFP4 \

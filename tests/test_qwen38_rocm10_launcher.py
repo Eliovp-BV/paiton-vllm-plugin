@@ -1582,6 +1582,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1@sha256:' + '0' * 64,
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261107-r2',
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:' + '0' * 64,
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1'):
             self.assertEqual(launcher.tier_bytes_per_token(types.SimpleNamespace(image=name, release='65k')), (24576, 19000), name)
         older = launcher.tier_bytes_per_token(types.SimpleNamespace(image='ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1', release='65k'))

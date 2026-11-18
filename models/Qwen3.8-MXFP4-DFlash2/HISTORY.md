@@ -4,6 +4,47 @@ Earlier results, release notes and comparisons, moved here from the [guide](READ
 [release reference](REFERENCE.md) on 10 November 2026. Nothing on this page describes the current release unless it
 says so; the current numbers are in the [guide](README.md#current-benchmark-results).
 
+<a id="image-r3"></a>
+
+## 18 November 2026: image r3 against r2
+
+r3 is r2 with the 3-bit GEMM library and the 4-bit KV cache attention library rebuilt. Weights, modes and limits are
+unchanged. Both images ran on the same R9700 (300 W) on 18 November, in the order r2, r3, r3, r2, with a fresh server
+start each time and the same runtime cache; the table gives the mean of the two runs per image. The r2 numbers are
+about 2 % below those of 7 November on this card on the same image and benchmark, so compare within this table.
+
+| One R9700, `run-3bit.sh` (65K mode) unless noted | r2 | r3 | r3 / r2 |
+| --- | ---: | ---: | ---: |
+| Decode, one request at a time, 32 prompts (tok/s) | 162.3 | 163.3 | 1.006 |
+| Decode, four requests, 32 prompts (tok/s, total) | 349.1 | 356.3 | 1.021 |
+| Time per decode step, one request, 32 prompts (ms) | 28.19 | 28.04 | 0.994 |
+| Decode, eight requests, one prompt (tok/s, total) | 517.2 | 520.1 | 1.006 |
+| Prompt reading, 29K-token prompt (tok/s) | 4,042 | 4,100 | 1.014 |
+| First token, 134-token prompt (ms) | 75.5 | 60.6 | 0.803 |
+| First token, 523-token prompt (ms) | 174 | 154 | 0.889 |
+| First token, 2,068-token prompt (ms) | 484 | 472 | 0.977 |
+| First token, 8,513-token prompt (ms) | 1,962 | 1,939 | 0.988 |
+| `--mode long-kv4`: first token of a new 228K-token prompt (s) | 102.9 | 98.6 | 0.959 |
+| `--mode long-kv4`: decode after that prompt, one request (tok/s) | 150.7 | 151.1 | 1.003 |
+| First start until ready, empty runtime cache (s) | 186 | 185 | |
+
+The two runs of the same image differed by at most 1.5 % on any row, and by less than 0.5 % on most. The
+eight-request row moved less than that, and decode after the 228K-token prompt by 0.3 %. A 67-token prompt starts as
+fast on both images (62 ms). Greedy output was the same token for token on every prompt we sent (32 prompts with
+up to 512 tokens each, 20 short prompts and the 120K and 228K-token prompts). With four requests at once the
+replies can differ from run to run on either image, because the batch depends on timing.
+
+The MXFP4 weights (`run-mxfp4.sh`) decode one prompt at 75.9 tok/s on both images, with the same output.
+
+Task scores, thinking on, the model's default sampling, the same questions and per-question seeds (r2: 7 November run;
+r3: 18 November). Paired per question with an exact McNemar test; no difference is significant.
+
+| | r2 | r3 | p |
+| --- | ---: | ---: | ---: |
+| GSM8K (1,319) | 95.8 | 96.2 | 0.38 |
+| HumanEval (164) | 97.0 | 95.1 | 0.38 |
+| MMLU-Pro (1,400) | 79.5 | 79.2 | 0.76 |
+
 ## 14 November 2026: chats that survive a restart
 
 `--mode long` with the 3-bit weights now takes `--extend-cache disk`. Before, `--extend-cache` worked only in
@@ -409,12 +450,18 @@ Moved from the quickstart on 7 October 2026; the quickstart keeps only current r
 Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
 its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
 `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
+Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
 `…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
 and by its digest alone; an image under any other tag or an image ID counts as the current image.
 
 ```bash
-# 5 October r1, the previous release: every row (drafter on Triton kernels; avoid prompt_logprobs with the 3-bit weights)
+# 7 November r2, the previous release: every row
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8
+
+# 5 October r1: every row (drafter on Triton kernels; avoid prompt_logprobs with the 3-bit weights)
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261005"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
@@ -445,7 +492,7 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
   --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
 ```
 
-To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"` again
+To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"` again
 and drop `--image`.
 
 The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
