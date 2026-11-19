@@ -125,9 +125,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **18 November r3** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-18-november-2026)). Earlier releases stay runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **19 November r4** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@{{PIN:R4_DIGEST}}`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-19-november-2026)). Earlier releases stay runnable:
 [run an earlier release](HISTORY.md#run-an-earlier-release).
 
 <a id="model-weights-and-existing-downloads"></a>

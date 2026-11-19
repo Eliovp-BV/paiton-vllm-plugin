@@ -17,14 +17,16 @@ import time
 
 
 IMAGES = {
-    # The 18 November release (r3): the 7 November r2 image with faster native kernels for the 3-bit prefill GEMMs, the
-    # long-prompt attention of the 4-bit KV cache and the GDN verify step; the same greedy output as r2. On r3 the
-    # launcher also turns on block verification of the drafted tokens (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release
-    # images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
+    # The 19 November release (r4): the 18 November r3 image with the n-gram co-drafting fix (PAITON_NGRAM_CODRAFT=1 arms
+    # again and warns when it cannot); everything else, the native libraries included, is r3's. Block verification of the
+    # drafted tokens as on r3 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images (PREVIOUS_IMAGES) stay usable
+    # through --image with their previous behaviour.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@{{PIN:R4_DIGEST}}',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 18 November release (r3): r2 plus faster native kernels and block verification; PAITON_NGRAM_CODRAFT=1 does not arm
+    '20261118-r3': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     # the 7 November release (r2): r1 plus native HIP kernels for the DFlash2 drafter and the 3-bit GDN/gate paths, and the
     # prompt_logprobs fix
     '20261107-r2': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
@@ -170,6 +172,7 @@ KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
 KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261118-r3': 'sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     '20261107-r2': 'sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
     '20261005-r1': 'sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80',
     '20261004-r1': 'sha256:6a97d65fda17c1c48b36d3423c6f3709bd65a3849227e45a8a24a552d4c81b9d',
@@ -261,12 +264,12 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # the other 3-bit modes keep their measured KV budgets and gain the 1.18 GiB as headroom (65k with and without --vision,
 # --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
 LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-vllm029-20261107-r2',
-                            'qwen38-rocm10-vllm029-20261118-r3')   # r2 = r1 + layers, r3 = r2 + layers
+                            'qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer
 # Block verification of the drafted tokens (rejection_sample_method block): the same output distribution as token-wise
 # verification, more accepted draft tokens per step for sampled requests (T > 0). Gate on r2, 19 Nov 2026 (drafter
 # round 3): task scores and first-token distributions unchanged, greedy ids identical; T 1.0 +3.8 % accepted tokens and
 # +2.6 % tok/s at one request. Only the images below get it; earlier images keep token-wise verification.
-SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3',)
+SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4')
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -323,6 +326,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm10-vllm029-20261005-r1': (24576, 19000),       # the published 5 October image (same build)
     'qwen38-rocm10-vllm029-20261107-r2': (24576, 19000),       # the 7 November image (r1 plus native drafter/3-bit kernels)
     'qwen38-rocm10-vllm029-20261118-r3': (24576, 19000),       # the 18 November image (r2 plus faster native kernels)
+    'qwen38-rocm10-vllm029-20261119-r4': (24576, 19000),       # the 19 November image (r3 plus the n-gram fix)
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)

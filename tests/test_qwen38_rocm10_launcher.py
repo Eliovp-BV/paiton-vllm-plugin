@@ -212,12 +212,13 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(json.loads(value(engine, '--override-generation-config')),
                                  {'temperature': 0.7, 'top_p': 0.95, 'top_k': 20})
 
-    def test_block_verification_only_on_the_r3_image(self):
-        """r3 verifies the drafted tokens as a block; the earlier images keep token-wise verification (the default)."""
+    def test_block_verification_only_on_r3_and_later(self):
+        """r3 and r4 verify the drafted tokens as a block; the earlier images keep token-wise verification (the default)."""
         def spec(*image):
             return json.loads(value(self.engine(self.command(*image)), '--speculative-config'))
         self.assertEqual(spec()['rejection_sample_method'], 'block')
         self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3')['rejection_sample_method'], 'block')
+        self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4')['rejection_sample_method'], 'block')
         for name in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1'):
             self.assertNotIn('rejection_sample_method', spec('--image', name), name)
@@ -1593,6 +1594,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261107-r2',
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:' + '0' * 64,
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:' + '0' * 64,
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1'):
             self.assertEqual(launcher.tier_bytes_per_token(types.SimpleNamespace(image=name, release='65k')), (24576, 19000), name)
         older = launcher.tier_bytes_per_token(types.SimpleNamespace(image='ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1', release='65k'))

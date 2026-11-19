@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements and advanced setup. Earlier releases are in the [history](HISTORY.md).
 
-- [Release notes of the current image](#release-notes-7-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
+- [Release notes of the current image](#release-notes-19-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
 - [Long context and prefix caching](#long-context-200k-and-220k)
@@ -22,9 +22,31 @@ The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
 
+<a id="release-notes-19-november-2026"></a>
+
+### Release notes: 19 November 2026 (image r4, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4` (`{{PIN:R4_DIGEST}}`) is the 18 November
+r3 image with two Python files of the n-gram co-drafting mode changed. The native libraries, weights, modes, limits and
+default settings are those of r3. Update this repository to get the launcher that selects it.
+
+- `PAITON_NGRAM_CODRAFT=1` works again. In the r1, r2 and r3 images the mode never started: it checks that the vLLM
+  files it hooks into are the versions it was reviewed against, and its record of one file was out of date, so it stayed
+  off without an error. The record now matches the image; the changed lines of that file were reviewed first.
+- With the mode on, the server logs its decision once at start: `[paiton.ngram_codraft] {"armed": true, ...}`. If the
+  mode cannot run, the log says `WARNING [paiton.ngram_codraft] PAITON_NGRAM_CODRAFT=1 is set, but n-gram co-drafting
+  is OFF (<reason>)` and the server decodes with DFlash2 alone.
+- With the mode off (the default), r4 gives the same tokens as r3 at the same speed: 32 of 32 prompts identical, 177.9
+  against 177.3 tok/s at one request.
+- The mode helps little on this image: greedy agent requests decode 1.9 % faster, sampled agent requests (temperature
+  1.0) 4.9 % slower, and chat and short prompts do not change. Table and advice:
+  [n-gram co-drafting](#faster-agentic-coding-decode-n-gram-co-drafting-opt-in).
+
+Task scores were not rerun for r4: its native code is r3's, and with the mode off its output is r3's token for token.
+
 <a id="release-notes-18-november-2026"></a>
 
-### Release notes: 18 November 2026 (image r3, current)
+### Release notes: 18 November 2026 (image r3)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3` (`sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c`) is the 7 November r2
 image with three native libraries rebuilt: the 3-bit GEMMs, the 4-bit KV cache attention of `--mode long-kv4` and the
@@ -756,12 +778,10 @@ loss against MXFP4 either (facts kept 89.0 vs 89.4%, answers from the summary
 
 ## Faster agentic coding decode: n-gram co-drafting (opt-in)
 
-Known issue, found on 19 November 2026: in the images of 5 October (r1), 7 November (r2) and 18 November (r3) the
-switch below has no effect. The server logs `armed: false` for the mode and decodes as with the mode off. The numbers
-in this section are from the 24 September image. A fix is planned for a later image.
+The switch below works from the 19 November image (r4) on. In the images of 5 October (r1), 7 November (r2) and
+18 November (r3) it has no effect: the server logs `armed: false` for the mode and decodes as with the mode off.
 
-The 24 September image introduced an optional second drafter in front of DFlash2;
-the 26 September image keeps it.
+The 24 September image introduced an optional second drafter in front of DFlash2.
 When the last few generated tokens already occurred earlier in the prompt or the
 output, the matcher proposes the tokens that followed last time, so copy-heavy
 generations such as file rewrites, code echoed back into an edit, or repeated
@@ -776,38 +796,42 @@ launcher forwards the variable when it is set on the host:
 PAITON_NGRAM_CODRAFT=1 bash models/Qwen3.8-MXFP4-DFlash2/run-rocm10.sh --profile chat
 ```
 
-Measured with the published adapter on the 24 September image (MXFP4 weights),
-A/B/A/B in fresh processes:
+When the mode runs, the server log has one line with `"armed": true`. When it cannot run, the log has a line that
+starts with `WARNING [paiton.ngram_codraft]` and gives the reason, and decoding continues with DFlash2 alone. On r4
+the mode started in every documented mode: 65K, `--vision`, `--mode long`, `--profile chat`, `--mode long-kv4` with
+and without `--vision`, `--mode long-512k`, the RAM and SSD cache tiers, `--profile desktop`, and the MXFP4 weights in
+65K and `--mode long`.
+
+Measured on r4 with the 3-bit weights in the 65K mode, one R9700 at 300 W, block verification on as the launcher sets
+it, in the order off, on, on, off with a fresh server each time. Each value is the mean of two servers; the two servers
+of one setting differed by 0.2 % or less, except at four sampled requests (2.7 %).
 
 | Workload | Off | `PAITON_NGRAM_CODRAFT=1` | Change |
 |---|---:|---:|---:|
-| 35-turn agentic coding session, 200K chat profile, decode tok/s | 90.8 | 115.4 / 115.7 | **+27%** |
-| Accepted tokens per step in that session | 3.0 | 3.6 | |
-| 64K-context file rewrite, tok/s¹ | 129 | 167 | +29% |
-| 128K-context file rewrite, tok/s¹ | 125 | 158 | +26% |
-| BetterBench weighted decode, 65K profile | 153.9 | 153.3 | −0.4% |
-| BetterBench file edit / prose / json decode tok/s | 180.1 / 78.3 / 217.7 | 176.2 / 77.4 / 217.5 | −2.2% / −1.2% / −0.1% |
-| BetterBench C1 / C2 / C4 / C8 aggregate tok/s | 121.8 / 206.1 / 319.0 / 424.7 | 122.0 / 206.1 / 307.8 / 421.6 | +0.2% / 0.0% / −3.5% / −0.7% |
+| 16 agent turns from recorded SWE-bench coding sessions, greedy, one request, tok/s | 106.7 | 108.7 | +1.9% |
+| Accepted tokens per step in those turns | 5.50 | 5.75 | |
+| The same 16 turns at temperature 1.0, tok/s | 94.1 | 89.6 | −4.9% |
+| 32 short prompts (chat, math, code, multiple choice), greedy, one request, tok/s | 177.9 | 178.3 | +0.2% |
+| The same 32 prompts, greedy, four requests, tok/s | 422.1 | 424.9 | +0.7% |
+| The 8 chat prompts of the 32, greedy, one request, tok/s | 148.4 | 148.5 | 0.0% |
+| 32 prompts at temperature 1.0, one request, tok/s | 171.4 | 172.1 | +0.4% |
+| 32 prompts at temperature 1.0, four requests, tok/s | 397.6 | 393.4 | −1.1% |
 
-¹ Measured with an earlier gate version of the adapter; the shipped version was not
-re-measured on this workload.
+Each agent turn has up to about 60,000 characters of context and generates up to 1,024 tokens. In greedy decoding the
+mode accepts more tokens per step and the turns finish sooner. At temperature 1.0 a step takes 67.2 instead of 61.9 ms
+while the accepted tokens per step rise only from 4.83 to 5.02, so the same turns are slower. The 24 September image
+measured +27% on a 35-turn session in the 200K profile that rewrote long files; the turns above copy less. Leave the
+mode off for sampled requests and for chat; it can help greedy requests that copy long spans of their context.
 
-Short prompts with little to copy gain nothing and pay a small bookkeeping cost.
-That is why the mode ships off and why the benchmark tables below were measured
-with it off. The control's own concurrency-four value ranged 306–319 tok/s across
-runs. Session time to first token is unchanged by the mode.
-
-What to expect from the output: sampling still draws from the target distribution,
-and greedy decoding still returns the argmax chain in exact arithmetic. A different
-acceptance pattern changes which verify row computes a position, so output bits can
-differ at near-ties. The two divergences found were word choices inside generated
-comments with the top two candidates 0.25 nats apart, and the released image shows
-the same class of divergence between its own fresh processes. The twelve greedy
-control prompts matched with the mode on, and all 35 session turns produced valid
-tool calls with the same tool names. Structured-output workloads that must not change
-wording should leave the mode off. `PAITON_NGRAM_CODRAFT_HOT_MATCH` (default 16, the
-match length that keeps a request on the drafting path) trades session gain against
-the small cost on non-copying traffic.
+What to expect from the output: sampling still draws from the target distribution, and greedy decoding still returns
+the argmax chain in exact arithmetic. A different acceptance pattern changes which verify step computes a position, so
+greedy output can differ where the top two tokens are nearly tied. With the mode on, 10 of 16 agent replies and 31 of
+32 short replies were token for token the same as with it off, and the two servers with the mode on gave identical
+replies. A check on r2 found that every committed token was the model's own top choice, and the task scores did not
+change with the mode on: GSM8K 95.8 against 96.1, HumanEval 95.1 against 94.5, MMLU-Pro 80.4 against 79.1 on 560
+questions (paired p 0.35 or higher). Structured-output workloads that must not change wording should leave the mode
+off. `PAITON_NGRAM_CODRAFT_HOT_MATCH` (default 16, the match length that keeps a request on the drafting path) trades
+the gain against the cost on traffic that does not copy.
 
 ## Current benchmark results
 

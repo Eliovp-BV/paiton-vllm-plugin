@@ -491,12 +491,18 @@ Moved from the quickstart on 7 October 2026; the quickstart keeps only current r
 Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
 its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
 `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
+Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261118-r3`, `…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
 `…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
 and by its digest alone; an image under any other tag or an image ID counts as the current image.
 
 ```bash
-# 7 November r2, the previous release: every row
+# 18 November r3, the previous release: every row (PAITON_NGRAM_CODRAFT=1 has no effect on it)
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c
+
+# 7 November r2: every row
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261107"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \

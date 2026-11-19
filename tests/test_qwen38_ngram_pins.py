@@ -48,12 +48,7 @@ print(json.dumps({'absent': False, 'rows': rows}))
 
 # Released images whose stale pins are known and documented (REFERENCE.md known issue). Exactly these rows make the
 # test an expected failure; any other difference still fails. Remove the entry when the launcher pins a fixed image.
-KNOWN_STALE = {
-    'qwen38-rocm10-vllm029-20261118-r3': {
-        'DEPENDENCIES vllm.v1.worker.gpu.model_runner: pinned ad78894ad3e7, image runs b3a8215243c3',
-        'SOURCE_CAP_PATCHED vllm.v1.core.sched.scheduler: pinned 4762cc252945, image runs e37d28e9884b',
-    },
-}
+KNOWN_STALE = {}
 
 
 def pinned_image():
