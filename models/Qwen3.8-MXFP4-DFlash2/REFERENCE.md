@@ -27,24 +27,27 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 ### Release notes: 18 November 2026 (image r3, current)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3` (`{{PIN:R3_DIGEST}}`) is the 7 November r2
-image with two native libraries rebuilt: the 3-bit GEMMs and the 4-bit KV cache attention of `--mode long-kv4`. The
+image with three native libraries rebuilt: the 3-bit GEMMs, the 4-bit KV cache attention of `--mode long-kv4` and the
+GDN verify step of speculative decoding. The
 weights, every mode's context, cache and request limits, and the environment switches of r2 are unchanged. Update this
 repository to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
 - The 3-bit prompt GEMMs pick their tile height from the prompt length. A short prompt reads faster: the first token of a
-  112 to 523-token prompt comes 9 to 20 % sooner (60.6 ms instead of 75.5 ms at 134 tokens), a 29K-token prompt reads at
-  4,100 instead of 4,042 tok/s.
+  112 to 523-token prompt comes 4 to 17 % sooner (62.5 ms instead of 75.3 ms at 134 tokens), a 29K-token prompt reads at
+  4,096 instead of 4,051 tok/s.
 - `--mode long-kv4` reads long prompts with a new attention kernel for the 4-bit cache: a new 120K-token prompt gets its
-  first token in 39.8 s instead of 41.0 s, a 228K-token prompt in 98.6 s instead of 102.9 s.
-- Decode speed is the same or slightly higher (four requests over 32 prompts: 356.3 against 349.1 tok/s).
+  first token in 39.9 s instead of 41.1 s, a 228K-token prompt in 98.7 s instead of 103.0 s.
+- The GDN verify step of the 65K mode runs the retuned kernel: one request decodes 32 prompts at 164.0 instead of 162.2
+  tok/s, eight requests one prompt at 523.3 instead of 516.6 tok/s. Two and four requests decode at the same speed.
 - Greedy output is identical to r2, token for token, on 32 prompts, 20 short prompts and the 120K and 228K-token prompts.
 
-Table and method: [history](HISTORY.md#image-r3). Task scores on r3 (thinking on, the model's default sampling, the same questions and seeds as the
-r2 run): GSM8K 96.2, HumanEval 95.1, MMLU-Pro 79.2, against 95.8, 97.0 and 79.5 on r2. No difference is significant
-(exact McNemar p 0.38 or higher). The MXFP4 weights give the same output and speed on r3 as on r2.
+Table and method: [history](HISTORY.md#image-r3). Task scores on r3 (thinking on, the model's default sampling, the same questions and seeds as the r2
+run): GSM8K 96.0, HumanEval 95.7, MMLU-Pro 79.8, against 95.8, 97.0 and 79.5 on r2. No difference is significant (exact
+McNemar p 0.62 or higher). The MXFP4 weights give the same output on r3 as on r2 and decode slightly faster
+(76.3 against 75.8 tok/s).
 
 Runtime cache: give r3 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261118` in the quickstart). The first
-start fills it: 185 s until ready with the 3-bit weights (r2: 186 s), 210 s with MXFP4 (r2: 220 s).
+start fills it: 185 s until ready with the 3-bit weights (r2: 186 s), 221 s with MXFP4 (r2: 220 s).
 
 <a id="release-notes-7-november-2026"></a>
 

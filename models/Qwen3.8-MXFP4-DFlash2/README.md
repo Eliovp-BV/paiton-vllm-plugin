@@ -23,8 +23,9 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
 **Current release: 18 November.** Image r3 with the 7 November 3-bit weights (revision
-`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). r3 reads prompts faster: a 100 to 500-token prompt gets its first
-token 9 to 20 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in 99 s instead of 103 s. Greedy output is
+`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). r3 reads prompts faster: a 112 to 523-token prompt gets its first
+token 4 to 17 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in 99 s instead of 103 s. One request decodes
+about 1 % faster. Greedy output is
 the same as r2, token for token ([measured](HISTORY.md#image-r3)). If your 3-bit download is older than 7 November, run
 `git pull`, then the 3-bit [download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
 

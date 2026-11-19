@@ -8,42 +8,46 @@ says so; the current numbers are in the [guide](README.md#current-benchmark-resu
 
 ## 18 November 2026: image r3 against r2
 
-r3 is r2 with the 3-bit GEMM library and the 4-bit KV cache attention library rebuilt. Weights, modes and limits are
-unchanged. Both images ran on the same R9700 (300 W) on 18 November, in the order r2, r3, r3, r2, with a fresh server
-start each time and the same runtime cache; the table gives the mean of the two runs per image. The r2 numbers are
+r3 is r2 with three native libraries rebuilt: the 3-bit GEMMs, the 4-bit KV cache attention and the GDN verify step of
+speculative decoding. Weights, modes and limits are unchanged. Both images ran on the same R9700 (300 W) on 18 November,
+in the order r2, r3, r3, r2, with a fresh server start each time, the same runtime cache and 20 decode rounds per start;
+the table gives the mean of the two runs per image. The r2 numbers are
 about 2 % below those of 7 November on this card on the same image and benchmark, so compare within this table.
 
 | One R9700, `run-3bit.sh` (65K mode) unless noted | r2 | r3 | r3 / r2 |
 | --- | ---: | ---: | ---: |
-| Decode, one request at a time, 32 prompts (tok/s) | 162.3 | 163.3 | 1.006 |
-| Decode, four requests, 32 prompts (tok/s, total) | 349.1 | 356.3 | 1.021 |
-| Time per decode step, one request, 32 prompts (ms) | 28.19 | 28.04 | 0.994 |
-| Decode, eight requests, one prompt (tok/s, total) | 517.2 | 520.1 | 1.006 |
-| Prompt reading, 29K-token prompt (tok/s) | 4,042 | 4,100 | 1.014 |
-| First token, 134-token prompt (ms) | 75.5 | 60.6 | 0.803 |
+| Decode, one request at a time, 32 prompts (tok/s) | 162.2 | 164.0 | 1.011 |
+| Decode, four requests, 32 prompts (tok/s, total) | 343.1 | 349.9 | 1.020 |
+| Time per decode step, one request, 32 prompts (ms) | 28.21 | 27.91 | 0.989 |
+| Decode, eight requests, one prompt (tok/s, total) | 516.6 | 523.3 | 1.013 |
+| Prompt reading, 29K-token prompt (tok/s) | 4,051 | 4,096 | 1.011 |
+| First token, 134-token prompt (ms) | 75.3 | 62.5 | 0.830 |
 | First token, 523-token prompt (ms) | 174 | 154 | 0.889 |
-| First token, 2,068-token prompt (ms) | 484 | 472 | 0.977 |
-| First token, 8,513-token prompt (ms) | 1,962 | 1,939 | 0.988 |
-| `--mode long-kv4`: first token of a new 228K-token prompt (s) | 102.9 | 98.6 | 0.959 |
-| `--mode long-kv4`: decode after that prompt, one request (tok/s) | 150.7 | 151.1 | 1.003 |
+| First token, 2,068-token prompt (ms) | 484 | 473 | 0.978 |
+| First token, 8,513-token prompt (ms) | 1,964 | 1,941 | 0.988 |
+| `--mode long-kv4`: first token of a new 228K-token prompt (s) | 103.0 | 98.7 | 0.959 |
+| `--mode long-kv4`: decode after that prompt, one request (tok/s) | 151.3 | 150.7 | 0.996 |
 | First start until ready, empty runtime cache (s) | 186 | 185 | |
 
-The two runs of the same image differed by at most 1.5 % on any row, and by less than 0.5 % on most. The
-eight-request row moved less than that, and decode after the 228K-token prompt by 0.3 %. A 67-token prompt starts as
-fast on both images (62 ms). Greedy output was the same token for token on every prompt we sent (32 prompts with
+The two runs of the same image differed by up to 3 % on the shortest prompts and by less than 1 % on most rows. Over
+the 40 rounds per image, one request and eight requests at a time decode faster on r3 (time per step 0.993x and 0.988x,
+permutation test p < 0.001 and p 0.003); two and four requests did not change. Decode after the 228K-token prompt moved
+by 0.4 %, inside its run-to-run spread. A 67-token prompt starts as fast on both images (62-63 ms). Greedy output was the same token for token on every prompt we sent (32 prompts with
 up to 512 tokens each, 20 short prompts and the 120K and 228K-token prompts). With four requests at once the
 replies can differ from run to run on either image, because the batch depends on timing.
 
-The MXFP4 weights (`run-mxfp4.sh`) decode one prompt at 75.9 tok/s on both images, with the same output.
+The MXFP4 weights (`run-mxfp4.sh`) decode one prompt at 76.3 tok/s on r3 against 75.8-75.9 on r2, with the same output.
 
 Task scores, thinking on, the model's default sampling, the same questions and per-question seeds (r2: 7 November run;
 r3: 18 November). Paired per question with an exact McNemar test; no difference is significant.
 
 | | r2 | r3 | p |
 | --- | ---: | ---: | ---: |
-| GSM8K (1,319) | 95.8 | 96.2 | 0.38 |
-| HumanEval (164) | 97.0 | 95.1 | 0.38 |
-| MMLU-Pro (1,400) | 79.5 | 79.2 | 0.76 |
+| | r2 | r3 | p |
+| --- | ---: | ---: | ---: |
+| GSM8K (1,319) | 95.8 | 96.0 | 0.74 |
+| HumanEval (164) | 97.0 | 95.7 | 0.62 |
+| MMLU-Pro (1,400) | 79.5 | 79.8 | 0.76 |
 
 ## 14 November 2026: chats that survive a restart
 
