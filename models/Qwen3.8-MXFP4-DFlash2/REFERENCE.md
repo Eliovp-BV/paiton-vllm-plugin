@@ -26,7 +26,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 18 November 2026 (image r3, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3` (`{{PIN:R3_DIGEST}}`) is the 7 November r2
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3` (`sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c`) is the 7 November r2
 image with three native libraries rebuilt: the 3-bit GEMMs, the 4-bit KV cache attention of `--mode long-kv4` and the
 GDN verify step of speculative decoding. On r3 the launcher also verifies the drafted tokens as one block. The
 weights, every mode's context, cache and request limits, and the environment switches of r2 are unchanged. Update this

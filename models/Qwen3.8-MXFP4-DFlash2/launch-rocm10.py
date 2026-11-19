@@ -21,7 +21,7 @@ IMAGES = {
     # long-prompt attention of the 4-bit KV cache and the GDN verify step; the same greedy output as r2. On r3 the
     # launcher also turns on block verification of the drafted tokens (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release
     # images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@{{PIN:R3_DIGEST}}',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
