@@ -17,9 +17,10 @@ import time
 
 
 IMAGES = {
-    # The 18 November release (r3): the 7 November r2 image with faster native kernels for the 3-bit prefill GEMMs and the
-    # long-prompt attention of the 4-bit KV cache; the same output tokens as r2. The previous release images
-    # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
+    # The 18 November release (r3): the 7 November r2 image with faster native kernels for the 3-bit prefill GEMMs, the
+    # long-prompt attention of the 4-bit KV cache and the GDN verify step; the same greedy output as r2. On r3 the
+    # launcher also turns on block verification of the drafted tokens (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release
+    # images (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
     '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@{{PIN:R3_DIGEST}}',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
@@ -261,6 +262,11 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
 LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-vllm029-20261107-r2',
                             'qwen38-rocm10-vllm029-20261118-r3')   # r2 = r1 + layers, r3 = r2 + layers
+# Block verification of the drafted tokens (rejection_sample_method block): the same output distribution as token-wise
+# verification, more accepted draft tokens per step for sampled requests (T > 0). Gate on r2, 19 Nov 2026 (drafter
+# round 3): task scores and first-token distributions unchanged, greedy ids identical; T 1.0 +3.8 % accepted tokens and
+# +2.6 % tok/s at one request. Only the images below get it; earlier images keep token-wise verification.
+SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3',)
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -1302,6 +1308,9 @@ def engine_command(args, weights='mxfp4'):
     if args.port is not None and args.port > 65535:
         raise ValueError('--port must be between 1 and 65535')
     command = release_command(args.release)
+    if _image_parts(args)[0].endswith(SPEC_BLOCK_IMAGE_SUFFIXES):
+        index = command.index('--speculative-config') + 1
+        command[index] = json.dumps({**json.loads(command[index]), 'rejection_sample_method': 'block'})
     desktop = args.profile == 'desktop'
     chat = args.profile == 'chat'
     long_w3 = chat and weights == 'w3a4'

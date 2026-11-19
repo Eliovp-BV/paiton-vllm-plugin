@@ -212,6 +212,16 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(json.loads(value(engine, '--override-generation-config')),
                                  {'temperature': 0.7, 'top_p': 0.95, 'top_k': 20})
 
+    def test_block_verification_only_on_the_r3_image(self):
+        """r3 verifies the drafted tokens as a block; the earlier images keep token-wise verification (the default)."""
+        def spec(*image):
+            return json.loads(value(self.engine(self.command(*image)), '--speculative-config'))
+        self.assertEqual(spec()['rejection_sample_method'], 'block')
+        self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3')['rejection_sample_method'], 'block')
+        for name in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1'):
+            self.assertNotIn('rejection_sample_method', spec('--image', name), name)
+
     def test_explicit_flags_override_chat_defaults(self):
         command = self.command('--release', '200k', '--profile', 'chat',
                                '--context', '65536', '--max-num-seqs', '2',
@@ -1769,7 +1779,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         image = launcher.IMAGES['65k']
 
         def on(old, options):
+            # the current image adds block verification to the speculative config; the older images keep token-wise
             command = self.dry_run(*options)
+            index = command.index('--speculative-config') + 1
+            spec = json.loads(command[index])
+            self.assertEqual(spec.pop('rejection_sample_method'), 'block')
+            command[index] = json.dumps(spec)
             return [old if item == image else item for item in command]
 
         w3rot = self.root / 'w3rot directory'

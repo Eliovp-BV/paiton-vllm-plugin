@@ -39,11 +39,47 @@ replies can differ from run to run on either image, because the batch depends on
 
 The MXFP4 weights (`run-mxfp4.sh`) decode one prompt at 76.3 tok/s on r3 against 75.8-75.9 on r2, with the same output.
 
+Block verification (r3 launcher, 19 November). On r3 the launcher adds `"rejection_sample_method": "block"` to
+`--speculative-config` in every mode: the tokens the drafter proposes are accepted or rejected as one block instead of
+one at a time. Both rules keep the model's output distribution. The rows above were measured with token-wise
+verification; greedy requests take the same path under both rules. Measured on r3, 65K mode, in the order token-wise,
+block, block, token-wise with a fresh server start each time; 32 prompts, at most 512 tokens, top-p 0.95, top-k 20,
+seeds 1000 + prompt number per seed set (four seed sets at one request, two at four requests). This client sends whole
+requests without streaming, so its tok/s are not comparable with the table above.
+
+| r3, 65K mode, 32 prompts | token-wise | block | block / token-wise |
+| --- | ---: | ---: | ---: |
+| Temperature 1.0, one request (tok/s) | 161.8 | 166.9 | 1.032 |
+| Temperature 1.0, one request: accepted draft tokens per step | 3.55 | 3.70 | 1.043 |
+| Temperature 1.0, one request: time per decode step (ms) | 28.1 | 28.1 | 1.001 |
+| Temperature 1.0, four requests (tok/s, total) | 383.9 | 391.6 | 1.020 |
+| Greedy, one request (tok/s) | 172.7 | 173.1 | 1.003 |
+
+At one request the gain holds per prompt and seed (128 pairs, sign-flip test p 0.001 for tok/s and accepted tokens); the
+time per step does not change (p 0.31). The four-request row comes from one batch run per start and seed set, so read it
+as about 2 %. At temperature 0.7, the server's default, the drafter session measured on r2 1.2 % more accepted tokens
+and 0.8 % more tok/s (p 0.69). Greedy token ids at one request were the same in all four starts (32 of 32). With four
+requests at once greedy replies vary from run to run under both rules: over 24 runs of the 32 prompts, two runs agreed
+on 83.3 % of the replies whether they used the same rule or not. Every mode started with block verification on r3 and
+answered a greedy and a sampled request: 65K, 65K with `--vision`, `--mode long`, `--mode long-kv4` with and without
+`--vision`, `--mode long-512k`, the RAM tier (`--host-cache-gib 32`), the disk tier (`--extend-cache disk`), the desktop
+profile and MXFP4 (65K and `--mode long`).
+
+Task scores with block verification, temperature 1.0, thinking on, paired per question (exact McNemar):
+
+| | token-wise | block | p |
+| --- | ---: | ---: | ---: |
+| GSM8K (1,319), r2 | 96.1 | 95.8 | 0.74 |
+| HumanEval (164), r2 | 94.5 | 92.1 | 0.29 |
+| MMLU-Pro (893 finished in both runs), r2 | 82.8 | 83.0 | 0.89 |
+| HumanEval (164), r3, second seed set | 95.1 | 95.7 | 1.00 |
+| HumanEval (164), r3, third seed set | 96.3 | 96.3 | 1.00 |
+
+Over the three HumanEval seed sets, 10 problems passed only with token-wise verification and 7 only with block (p 0.63).
+
 Task scores, thinking on, the model's default sampling, the same questions and per-question seeds (r2: 7 November run;
 r3: 18 November). Paired per question with an exact McNemar test; no difference is significant.
 
-| | r2 | r3 | p |
-| --- | ---: | ---: | ---: |
 | | r2 | r3 | p |
 | --- | ---: | ---: | ---: |
 | GSM8K (1,319) | 95.8 | 96.0 | 0.74 |

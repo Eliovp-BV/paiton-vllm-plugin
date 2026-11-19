@@ -28,7 +28,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3` (`{{PIN:R3_DIGEST}}`) is the 7 November r2
 image with three native libraries rebuilt: the 3-bit GEMMs, the 4-bit KV cache attention of `--mode long-kv4` and the
-GDN verify step of speculative decoding. The
+GDN verify step of speculative decoding. On r3 the launcher also verifies the drafted tokens as one block. The
 weights, every mode's context, cache and request limits, and the environment switches of r2 are unchanged. Update this
 repository to get the launcher that selects it; `--dry-run` prints the full Docker command.
 
@@ -39,12 +39,23 @@ repository to get the launcher that selects it; `--dry-run` prints the full Dock
   first token in 39.9 s instead of 41.1 s, a 228K-token prompt in 98.7 s instead of 103.0 s.
 - The GDN verify step of the 65K mode runs the retuned kernel: one request decodes 32 prompts at 164.0 instead of 162.2
   tok/s, eight requests one prompt at 523.3 instead of 516.6 tok/s. Two and four requests decode at the same speed.
+- Speculative decoding checks the tokens the drafter proposes as one block instead of one at a time
+  (`"rejection_sample_method": "block"` in `--speculative-config`, every mode). Both rules keep the model's output
+  distribution; the block rule accepts more draft tokens when a request is sampled. At temperature 1.0 one request
+  accepts 4.3 % more draft tokens per step and decodes 3.2 % faster (166.9 instead of 161.8 tok/s on 32 prompts), four
+  requests 2.0 % faster. At the server's default sampling (temperature 0.7) the gain is small: on r2, 1.2 % more accepted tokens and
+  0.8 % faster, inside the run-to-run noise.
+  Greedy requests (temperature 0) give the same tokens at the same speed. `--image` with an earlier image keeps
+  token-wise verification.
 - Greedy output is identical to r2, token for token, on 20 short prompts, the 120K and 228K-token prompts and the
   one-prompt decode runs; each of 32 further prompts gave a reply of the same length.
 
 Table and method: [history](HISTORY.md#image-r3). Task scores on r3 (thinking on, the model's default sampling, the same questions and seeds as the r2
 run): GSM8K 96.0, HumanEval 95.7, MMLU-Pro 79.8, against 95.8, 97.0 and 79.5 on r2. No difference is significant (exact
-McNemar p 0.62 or higher). The MXFP4 weights give the same output on r3 as on r2 and decode slightly faster
+McNemar p 0.62 or higher); these runs used token-wise verification. With block verification the task scores did not
+change significantly either: at temperature 1.0 on r2, GSM8K 95.8 against 96.1, HumanEval 92.1 against 94.5 and MMLU-Pro
+83.0 against 82.8 on 893 questions (p 0.29 or higher), and on r3 HumanEval with two more seed sets, 95.7 against 95.1
+and 96.3 against 96.3. The MXFP4 weights give the same output on r3 as on r2 and decode slightly faster
 (76.3 against 75.8 tok/s).
 
 Runtime cache: give r3 its own `PAITON_CACHE_DIR` (`runtime-cache/qwen38-rocm10-20261118` in the quickstart). The first
