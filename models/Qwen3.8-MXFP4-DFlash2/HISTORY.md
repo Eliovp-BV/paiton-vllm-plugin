@@ -57,7 +57,7 @@ requests without streaming, so its tok/s are not comparable with the table above
 
 At one request the gain holds per prompt and seed (128 pairs, sign-flip test p 0.001 for tok/s and accepted tokens); the
 time per step does not change (p 0.31). The four-request row comes from one batch run per start and seed set, so read it
-as about 2 %. At temperature 0.7, the server's default, the drafter session measured on r2 1.2 % more accepted tokens
+as about 2 %. At temperature 0.7, the server's default, we measured on r2 1.2 % more accepted tokens
 and 0.8 % more tok/s (p 0.69). Greedy token ids at one request were the same in all four starts (32 of 32). With four
 requests at once greedy replies vary from run to run under both rules: over 24 runs of the 32 prompts, two runs agreed
 on 83.3 % of the replies whether they used the same rule or not. Every mode started with block verification on r3 and

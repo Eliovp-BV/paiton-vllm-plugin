@@ -756,6 +756,10 @@ loss against MXFP4 either (facts kept 89.0 vs 89.4%, answers from the summary
 
 ## Faster agentic coding decode: n-gram co-drafting (opt-in)
 
+Known issue, found on 19 November 2026: in the images of 5 October (r1), 7 November (r2) and 18 November (r3) the
+switch below has no effect. The server logs `armed: false` for the mode and decodes as with the mode off. The numbers
+in this section are from the 24 September image. A fix is planned for a later image.
+
 The 24 September image introduced an optional second drafter in front of DFlash2;
 the 26 September image keeps it.
 When the last few generated tokens already occurred earlier in the prompt or the
