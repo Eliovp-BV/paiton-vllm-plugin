@@ -39,7 +39,8 @@ repository to get the launcher that selects it; `--dry-run` prints the full Dock
   first token in 39.9 s instead of 41.1 s, a 228K-token prompt in 98.7 s instead of 103.0 s.
 - The GDN verify step of the 65K mode runs the retuned kernel: one request decodes 32 prompts at 164.0 instead of 162.2
   tok/s, eight requests one prompt at 523.3 instead of 516.6 tok/s. Two and four requests decode at the same speed.
-- Greedy output is identical to r2, token for token, on 32 prompts, 20 short prompts and the 120K and 228K-token prompts.
+- Greedy output is identical to r2, token for token, on 20 short prompts, the 120K and 228K-token prompts and the
+  one-prompt decode runs; each of 32 further prompts gave a reply of the same length.
 
 Table and method: [history](HISTORY.md#image-r3). Task scores on r3 (thinking on, the model's default sampling, the same questions and seeds as the r2
 run): GSM8K 96.0, HumanEval 95.7, MMLU-Pro 79.8, against 95.8, 97.0 and 79.5 on r2. No difference is significant (exact

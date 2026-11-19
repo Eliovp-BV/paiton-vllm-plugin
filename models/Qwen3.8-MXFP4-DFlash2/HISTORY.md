@@ -32,8 +32,9 @@ about 2 % below those of 7 November on this card on the same image and benchmark
 The two runs of the same image differed by up to 3 % on the shortest prompts and by less than 1 % on most rows. Over
 the 40 rounds per image, one request and eight requests at a time decode faster on r3 (time per step 0.993x and 0.988x,
 permutation test p < 0.001 and p 0.003); two and four requests did not change. Decode after the 228K-token prompt moved
-by 0.4 %, inside its run-to-run spread. A 67-token prompt starts as fast on both images (62-63 ms). Greedy output was the same token for token on every prompt we sent (32 prompts with
-up to 512 tokens each, 20 short prompts and the 120K and 228K-token prompts). With four requests at once the
+by 0.4 %, inside its run-to-run spread. A 67-token prompt starts as fast on both images (62-63 ms). Greedy output was the same token for token on the 20 short prompts, the 120K and
+228K-token prompts and the one-prompt decode runs (one and two requests, all 40 rounds); each of the 32 prompts gave a
+reply of the same length on both images. With four requests at once the
 replies can differ from run to run on either image, because the batch depends on timing.
 
 The MXFP4 weights (`run-mxfp4.sh`) decode one prompt at 76.3 tok/s on r3 against 75.8-75.9 on r2, with the same output.
