@@ -105,10 +105,13 @@ def test_qwen38_dry_run_shows_every_interface(tmp_path):
     assert "k-test-123" not in result.stdout and "From another system" not in result.stdout
 
 
-@pytest.mark.parametrize("compose", ["FLUX.2-klein/compose.yaml", "MiniMax-H3/compose.yaml", "Wan2.2/compose.yaml"])
-def test_compose_ports_default_to_every_interface(compose):
+# MiniMax-H3 (v1.1.0, 19 Oct 2026) keeps ComfyUI on this machine by default, as its README states (no authentication);
+# PAITON_BIND=0.0.0.0 publishes it on every interface, as for the H3 API server.
+@pytest.mark.parametrize("compose,default", [("FLUX.2-klein/compose.yaml", "0.0.0.0"), ("MiniMax-H3/compose.yaml", "127.0.0.1"),
+                                             ("Wan2.2/compose.yaml", "0.0.0.0")])
+def test_compose_ports_follow_paiton_bind(compose, default):
     ports = [line for line in (MODELS / compose).read_text().splitlines() if line.strip().startswith("ports:")]
-    assert ports and all('["${PAITON_BIND:-0.0.0.0}:' in line for line in ports)
+    assert ports and all('["${PAITON_BIND:-' + default + '}:' in line for line in ports)
 
 
 def load_server(directory):

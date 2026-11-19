@@ -10,7 +10,7 @@ services:
     init: true
     environment:
       HF_HUB_OFFLINE: "1"
-    ports: ["127.0.0.1:${PAITON_H3_PORT:-8190}:8188"]
+    ports: ["${PAITON_BIND:-127.0.0.1}:${PAITON_H3_PORT:-8190}:8188"]
     volumes:
       - ${PAITON_H3_DATA:?Use launch.sh}:/data
       - ${PAITON_H3_OUTPUTS:?Use launch.sh}:/outputs
