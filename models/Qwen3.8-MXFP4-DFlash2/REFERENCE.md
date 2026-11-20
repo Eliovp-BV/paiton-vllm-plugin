@@ -26,7 +26,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 19 November 2026 (image r4, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4` (`{{PIN:R4_DIGEST}}`) is the 18 November
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4` (`sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17`) is the 18 November
 r3 image with two Python files of the n-gram co-drafting mode changed. The native libraries, weights, modes, limits and
 default settings are those of r3. Update this repository to get the launcher that selects it.
 

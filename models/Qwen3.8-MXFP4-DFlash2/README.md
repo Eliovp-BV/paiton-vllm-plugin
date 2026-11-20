@@ -126,7 +126,7 @@ cd paiton-vllm-plugin
 ```
 
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **19 November r4** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@{{PIN:R4_DIGEST}}`, and Docker pulls it on the first
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17`, and Docker pulls it on the first
 start ([what changed](REFERENCE.md#release-notes-19-november-2026)). Earlier releases stay runnable:
 [run an earlier release](HISTORY.md#run-an-earlier-release).
 

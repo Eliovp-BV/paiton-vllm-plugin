@@ -21,7 +21,7 @@ IMAGES = {
     # again and warns when it cannot); everything else, the native libraries included, is r3's. Block verification of the
     # drafted tokens as on r3 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images (PREVIOUS_IMAGES) stay usable
     # through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@{{PIN:R4_DIGEST}}',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
