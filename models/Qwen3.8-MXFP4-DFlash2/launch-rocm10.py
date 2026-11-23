@@ -349,6 +349,10 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm10-vllm029-20261118-r3': (24576, 19000),       # the 18 November image (r2 plus faster native kernels)
     'qwen38-rocm10-vllm029-20261119-r4': (24576, 19000),       # the 19 November image (r3 plus the n-gram fix)
     'qwen38-rocm10-vllm029-20261123-r5': (24576, 19000),       # the 23 November image (r4 plus the scheduler overlay)
+    # ROCm 10.2 / vLLM 0.32 candidates: same store as r5 (disk folder 8.3 GB vs r5's 8.4 GB after the same 385K-token fill)
+    'qwen38-rocm102-vllm032-20261123-c2': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c3': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c3b': (24576, 19000),
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
