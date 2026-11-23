@@ -185,6 +185,12 @@ KV4_LONG_VISION_DRAFT_FP8_GEMM = True
 KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
 # --mode long-kv4 --vision was qualified on the 5 October image only (VRAM headroom and the vision suite under load).
 KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
+# Images before c4 read the old runtime names (attention backend, settings, log tags); this launcher passes the Paiton
+# names, so it refuses them. The launcher at OLDER_IMAGES_LAUNCHER_TAG serves them.
+REFUSE_PRE_PAITON_NAME_IMAGES = True
+PRE_PAITON_NAME_TAG_PREFIXES = ('qwen38-rocm10-vllm029-',)
+PRE_PAITON_NAME_IMAGE_SUFFIXES = tuple(f'qwen38-rocm102-vllm032-20261123-{c}' for c in ('c1', 'c2', 'c3', 'c3b'))
+OLDER_IMAGES_LAUNCHER_TAG = 'qwen38-rocm10-vllm029-20261123-r5'
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
     '20261119-r4': 'sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
@@ -353,6 +359,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm102-vllm032-20261123-c2': (24576, 19000),
     'qwen38-rocm102-vllm032-20261123-c3': (24576, 19000),
     'qwen38-rocm102-vllm032-20261123-c3b': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c4': (24576, 19000),
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
@@ -525,6 +532,20 @@ def _image_parts(args):
 
 def _released_digests(*keys):
     return {IMAGES_BY_RELEASE_DIGEST[key] for key in keys}
+
+
+def refuse_pre_paiton_name_image(args):
+    """Every listed release and the c1 to c3b candidates read the old runtime names: refuse them."""
+    if not REFUSE_PRE_PAITON_NAME_IMAGES:
+        return
+    name, digest = _image_parts(args)
+    old_digests = set(IMAGES_BY_RELEASE_DIGEST.values()) | {
+        image.partition('@')[2] for image in (*IMAGES.values(), *PREVIOUS_IMAGES.values())}
+    if (name.rpartition(':')[2].startswith(PRE_PAITON_NAME_TAG_PREFIXES) or name.endswith(PRE_PAITON_NAME_IMAGE_SUFFIXES)
+            or (digest and digest in old_digests)):
+        raise ValueError(f'{args.image or IMAGES[args.release]} predates the Paiton runtime names: this launcher serves '
+                         'the ROCm 10.2 images from qwen38-rocm102-vllm032-20261123-c4 on (pass one with --image); use '
+                         f'the launcher at tag {OLDER_IMAGES_LAUNCHER_TAG} for older images')
 
 
 def image_is_kv4_v4(args):
@@ -1724,6 +1745,7 @@ def main(argv=None):
             return 0
         return subprocess.run(command).returncode
     try:
+        refuse_pre_paiton_name_image(args)
         given = args
         args = apply_mode(args, os.environ)
         command = docker_command(args, os.environ)

@@ -14,6 +14,8 @@ from unittest.mock import patch
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / 'models/Qwen3.8-MXFP4-DFlash2'
 SCRIPT = MODEL_DIR / 'launch-rocm10.py'
+# the quickstart scripts run the launcher as shipped, which refuses the released images before c4
+C4_IMAGE = 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c4'
 SPEC = importlib.util.spec_from_file_location('rocm10_launcher', SCRIPT)
 launcher = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(launcher)
@@ -35,7 +37,9 @@ class Rocm10LauncherTests(unittest.TestCase):
         (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
         (self.root / 'ttm_pages_limit').write_text('2034369\n')
         self.record = self.root / 'docker-argv.json'
-        self.overrides = {}           # launcher module constants replaced in run_launcher's process
+        # launcher module constants replaced in run_launcher's process; the command-building tests below keep using
+        # the released images, so the pre-c4 refusal is off unless a test turns it on
+        self.overrides = {'REFUSE_PRE_PAITON_NAME_IMAGES': False}
         binary = self.root / 'bin'
         binary.mkdir()
         # A real exec into a harmless Docker stand-in catches quoting, argument
@@ -94,6 +98,18 @@ class Rocm10LauncherTests(unittest.TestCase):
     def engine(self, command):
         index = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
         return command[index + 1:]
+
+    def test_images_before_c4_are_refused_with_the_older_launcher_tag(self):
+        self.overrides['REFUSE_PRE_PAITON_NAME_IMAGES'] = True
+        old = [(), ('--release', '200k'), ('--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c3b'),
+               ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261119-r4']),
+               ('--image', launcher.PREVIOUS_IMAGES['20261005-r1'].partition('@')[0])]
+        for args in old:
+            result = self.run_launcher('--dry-run', *args)
+            self.assertNotEqual(result.returncode, 0, args)
+            self.assertIn('predates the Paiton runtime names', result.stderr)
+            self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', result.stderr)
+        self.command('--image', C4_IMAGE)
 
     def test_default_exec_preserves_release_limits_and_runs_on_the_first_r9700(self):
         command = self.command()
@@ -2055,10 +2071,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         for mode in ('long-512k', 'long-kv4'):
             for script, code in (('run-mxfp4.sh', 2), ('run-3bit.sh', 0)):
                 with self.subTest(script=script, mode=mode):
-                    result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', mode, '--dry-run'],
-                                            env=self.environment, capture_output=True, text=True)
+                    result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', mode, '--dry-run', '--image',
+                                             C4_IMAGE], env=self.environment, capture_output=True, text=True)
                     self.assertEqual(result.returncode, code, result.stderr)
-        self.assertEqual(self.kv4_flags(json.loads(result.stdout), image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+        self.assertEqual(self.kv4_flags(json.loads(result.stdout), C4_IMAGE), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
 
     def test_mode_long_picks_the_context_of_its_configuration(self):
         # --mode long needs no --context: MXFP4 weights 200,000 (one request), 3-bit weights with --vision 245,000; each
@@ -2069,7 +2085,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                           launcher.W3_LONG_VISION_MAX_CONTEXT), (200000, 220000, 245000))
 
         def script(name, *options):
-            result = subprocess.run(['bash', str(MODEL_DIR / name), *options, '--dry-run'],
+            result = subprocess.run(['bash', str(MODEL_DIR / name), *options, '--dry-run', '--image', C4_IMAGE],
                                     env=self.environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             return json.loads(result.stdout), result.stderr
@@ -2324,7 +2340,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         cases = (('run-3bit.sh', ()), ('run-3bit.sh', ('--mode', 'long')), ('run-3bit.sh', ('--mode', 'long-kv4')),
                  ('run-3bit.sh', ('--kv-cache', 'fp8')), ('run-mxfp4.sh', ()), ('run-mxfp4.sh', ('--mode', 'long')),
                  ('run-rocm10.sh', ()), ('run-rocm10-65k.sh', ()), ('run-rocm10-200k.sh', ()))
-        for wrapper, options in cases:
+        for wrapper, options in (*cases, ('run-rocm10.sh', None)):
             with self.subTest(wrapper=wrapper, options=options):
                 self.record.unlink(missing_ok=True)
                 env = {'HOME': self.environment.get('HOME', str(self.root)),
@@ -2333,8 +2349,13 @@ class Rocm10LauncherTests(unittest.TestCase):
                 if wrapper == 'run-3bit.sh':
                     env['PAITON_W3ROT_DIR'] = str(w3rot)
                 result = subprocess.run(['env', '-i', *[f'{k}={v}' for k, v in env.items()],
-                                         'bash', str(rel / wrapper), '--dry-run', *options],
+                                         'bash', str(rel / wrapper), '--dry-run',
+                                         *(('--image', C4_IMAGE, *options) if options is not None else ())],
                                         cwd=repo, capture_output=True, text=True)
+                if options is None:   # the released default predates c4: refused, pointing at the older launcher
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn('launcher at tag', result.stderr)
+                    continue
                 self.assertEqual(result.returncode, 0, result.stderr)
                 argv = json.loads(result.stdout)
                 self.assertEqual(argv[:2], ['docker', 'run'])
