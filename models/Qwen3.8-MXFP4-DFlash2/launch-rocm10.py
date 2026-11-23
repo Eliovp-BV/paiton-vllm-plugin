@@ -17,14 +17,16 @@ import time
 
 
 IMAGES = {
-    # The 19 November release (r4): the 18 November r3 image with the n-gram co-drafting fix (PAITON_NGRAM_CODRAFT=1 arms
-    # again and warns when it cannot); everything else, the native libraries included, is r3's. Block verification of the
-    # drafted tokens as on r3 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images (PREVIOUS_IMAGES) stay usable
-    # through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
+    # The 23 November release (r5): the 19 November r4 image with prefix-cache hits that keep the previous prompt's tail
+    # in --mode long-kv4 (DFLASH_NO_DROP_IMAGE_SUFFIXES); everything else, the native libraries included, is r4's. Block
+    # verification of the drafted tokens as on r3 and r4 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images
+    # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@{{PIN:R5_DIGEST}}',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 19 November release (r4): r3 plus the n-gram co-drafting fix; each follow-up turn recomputes one more 800-token unit
+    '20261119-r4': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     # the 18 November release (r3): r2 plus faster native kernels and block verification; PAITON_NGRAM_CODRAFT=1 does not arm
     '20261118-r3': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     # the 7 November release (r2): r1 plus native HIP kernels for the DFlash2 drafter and the 3-bit GDN/gate paths, and the
@@ -146,6 +148,15 @@ YARN_FACTOR_2 = {'rope_type': 'yarn', 'factor': 2.0, 'original_max_position_embe
 # long modes a prompt's chunks stop only at the states the retention keeps (and the tail checkpoint) instead of every
 # 1,600-token block: fewer, longer prefill steps.
 KV4_SPARSE_ALIGN = True
+# Follow-up turns without the drafter's tail drop (compat overlay PAITON_PC_DFLASH_NO_DROP): vLLM drops one 800-token
+# unit from every prefix-cache hit for EAGLE-class drafters, because an EAGLE drafter's cache slot at a chunk's last token
+# also holds the next token. The DFlash drafter writes each position's cache entry from the target's hidden state at that
+# position only, so the drop is not needed: a follow-up turn resumes at the previous prompt's last 800-token boundary
+# instead of one unit before it. Measured 23 Nov 2026 on r4 with the overlay mounted (--mode long-kv4, agent replay,
+# mirrored old/new/new/old): first token per turn at ~199K context 1.58 -> 1.05 s, 1,162 -> 424 recomputed tokens of the
+# previous prompt, draft acceptance 3.99 -> 3.97, greedy cache-hit answers as close to cold ones as before. Text only, up
+# to 262,144 tokens (not --mode long-512k) and without the host tier (--host-cache-gib, --extend-cache): the measured cases.
+DFLASH_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261123-r5',)
 # --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the allocator capped as
 # without --vision, 740 pool blocks (496,129 KV tokens with prefix caching), images up to VISION_MAX_PIXELS and a
 # VISION_MM_CACHE_GIB processor cache. Measured on the 5 October image, 6 Oct (vision suite: cold and cached images,
@@ -172,6 +183,7 @@ KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
 KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261119-r4': 'sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     '20261118-r3': 'sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     '20261107-r2': 'sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
     '20261005-r1': 'sha256:245c71d54f046f89b74dbfbd4c894003754561e55c9d215a8d3ce65364fb0f80',
@@ -264,12 +276,14 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # the other 3-bit modes keep their measured KV budgets and gain the 1.18 GiB as headroom (65k with and without --vision,
 # --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
 LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-vllm029-20261107-r2',
-                            'qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer
+                            'qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
+                            'qwen38-rocm10-vllm029-20261123-r5')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer, r5 = r4 + one layer
 # Block verification of the drafted tokens (rejection_sample_method block): the same output distribution as token-wise
 # verification, more accepted draft tokens per step for sampled requests (T > 0). Gate on r2, 19 Nov 2026 (drafter
 # round 3): task scores and first-token distributions unchanged, greedy ids identical; T 1.0 +3.8 % accepted tokens and
 # +2.6 % tok/s at one request. Only the images below get it; earlier images keep token-wise verification.
-SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4')
+SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
+                             'qwen38-rocm10-vllm029-20261123-r5')
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -327,6 +341,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm10-vllm029-20261107-r2': (24576, 19000),       # the 7 November image (r1 plus native drafter/3-bit kernels)
     'qwen38-rocm10-vllm029-20261118-r3': (24576, 19000),       # the 18 November image (r2 plus faster native kernels)
     'qwen38-rocm10-vllm029-20261119-r4': (24576, 19000),       # the 19 November image (r3 plus the n-gram fix)
+    'qwen38-rocm10-vllm029-20261123-r5': (24576, 19000),       # the 23 November image (r4 plus the scheduler overlay)
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
@@ -1616,6 +1631,9 @@ def docker_command(args, environment):
         command += ['-e', 'PAITON_PC_EAGLE_TAIL=1']
         if KV4_SPARSE_ALIGN:
             command += ['-e', 'PAITON_PC_SPARSE_ALIGN=1']
+        if (_image_parts(args)[0].endswith(DFLASH_NO_DROP_IMAGE_SUFFIXES) and not args.vision
+                and not getattr(args, 'host_cache_gib', None) and args.context <= LONG_CONTEXT):
+            command += ['-e', 'PAITON_PC_DFLASH_NO_DROP=1']
     gdn_state = getattr(args, 'gdn_state', 'auto')
     if gdn_state == 'lazy':
         if prefix_caching_enabled(args):

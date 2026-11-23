@@ -297,17 +297,34 @@ class Scheduler(SchedulerInterface):
                     if speculative_config.use_multi_module_mtp()
                     else 1
                 )
+        # PAITON (PAITON_PC_DFLASH_NO_DROP=1): a DFlash drafter writes its context KV at each position from the target
+        # hidden state there alone (the bonus / next-prefill and mask rows land past the computed range and are
+        # overwritten), so no cached drafter slot depends on the following token. The EAGLE last-unit drop on
+        # prefix-cache hits is not needed: the KV cache manager sees no EAGLE groups, and a follow-up turn hits the
+        # previous prompt's replay boundary instead of one hash unit before it. Scheduling keeps use_eagle.
+        self.paiton_kv_eagle = self.use_eagle and not (
+            __import__("os").environ.get("PAITON_PC_DFLASH_NO_DROP", "0") == "1"
+            and speculative_config is not None
+            and speculative_config.method == "dflash"
+        )
+        kv_cache_config_for_manager = kv_cache_config
+        if self.use_eagle and not self.paiton_kv_eagle:
+            kv_cache_config_for_manager = replace(
+                kv_cache_config,
+                kv_cache_groups=[replace(g, is_eagle_group=False) for g in kv_cache_config.kv_cache_groups],
+            )
+            logger.info("PAITON_PC_DFLASH_NO_DROP: prefix-cache hits without the EAGLE last-unit drop (DFlash)")
 
         # Create the KV cache manager.
         if hash_block_size is None:
             hash_block_size = block_size
         self.hash_block_size = hash_block_size
         self.kv_cache_manager = KVCacheManager(
-            kv_cache_config=kv_cache_config,
+            kv_cache_config=kv_cache_config_for_manager,
             max_model_len=self.max_model_len,
             max_in_flight_tokens=vllm_config.max_in_flight_tokens,
             enable_caching=self.cache_config.enable_prefix_caching,
-            use_eagle=self.use_eagle,
+            use_eagle=self.paiton_kv_eagle,
             num_prefill_lookahead=self.num_prefill_lookahead,
             log_stats=self.log_stats,
             enable_kv_cache_events=self.enable_kv_cache_events,
@@ -435,7 +452,7 @@ class Scheduler(SchedulerInterface):
         # Eagle, FullAttn prunes the last matching block, so back off one
         # block to avoid a Mamba cache miss.
         last_cache_position = request.num_tokens - request.num_tokens % block_size
-        if self.use_eagle:
+        if self.paiton_kv_eagle:   # PAITON: the KV cache manager's EAGLE drop, not the scheduler's use_eagle
             last_cache_position = max(last_cache_position - block_size, 0)
             if __import__("os").environ.get("PAITON_PC_EAGLE_TAIL", "0") == "1":
                 # PAITON: the follow-up hit of this conversation lands here (EAGLE tail-block drop); sparse prefix-cache

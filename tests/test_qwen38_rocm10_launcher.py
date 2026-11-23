@@ -219,6 +219,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(spec()['rejection_sample_method'], 'block')
         self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3')['rejection_sample_method'], 'block')
         self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4')['rejection_sample_method'], 'block')
+        self.assertEqual(spec('--image', 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5')['rejection_sample_method'], 'block')
         for name in ('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261107-r2@sha256:' + '0' * 64,
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261005-r1'):
             self.assertNotIn('rejection_sample_method', spec('--image', name), name)
@@ -1595,6 +1596,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261107-r2',
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261118-r3@sha256:' + '0' * 64,
                      'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:' + '0' * 64,
+                     'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:' + '0' * 64,
                      'paiton-qwen38-local:qwen38-rocm10-vllm029-20261005-rcnext-dev1'):
             self.assertEqual(launcher.tier_bytes_per_token(types.SimpleNamespace(image=name, release='65k')), (24576, 19000), name)
         older = launcher.tier_bytes_per_token(types.SimpleNamespace(image='ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261004-r1', release='65k'))
@@ -1979,6 +1981,26 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.overrides['KV4_SPARSE_ALIGN'] = False
         for options in modes:
             self.assertNotIn('PAITON_PC_SPARSE_ALIGN=1', self.dry_run(*options))
+
+    def test_dflash_no_drop_only_where_measured(self):
+        """r5 resumes follow-up turns without the drafter's tail drop in --mode long-kv4 (text, no host tier); the vision
+        server, the host tier, 524,288 tokens, the fp8 modes and the earlier images keep the drop."""
+        import types
+        self._w3rot()
+        flag = 'PAITON_PC_DFLASH_NO_DROP=1'
+        self.assertTrue(launcher._image_parts(types.SimpleNamespace(image=None, release='65k'))[0]
+                        .endswith(launcher.DFLASH_NO_DROP_IMAGE_SUFFIXES))
+        command = self.dry_run('--mode', 'long-kv4')
+        self.assertIn(flag, command[:command.index('serve')])
+        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights'))
+        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--image',
+                                         'paiton-qwen38-local:qwen38-rocm10-vllm029-20261123-r5'))
+        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--host-cache-gib', '4'),
+                        ('--mode', 'long-512k'), ('--mode', 'long'), ('--mode', '65k'),
+                        ('--mode', 'long-kv4', '--prefix-caching', 'off'),
+                        ('--mode', 'long-kv4', '--image', launcher.PREVIOUS_IMAGES['20261119-r4'])):
+            with self.subTest(options=options):
+                self.assertNotIn(flag, self.dry_run(*options))
 
     def test_mode_with_the_mxfp4_weights(self):
         image = launcher.IMAGES['65k']

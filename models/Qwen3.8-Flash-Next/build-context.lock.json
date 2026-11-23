@@ -5384,7 +5384,7 @@
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/attention/backends/registry.py": "aaf2d00ea01a8d8132c30b78359c1ff60e051f12b97b1ce0c37d0fdffcdfaa03",
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/core/kv_cache_utils.py": "7b99dfda0978c27dc575a772f55589bdcceee5fab55d707646db2430ec9e02da",
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/core/sched/async_scheduler.py": "513093141edbfeb4c1472d7ab69e3250cdeacde0e8365e913e2156579910db3d",
-  "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/core/sched/scheduler.py": "e37d28e9884bb11e6058927836416229f8298c781970409818cc91b308a9f1f0",
+  "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/core/sched/scheduler.py": "bbb9165efe1d3911f0db25772c2eae51695425b82f2c128c984d1f7a93405927",
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/core/single_type_kv_cache_manager.py": "96879195d80f3d09d0c20de32b173c86af7b81c99670433a1b0819919f97c336",
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/engine/core.py": "53dd0cb8a71fc5da5c1331f3d6f9cb04209b986f74392addd7af460d8fe0901c",
   "staging/usr/local/lib/python3.12/dist-packages/paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py": "3ac4f5ce92b7681c776843a35931b3588820040a00eb21fccbe52db62d0ebeb7",

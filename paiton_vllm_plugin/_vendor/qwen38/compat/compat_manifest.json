@@ -150,7 +150,7 @@
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/core/sched/scheduler.py": {
       "overlay": "overlays/vllm/v1/core/sched/scheduler.py",
       "original_sha256": "abca7134821e2fb5cc8572df5c4a0b570ecf702646254327bc786fc452074983",
-      "overlay_sha256": "e37d28e9884bb11e6058927836416229f8298c781970409818cc91b308a9f1f0"
+      "overlay_sha256": "bbb9165efe1d3911f0db25772c2eae51695425b82f2c128c984d1f7a93405927"
     },
     "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/core.py": {
       "overlay": "overlays/vllm/v1/engine/core.py",
