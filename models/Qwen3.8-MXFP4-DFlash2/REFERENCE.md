@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements and advanced setup. Earlier releases are in the [history](HISTORY.md).
 
-- [Release notes of the current image](#release-notes-19-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
+- [Release notes of the current image](#release-notes-23-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
 - [Long context and prefix caching](#long-context-200k-and-220k)
@@ -22,9 +22,39 @@ The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
 select the weight mode explicitly; both use the same launcher and pinned image.
 
+<a id="release-notes-23-november-2026"></a>
+
+### Release notes: 23 November 2026 (image r5, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5` (`{{PIN:R5_DIGEST}}`) is the 19 November
+r4 image with one vLLM scheduler file changed. The native libraries, weights, modes, limits and default settings are
+those of r4. Update this repository to get the launcher that selects it.
+
+- In `--mode long-kv4` the next turn of a conversation resumes closer to the end of the previous prompt. vLLM drops the
+  last 800-token unit from every prefix-cache hit when the server runs a drafter of the EAGLE kind, because such a
+  drafter's cache entry at one position also depends on the next token. The DFlash2 drafter computes each position's
+  entry from the target model's hidden state at that position alone, so it does not need the drop. On r5 the launcher
+  turns it off (`PAITON_PC_DFLASH_NO_DROP=1` in `--dry-run`), and a follow-up turn resumes at the last 800-token
+  boundary of the previous prompt instead of one unit before it.
+- Measured on one R9700 at 300 W with SWE-bench agent conversations replayed turn by turn (the server writes each
+  reply, the recorded tool output follows), in the order r4, r5, r5, r4 with a fresh server each time. In a conversation
+  at about 199K tokens of context, a follow-up turn re-reads 448 tokens of the previous prompt instead of 1,162, and its
+  first token comes after 1.07 and 1.08 s (median of the two r5 servers) instead of 1.59 and 1.56 s. In three shorter
+  conversations (prompts of 1.7K to 16.6K tokens) a turn re-reads 407 tokens instead of 1,154, and all 141 follow-up
+  turns hit the cache instead of 135. Greedy answers from the cache equal a cold read at 6 of 8 points on both images.
+- Draft acceptance was 3.92 tokens per draft against 3.99 on r4. The replies are the server's own and differ between the
+  images after a few turns, so this is not a paired number: with four conversations at once (the 199K one and the three
+  short ones) the two r5 servers gave 3.95 and 4.08, the two r4 servers 3.99 and 3.32. Those four-conversation runs had
+  no errors; on r5 every follow-up turn hit the cache, a turn re-read 377 to 444 tokens instead of 1,053 to 1,237, and
+  the long conversation's median first-token time was 1.70 and 1.49 s against 2.57 and 2.36 s.
+- The switch is on for text requests in `--mode long-kv4` without the RAM or SSD cache tiers. With `--vision`,
+  `--extend-cache` or `--host-cache-gib`, in `--mode long-512k` and in the other modes, r5 runs as r4: those cases were
+  not measured with the switch. In the 65K mode the four greedy chats of the release check gave the same tokens on r4
+  and r5, and `PAITON_NGRAM_CODRAFT=1` arms on r5. Task scores were not rerun for r5.
+
 <a id="release-notes-19-november-2026"></a>
 
-### Release notes: 19 November 2026 (image r4, current)
+### Release notes: 19 November 2026 (image r4)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4` (`sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17`) is the 18 November
 r3 image with two Python files of the n-gram co-drafting mode changed. The native libraries, weights, modes, limits and

@@ -26,7 +26,9 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 `aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). r3 reads prompts faster: a 112 to 523-token prompt gets its first
 token 4 to 17 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in 99 s instead of 103 s. One request decodes
 about 1 % faster. Greedy output is
-the same as r2, token for token ([measured](HISTORY.md#image-r3)). If your 3-bit download is older than 7 November, run
+the same as r2, token for token ([measured](HISTORY.md#image-r3)). Image r5 (23 November) adds one change for agents in
+`--mode long-kv4`: the next turn of a conversation re-reads less of the previous prompt, so at 200K tokens of context
+its first token comes about 0.5 s sooner, after 1.08 s instead of 1.58 s ([release notes](REFERENCE.md#release-notes-23-november-2026)). If your 3-bit download is older than 7 November, run
 `git pull`, then the 3-bit [download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
 
 | 3-bit weights on one R9700 | 16-bit model (datacenter GPU) | 3-bit, this release |
@@ -125,9 +127,9 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **19 November r4** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-19-november-2026)). Earlier releases stay runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **23 November r5** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@{{PIN:R5_DIGEST}}`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-23-november-2026)). If you already have r4, the pull is a 250 kB layer. Earlier releases stay runnable:
 [run an earlier release](HISTORY.md#run-an-earlier-release).
 
 <a id="model-weights-and-existing-downloads"></a>
