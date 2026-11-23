@@ -28,7 +28,7 @@ def _install_output_error_guard(error):
 
     expected = ('self', 'model_runner_output', 'sampler_output',
                 'num_sampled_tokens', 'main_stream', 'copy_stream',
-                'check_ep_fault', 'routed_experts')
+                'check_ep_fault', 'pending_aux_output')
     original_init = AsyncOutput.__init__
     original_get = AsyncOutput.get_output
     if tuple(inspect.signature(original_init).parameters) != expected:
@@ -39,7 +39,7 @@ def _install_output_error_guard(error):
     @functools.wraps(original_init)
     def guarded_init(self, model_runner_output, sampler_output,
                      num_sampled_tokens, main_stream, copy_stream,
-                     check_ep_fault=False, routed_experts=None):
+                     check_ep_fault, pending_aux_output):
         if torch.cuda.is_current_stream_capturing():
             raise RuntimeError('GDN output validation must run outside graph capture')
         self._paiton_gdn_status = torch.empty(1, dtype=torch.int32,
@@ -52,7 +52,7 @@ def _install_output_error_guard(error):
         main_stream.wait_stream(copy_stream)
         original_init(self, model_runner_output, sampler_output,
                       num_sampled_tokens, main_stream, copy_stream,
-                      check_ep_fault, routed_experts)
+                      check_ep_fault, pending_aux_output)
 
     @functools.wraps(original_get)
     def guarded_get(self):

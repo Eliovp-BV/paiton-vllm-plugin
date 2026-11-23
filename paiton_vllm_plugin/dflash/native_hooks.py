@@ -19,8 +19,8 @@ MODEL='vllm.model_executor.models.qwen3_dflash'
 UTILS='vllm.v1.worker.gpu.spec_decode.dflash.utils'
 DISPATCH='radiance_kernels'
 SUFFIX='_paiton_native_plugin_v1'
-HASHES={MODEL:'93f59fb15b5d203637f9bbb197dc2eada71ba0f6775e80ddd1b878a987cf56fb',
-        UTILS:'0cce5666516c86d5b10e86b0ed5d4ae9423906b701c577191dcb1b927e801215',
+HASHES={MODEL:'dbc33566a7ea355a5aafded0333b3e23af430e800e9e0e84ba7a7c99d6d2873b',
+        UTILS:'960680811fd87ae45f5d4bab574b12884ce231110e09d9df8f945ecf4c5ccac6',
         DISPATCH:'7b7fa7047d4922d4fd1750a09beb8dc392978296a8f654a3d7ae05735ece6548'}
 
 def enabled(env):

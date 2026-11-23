@@ -2002,6 +2002,23 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 self.assertNotIn(flag, self.dry_run(*options))
 
+    def test_dflash_no_drop_through_the_speculative_config_on_vllm_032(self):
+        """vLLM 0.32 images get the upstream switch (disable_eagle_block_drop) instead of the overlay's variable, in
+        the same cases as r5."""
+        self._w3rot()
+        image = 'paiton-rocm102-cand:' + launcher.UPSTREAM_NO_DROP_IMAGE_SUFFIXES[-1]
+
+        def spec(*options):
+            command = self.dry_run(*options, '--image', image)
+            self.assertNotIn('PAITON_PC_DFLASH_NO_DROP=1', command)
+            return json.loads(value(command, '--speculative-config'))
+
+        self.assertIs(spec('--mode', 'long-kv4').get('disable_eagle_block_drop'), True)
+        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--host-cache-gib', '4'),
+                        ('--mode', 'long-512k'), ('--mode', 'long-kv4', '--prefix-caching', 'off')):
+            with self.subTest(options=options):
+                self.assertNotIn('disable_eagle_block_drop', spec(*options))
+
     def test_mode_with_the_mxfp4_weights(self):
         image = launcher.IMAGES['65k']
         # 65k: the MXFP4 default, fp8 KV cache

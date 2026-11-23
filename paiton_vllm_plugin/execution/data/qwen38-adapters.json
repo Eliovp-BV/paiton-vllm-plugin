@@ -340,7 +340,7 @@
     },
     "radiance_r4d_attn.py": {
       "size_bytes": 20102,
-      "sha256": "443ddf998ce184c576860ce37a6c0cd47887195d53f847c9d46ac7eacbb4f56b"
+      "sha256": "d80aa0cd29384121c484c62afb24c75ba28ab66735b3cc1f587d3e5b3b321c21"
     },
     "radiance_rmsquant.py": {
       "size_bytes": 2880,
