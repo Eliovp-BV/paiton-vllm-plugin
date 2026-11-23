@@ -849,7 +849,7 @@ class CPUOffloadingWorker(OffloadingWorker):
                 # PAITON: one exact-size hipHostMalloc allocation per tensor (torch's pinned caching allocator rounds
                 # every allocation up to a power of two, ~2x on these sizes, past the GTT limit of small hosts)
                 t0 = time.monotonic()
-                cpu_tensor = _paiton_pinned_zeros(num_cpu_blocks, cpu_page_size_bytes)
+                cpu_tensor = _paiton_pinned_zeros(num_cpu_chunks, cpu_page_size_bytes)
             else:
                 t0 = time.monotonic()
                 cpu_tensor = torch.zeros(
