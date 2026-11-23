@@ -21,7 +21,7 @@ IMAGES = {
     # in --mode long-kv4 (DFLASH_NO_DROP_IMAGE_SUFFIXES); everything else, the native libraries included, is r4's. Block
     # verification of the drafted tokens as on r3 and r4 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images
     # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@{{PIN:R5_DIGEST}}',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {

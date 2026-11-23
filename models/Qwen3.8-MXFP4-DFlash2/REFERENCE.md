@@ -26,7 +26,7 @@ select the weight mode explicitly; both use the same launcher and pinned image.
 
 ### Release notes: 23 November 2026 (image r5, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5` (`{{PIN:R5_DIGEST}}`) is the 19 November
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5` (`sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121`) is the 19 November
 r4 image with one vLLM scheduler file changed. The native libraries, weights, modes, limits and default settings are
 those of r4. Update this repository to get the launcher that selects it.
 
