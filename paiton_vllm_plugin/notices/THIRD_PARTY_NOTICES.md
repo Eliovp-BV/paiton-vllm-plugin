@@ -3,8 +3,7 @@
 ## Native CLI execution packages
 
 The local native CLI retains released external Qwen runtime adapters and
-process-local vLLM overlays. Radiance/libr4d attribution and the maintainer's
-reported author permission remain as recorded in the
+process-local vLLM overlays. Model attribution remains as recorded in the
 [Qwen notices](models/Qwen3.8-MXFP4-DFlash2/THIRD_PARTY_NOTICES.md); no blanket
 license is granted for all third-party components. The native profile uses
 the separately obtained Unsloth NVFP4 checkpoint, not the historical AMD
@@ -25,19 +24,12 @@ portions.
 | --- | --- | --- |
 | AMD Qwen3.8 Qronos checkpoint | `amd/Qwen3.8-27B-Quark-Qronos-INT4-W4A16` | Apache-2.0 |
 | Qwen3.8 base model | `Qwen/Qwen3.8-27B` | Apache-2.0 |
-| AITemplate runtime components | `facebookincubator/AITemplate` | Apache-2.0; Meta Platforms notices |
 | vLLM runtime and paged attention | `vllm-project/vllm` | Apache-2.0; vLLM contributors |
-| Flash Linear Attention-derived GDN stages | `fla-org/flash-linear-attention` | MIT; Copyright 2023-2025 Songlin Yang and Yu Zhang |
-| AITER-derived causal convolution | `ROCm/aiter` | MIT; Advanced Micro Devices, Inc. |
-| Triton-generated host/device code | `ROCm/triton` | MIT; Philippe Tillet, OpenAI, and contributors |
-| Composable Kernel build input | `ROCm/composable_kernel` | MIT; Advanced Micro Devices, Inc. |
 
 Applicable retained headers include copyrights held by Advanced Micro Devices,
-Inc., the vLLM team and contributors, Songlin Yang, Yu Zhang, Philippe Tillet,
-OpenAI, and Meta Platforms.
+Inc. and the vLLM team and contributors.
 
-The full Apache-2.0 license is in [`LICENSE`](LICENSE). Exact retained MIT
-license texts are provided in [`LICENSES/`](LICENSES/).
+The full Apache-2.0 license is in [`LICENSE`](LICENSE).
 
 The compiled `.so` dynamically links ROCm libraries supplied by the runtime
 container, including HIP, rocBLAS, hipBLASLt, hipBLAS, rocRAND, and RCCL.
