@@ -22,13 +22,13 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**Current release: 18 November.** Image r3 with the 7 November 3-bit weights (revision
-`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). r3 reads prompts faster: a 112 to 523-token prompt gets its first
-token 4 to 17 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in 99 s instead of 103 s. One request decodes
-about 1 % faster. Greedy output is
-the same as r2, token for token ([measured](HISTORY.md#image-r3)). Image r5 (23 November) adds one change for agents in
-`--mode long-kv4`: the next turn of a conversation re-reads less of the previous prompt, so at 200K tokens of context
-its first token comes about 0.5 s sooner, after 1.08 s instead of 1.58 s ([release notes](REFERENCE.md#release-notes-23-november-2026)). If your 3-bit download is older than 7 November, run
+**Current release: 23 November.** Image r5 with the 7 November 3-bit weights (revision
+`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). In `--mode long-kv4` the next turn of an agent conversation
+re-reads less of the previous prompt: at 200K tokens of context its first token comes after 1.08 s instead of 1.58 s
+([release notes](REFERENCE.md#release-notes-23-november-2026)). The 18 November image r3 made prompt reading faster: a
+112 to 523-token prompt gets its first token 4 to 17 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in
+99 s instead of 103 s. One request decodes about 1 % faster than on r2, with the same greedy output, token for token
+([measured](HISTORY.md#image-r3)). If your 3-bit download is older than 7 November, run
 `git pull`, then the 3-bit [download](#optional-the-3-bit-weights) again and `sha256sum -c SHA256SUMS`.
 
 | 3-bit weights on one R9700 | 16-bit model (datacenter GPU) | 3-bit, this release |
