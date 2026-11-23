@@ -681,7 +681,7 @@ its opt-in n-gram co-drafting mode is described [above](REFERENCE.md#faster-agen
 The 20 September 65K image (`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2`)
 measured 154.42 tok/s weighted decode, 218.1 tok/s median JSON decode and 421.20 tok/s
 aggregate at concurrency eight: +5.16% weighted decode and +4.37–5.61% large-prefill
-throughput over the 18 September image. Its full tables, including the reference-backend reference
+throughput over the 18 September image. Its full tables, including the reference-backend
 columns, are in [benchmarks/2026-09-20-combined](benchmarks/2026-09-20-combined/README.md).
 
 ## Long coding conversations: prefix caching can remove most repeat-turn waiting
@@ -736,7 +736,7 @@ The comparison sections below retain the measurements from the earlier 8K releas
 ## Earlier release benchmark suites
 
 Paiton delivers **22% higher weighted decode throughput**, **57% more throughput
-at eight concurrent requests**, and **12.5–17.3% faster prefill** than Reference engine +
+at eight concurrent requests**, and **12.5–17.3% faster prefill** than the reference engine +
 DFlash2 on the same Radeon AI PRO R9700. Paiton leads all eight task categories
 and all four concurrency throughput levels in the full 188-request comparison.
 
@@ -750,14 +750,14 @@ DFlash2 support. The official vLLM installation stays in place: a model-specific
 plugin supplies the native implementation. There is no separate reference engine
 or DFlash package to install.
 
-![Stock vLLM O2, Reference engine + DFlash2, and Paiton + DFlash2 throughput and prefill](three-engine-throughput.png)
+![Stock vLLM O2, reference engine + DFlash2, and Paiton + DFlash2 throughput and prefill](three-engine-throughput.png)
 
 The common 54-request matrix includes stock vLLM O2: C8 throughput is
 **33.7 / 175.6 / 328.5 tok/s** for stock / the reference engine / Paiton respectively. Its
 128-token generation cap differs from the longer full preset, reported
 separately below.
 
-![Full-workload comparison against Reference engine + DFlash2](full-confirmation.png)
+![Full-workload comparison against the reference engine + DFlash2](full-confirmation.png)
 
 [Complete three-engine tables, latency, and measurement scope](BENCHMARKS.md).
 The reference engine retains an approximately 10–11 ms TTFT advantage at one and two

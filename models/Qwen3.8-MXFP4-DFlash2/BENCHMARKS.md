@@ -17,7 +17,7 @@ the installed vLLM library.
 
 The full comparison measures **1.22× weighted serial throughput**
 and **1.57× throughput at eight concurrent requests**
-against the recommended Reference engine + DFlash2 configuration on the same R9700.
+against the recommended reference-engine + DFlash2 configuration on the same R9700.
 Prefill is **12.5–17.3% faster** across the three
 tested depths. Median time to first token at eight concurrent requests is
 **97.0% lower**, including queueing.
