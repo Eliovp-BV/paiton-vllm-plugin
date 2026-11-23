@@ -1000,19 +1000,19 @@ def init_mxfp4_linear_kernel(
     platform = current_platform._enum
     possible = list(_POSSIBLE_MXFP4_KERNELS.get(platform, []))
 
-    # --- radiance (patch_quark_mxfp4.py): the gfx1201 W4A8 fp8-WMMA kernel ---
+    # --- paiton (patch_quark_mxfp4.py): the gfx1201 W4A8 fp8-WMMA kernel ---
     # Imported here, not at module scope: this runs in the worker at model load, whereas the
     # module is imported in the parent during config parsing, where initialising HIP would
     # force the engine core to spawn instead of fork. It declines via is_supported() unless
-    # RADIANCE_MXFP4_W4A8=1 on gfx12x, so the list is unchanged everywhere else.
+    # PAITON_RT_MXFP4_W4A8=1 on gfx12x, so the list is unchanged everywhere else.
     try:
-        import radiance_mxfp4 as _radiance_mxfp4
+        import paiton_mxfp4 as _paiton_mxfp4
 
-        _radiance_cls = _radiance_mxfp4.kernel_class()
-        if _radiance_cls is not None:
-            possible.insert(0, _radiance_cls)
-    except Exception as _radiance_exc:  # never block model load on our own kernel
-        logger.warning_once("[radiance] MXFP4 W4A8 kernel unavailable: %r", _radiance_exc)
+        _paiton_cls = _paiton_mxfp4.kernel_class()
+        if _paiton_cls is not None:
+            possible.insert(0, _paiton_cls)
+    except Exception as _paiton_exc:  # never block model load on our own kernel
+        logger.warning_once("[paiton] MXFP4 W4A8 kernel unavailable: %r", _paiton_exc)
 
     # Apply --linear-backend filtering when set.
     possible = _resolve_backend_kernels(

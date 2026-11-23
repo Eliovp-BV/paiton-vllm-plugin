@@ -491,10 +491,10 @@ def build_attn_metadata(
         seq_lens_cpu_upper_bound = seq_lens_cpu_upper_bound[:num_reqs]
 
     attn_metadata: dict[str, Any] = {}
-    # radiance (patch_gdn_shared_build.py): scoped to this call, so no cross-step identity
+    # paiton (patch_gdn_shared_build.py): scoped to this call, so no cross-step identity
     # keying is needed -- every group in the loop below sees the same step.
     _rad_gdn_shared: dict[str, Any] | None = (
-        {} if __import__("os").environ.get("RADIANCE_GDN_SHARED_BUILD", "1") == "1"
+        {} if __import__("os").environ.get("PAITON_RT_GDN_SHARED_BUILD", "1") == "1"
         else None
     )
     token_to_req_indices: torch.Tensor | None = None
@@ -576,9 +576,9 @@ def build_attn_metadata(
                     if model_specific_attn_metadata is not None
                     else {}
                 )
-                # radiance (patch_gdn_shared_build.py): GDN builders share one build.
-                if hasattr(attn_metadata_builder, "_radiance_shared_build"):
-                    attn_metadata_extra_kwargs["_radiance_shared"] = _rad_gdn_shared
+                # paiton (patch_gdn_shared_build.py): GDN builders share one build.
+                if hasattr(attn_metadata_builder, "_paiton_shared_build"):
+                    attn_metadata_extra_kwargs["_paiton_shared"] = _rad_gdn_shared
                 metadata = attn_group.build_metadata(
                     common_attn_metadata, ubatch_idx, **attn_metadata_extra_kwargs
                 )

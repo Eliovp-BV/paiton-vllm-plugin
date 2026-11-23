@@ -10,7 +10,7 @@ import threading
 import time
 from paiton_prefill_tall_policy import Policy, FLAG
 
-TARGET='radiance_mxfp4_fp8'
+TARGET='paiton_mxfp4_fp8'
 ROOT=Path('/opt/paiton/runtime/prefill-tall')
 LIB=AUDIT=POLICY=None
 CALLS=FALLBACKS=0

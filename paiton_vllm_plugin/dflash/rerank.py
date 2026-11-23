@@ -16,8 +16,8 @@ import types
 
 FLAG='PAITON_DFLASH_RERANK'
 BLOCK_FLAG='PAITON_DFLASH_BLOCK_CANDIDATES'
-TARGET='radiance_drafthead'
-SOURCE_SHA='46a56931148a13b1cb5e8c8816f0309821eab3c5e5df93b712a7384552bf36d2'
+TARGET='paiton_drafthead'
+SOURCE_SHA='56176874e2cc288836bada2ae06ed096073c6a31e2557b0db59501a727fd489f'
 DRAFT_CLASS=('vllm.model_executor.models.qwen3_dflash2','DFlash2Qwen3ForCausalLM')
 
 
@@ -25,7 +25,7 @@ def configuration(env):
     value=env.get(FLAG,'0')
     if value in ('','0'):return None
     if value not in ('128','256'):raise ValueError(FLAG+' supports only 0, 128 or 256 in this scoped round')
-    if env.get('RADIANCE_DRAFT_RERANK')!='80' or env.get('RADIANCE_FAST_DRAFT')!='1':
+    if env.get('PAITON_RT_DRAFT_RERANK')!='80' or env.get('PAITON_RT_FAST_DRAFT')!='1':
         raise ValueError('Requires originalR80 fast-head release configuration')
     return int(value)
 
@@ -63,9 +63,9 @@ def bind(module,pool=128,block_candidates=8):
     def checked(self,lm_head,hidden_states,embedding_bias=None):
         if module.RERANK!=80 or module.KCAND!=8 or module.BITS!=2 or not module.FAST or module._apply_head_int2 is not original_head:
             raise RuntimeError('Shared target-head policy changed')
-        if getattr(self,'_paiton_draft_rerank',None)!=pool or getattr(self,'_paiton_draft_block_candidates',None)!=block_candidates or not getattr(self,'_radiance_topk_only',False):
+        if getattr(self,'_paiton_draft_rerank',None)!=pool or getattr(self,'_paiton_draft_block_candidates',None)!=block_candidates or not getattr(self,'_paiton_topk_only',False):
             raise RuntimeError('Scoped rerank called on an unmarked logits processor')
-        if getattr(self,'_radiance_n',None)!=248320 or hidden_states.shape[-1]!=5120:
+        if getattr(self,'_paiton_n',None)!=248320 or hidden_states.shape[-1]!=5120:
             raise RuntimeError('Unexpected Qwen draft head shape')
         if not getattr(self,'_paiton_scoped_rerank_reported',False):
             print('[PAITON_DFLASH_RERANK_EXECUTED] '+json.dumps({'draft_rerank':pool,'target_rerank':module.RERANK,
@@ -77,8 +77,8 @@ def bind(module,pool=128,block_candidates=8):
     @functools.wraps(quantize)
     def quantize_scoped(lp,lm_head):
         result=quantize(lp,lm_head)
-        if getattr(lp,'_paiton_draft_rerank',None)==pool and hasattr(lp,'_radiance_wq'):
-            if not getattr(lp,'_radiance_topk_only',False) or getattr(lp,'_radiance_n',None)!=248320:
+        if getattr(lp,'_paiton_draft_rerank',None)==pool and hasattr(lp,'_paiton_wq'):
+            if not getattr(lp,'_paiton_topk_only',False) or getattr(lp,'_paiton_n',None)!=248320:
                 raise RuntimeError('Unexpected marked draft head after quantization')
             lp._apply_head=types.MethodType(checked,lp)
         return result

@@ -386,9 +386,9 @@ class DFlash2Qwen3Model(DFlashQwen3Model):
                 hidden_size=self.config.hidden_size,
                 vocab_size=self.config.vocab_size,
                 rank=int(draft_config["selector_rank"]),
-                # radiance (patch_dflash_selector_topk.py): inference-time override; the
+                # paiton (patch_dflash_selector_topk.py): inference-time override; the
                 # selector is a trained scorer, top_k only truncates its ranking.
-                top_k=(int(__import__("os").environ.get("RADIANCE_DFLASH_SELECTOR_TOPK") or 0)
+                top_k=(int(__import__("os").environ.get("PAITON_RT_DFLASH_SELECTOR_TOPK") or 0)
                        or int(draft_config["selector_top_k"])),
                 params_dtype=vllm_config.model_config.dtype,
                 prefix=maybe_prefix(prefix, "candidate_selector"),

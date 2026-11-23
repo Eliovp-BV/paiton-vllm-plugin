@@ -212,7 +212,7 @@ def compute_splitk_params(config: dict, K: int) -> dict:
 
     config["SPLITK_BLOCK_SIZE"] = triton.cdiv(K, config["NUM_KSPLIT"])
 
-    # --- radiance fix (patch_radiance_dispatch.py): scale-alignment guard ---
+    # --- paiton fix (patch_paiton_dispatch.py): scale-alignment guard ---
     # AITER's gfx1201 config picks NUM_KSPLIT=8 at K=8704 -> SPLITK_BLOCK_SIZE=1088,
     # not a multiple of the 128 block-FP8 scale block -> GPU page fault. Shrink
     # NUM_KSPLIT until each K-split is 128-aligned (drops 8->4 for K=8704).

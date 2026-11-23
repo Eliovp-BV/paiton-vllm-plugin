@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GPU kernels for the RADIANCE draft controller (Triton, gfx1201).
+"""GPU kernels for the PAITON draft controller (Triton, gfx1201).
 
 Two device kernels feed the per-slot decision that gates the MTP draft loop, keeping its inputs off the
 full-vocab softmax path:

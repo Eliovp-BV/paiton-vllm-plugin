@@ -11,19 +11,19 @@ is preserved unchanged; only the per-segment dense attention is swapped. Only bf
 is handled. Anything else (GQA, other head sizes, fp16, batched >1) falls through to the original
 SDPA path, as does any build where the kernel library is absent or switched off.
 
-Active on gfx12x with RADIANCE_USE_R4D on.
+Active on gfx12x with PAITON_RT_USE_R4D on.
 """
 import os
 import sys
 
 import torch
 
-# RADIANCE_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-_USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
+_USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
 _HEAD_DIM = 72
 
-# RTLD_DEEPBIND for the same reason as radiance_r4d_attn: tilelang (through aiter) puts a
+# RTLD_DEEPBIND for the same reason as paiton_r4d_attn: tilelang (through aiter) puts a
 # libhip_stub.so into the global symbol scope whose hipLaunchKernel throws, and every HIP symbol
 # resolved globally afterwards hits the stub instead of the real runtime.
 _dlflags = sys.getdlopenflags()
@@ -121,7 +121,7 @@ def _r4d_bhsd(q, k, v, scale):
     return torch.stack(outs, 0)   # [B, S, H, D]
 
 
-def radiance_vit_flash_attn(module, query, key, value, attention_mask,
+def paiton_vit_flash_attn(module, query, key, value, attention_mask,
                             dropout=0.0, scaling=None, softcap=None, **kwargs):
     """A transformers ALL_ATTENTION_FUNCTIONS entry. Handles the dense, non-causal, head_dim-72 MHA
     case with the flash kernel; everything else (a real attention_mask for packed/windowed images,
@@ -159,24 +159,24 @@ def install_gemma_vision():
         from transformers.models.gemma4 import modeling_gemma4 as G
     except Exception:
         return
-    if getattr(G, "_radiance_vit_installed", False):
+    if getattr(G, "_paiton_vit_installed", False):
         return
     try:
-        G.ALL_ATTENTION_FUNCTIONS.register("radiance_vit_flash", radiance_vit_flash_attn)
+        G.ALL_ATTENTION_FUNCTIONS.register("paiton_vit_flash", paiton_vit_flash_attn)
     except Exception:
-        G.ALL_ATTENTION_FUNCTIONS["radiance_vit_flash"] = radiance_vit_flash_attn
+        G.ALL_ATTENTION_FUNCTIONS["paiton_vit_flash"] = paiton_vit_flash_attn
     _orig_forward = G.Gemma4VisionAttention.forward
 
     def _forward(self, *a, **k):
         # flip only the head-72 tower; leave any other head size on its stock implementation
         if getattr(self, "head_dim", None) == _HEAD_DIM \
-                and self.config._attn_implementation != "radiance_vit_flash":
-            self.config._attn_implementation = "radiance_vit_flash"
+                and self.config._attn_implementation != "paiton_vit_flash":
+            self.config._attn_implementation = "paiton_vit_flash"
         return _orig_forward(self, *a, **k)
 
     G.Gemma4VisionAttention.forward = _forward
-    G._radiance_vit_installed = True
-    sys.stderr.write("[radiance.vit] Gemma4 vision attention installed (head_dim 72)\n")
+    G._paiton_vit_installed = True
+    sys.stderr.write("[paiton.vit] Gemma4 vision attention installed (head_dim 72)\n")
     sys.stderr.flush()
 
 
@@ -195,15 +195,15 @@ def install():
         return
     try:
         import vllm.v1.attention.ops.vit_attn_wrappers as W
-        if not getattr(W, "_radiance_vit_installed", False):
+        if not getattr(W, "_paiton_vit_installed", False):
             _orig_apply_sdpa = W.apply_sdpa
             W.apply_sdpa = apply_flash
-            W._radiance_vit_installed = True
-            sys.stderr.write("[radiance.vit] head_dim-72 attention installed\n")
+            W._paiton_vit_installed = True
+            sys.stderr.write("[paiton.vit] head_dim-72 attention installed\n")
             sys.stderr.flush()
     except Exception:
         pass
     try:
         install_gemma_vision()
     except Exception as e:
-        sys.stderr.write(f"[radiance.vit] Gemma vision install skipped: {e!r}\n")
+        sys.stderr.write(f"[paiton.vit] Gemma vision install skipped: {e!r}\n")

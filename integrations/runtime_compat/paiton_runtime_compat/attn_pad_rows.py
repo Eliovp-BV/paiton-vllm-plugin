@@ -124,7 +124,7 @@ def install(model):
         _log(f'off ({ENV}=0)')
         return 0
     try:
-        from radiance_r4d_attn import R4DAttentionImpl
+        from paiton_r4d_attn import R4DAttentionImpl
     except ImportError:
         _log('no R4D attention backend; nothing wrapped')
         return 0

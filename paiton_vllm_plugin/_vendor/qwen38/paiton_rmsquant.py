@@ -1,4 +1,4 @@
-"""Radiance-native RMSNorm + per-token fp8 quant, for the vLLM fusion pass on gfx1201.
+"""Paiton-native RMSNorm + per-token fp8 quant, for the vLLM fusion pass on gfx1201.
 
 WHY THIS EXISTS. vLLM already carries the right pattern -- `rms_norm(x,w,eps)` followed by a
 per-token dynamic fp8 quant, rewritten into one fused op (rocm_aiter_fusion.py,
@@ -52,4 +52,4 @@ def fused_add_rmsnorm_quant(x, residual, weight, epsilon, quant_dtype=FP8):
     return [q, s, sc]
 
 
-ENABLED = os.environ.get("RADIANCE_RMS_QUANT_FUSION", "0") == "1"
+ENABLED = os.environ.get("PAITON_RT_RMS_QUANT_FUSION", "0") == "1"

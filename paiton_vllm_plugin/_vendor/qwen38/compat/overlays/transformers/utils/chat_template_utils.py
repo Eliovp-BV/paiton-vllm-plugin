@@ -496,7 +496,7 @@ def _cached_compile_jinja_template(chat_template):
         trim_blocks=True, lstrip_blocks=True, extensions=[AssistantTracker, jinja2.ext.loopcontrols]
     )
     def from_json(value):
-        # radiance: expose a JSON parser to chat templates. Community 'fixed'
+        # paiton: expose a JSON parser to chat templates. Community 'fixed'
         # tool templates (e.g. Qwen3.6-enhanced) parse a tool_call.arguments
         # JSON *string* back into a mapping to re-render <parameter=..> blocks
         # in multi-turn history; the sandbox forbids json.loads directly. NOOP

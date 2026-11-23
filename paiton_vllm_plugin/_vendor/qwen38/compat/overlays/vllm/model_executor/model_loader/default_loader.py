@@ -635,17 +635,17 @@ class DefaultModelLoader(BaseModelLoader):
         self._paiton_skip = _paiton_pre_read_skip(model_config)
         self._paiton_skipped = []
 
-        # --- radiance (patch_tp3_pad.py): pad checkpoint tensors with dummy heads before the
+        # --- paiton (patch_tp3_pad.py): pad checkpoint tensors with dummy heads before the
         # sharding weight loaders see them. Returns the iterator untouched unless this model's
-        # config was padded (RADIANCE_TP_PAD).
+        # config was padded (PAITON_RT_TP_PAD).
         _weights = self.get_all_weights(model_config, model)
         try:
-            import radiance_tp3pad as _radiance_tp3pad
+            import paiton_tp3pad as _paiton_tp3pad
         except ImportError:
-            if os.environ.get("RADIANCE_TP_PAD", "").strip() not in ("", "0"):
+            if os.environ.get("PAITON_RT_TP_PAD", "").strip() not in ("", "0"):
                 raise
         else:
-            _weights = _radiance_tp3pad.pad_weights(_weights, model_config)
+            _weights = _paiton_tp3pad.pad_weights(_weights, model_config)
         loaded_weights = model.load_weights(_weights)
         if self._paiton_skipped:
             if loaded_weights is None:

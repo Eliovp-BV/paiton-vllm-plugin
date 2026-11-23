@@ -48,9 +48,9 @@ class AsyncScheduler(Scheduler):
             # Add placeholders for the new draft/spec tokens.
             # We will update the actual spec token ids in the worker process.
             request.spec_token_ids = self._spec_token_placeholders
-            # RADIANCE (patch_async_dynwidth.py): dynamic verify-width cap under async scheduling.
+            # PAITON (patch_async_dynwidth.py): dynamic verify-width cap under async scheduling.
             # The placeholder list is shared and read-only -- copy before the cap trims it.
-            _rad_cap = getattr(self, "_radiance_cap_spec_width", None)
+            _rad_cap = getattr(self, "_paiton_cap_spec_width", None)
             if _rad_cap is not None and request.spec_token_ids:
                 request.spec_token_ids = list(self._spec_token_placeholders)
                 _rad_cap(request)

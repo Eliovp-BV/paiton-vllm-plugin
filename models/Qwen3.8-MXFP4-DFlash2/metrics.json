@@ -202,10 +202,10 @@
         }
       },
       {
-        "run": "radiance-dflash2-final-bounded-493",
-        "label": "Radiance + DFlash2",
+        "run": "refengine-dflash2-final-bounded-493",
+        "label": "Reference engine + DFlash2",
         "status": "PASS",
-        "image": "docker.io/magiccodingman/vllm-radiance@sha256:83a9dc02a8f8e75aabe81366d36ebaa2e35fcbe181cacf8e8e0a4cef4ebccbcc",
+        "image": "Reference-engine image sha256:83a9dc02a8f8e75aabe81366d36ebaa2e35fcbe181cacf8e8e0a4cef4ebccbcc",
         "cache_budget_bytes": 5368709120,
         "cache_capacity_estimate": {
           "tokens": 25746,
@@ -600,10 +600,10 @@
     ],
     "full188": [
       {
-        "run": "radiance-dflash2-final-full-495",
-        "label": "Radiance + DFlash2",
+        "run": "refengine-dflash2-final-full-495",
+        "label": "Reference engine + DFlash2",
         "status": "PASS",
-        "image": "docker.io/magiccodingman/vllm-radiance@sha256:83a9dc02a8f8e75aabe81366d36ebaa2e35fcbe181cacf8e8e0a4cef4ebccbcc",
+        "image": "Reference-engine image sha256:83a9dc02a8f8e75aabe81366d36ebaa2e35fcbe181cacf8e8e0a4cef4ebccbcc",
         "cache_budget_bytes": 5368709120,
         "cache_capacity_estimate": {
           "tokens": 25746,

@@ -20,7 +20,7 @@ class Test(unittest.TestCase):
             f = seed / kind / name; f.parent.mkdir(parents=True); f.write_text(kind)
         self.env = dict(os.environ)
         for k in list(os.environ):
-            if k.startswith(('PAITON_RUNTIME_COMPAT_CACHE', 'RADIANCE_', 'PAITON_COMPILE_CACHE', 'TRITON_CACHE_DIR', 'TORCHINDUCTOR_CACHE_DIR', 'VLLM_CACHE_ROOT', 'AMD_COMGR')):
+            if k.startswith(('PAITON_RUNTIME_COMPAT_CACHE', 'PAITON_RT_', 'PAITON_COMPILE_CACHE', 'TRITON_CACHE_DIR', 'TORCHINDUCTOR_CACHE_DIR', 'VLLM_CACHE_ROOT', 'AMD_COMGR')):
                 del os.environ[k]
         os.environ['XDG_CACHE_HOME'] = str(self.tmp / 'cache'); os.environ['PAITON_CACHE_SEED'] = str(seed)
 

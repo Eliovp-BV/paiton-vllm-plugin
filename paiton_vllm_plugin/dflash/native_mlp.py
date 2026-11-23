@@ -16,7 +16,7 @@ def native_forward(self,x):
     # Eager BF16 act/quant is a distinct contract; preserve it outside compilation.
     supported=(torch.compiler.is_compiling()
         and x.ndim==2 and x.shape[1]==5120 and x.dtype==torch.bfloat16 and x.is_contiguous()
-        and getattr(self.down_proj,'_radiance_preshuffled',None)==(5120,17408)
+        and getattr(self.down_proj,'_paiton_preshuffled',None)==(5120,17408)
         and self.down_proj.weight.dtype==torch.float8_e4m3fn
         and self.down_proj.weight_scale_inv.dtype==torch.float32
         and self.down_proj.weight_scale_inv.is_contiguous()
@@ -25,7 +25,7 @@ def native_forward(self,x):
     if not supported:return self._paiton_original_forward(x)
     gate,_=self.gate_up_proj(x)
     q,scales=native_producer(gate)
-    return torch.ops.radiance.preshuffle_gemm(q,self.down_proj.weight,scales,
+    return torch.ops.paiton.preshuffle_gemm(q,self.down_proj.weight,scales,
         self.down_proj.weight_scale_inv,5120,17408)
 
 def configure_mlp(mlp,config):

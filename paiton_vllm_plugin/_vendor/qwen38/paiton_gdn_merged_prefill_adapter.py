@@ -10,8 +10,8 @@ import threading
 import time
 from paiton_gdn_merged_prefill_policy import Policy, FLAG
 
-TARGET='radiance_mxfp4_fp8'
-ATTENTION_TARGET='radiance_r4d_attn'
+TARGET='paiton_mxfp4_fp8'
+ATTENTION_TARGET='paiton_r4d_attn'
 ROOT=Path('/opt/paiton/runtime/gdn-merged-prefill')
 LIB=AUDIT=POLICY=None
 CALLS=FALLBACKS=0

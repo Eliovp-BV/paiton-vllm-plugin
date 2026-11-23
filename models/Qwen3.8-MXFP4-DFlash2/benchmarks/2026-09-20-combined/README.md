@@ -2,7 +2,7 @@
 
 R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC off; thinking off. Temperature 0.7, top-p 0.95, top-k 20, seed 42. Each arm uses a fresh process and the same fixed warmup.
 
-| Category | GGZ published update p50 ms | New Paiton update p50 ms | GGZ published tok/s | Previous post Paiton tok/s | Fresh release control tok/s | New package tok/s |
+| Category | Reference-backend published update p50 ms | New Paiton update p50 ms | Reference-backend published tok/s | Previous post Paiton tok/s | Fresh release control tok/s | New package tok/s |
 |---|---:|---:|---:|---:|---:|---:|
 | chat | 42.3 | 33.2 | 67.1 | 123.6 | 123.2 | 121.3 |
 | code | 42.5 | 33.4 | 120.5 | 169.1 | 168.7 | 180.6 |
@@ -15,7 +15,7 @@ R9700, 300 W; vLLM 0.29 / ROCm 10; 65,536 context; maximum eight sequences; APC 
 
 Weighted decode: **146.85 → 154.42 tok/s (+5.16%)**.
 
-| Concurrent requests | GGZ published | Historical GGZ local | Previous post Paiton | Fresh release control | New package |
+| Concurrent requests | Reference-backend published | Historical reference-backend local | Previous post Paiton | Fresh release control | New package |
 |---:|---:|---:|---:|---:|---:|
 | 1 | 120 | 110.20 | 115.96 | 115.43 | 122.62 |
 | 2 | 215 | 193.01 | 202.85 | 200.55 | 207.18 |
@@ -24,7 +24,7 @@ Weighted decode: **146.85 → 154.42 tok/s (+5.16%)**.
 
 Concurrency values are aggregate generated tokens per second over each complete 48-request workload.
 
-| Nominal prefill depth | GGZ published input tok/s | Previous post Paiton | Fresh release control | New package |
+| Nominal prefill depth | Reference-backend published input tok/s | Previous post Paiton | Fresh release control | New package |
 |---:|---:|---:|---:|---:|
 | 2,000 | 3,552 | 3,510 | 3501 | 3501 |
 | 8,000 | 3,536 | 3,532 | 3535 | 3692 |
@@ -35,7 +35,7 @@ Concurrency values are aggregate generated tokens per second over each complete 
 Update p50 is the median streamed-update gap, not per-token latency or TTFT.
 Sampled output content and accepted-token work can differ; these are serving-throughput measurements, not identical-output timing.
 Nominal prefill depths correspond to median actual prompt lengths 1516.5, 5894.5, 11802, 23549.5 and 47016.5.
-GGZ comparison values are historical references from the previous post; GGZ was not rerun.
+Reference-backend comparison values are historical references from the previous post; the reference backend was not rerun.
 
 Both arms: 290/290 successful benchmark requests. Candidate matches all 12/12 greedy controls before timing. Each arm repeats 12/12 greedy outputs after the benchmark. No unhandled serving errors.
 

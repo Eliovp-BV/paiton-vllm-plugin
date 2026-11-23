@@ -10,12 +10,12 @@ rms+quant fusion matched zero of our sites.
 
 HOW. Slice the row dimension: slice s's GEMM runs on the compute stream, and as soon as it is
 done its all-reduce runs on a dedicated comm stream while slice s+1's GEMM computes. The whole
-pipeline lives inside ONE custom op (radiance::mxfp4_linear_ar), so dynamo sees a single opaque
+pipeline lives inside ONE custom op (paiton::mxfp4_linear_ar), so dynamo sees a single opaque
 node -- streams, events and the M-dependent branch below are all runtime-internal. That branch
 placement is load-bearing: a shape branch written in apply_weights splits the compile graph at
 every linear (measured ~30% of decode when the M dispatch lived there).
 
-  M >= RADIANCE_AR_OVERLAP_MIN_M : quantize once, run SLICES GEMM slices via mxfp4_linear_pq
+  M >= PAITON_RT_AR_OVERLAP_MIN_M : quantize once, run SLICES GEMM slices via mxfp4_linear_pq
                                    (row-slicing per-token quant and the GEMM is EXACT -- both are
                                    row-independent), pipeline each slice's AR on the comm stream.
   M below the threshold          : the stock unsliced path, all-reduce included, with no stream
@@ -52,16 +52,16 @@ import sys
 
 import torch
 
-ENABLED = os.environ.get("RADIANCE_AR_OVERLAP", "0") == "1"
-MIN_M = int(os.environ.get("RADIANCE_AR_OVERLAP_MIN_M", "2048"))
-SLICES = int(os.environ.get("RADIANCE_AR_OVERLAP_SLICES", "4"))
+ENABLED = os.environ.get("PAITON_RT_AR_OVERLAP", "0") == "1"
+MIN_M = int(os.environ.get("PAITON_RT_AR_OVERLAP_MIN_M", "2048"))
+SLICES = int(os.environ.get("PAITON_RT_AR_OVERLAP_SLICES", "4"))
 
 _comm_stream = None
 _bufs = {"x8": None, "y": None, "xs": None}
 
 
 def _log(msg):
-    sys.stderr.write(f"[radiance.aroverlap] {msg}\n")
+    sys.stderr.write(f"[paiton.aroverlap] {msg}\n")
     sys.stderr.flush()
 
 
@@ -72,7 +72,7 @@ def _grow(name, numel, dtype, device):
     return t
 
 
-@torch.library.custom_op("radiance::mxfp4_linear_ar", mutates_args=())
+@torch.library.custom_op("paiton::mxfp4_linear_ar", mutates_args=())
 def mxfp4_linear_ar(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tensor,
                     weight_ref: torch.Tensor) -> torch.Tensor:
     from vllm.distributed import tensor_model_parallel_all_reduce as _ar
@@ -81,7 +81,7 @@ def mxfp4_linear_ar(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.T
     if M < MIN_M:
         # Decode band: stock op (its own quant inside), then the reduction the layer no longer
         # does. No streams, no events, no persistent buffers -- CUDA-graph-capture safe.
-        return _ar(torch.ops.radiance.mxfp4_linear(x, weight, weight_scale, weight_ref))
+        return _ar(torch.ops.paiton.mxfp4_linear(x, weight, weight_scale, weight_ref))
 
     # Sliced pipeline. ALLOCATION DISCIPLINE IS THE WHOLE DESIGN: the first version allocated the
     # GEMM outputs and AR results under the comm stream, and record_stream's deferred frees piled
@@ -91,7 +91,7 @@ def mxfp4_linear_ar(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.T
     # everything allocated per call (scale, out, the AR results) lives on the MAIN stream with a
     # normal lifetime. Roles are swapped accordingly: the COMM stream runs the GEMM slices ahead
     # while MAIN alternates the all-reduces -- same overlap, no allocator churn.
-    import radiance_mxfp4 as _rm
+    import paiton_mxfp4 as _rm
     from vllm import _custom_ops as _ops
 
     global _comm_stream
@@ -150,8 +150,8 @@ def install(model) -> None:
     for m in model.modules():
         if not isinstance(m, RowParallelLinear):
             continue
-        if not (m.reduce_results and getattr(m, "radiance_w4a8_ok", False)
-                and getattr(m, "radiance_wref", None) is not None
+        if not (m.reduce_results and getattr(m, "paiton_w4a8_ok", False)
+                and getattr(m, "paiton_wref", None) is not None
                 and getattr(m, "bias", None) is None):
             skipped += 1
             continue

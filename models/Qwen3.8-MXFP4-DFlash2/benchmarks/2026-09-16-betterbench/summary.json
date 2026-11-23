@@ -30,7 +30,7 @@
     ]
   },
   {
-    "name": "ggz-current-quick",
+    "name": "refb-current-quick",
     "results_sha256": "3cec86a1a00668260dffc70b179aad760a8e126d0f8c384fc9a435b821a52e20",
     "weighted_decode_tps": 66.09791400076367,
     "weighted_end_to_end_tps": 62.196586695150366,
@@ -60,7 +60,7 @@
     ]
   },
   {
-    "name": "ggz-current-hipmatched-quick",
+    "name": "refb-current-hipmatched-quick",
     "results_sha256": "cc2d18d81ab1ed369794e18f019661c7514aa6642f5dee8e3a09ade151c9bc04",
     "weighted_decode_tps": 83.92608940340708,
     "weighted_end_to_end_tps": 78.95319764136045,

@@ -1861,7 +1861,7 @@ def _get_dynamo_config_for_logging() -> str | None:
         }
 
     config_dict = clean_for_json(config.get_config_copy())
-    # radiance: a function or other non-JSON value in the config must not take down the
+    # paiton: a function or other non-JSON value in the config must not take down the
     # telemetry path; render it as text instead of raising.
     return json.dumps(config_dict, sort_keys=True, default=repr)
 
@@ -1887,7 +1887,7 @@ def _compiler_config_for_logging() -> str | None:
         return "Compiler Config cannot be pickled"
 
     config_dict = clean_for_json(compiler_config_copy)
-    # radiance: a function or other non-JSON value in the config must not take down the
+    # paiton: a function or other non-JSON value in the config must not take down the
     # telemetry path; render it as text instead of raising.
     return json.dumps(config_dict, sort_keys=True, default=repr)
 

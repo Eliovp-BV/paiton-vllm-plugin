@@ -192,8 +192,8 @@ class DFlash2Speculator(DFlashSpeculator):
     def __init__(self, vllm_config: VllmConfig, device: torch.device):
         super().__init__(vllm_config, device)
         draft_config = self.draft_model_config.hf_config.dflash_config
-        # radiance (patch_dflash_selector_topk.py): must match the model-side override.
-        self.top_k = int(__import__("os").environ.get("RADIANCE_DFLASH_SELECTOR_TOPK") or 0) or int(
+        # paiton (patch_dflash_selector_topk.py): must match the model-side override.
+        self.top_k = int(__import__("os").environ.get("PAITON_RT_DFLASH_SELECTOR_TOPK") or 0) or int(
             draft_config[self._candidate_top_k_key]
         )
         self.candidate_sampler = CandidateSampler(

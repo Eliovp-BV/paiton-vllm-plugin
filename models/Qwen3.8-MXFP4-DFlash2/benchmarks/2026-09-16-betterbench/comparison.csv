@@ -1,4 +1,4 @@
-section,name,metric,paiton,ggz,unit,paiton_change_pct,higher_is_better,observed
+section,name,metric,paiton,refb,unit,paiton_change_pct,higher_is_better,observed
 summary,weighted serial,decode,98.56778919905807,83.92608940340708,tok/s,17.445945473847612,True,Paiton higher performance
 category,chat,decode,76.43755654999333,56.520099483953544,tok/s,35.23960015621432,True,Paiton higher performance
 category,chat,TTFT,102.19098400557414,113.82164899259806,ms,-10.218324097360664,False,Paiton higher performance

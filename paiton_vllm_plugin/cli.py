@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
             env = dict(os.environ)
             # Help is never a request to activate an inherited Paiton profile.
             for k in list(env):
-                if k.startswith(("PAITON_", "RADIANCE_", "R4D_", "_PAITON_")):
+                if k.startswith(("PAITON_", "PAITON_RT_", "R4D_", "_PAITON_")):
                     env.pop(k)
             for k in ("VLLM_USE_PAITON_PLATFORM", "VLLM_PAITON_VANILLA_ROCM_PLATFORM"):
                 env.pop(k, None)

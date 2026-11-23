@@ -277,10 +277,10 @@ def stream(to_stream: torch.cuda.Stream, from_stream: torch.cuda.Stream):
         torch.cuda.set_stream(from_stream)
 
 
-# ---- RADIANCE step trace (patch_step_trace.py) ----------------------------------------------
+# ---- PAITON step trace (patch_step_trace.py) ----------------------------------------------
 import os as _rt_os, time as _rt_time
 _RT_OUT = {"wait": [], "iv": [], "last": None}
-if int(_rt_os.environ.get("RADIANCE_STEP_TRACE", "0") or 0) > 0:
+if int(_rt_os.environ.get("PAITON_RT_STEP_TRACE", "0") or 0) > 0:
     _rt_orig_get_output = AsyncOutput.get_output
     _rt_orig_ao_init = AsyncOutput.__init__
 

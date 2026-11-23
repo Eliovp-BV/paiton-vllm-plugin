@@ -228,7 +228,7 @@ class Qwen3Parser(ParserEngine):
         **kwargs,
     ) -> None:
         chat_kwargs = kwargs.get("chat_template_kwargs", {}) or {}
-        # [radiance] agree with the template about thinking, not just enable_thinking.
+        # [paiton] agree with the template about thinking, not just enable_thinking.
         # The froggeric template also pre-closes </think> in the PROMPT for
         # reasoning_effort in {none, off} and for auto_disable_thinking_with_tools when
         # tools are present. This parser only sees the OUTPUT, so a pre-closed block
@@ -236,14 +236,14 @@ class Qwen3Parser(ParserEngine):
         # comes back null and the answer hides in `reasoning`. Decide from the same
         # kwargs the template read; sniffing the output cannot tell "thinking was off"
         # from "truncated mid-thought", and the latter must stay reasoning.
-        _radiance_effort = chat_kwargs.get("reasoning_effort")
-        _radiance_effort = (
-            str(_radiance_effort).strip().lower()
-            if _radiance_effort is not None
+        _paiton_effort = chat_kwargs.get("reasoning_effort")
+        _paiton_effort = (
+            str(_paiton_effort).strip().lower()
+            if _paiton_effort is not None
             else "medium"
         )
         self.thinking_enabled = bool(chat_kwargs.get("enable_thinking", True))
-        if _radiance_effort in ("none", "off"):
+        if _paiton_effort in ("none", "off"):
             self.thinking_enabled = False
         if chat_kwargs.get("auto_disable_thinking_with_tools") and tools:
             self.thinking_enabled = False

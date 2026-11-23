@@ -32,13 +32,13 @@ known ON THE CPU to be <= KCAP -- `max_top_k` rides SamplingMetadata from the in
 existing numpy mirror, so the route costs no GPU sync. Rows with top_k disabled carry
 vocab_size there, which routes the whole batch to the old path; k=None likewise.
 
-RADIANCE_TOPK_COMPOSITE=0 restores the previous routing. KCAP via RADIANCE_TOPK_COMPOSITE_KCAP.
+PAITON_RT_TOPK_COMPOSITE=0 restores the previous routing. KCAP via PAITON_RT_TOPK_COMPOSITE_KCAP.
 """
 import os
 
 import torch
 
-KCAP = int(os.environ.get("RADIANCE_TOPK_COMPOSITE_KCAP", "64"))
+KCAP = int(os.environ.get("PAITON_RT_TOPK_COMPOSITE_KCAP", "64"))
 _NEG_INF = float("-inf")
 
 

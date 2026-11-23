@@ -342,7 +342,7 @@ class Sampler:
             else:  # Use XPU sampler
                 sampled, _ = xpu_sample(processed_logits, top_k, top_p)
         else:
-            # radiance (patch_topk_composite.py): CPU-known bound, no sync.
+            # paiton (patch_topk_composite.py): CPU-known bound, no sync.
             _rad_kmax = (
                 0 if top_k is None
                 else int(self.sampling_states.top_k.np[idx_mapping_np].max())

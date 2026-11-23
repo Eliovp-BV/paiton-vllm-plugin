@@ -54,6 +54,6 @@ class SamplingMetadata:
     # thinking-token-budget logits (holder may exist with an empty tracking set).
     thinking_budget_state_holder: ThinkingBudgetStateHolder | None = None
 
-    # radiance (patch_topk_composite.py): largest per-request top_k in the batch, from the
+    # paiton (patch_topk_composite.py): largest per-request top_k in the batch, from the
     # CPU mirror -- lets the sampler route small-k batches without a GPU sync. 0 = unknown.
     max_top_k: int = 0

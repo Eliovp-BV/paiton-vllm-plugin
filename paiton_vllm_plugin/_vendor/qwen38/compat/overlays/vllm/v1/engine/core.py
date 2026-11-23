@@ -2717,12 +2717,12 @@ class EngineCoreActor(EngineCoreActorMixin, EngineCoreProc):
         )
 
 
-# ---- RADIANCE step trace (patch_step_trace.py) ----------------------------------------------
+# ---- PAITON step trace (patch_step_trace.py) ----------------------------------------------
 import os as _rt_os, time as _rt_time
-_RT_N = int(_rt_os.environ.get("RADIANCE_STEP_TRACE", "0") or 0)
+_RT_N = int(_rt_os.environ.get("PAITON_RT_STEP_TRACE", "0") or 0)
 if _RT_N > 0:
     from vllm.logger import init_logger as _rt_init_logger
-    _rt_log = _rt_init_logger("vllm.radiance.steptrace")
+    _rt_log = _rt_init_logger("vllm.paiton.steptrace")
     _rt_orig_init = EngineCore.__init__
 
     def _rt_init(self, vllm_config, *a, **k):

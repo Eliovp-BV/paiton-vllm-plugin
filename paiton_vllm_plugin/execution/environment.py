@@ -46,7 +46,7 @@ def validate(package: dict, profile: str, *, offline: bool, inherited=None) -> N
                     + " conflicts with the explicit profile. Unset it or select compatible settings.",
                 )
         elif (
-            key.startswith(("PAITON_", "_PAITON_", "RADIANCE_", "R4D_", "VLLM_"))
+            key.startswith(("PAITON_", "_PAITON_", "PAITON_RT_", "R4D_", "VLLM_"))
             and key not in special | TRANSPORT
         ):
             raise PreparationError(

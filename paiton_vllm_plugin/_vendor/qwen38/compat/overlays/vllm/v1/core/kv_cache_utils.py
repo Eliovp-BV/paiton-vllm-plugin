@@ -1411,13 +1411,13 @@ def is_kv_cache_type_attention_free(kv_cache_spec: dict[str, KVCacheSpec]) -> bo
     return not kv_cache_spec
 
 
-def _radiance_pick_group_size(layer_buckets, spec_buckets, vllm_config, upstream):
+def _paiton_pick_group_size(layer_buckets, spec_buckets, vllm_config, upstream):
     """Group size maximising usable KV cache. See patch_kv_group_size.py."""
     import os
 
-    if os.environ.get("RADIANCE_KV_GROUP_OPT", "1") == "0":
+    if os.environ.get("PAITON_RT_KV_GROUP_OPT", "1") == "0":
         return upstream
-    forced = os.environ.get("RADIANCE_KV_GROUP_SIZE")
+    forced = os.environ.get("PAITON_RT_KV_GROUP_SIZE")
     if forced:
         return max(1, int(forced))
     if vllm_config is None:
@@ -1436,7 +1436,7 @@ def _radiance_pick_group_size(layer_buckets, spec_buckets, vllm_config, upstream
     except Exception:  # never fail a serve over an optimisation
         return upstream
 
-    max_groups = int(os.environ.get("RADIANCE_KV_GROUP_MAX_GROUPS") or 24)
+    max_groups = int(os.environ.get("PAITON_RT_KV_GROUP_MAX_GROUPS") or 24)
     best = None
     for g in range(1, max(sizes) + 1):
         splits = [cdiv(L, g) for L in sizes]
@@ -1454,7 +1454,7 @@ def _radiance_pick_group_size(layer_buckets, spec_buckets, vllm_config, upstream
         return upstream
     _, g, ngroups, blocks = best
     logger.info(
-        "[radiance] kv cache groups: size %d, %d groups, %d blocks/request "
+        "[paiton] kv cache groups: size %d, %d groups, %d blocks/request "
         "(upstream would pick size %d)",
         g,
         ngroups,
@@ -1582,11 +1582,11 @@ def _get_kv_cache_groups_uniform_page_size(
         # layers while accommodating speculative decoding drafters that add
         # extra layers to one attention type.
         group_size = max_num_layers
-    # --- radiance (patch_kv_group_size.py) ---
+    # --- paiton (patch_kv_group_size.py) ---
     # The rule above assumes an n:1 layer pattern; 48 GDN + 16 full + 5 drafter is not one,
     # and picking the smallest bucket (5) splits the 16 expensive full-attention layers
     # across 4 groups. Search for the size that maximises usable cache instead.
-    group_size = _radiance_pick_group_size(
+    group_size = _paiton_pick_group_size(
         layer_buckets, spec_buckets, vllm_config, group_size
     )
     grouped_layers = []

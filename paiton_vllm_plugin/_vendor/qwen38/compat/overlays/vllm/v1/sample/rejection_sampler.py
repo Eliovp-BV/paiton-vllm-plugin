@@ -577,7 +577,7 @@ def apply_sampling_constraints(
     # which is slow for large vocab sizes. This may cause performance issues.
     return apply_top_k_top_p(
         logits, top_k, top_p,
-        # radiance (patch_topk_composite.py)
+        # paiton (patch_topk_composite.py)
         max_top_k=getattr(sampling_metadata, "max_top_k", 0),
     )
 

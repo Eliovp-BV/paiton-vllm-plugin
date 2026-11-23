@@ -1651,12 +1651,12 @@ def docker_command(args, environment):
         if prefix_caching_enabled(args):
             raise ValueError('--gdn-state lazy runs without prefix caching (prefix reuse needs a snapshot per draft '
                              'token); drop --gdn-state lazy, or use --mode long-kv4 --prefix-caching off')
-        # opt-in: one stash block per request instead of one per draft token (radiance_gdn_lazy.py)
-        command += ['-e', 'RADIANCE_GDN_LAZY=1']
+        # opt-in: one stash block per request instead of one per draft token (paiton_gdn_lazy.py)
+        command += ['-e', 'PAITON_RT_GDN_LAZY=1']
     elif (gdn_state == 'eager' or prefix_caching_enabled(args)
           or (args.kv_cache == 'kv4' and args.profile == 'chat')):
         # the 4-bit long mode keeps its measured GDN path while it runs without prefix caching
-        command += ['-e', 'RADIANCE_GDN_LAZY=0']
+        command += ['-e', 'PAITON_RT_GDN_LAZY=0']
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'

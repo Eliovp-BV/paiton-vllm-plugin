@@ -1,4 +1,4 @@
-"""RADIANCE fused gated-delta-net prefill dispatch.
+"""PAITON fused gated-delta-net prefill dispatch.
 
 Wraps R4D's `gdn_chunk_scan_k128_v128_c64_bf16`, which replaces three of the five Triton kernels
 FLA runs per GDN layer during prefill -- recompute_w_u_fwd (the WY representation),
@@ -10,7 +10,7 @@ bytes.
 The cumsum, the K-gram and the triangular inverse (solve_tril) are NOT replaced; they stay on the
 Triton path and their outputs feed this kernel.
 
-Enabled with the rest of the library by RADIANCE_USE_R4D. The kernel name carries the geometry it
+Enabled with the rest of the library by PAITON_RT_USE_R4D. The kernel name carries the geometry it
 is compiled for, and this
 module checks a model against it before dispatching: anything else falls back to FLA silently and
 per call, so a model with a different GDN shape keeps working.
@@ -20,9 +20,9 @@ import sys
 
 import torch
 
-# RADIANCE_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
+USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
 ENABLED = USE_R4D
 
 try:
@@ -30,7 +30,7 @@ try:
 except Exception as e:  # library missing or failed to load: stay on FLA
     _r4d = None
     ENABLED = False
-    sys.stderr.write(f"[radiance.gdn] r4d import failed, fused GDN disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.gdn] r4d import failed, fused GDN disabled: {e!r}\n")
 
 # The geometry the kernel is compiled for, read from the library rather than copied here -- r4d
 # reports it, and one source for it is the point. The entry point rejects a mismatch anyway, but
@@ -98,39 +98,39 @@ _FUSED_UPDATE_NARROW = {
                            head_k=HEAD_K, head_v=HEAD_V)
     for dt, (tag, frag) in _STATE_TAGS.items()
 }
-# RADIANCE_GDN_LAZY=1 (radiance_gdn_lazy.py): one base state per sequence plus a candidate stash
+# PAITON_RT_GDN_LAZY=1 (paiton_gdn_lazy.py): one base state per sequence plus a candidate stash
 # instead of a snapshot per candidate. Needs libr4d rx10+ (gdn_lazy_update) and patch_gdn_lazy.py,
 # which makes the allocator hand out ONE speculative block. Under it the spec window is two
 # columns [base, stash]; a step the lazy path cannot take must raise, never fall back to FLA,
 # because FLA would write candidate snapshots into columns that do not exist.
-LAZY = os.environ.get("RADIANCE_GDN_LAZY", "0") == "1"
+LAZY = os.environ.get("PAITON_RT_GDN_LAZY", "0") == "1"
 _LAZY_UPDATE = _bind("gdn_lazy_update", head_k=HEAD_K, head_v=HEAD_V, state_dtype="fp32") if LAZY else None
 _LAZY_UPDATE_NARROW = ({dt: _bind_narrow_state("gdn_lazy_update", tag, frag, head_k=HEAD_K, head_v=HEAD_V)
                         for dt, (tag, frag) in _STATE_TAGS.items()} if LAZY else {})
 if LAZY and _LAZY_UPDATE is None:
-    raise RuntimeError("RADIANCE_GDN_LAZY=1 but this libr4d has no gdn_lazy_update kernel (needs rx10+)")
+    raise RuntimeError("PAITON_RT_GDN_LAZY=1 but this libr4d has no gdn_lazy_update kernel (needs rx10+)")
 # The fused decode step (conv -> grid barrier -> recurrent in ONE launch) removes one kernel
 # boundary per GDN layer per forward. Bit-identical to the pair by construction. Off by default
 # until the serving A/B has run; needs a build whose registry has gdn_fused_update.
-FUSED_UPDATE_ON = os.environ.get("RADIANCE_GDN_FUSED_UPDATE", "0") == "1" and _FUSED_UPDATE is not None
+FUSED_UPDATE_ON = os.environ.get("PAITON_RT_GDN_FUSED_UPDATE", "0") == "1" and _FUSED_UPDATE is not None
 # (seq, v-head) items above which the decode step takes the conv+recurrent PAIR instead of the
 # fused kernel; 32 = the fused kernel's FU_MAXWG, i.e. one sequence at H=24. Env-tunable for A/B.
-FUSED_MAX_ITEMS = int(os.environ.get("RADIANCE_GDN_FUSED_MAX_ITEMS", "32"))
+FUSED_MAX_ITEMS = int(os.environ.get("PAITON_RT_GDN_FUSED_MAX_ITEMS", "32"))
 # patch_gdn_glue.py reads this: skip vLLM's .contiguous() on the (b, a) gate slices; the R4D
 # kernels take the row stride. Default 0 until the serving A/B lands.
-STRIDED_GATES = os.environ.get("RADIANCE_GDN_STRIDED_GATES", "0") == "1"
+STRIDED_GATES = os.environ.get("PAITON_RT_GDN_STRIDED_GATES", "0") == "1"
 # patch_gdn_glue.py reads this: allocate core_attn_out with torch.empty instead of torch.zeros.
 # Safe ONLY because the rx5 fused_update kernel zeroes the cudagraph pad rows [cu[N], o_rows)
 # itself (vLLM PR 28182 is why the fill exists), and the non-fused paths below zero the tail in
 # Python. Default 0 until the serving A/B lands.
-EMPTY_OUT = os.environ.get("RADIANCE_GDN_EMPTY_OUT", "0") == "1"
+EMPTY_OUT = os.environ.get("PAITON_RT_GDN_EMPTY_OUT", "0") == "1"
 
 
-# RADIANCE_GDN_TRACE_SIDX=1: log, once per decode step for the first two sequences, the resident
+# PAITON_RT_GDN_TRACE_SIDX=1: log, once per decode step for the first two sequences, the resident
 # state slots, the accepted count and the cumulative token bounds. Diagnostic for the align-mode
 # slot bookkeeping (which block each candidate writes, what happens at a block boundary). Syncs
 # the stream; never on in a serve that is being measured.
-TRACE_SIDX = os.environ.get("RADIANCE_GDN_TRACE_SIDX", "0") == "1"
+TRACE_SIDX = os.environ.get("PAITON_RT_GDN_TRACE_SIDX", "0") == "1"
 _trace_n = [0]
 _trace_layer = [None]
 
@@ -141,11 +141,11 @@ def _trace_sidx(layer, md, sidx, cu, nseq):
     if id(layer) != _trace_layer[0]:          # one line per step, not one per GDN layer
         return
     _trace_n[0] += 1
-    if _trace_n[0] > int(os.environ.get("RADIANCE_GDN_TRACE_STEPS", "4000")):
+    if _trace_n[0] > int(os.environ.get("PAITON_RT_GDN_TRACE_STEPS", "4000")):
         return
     k = min(2, nseq)
     sys.stderr.write(
-        f"[radiance.gdn.sidx] step {_trace_n[0]} nseq {nseq} T {int(md.num_actual_tokens)} "
+        f"[paiton.gdn.sidx] step {_trace_n[0]} nseq {nseq} T {int(md.num_actual_tokens)} "
         f"sidx {sidx[:k].tolist()} nacc {md.num_accepted_tokens[:k].tolist()} "
         f"cu {cu[:k + 1].tolist()}\n")
 
@@ -157,7 +157,7 @@ def _zero_tail(core_attn_out, T):
 # The barrier counter must exist BEFORE any CUDA-graph capture replays the kernel, and must NOT
 # be allocated at import -- that grabs a CUDA context before vLLM sets the device and breaks its
 # memory snapshot (the split-K decode scratch learned the same lesson; it allocates at weight
-# load). init_fused_counter() is called from the post-load hook in radiance_gdnmerge.merge_model.
+# load). init_fused_counter() is called from the post-load hook in paiton_gdnmerge.merge_model.
 _FUSED_CNT = None
 
 
@@ -168,7 +168,7 @@ def init_fused_counter():
             _FUSED_CNT = torch.zeros(1, dtype=torch.int32, device="cuda")
         except Exception as _e:                      # noqa: BLE001
             FUSED_UPDATE_ON = False
-            sys.stderr.write(f"[radiance.gdn] fused update disabled, no counter: {_e!r}\n")
+            sys.stderr.write(f"[paiton.gdn] fused update disabled, no counter: {_e!r}\n")
 _GATED_RMSNORM = _bind("gdn_gated_rmsnorm", channels=HEAD_V)
 
 if ENABLED and _CHUNK_SCAN is None:
@@ -176,13 +176,13 @@ if ENABLED and _CHUNK_SCAN is None:
     # rather than a model this build does not cover -- but it is better said than launched.
     ENABLED = False
     sys.stderr.write(
-        f"[radiance.gdn] no gdn_chunk_scan kernel for head_k {HEAD_K} head_v {HEAD_V} "
+        f"[paiton.gdn] no gdn_chunk_scan kernel for head_k {HEAD_K} head_v {HEAD_V} "
         f"chunk {CHUNK}, fused GDN disabled\n"
     )
 
 if ENABLED:
     sys.stderr.write(
-        f"[radiance.gdn] gdn_chunk_scan ENABLED (head_k {HEAD_K}, head_v {HEAD_V}, "
+        f"[paiton.gdn] gdn_chunk_scan ENABLED (head_k {HEAD_K}, head_v {HEAD_V}, "
         f"chunk {CHUNK}; replaces wy + delta_h + chunk_o)\n"
     )
 
@@ -194,7 +194,7 @@ def _bail(why: str):
     global _warned
     if not _warned:
         _warned = True
-        sys.stderr.write(f"[radiance.gdn] falling back to FLA for this shape: {why}\n")
+        sys.stderr.write(f"[paiton.gdn] falling back to FLA for this shape: {why}\n")
     return None
 
 
@@ -283,10 +283,10 @@ def fused_prefill(q, k, v, A, g, beta, scale, initial_state, output_final_state,
 ALL = ENABLED
 # Locate the first PREFILL kernel to emit a non-finite value. The NaN this fork sees (exactly one
 # head_v-wide head, one TP rank) appears during prefill, so a decode-only check cannot catch it.
-# Kept across the DFlash2 merge, which refactored the surrounding gates away: the RADIANCE_GDN_PATHS
+# Kept across the DFlash2 merge, which refactored the surrounding gates away: the PAITON_RT_GDN_PATHS
 # / _NORM / _CHECK knobs no longer have use sites upstream and are dropped with them, but the
 # tracer's call sites in conv_prep / kkt_solve / chunk_scan survive and this is what feeds them.
-NANTRACE = os.environ.get("RADIANCE_GDN_NANTRACE", "0") == "1"
+NANTRACE = os.environ.get("PAITON_RT_GDN_NANTRACE", "0") == "1"
 _nan_seen = set()
 
 
@@ -301,7 +301,7 @@ def _nt(tag, **tensors):
             _nan_seen.add((tag, name))
             flat = (~torch.isfinite(t)).reshape(t.shape[0], -1) if t.dim() > 1 else None
             cols = int(flat.any(0).sum().item()) if flat is not None else -1
-            sys.stderr.write(f"[radiance.gdn.nan] {tag}: {name} shape={tuple(t.shape)} "
+            sys.stderr.write(f"[paiton.gdn.nan] {tag}: {name} shape={tuple(t.shape)} "
                              f"nonfinite={n} bad_cols={cols}\n")
             sys.stderr.flush()
 SOFTPLUS_THRESHOLD = 20.0          # FLA's, and the value both kernels are validated against
@@ -313,14 +313,14 @@ def _first(kind: str):
     """Announce the first step of each kind the fused path takes, so a log shows what ran."""
     if kind not in _seen:
         _seen.add(kind)
-        sys.stderr.write(f"[radiance.gdn] all-R4D {kind} path live\n")
+        sys.stderr.write(f"[paiton.gdn] all-R4D {kind} path live\n")
 
 
 def _fb(why: str):
     """Count why a step went back to the original path. Reported by fallback_report()."""
     _fallbacks[why] = _fallbacks.get(why, 0) + 1
     if _fallbacks[why] == 1:
-        sys.stderr.write(f"[radiance.gdn] step not handled by the fused path: {why}\n")
+        sys.stderr.write(f"[paiton.gdn] step not handled by the fused path: {why}\n")
     return False
 
 
@@ -358,11 +358,11 @@ def _gate_params(self):
     arrives bf16 -- and a bf16 tensor read as fp32 is not a small error, it is noise. They are one
     value per head and never change, so the conversion is a one-off rather than a per-step cast.
     """
-    p = getattr(self, "_radiance_gate_params", None)
+    p = getattr(self, "_paiton_gate_params", None)
     if p is None:
         p = (self.A_log.detach().float().contiguous(),
              self.dt_bias.detach().float().contiguous())
-        self._radiance_gate_params = p
+        self._paiton_gate_params = p
     return p
 
 
@@ -469,7 +469,7 @@ def lazy_update(q, k, v, a, b, A_log, dt_bias, ssm_state, o, cu, sidx, num_accep
     """Lazy-snapshot recurrent update: base in sidx[:, 0], stash in sidx[:, 1]."""
     _LU = _LAZY_UPDATE_NARROW.get(ssm_state.dtype) or _LAZY_UPDATE
     if _LU is None:
-        raise RuntimeError(f"radiance_gdn: no lazy kernel for a {ssm_state.dtype} state cache")
+        raise RuntimeError(f"paiton_gdn: no lazy kernel for a {ssm_state.dtype} state cache")
     _LU(
         q.data_ptr(), k.data_ptr(), v.data_ptr(), a.data_ptr(), b.data_ptr(),
         a.stride(0), a.dtype == torch.bfloat16, A_log.data_ptr(), dt_bias.data_ptr(),
@@ -483,7 +483,7 @@ def _lazy_invalidate(ssm_state, md, H):
     """A prefill (or prefix hit) writes a fresh base for its rows: their stash must not replay.
     Zero the two region headers (bytes 0..15 and 8192..8207 of every head's area) of each
     non-spec row's stash block. Null rows hit block 0, which nothing reads."""
-    st = md.radiance_stash_indices
+    st = md.paiton_stash_indices
     if st is None:
         return
     m = md.spec_sequence_masks
@@ -511,7 +511,7 @@ def _plan(self, mixed_qkv, b, a, core_attn_out):
         if lazy_spec[0]:
             # A lazy cache has no candidate columns for FLA to write: declining a spec step would
             # corrupt the state, so it is an error, never a fallback.
-            raise RuntimeError(f"radiance_gdn: lazy mode cannot decline a spec step: {why}")
+            raise RuntimeError(f"paiton_gdn: lazy mode cannot decline a spec step: {why}")
         _fb(why)
         return None
 
@@ -581,7 +581,7 @@ def _plan(self, mixed_qkv, b, a, core_attn_out):
         if sidx is None or sidx.dim() != 2:
             return no("spec state indices are not [seq, candidate]")
         if LAZY and sidx.shape[1] != 2:
-            raise RuntimeError(f"radiance_gdn: lazy mode expects a 2-column state window, got "
+            raise RuntimeError(f"paiton_gdn: lazy mode expects a 2-column state window, got "
                                f"{tuple(sidx.shape)} (is patch_gdn_lazy.py applied?)")
         if kind != "decode" and (md.spec_token_indx is None or md.non_spec_token_indx is None):
             return no("no spec/non-spec token index on the metadata")
@@ -707,7 +707,7 @@ def forward_core_fused(self, mixed_qkv, b, a, core_attn_out) -> bool:
                         g.unsqueeze(0), beta.unsqueeze(0), HEAD_K ** -0.5, initial_state,
                         True, cu, None, out=o_buf)
     if out is None:
-        raise RuntimeError("radiance_gdn: chunk_scan declined a shape the preamble accepted")
+        raise RuntimeError("paiton_gdn: chunk_scan declined a shape the preamble accepted")
     _nt("chunk_scan.in", initial_state=initial_state)
     _nt("chunk_scan.out", o=out[0] if isinstance(out, (tuple, list)) else out,
         final_state=out[1] if isinstance(out, (tuple, list)) else None)

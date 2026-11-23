@@ -3,7 +3,7 @@ import ctypes as C
 import functools,hashlib,importlib.abc,json,os,sys
 from pathlib import Path
 from paiton_prefill_attention_policy import Policy
-TARGET='radiance_r4d_attn'
+TARGET='paiton_r4d_attn'
 class Args(C.Structure):
  _fields_=[(n,C.c_void_p) for n in ('q','kv','block_table','seqused_k','out','k_descale','v_descale','q_descale','scratch')]+[(n,C.c_int) for n in ('num_seqs','q_len','q_heads','kv_heads','head_dim','block_size','max_blocks')]+[('kv_block_stride',C.c_long),('kv_head_stride',C.c_long),('scale',C.c_float),('splits',C.c_int),('max_ctx',C.c_int)]
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()

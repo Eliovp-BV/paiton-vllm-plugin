@@ -49,7 +49,7 @@ if is_aiter_found_and_supported():
         out_dtype: torch.dtype | None = torch.bfloat16,
         x_scales: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        # --- radiance (patch_quark_mxfp4.py): aiter 0.1.17 moved this module ---
+        # --- paiton (patch_quark_mxfp4.py): aiter 0.1.17 moved this module ---
         from aiter.ops.triton.gemm.basic.gemm_afp4wfp4 import (
             gemm_afp4wfp4,
             gemm_afp4wfp4_preshuffle,
@@ -58,10 +58,10 @@ if is_aiter_found_and_supported():
         # aiter allowlists gfx950/gfx1250 for fp4; gfx1201 lowers tl.dot_scaled correctly
         # (verified bit-identical against the emulated path), so relax the assert. Done
         # here, lazily, to keep aiter out of the plugin-load import graph.
-        import aiter.ops.triton.utils._triton.arch_info as _radiance_arch
+        import aiter.ops.triton.utils._triton.arch_info as _paiton_arch
 
-        if not _radiance_arch.is_fp4_avail():
-            _radiance_arch.is_fp4_avail = lambda: True
+        if not _paiton_arch.is_fp4_avail():
+            _paiton_arch.is_fp4_avail = lambda: True
         from aiter.ops.triton.quant import dynamic_mxfp4_quant
 
         if rocm_use_aiter_fp4_asm_gemm:
@@ -175,23 +175,23 @@ class AiterMxfp4LinearKernel(MxFp4LinearKernel):
     def is_supported(
         cls, compute_capability: int | None = None
     ) -> tuple[bool, str | None]:
-        # --- radiance (patch_quark_mxfp4.py): gfx1201 native MXFP4, RADIANCE_MXFP4=1 ---
+        # --- paiton (patch_quark_mxfp4.py): gfx1201 native MXFP4, PAITON_RT_MXFP4=1 ---
         # supports_mx() is a CDNA4 allowlist, but Triton 3.6 lowers tl.dot_scaled on gfx12x
         # (upconvert + bf16 WMMA), verified bit-identical against the emulated path.
-        _radiance_mx = current_platform.supports_mx()
-        if not _radiance_mx:
-            import os as _radiance_os
-            if _radiance_os.environ.get("RADIANCE_MXFP4", "0") == "1":
+        _paiton_mx = current_platform.supports_mx()
+        if not _paiton_mx:
+            import os as _paiton_os
+            if _paiton_os.environ.get("PAITON_RT_MXFP4", "0") == "1":
                 from vllm.platforms.rocm import on_gfx12x
 
-                _radiance_mx = bool(on_gfx12x())
-                if _radiance_mx:
+                _paiton_mx = bool(on_gfx12x())
+                if _paiton_mx:
                     logger.warning_once(
-                        "[radiance] native MXFP4 enabled on gfx12x "
+                        "[paiton] native MXFP4 enabled on gfx12x "
                         "(aiter gemm_afp4wfp4 via tl.dot_scaled); the emulation notice "
                         "elsewhere in the log does not apply to mxfp4 x mxfp4 layers"
                     )
-        if not _radiance_mx:
+        if not _paiton_mx:
             return False, "current platform does not support native MXFP4 computation"
 
         from vllm._aiter_ops import is_aiter_found_and_supported

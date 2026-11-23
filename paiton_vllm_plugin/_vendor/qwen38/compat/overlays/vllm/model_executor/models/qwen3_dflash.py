@@ -557,17 +557,17 @@ class DFlashQwen3Model(nn.Module):
             self.config.hidden_size,
             eps=self.config.rms_norm_eps,
         )
-        self._radiance_install_calib_hooks()
+        self._paiton_install_calib_hooks()
 
-    def _radiance_install_calib_hooks(self):
+    def _paiton_install_calib_hooks(self):
         """Per-input-channel activation accumulators on the linears AWQ will scale."""
         import atexit, os, sys
         import torch as _t
-        path = os.environ.get("RADIANCE_DFLASH_CALIB")
+        path = os.environ.get("PAITON_RT_DFLASH_CALIB")
         if not path:
             return
         stats = {}
-        limit = int(os.environ.get("RADIANCE_DFLASH_CALIB_TOKENS", "200000"))
+        limit = int(os.environ.get("PAITON_RT_DFLASH_CALIB_TOKENS", "200000"))
         done = []
         nhook = []
 
@@ -584,7 +584,7 @@ class DFlashQwen3Model(nn.Module):
 
         def dump():
             if not stats:
-                sys.stderr.write("[radiance.calib] NO STATS -- hooks never fired; was the "
+                sys.stderr.write("[paiton.calib] NO STATS -- hooks never fired; was the "
                                  "drafter replaying a CUDA graph? Use --enforce-eager.\n")
                 return
             out = {k: {"absmax": v[0].cpu(), "absmean": (v[1] / max(v[2], 1)).cpu(),
@@ -592,7 +592,7 @@ class DFlashQwen3Model(nn.Module):
                    for k, v in stats.items()}
             p = f"{path}.{_tag()}.pt"
             _t.save(out, p)
-            sys.stderr.write(f"[radiance.calib] wrote {len(out)} tensors to {p} "
+            sys.stderr.write(f"[paiton.calib] wrote {len(out)} tensors to {p} "
                              f"({next(iter(stats.values()))[2]} tokens)\n")
 
         def make_hook(name):
@@ -629,7 +629,7 @@ class DFlashQwen3Model(nn.Module):
                 mod.register_forward_pre_hook(make_hook(name))
                 n += 1
         nhook.append(n)
-        sys.stderr.write(f"[radiance.calib] hooks on {n} drafter linears -> "
+        sys.stderr.write(f"[paiton.calib] hooks on {n} drafter linears -> "
                          f"{path}.{_tag()}.pt (dump when all reach {limit} rows)\n")
         atexit.register(dump)
 

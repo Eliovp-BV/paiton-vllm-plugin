@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""radiance custom all-reduce: one-shot P2P-BAR AR for dual R9700 (gfx1201, TP=2, PCIe).
+"""paiton custom all-reduce: one-shot P2P-BAR AR for dual R9700 (gfx1201, TP=2, PCIe).
 
 Mirrors vLLM's CustomAllreduce (ca_comm) interface, so it slots into CudaCommunicator.all_reduce's
 existing size-gated dispatch. should_custom_ar returns True only for small messages in the win band;
 larger or other messages fall through to RCCL.
 
 Kernels: r4d.ar_oneshot_2rank_exact (exact bf16) and r4d.ar_oneshot_2rank_wht6 (Walsh-Hadamard rotated
-6-bit payload, used for large messages when RADIANCE_USE_R4D_AR_QUANT=1). Both come from the R4D gfx1201 kernel
+6-bit payload, used for large messages when PAITON_RT_USE_R4D_AR_QUANT=1). Both come from the R4D gfx1201 kernel
 library; both are one-shot push all-reduces for exactly two P2P-connected ranks, which is what their
 names say, and they share the same scratch, flags and seq counters. PUSH model. Each rank writes its
 input into the peer's IPC scratch, then reduces (local input + peer data now in the local scratch) into out. Only scratch and flags
@@ -16,8 +16,8 @@ at capture), and scratch is double-buffered by seq parity. Multi-block: each blo
 chunk and drives its own flag handshake, spreading the push across CUs (PCIe) and the reduce across CUs.
 
 Env:
-  RADIANCE_USE_R4D_AR (1)      1 = install the kernel on the TP group, 0 = RCCL
-  RADIANCE_USE_R4D_AR_QUANT (1) 1 = compress the payload (rotated 6-bit, group-scaled) for large messages
+  PAITON_RT_USE_R4D_AR (1)      1 = install the kernel on the TP group, 0 = RCCL
+  PAITON_RT_USE_R4D_AR_QUANT (1) 1 = compress the payload (rotated 6-bit, group-scaled) for large messages
 """
 import os
 import sys
@@ -33,23 +33,23 @@ _DTYPE_CODE = {torch.bfloat16: 0, torch.float16: 1, torch.float32: 2}
 # --max-num-batched-tokens keeps the kernel for prefill as well as decode. Costs 2x this in IPC
 # scratch per rank, which is trivial on 32 GB. The kernel is bit-identical to RCCL at every size.
 #
-# --- radiance (patch_ar_maxbytes.py): this has to track --max-num-batched-tokens ---
+# --- paiton (patch_ar_maxbytes.py): this has to track --max-num-batched-tokens ---
 # The gate compares the raw bf16 byte count, so the message is tokens x hidden x 2: at chunk 8192
 # and hidden 5120 it is 80 MiB, over the default, and every prefill reduction silently falls back
 # to RCCL. Measured cost of that fallback here: all-reduce 18.8% of prefill GPU time at 3.145 ms
 # per call vs 1.317 ms on the kernel (2.18x), worth +3.1-12.8% prefill on the MXFP4 build. The
 # default below is upstream's, so an unconfigured serve is unchanged.
-_MAX_BYTES = int(os.environ.get("RADIANCE_AR_MAX_KB") or 49152) * 1024
+_MAX_BYTES = int(os.environ.get("PAITON_RT_AR_MAX_KB") or 49152) * 1024
 # Below this the exact bf16 kernel wins: compression only pays once the transfer is bandwidth-bound.
-_QUANT_MIN_BYTES = int(os.environ.get("RADIANCE_AR_QUANT_MIN_KB") or 128) * 1024
+_QUANT_MIN_BYTES = int(os.environ.get("PAITON_RT_AR_QUANT_MIN_KB") or 128) * 1024
 
 
 def _log(msg):
-    sys.stderr.write(f"[radiance] {msg}\n")
+    sys.stderr.write(f"[paiton] {msg}\n")
     sys.stderr.flush()
 
 
-class RadianceAllreduce:
+class PaitonAllreduce:
     """Drop-in for vLLM's ca_comm (CustomAllreduce). Same public surface:
     `disabled`, `should_custom_ar(inp)`, `custom_all_reduce(inp)`, `capture()`."""
 
@@ -113,7 +113,7 @@ class RadianceAllreduce:
             self.peers = [r for r in range(self.world_size) if r != self.rank]
             self._peer_scratch_all = [ext.ar_ipc_open(sc_handles[p]) for p in self.peers]
             self._peer_flags_all = [ext.ar_ipc_open(fl_handles[p]) for p in self.peers]
-            # the 2-rank names, used by the 2-rank launch below and by radiance_arnq
+            # the 2-rank names, used by the 2-rank launch below and by paiton_arnq
             self._peer_scratch = self._peer_scratch_all[0]
             self._peer_flags = self._peer_flags_all[0]
             # per-BLOCK device-resident seq counters (kernel increments -> replay-safe;
@@ -128,17 +128,17 @@ class RadianceAllreduce:
              f"finegrained={fine_used} drain={self.drain} acq={self.acq} nt={self.nt} "
              f"nb={self.min_nb}..{self.max_nb})")
 
-        # Optional compressed payload path (RADIANCE_USE_R4D_AR_QUANT). Additive; shares this class's
+        # Optional compressed payload path (PAITON_RT_USE_R4D_AR_QUANT). Additive; shares this class's
         # scratch, flags and seq counters. Only large (bandwidth-bound) messages take it; smaller
         # ones keep the exact bf16 kernel above. On by default; set 0 for the exact
         # (RCCL-identical) bf16 path.
-        self.ar_quant = os.environ.get("RADIANCE_USE_R4D_AR_QUANT", "1") == "1"
+        self.ar_quant = os.environ.get("PAITON_RT_USE_R4D_AR_QUANT", "1") == "1"
         self.quant_min_bytes = _QUANT_MIN_BYTES
         # Threads/block and block cap for the compressed path. The shipped 1024/48 assumed the
         # kernel is wire-bound; its LOCAL traffic (~280 MB/call at the 80 MiB message) says the
         # DRAM phases matter too, so both are sweepable (patch_ar_geometry.py).
-        self.qnt = int(os.environ.get("RADIANCE_AR_QNT", "1024"))
-        self.qmax_nb = int(os.environ.get("RADIANCE_AR_QNB", "48"))
+        self.qnt = int(os.environ.get("PAITON_RT_AR_QNT", "1024"))
+        self.qmax_nb = int(os.environ.get("PAITON_RT_AR_QNB", "48"))
         self._qext = None
         self._qgroup = 0
         self._locpk = None
@@ -148,9 +148,9 @@ class RadianceAllreduce:
                 self._qgroup = int(qext.AR_WHT6_GROUP)
                 # numel is the one per-message term in the question: a group is the smallest
                 # message this path will send, and _quant_ok() enforces the multiple per call.
-                # RADIANCE_AR_QBITS (patch_ar_qbits.py): symbol width on the wire. 6 is the
+                # PAITON_RT_AR_QBITS (patch_ar_qbits.py): symbol width on the wire. 6 is the
                 # shipped kernel; 5 and 4 need a libr4d that carries them (rx8+).
-                self.qbits = int(os.environ.get("RADIANCE_AR_QBITS", "6"))
+                self.qbits = int(os.environ.get("PAITON_RT_AR_QBITS", "6"))
                 qgeom = dict(world_size=self.world_size, exact=0, dtype="bf16",
                              numel=self._qgroup)
                 if self.qbits != 6:
@@ -286,36 +286,36 @@ def install_custom_ar():
     """Wrap CudaCommunicator.all_reduce so small TP messages take the one-shot kernel and everything
     else falls through to RCCL. Wrapping rather than replacing ca_comm is required: vLLM's RocmAiter fusion
     pass asserts isinstance(ca_comm, CustomAllreduce), and ca_comm is already inert on ROCm. Env-gated
-    by RADIANCE_USE_R4D_AR, idempotent."""
-    # RADIANCE_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py):
+    by PAITON_RT_USE_R4D_AR, idempotent."""
+    # PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py):
     # with it off the TP group keeps RCCL, exactly as in an image built without the library.
-    if os.environ.get("RADIANCE_USE_R4D", "1") != "1":
-        _log("custom all-reduce not installed: RADIANCE_USE_R4D=0")
+    if os.environ.get("PAITON_RT_USE_R4D", "1") != "1":
+        _log("custom all-reduce not installed: PAITON_RT_USE_R4D=0")
         return
-    if os.environ.get("RADIANCE_USE_R4D_AR", "1") != "1":
+    if os.environ.get("PAITON_RT_USE_R4D_AR", "1") != "1":
         return
     from vllm.distributed.device_communicators.cuda_communicator import CudaCommunicator
 
-    if getattr(CudaCommunicator, "_radiance_ar_patched", False):
+    if getattr(CudaCommunicator, "_paiton_ar_patched", False):
         return
     _orig_init = CudaCommunicator.__init__
     _orig_all_reduce = CudaCommunicator.all_reduce
 
     def _patched_init(self, *args, **kwargs):
         _orig_init(self, *args, **kwargs)
-        self.radiance_comm = None
+        self.paiton_comm = None
         try:
             # only the TP group does custom AR (matches vLLM's own gating)
             # ws 2 or 3 (patch_ar_3rank.py); which of them has a kernel is r4d.select's answer
             if "tp" in getattr(self, "unique_name", "") and getattr(self, "world_size", 1) in (2, 3):
-                comm = RadianceAllreduce(self.cpu_group, self.device)
+                comm = PaitonAllreduce(self.cpu_group, self.device)
                 if not comm.disabled:
-                    self.radiance_comm = comm
+                    self.paiton_comm = comm
         except Exception as e:
             _log(f"custom AR attach failed: {e!r}")
 
     def _patched_all_reduce(self, input_):
-        rc = getattr(self, "radiance_comm", None)
+        rc = getattr(self, "paiton_comm", None)
         if rc is not None and not rc.disabled and rc.should_custom_ar(input_):
             out = rc.custom_all_reduce(input_)
             if out is not None:
@@ -324,5 +324,5 @@ def install_custom_ar():
 
     CudaCommunicator.__init__ = _patched_init
     CudaCommunicator.all_reduce = _patched_all_reduce
-    CudaCommunicator._radiance_ar_patched = True
-    _log("fast-reduce hook armed (RADIANCE_USE_R4D_AR=1, all_reduce wrap)")
+    CudaCommunicator._paiton_ar_patched = True
+    _log("fast-reduce hook armed (PAITON_RT_USE_R4D_AR=1, all_reduce wrap)")

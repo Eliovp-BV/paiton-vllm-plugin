@@ -180,14 +180,14 @@ class AiterFusedAddRMSNormDynamicQuantPattern(AiterRMSNormQuantPattern):
         )
 
 
-# --- RADIANCE: native rms+quant replacement op ---
+# --- PAITON: native rms+quant replacement op ---
 import os as _rq_os
-if _rq_os.environ.get("RADIANCE_RMS_QUANT_FUSION", "0") == "1":
-    import radiance_rmsquant as _rq
+if _rq_os.environ.get("PAITON_RT_RMS_QUANT_FUSION", "0") == "1":
+    import paiton_rmsquant as _rq
     AiterRMSNormDynamicQuantPattern.FUSED_OP = staticmethod(_rq.fused_rmsnorm_quant)
     AiterFusedAddRMSNormDynamicQuantPattern.FUSED_OP = staticmethod(_rq.fused_add_rmsnorm_quant)
     import sys as _rq_sys
-    _rq_sys.stderr.write("[radiance.rmsquant] rms+quant fusion -> radiance op "
+    _rq_sys.stderr.write("[paiton.rmsquant] rms+quant fusion -> paiton op "
                          "(aiter replacement bypassed)\n")
 
 

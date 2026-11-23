@@ -338,7 +338,7 @@ class ExecutionTests(unittest.TestCase):
 
     def test_explicit_environment_overrides_fail_before_preparation(self):
         with (
-            patch.dict(os.environ, {"RADIANCE_UNREVIEWED_OVERRIDE": "1"}),
+            patch.dict(os.environ, {"PAITON_RT_UNREVIEWED_OVERRIDE": "1"}),
             patch.object(cache, "prepare_package") as prepare,
         ):
             with self.assertRaisesRegex(

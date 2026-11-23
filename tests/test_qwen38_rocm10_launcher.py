@@ -185,7 +185,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 environment = [command[i + 1] for i in range(image_index) if command[i] == '-e']
                 self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
                                                    'CUDA_VISIBLE_DEVICES=0',
-                                                   'RADIANCE_GDN_LAZY=0',
+                                                   'PAITON_RT_GDN_LAZY=0',
                                                    'PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
                 engine = self.engine(command)
                 self.assertEqual(value(engine, '--max-model-len'), str(context))
@@ -237,7 +237,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(engine, '--gpu-memory-utilization'), '0.95')
         self.assertIn('--no-enable-prefix-caching', engine)
         self.assertNotIn('--enable-prefix-caching', engine)
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertEqual(json.loads(value(engine, '--default-chat-template-kwargs')), {'enable_thinking': True})
         self.assertEqual(engine.count('--default-chat-template-kwargs'), 1)
 
@@ -256,7 +256,7 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_prefix_caching_materializes_recurrent_state_before_vllm_entrypoint(self):
         command = self.command('--release', '200k', '--prefix-caching', 'on')
         image_index = command.index(launcher.IMAGES['200k'])
-        self.assertIn('RADIANCE_GDN_LAZY=0', command[:image_index])
+        self.assertIn('PAITON_RT_GDN_LAZY=0', command[:image_index])
         engine = self.engine(command)
         self.assertIn('--enable-prefix-caching', engine)
         self.assertNotIn('--no-enable-prefix-caching', engine)
@@ -524,7 +524,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 with self.subTest(weights=weights, context=context):
                     command = self.command('--context', context)
                     self.assertIn(image, command)
-                    self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                    self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                     # prefix caching is not qualified with the 4-bit cache: FP8 cache, the chat profile's budget
                     self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                     engine = self.engine(command)
@@ -557,7 +557,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 command = self.command(*options)
                 self.assertIn(image, command)
-                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                 self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command)
                 self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                 engine = self.engine(command)
@@ -776,7 +776,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 command = self.command('--image', image, '--kv-cache', 'kv4', *options)
                 self.assertEqual(self.kv4_flags(command, image), on)
-                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                 self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 engine = command[command.index(image) + 1:]
                 # 3 Oct: a prefix-cache hit on a shared-prefix (junction) checkpoint of the 4-bit long mode ended in a
@@ -1140,17 +1140,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         # default: the presets keep their GDN path (lazy from the image in 65k, eager in the long modes)
-        self.assertNotIn('RADIANCE_GDN_LAZY=1', self.dry_run('--mode', 'long-kv4'))
-        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', 'long-kv4'))
+        self.assertNotIn('PAITON_RT_GDN_LAZY=1', self.dry_run('--mode', 'long-kv4'))
+        self.assertIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', 'long-kv4'))
         self.assertEqual(self.dry_run('--mode', 'long-kv4', '--gdn-state', 'auto'), self.dry_run('--mode', 'long-kv4'))
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k'))
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', '65k'))
         # lazy in the 4-bit long mode: one stash block per request, no eager override
         command = self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off', '--gdn-state', 'lazy')
-        self.assertIn('RADIANCE_GDN_LAZY=1', command)
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('PAITON_RT_GDN_LAZY=1', command)
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertIn('--no-enable-prefix-caching', command)
         # eager can be forced in the 65k mode
-        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k', '--gdn-state', 'eager'))
+        self.assertIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', '65k', '--gdn-state', 'eager'))
         # lazy is refused wherever prefix caching is on
         for options in (('--mode', 'long', '--gdn-state', 'lazy'), ('--mode', 'long-kv4', '--gdn-state', 'lazy'),
                         ('--context', '262144', '--prefix-caching', 'on', '--gdn-state', 'lazy')):
@@ -1326,7 +1326,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('--enable-prefix-caching', command)
         self.assertNotIn('--no-enable-prefix-caching', command)
         self.assertEqual(value(command, '--mamba-cache-mode'), 'align')
-        self.assertIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertIn('PAITON_KV4=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
         self.assertNotIn('without prefix caching', result.stderr)

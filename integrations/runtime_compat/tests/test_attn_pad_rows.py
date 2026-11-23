@@ -56,8 +56,8 @@ class Attention(torch.nn.Module):
         self.impl = impl
 
 
-def radiance_module(cls=R4DAttentionImpl):
-    module = ModuleType('radiance_r4d_attn')
+def paiton_module(cls=R4DAttentionImpl):
+    module = ModuleType('paiton_r4d_attn')
     module.R4DAttentionImpl = cls
     return module
 
@@ -85,7 +85,7 @@ class HookCase(unittest.TestCase):
         self.stream = 0x5151
         patches = [patch.object(attn_pad_rows, '_MEMSET', self.hip),
                    patch.object(attn_pad_rows, 'current_stream', lambda: self.stream),
-                   patch.dict(sys.modules, {'radiance_r4d_attn': radiance_module()}),
+                   patch.dict(sys.modules, {'paiton_r4d_attn': paiton_module()}),
                    patch.dict(os.environ, {ENV: '1'})]
         for p in patches:
             p.start()
@@ -223,7 +223,7 @@ class InstallTests(HookCase):
                 attn_pad_rows.install(target_model())
 
     def test_without_r4d_backend_nothing_is_wrapped(self):
-        with patch.dict(sys.modules, {'radiance_r4d_attn': None}):
+        with patch.dict(sys.modules, {'paiton_r4d_attn': None}):
             model = target_model()
             self.assertEqual(attn_pad_rows.install(model), 0)
         self.assertNotIn('forward', vars(model[0].impl))

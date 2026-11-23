@@ -119,8 +119,8 @@
       "sha256": "dd1cf6057ce21dcf8fe67fb8ca82675a144ad072cd0803891b864f772157671e"
     },
     "compat/overlays/vllm/third_party/flash_linear_attention/ops/chunk.py": {
-      "size_bytes": 9394,
-      "sha256": "e6c16f2fbca99cb9d9aa7bdf1aa894a51c5b2d4ee2a4014d3bf33ace005be344"
+      "size_bytes": 9380,
+      "sha256": "0cf93060e5caf788cdd3ebeb7e40523232063210d4145cfc1c4a8abf45dcb721"
     },
     "compat/overlays/vllm/third_party/flash_linear_attention/ops/solve_tril.py": {
       "size_bytes": 20109,
@@ -155,8 +155,8 @@
       "sha256": "53dd0cb8a71fc5da5c1331f3d6f9cb04209b986f74392addd7af460d8fe0901c"
     },
     "compat/overlays/vllm/v1/sample/metadata.py": {
-      "size_bytes": 1978,
-      "sha256": "191b7a32a1fb1bd30e60049749781017df6681b07b1dfbbf467c431636bbdc78"
+      "size_bytes": 1976,
+      "sha256": "9cd3d6ab8bea8da8af9291e39962d5373c7d9ffda06e4afc0a8e8fdc51e3ac84"
     },
     "compat/overlays/vllm/v1/sample/ops/topk_topp_sampler.py": {
       "size_bytes": 21665,
@@ -211,172 +211,172 @@
       "sha256": "67c3e96ba372e5c6e257e8b2356f578bbf8f33ad49640c5651899eff340b414f"
     },
     "paiton_gdn_fixed_adapter.py": {
-      "size_bytes": 6903,
-      "sha256": "272909b613ade1295c3817c8c2eb467022946abbfeb550ec257d15d5b970c535"
+      "size_bytes": 6901,
+      "sha256": "234cb1ab67a59733fe01ba8be23fd3b8ecdea123a3ef6b719e13298b4a593db3"
     },
     "paiton_gdn_fixed_policy.py": {
       "size_bytes": 1947,
       "sha256": "0571b4c94fc7ee6ed72e120f1951be4874d419cc7f53e48927b7434b70c2be99"
     },
     "paiton_gdn_merged_prefill_adapter.py": {
-      "size_bytes": 7048,
-      "sha256": "c7a87411cc1689608d894f5ca3a9d7e0b5e3bfb3433e9d339a3375b97218e0c6"
+      "size_bytes": 7044,
+      "sha256": "52542e18eecad0a1ee8b921f698b4e7ba7de0f56a5cf2331aa82345e15139b1b"
     },
     "paiton_gdn_merged_prefill_policy.py": {
       "size_bytes": 1813,
       "sha256": "1710d4e64b1f965d02e98ff829ba9a5aadf63aedd7b36f6d3b1a7271fb16f00f"
     },
     "paiton_gdn_tiled_adapter.py": {
-      "size_bytes": 9674,
-      "sha256": "f791b989216bba29be81d7cbe3b9b475e3ec68e254b223dc7030dc70551e0df2"
+      "size_bytes": 9668,
+      "sha256": "903455f004439720060531b29b792d7651c8a11a3e6d14aa28c841ef3048bae6"
     },
     "paiton_gdn_tiled_policy.py": {
       "size_bytes": 2040,
       "sha256": "37b0111f9be1d5a3d8c503be9888481d59e7fd140dedd93790b73ea22f6ef5a3"
     },
     "paiton_prefill_attention_adapter.py": {
-      "size_bytes": 6919,
-      "sha256": "b5b548325b48e2a41125517074f75da95da133ae05331a88386725a22ac3adcb"
+      "size_bytes": 6917,
+      "sha256": "6978341fd249fbd316eb827cbcbee26f3d194da3ce62928d6bd64e28cc4cfe81"
     },
     "paiton_prefill_attention_policy.py": {
       "size_bytes": 1044,
       "sha256": "90fb9f1e757745abea69486017206be945e163c90d57627ad1b5bc9dc18518b2"
     },
     "paiton_prefill_tall_adapter.py": {
-      "size_bytes": 5889,
-      "sha256": "51262066957fc910e7a6839cf56784877fe9fa3b2941ad92aeccb741fe7463dc"
+      "size_bytes": 5887,
+      "sha256": "1a8f544d848ae8f186b0294f731532376fd78f83fc9a37b8b54c414b7bf20988"
     },
     "paiton_prefill_tall_policy.py": {
       "size_bytes": 2091,
       "sha256": "f99ad3120f38f15aa22a702a725981c342ae6dd5069425a5ce260a7a312d6a0d"
     },
     "paiton_rms_decode_adapter.py": {
-      "size_bytes": 7190,
-      "sha256": "fbf05d42e86a43d0b8a161cbce551991d3110b75dcaa8e3d6208ea8f5d3c7b24"
+      "size_bytes": 7188,
+      "sha256": "66a34b6923ed2495534902d6fa47684b5ed6c54547def4c6c872cde94b38d6d8"
     },
     "paiton_rms_decode_policy.py": {
       "size_bytes": 1833,
       "sha256": "65f1a1caea6cc84fc1aeb1b7af6f521abb540df63e6112202aed409d176c0042"
     },
     "paiton_rms_prefill_fma_adapter.py": {
-      "size_bytes": 6280,
-      "sha256": "cf9b502963dc6f490eb3a455de41bd00703fb7527e65b7d637ae3f2b7c28a874"
+      "size_bytes": 6278,
+      "sha256": "7ceb7771eea47e5dc9a695250bb8691dbf263d33f113b567ec44f7cc582c52f4"
     },
     "paiton_rms_prefill_fma_policy.py": {
       "size_bytes": 1811,
       "sha256": "157cbcd273d75527561f70f6ea860f196cb695a8cdcdf97da17d3a260580cfc1"
     },
     "paiton_silu_decode_adapter.py": {
-      "size_bytes": 6173,
-      "sha256": "d54e8337d082259301bb7ec34c74940845e10f3d0f4f9ef48cbd7c5e18c97087"
+      "size_bytes": 6171,
+      "sha256": "159b75a247dd57867b09e3bacae33e54a8addaf0e8d344ae74a34b9117e2e73d"
     },
     "paiton_silu_decode_policy.py": {
       "size_bytes": 1527,
       "sha256": "58ab2953932d2ff54eb4677b97ee37d54de1e1b7e997e2356418894a32b76be8"
     },
     "paiton_silu_prefill_adapter.py": {
-      "size_bytes": 5942,
-      "sha256": "3f1ca4ecaff413e101cac066073e3212fa69aee4269de708ecabf143363531ef"
+      "size_bytes": 5940,
+      "sha256": "9da5a0c6ea5f68ec9c7df77056b3f62238eb53141dfb0e30795727d81545b0d8"
     },
     "paiton_silu_prefill_policy.py": {
       "size_bytes": 1504,
       "sha256": "b41156b6921b314a379aee9e595ac8d612416e08811e60150ed913181bdc1212"
     },
-    "radiance_allreduce.py": {
-      "size_bytes": 17187,
-      "sha256": "5fd2935bdb79c45dad54ac7c183b231f4b16c0c4c45960cd16dc03e9468a2b6b"
+    "paiton_allreduce.py": {
+      "size_bytes": 17182,
+      "sha256": "89533a50a65d3fbfc393b714a0f9d41c5cf42323a10ce5bffd3f991efeae7cb4"
     },
-    "radiance_amdsmi.py": {
+    "paiton_amdsmi.py": {
       "size_bytes": 1267,
       "sha256": "b98b086a92b0a77ab51dd00368a47bf1ea8a17deee7092a86dd8dd03e41f88be"
     },
-    "radiance_arnq.py": {
-      "size_bytes": 18313,
-      "sha256": "f76b0fc5819926d609e8f9665aab09ff02ea4da327017d90a6cb8feca2aeb4a7"
+    "paiton_arnq.py": {
+      "size_bytes": 18278,
+      "sha256": "15e2e3ad73fd5cf23a8bf88a4a63bd72a561e01db673379dc57bd3c87805d380"
     },
-    "radiance_aroverlap.py": {
-      "size_bytes": 8263,
-      "sha256": "08704fd9f1f53b9484cb08ff8f731e2dea9640d581b4a308d39ea59f39485f1e"
+    "paiton_aroverlap.py": {
+      "size_bytes": 8253,
+      "sha256": "599f5732d7a26e15472fa03a87e5c089a565f75a9fa8af7a5e9671626be9b303"
     },
-    "radiance_draft.py": {
-      "size_bytes": 17967,
-      "sha256": "d3f152b4d4b307b50fb4a4d54b733242bf81fb8503dbcd5c3968b0568beeddad"
+    "paiton_draft.py": {
+      "size_bytes": 17882,
+      "sha256": "05f62b62f024509a5ee41acb712ba53daf3d1e8e97f480b8af2df645f747f3bb"
     },
-    "radiance_draft_gpu.py": {
-      "size_bytes": 6212,
-      "sha256": "6233a2609530f5a92fbcaafa54a2d5ade0134f4620c48139d27026426d5a2c1d"
+    "paiton_draft_gpu.py": {
+      "size_bytes": 6210,
+      "sha256": "143843ac595540785092fce569ae42dc0f57cd85fc24a7fc5a01e55e1b5b070d"
     },
-    "radiance_drafthead.py": {
-      "size_bytes": 25781,
-      "sha256": "46a56931148a13b1cb5e8c8816f0309821eab3c5e5df93b712a7384552bf36d2"
+    "paiton_drafthead.py": {
+      "size_bytes": 25715,
+      "sha256": "56176874e2cc288836bada2ae06ed096073c6a31e2557b0db59501a727fd489f"
     },
-    "radiance_gdn.py": {
-      "size_bytes": 37271,
-      "sha256": "31eb8ce7e46503070aff8d5540b418eb9deb51431a666dd620f862e6300a9881"
+    "paiton_gdn.py": {
+      "size_bytes": 37248,
+      "sha256": "b2c2fa8857349d29395615ce9e19d7fc391364f08d47a2af4fe52326294016df"
     },
-    "radiance_gdn_lazy.py": {
-      "size_bytes": 5274,
-      "sha256": "330ca07e7138667aed528d163bc89af0f72b38a1caa413eed15f9bc9b473705a"
+    "paiton_gdn_lazy.py": {
+      "size_bytes": 5260,
+      "sha256": "125cc12a0c6dcb9aa99e14f0997e93116f7cdffa2debe17b0d64613ce0fe887b"
     },
-    "radiance_gdnmerge.py": {
-      "size_bytes": 11435,
-      "sha256": "7880ded5e9e3088b103c8a559cda038dc4a2a46d2f6ff97552b5cc353aef64c0"
+    "paiton_gdnmerge.py": {
+      "size_bytes": 11389,
+      "sha256": "51a8a68bc25e842aa5711c5a5a3bf45efc539df93598b0a34f14c6d348644d5a"
     },
-    "radiance_gemm.py": {
-      "size_bytes": 7826,
-      "sha256": "6a07c20876fc1b52a1add6b1ad9a749dcbcbb8b83b489f411fbbcf7541a8a5b0"
+    "paiton_gemm.py": {
+      "size_bytes": 7821,
+      "sha256": "c4f88d702a8ab18ef6c7646df2efc6c02f5066572b12e0afe5f7a4791738ab19"
     },
-    "radiance_kernels.py": {
-      "size_bytes": 23625,
-      "sha256": "7b7fa7047d4922d4fd1750a09beb8dc392978296a8f654a3d7ae05735ece6548"
+    "paiton_kernels.py": {
+      "size_bytes": 23541,
+      "sha256": "147537a76fb2c8bc18e50aa90a4a4142a0226ba4302fd34f56a89d2d4502f285"
     },
-    "radiance_mxfp4.py": {
-      "size_bytes": 50860,
-      "sha256": "461cc4096740897c2da6bb81b04e31020084bf5f6671c63152e67be8944f0610"
+    "paiton_mxfp4.py": {
+      "size_bytes": 50795,
+      "sha256": "c54502fb859d46fc9d50d738fe073d4e6b2cb3408a447d8291bdaece187a738d"
     },
-    "radiance_nvfp4.py": {
-      "size_bytes": 21047,
-      "sha256": "23decddec872cdbd004bdb26d39fff6b758b3da68d927119863097a2f599264c"
+    "paiton_nvfp4.py": {
+      "size_bytes": 21032,
+      "sha256": "ef3a237d46aefbeee4a293d2c08cac1d9143a36ec0150cdd745b98849bfa5e9d"
     },
-    "radiance_r4d_attn.py": {
-      "size_bytes": 20102,
-      "sha256": "d80aa0cd29384121c484c62afb24c75ba28ab66735b3cc1f587d3e5b3b321c21"
+    "paiton_r4d_attn.py": {
+      "size_bytes": 20116,
+      "sha256": "7798a436ae4fa5e419a4f0ea737f76b45029c2111a29766f02b294033ff6d5c7"
     },
-    "radiance_rmsquant.py": {
-      "size_bytes": 2880,
-      "sha256": "55c72dfe2226ebb748939b2fc1e9637fad685ac0bdb20c2fe48b8881cb9e2245"
+    "paiton_rmsquant.py": {
+      "size_bytes": 2879,
+      "sha256": "b0df7f505f2ab1bb945662ef9773e705739fcd48605c1d79e876fad9c8991f61"
     },
-    "radiance_topk.py": {
-      "size_bytes": 3523,
-      "sha256": "dd75226087dd4fc79e3e53f7e34fd20200e156ac77f588dd58d6abaf95524bfc"
+    "paiton_topk.py": {
+      "size_bytes": 3526,
+      "sha256": "ba5d0ec7ec439587b72b3dc0828d7160e5ee5ee12248a78c85a8c3616bd98376"
     },
-    "radiance_tp3pad.py": {
-      "size_bytes": 20599,
-      "sha256": "dbca421fe30a3e95ebc40bcfb5559faec7e18aafae67ef67f2b53f41c255e71b"
+    "paiton_tp3pad.py": {
+      "size_bytes": 20602,
+      "sha256": "8618957f3ffdc2e83d29c52ee29f82ec87cb247741ba3346f2d690972b4a2d59"
     },
-    "radiance_verifyhead.py": {
-      "size_bytes": 12500,
-      "sha256": "5aaf452bf24418387aafa759ad7f10ad0fd9dce820bbbffa5cb9f84e11265139"
+    "paiton_verifyhead.py": {
+      "size_bytes": 12461,
+      "sha256": "deb0fb6406cdf077313224fb281365215860d3955879b96d4ad82c7a519c34b9"
     },
-    "radiance_vit_attn.py": {
-      "size_bytes": 9144,
-      "sha256": "878dfeed2f3b570945f932f17697d7b2d59644ec0971ba28f0c380eba4af87cf"
+    "paiton_vit_attn.py": {
+      "size_bytes": 9117,
+      "sha256": "93ad7c9119b678251e7e3ef325c0099357691633fc224474e03ca3764214bb8e"
     },
-    "radiance_w4.py": {
-      "size_bytes": 25539,
-      "sha256": "6059dec94f2d9b69f8a689c4dbedd67637ba5a529485ab105af264df045a1713"
+    "paiton_w4.py": {
+      "size_bytes": 25490,
+      "sha256": "f03b9ccc257bcd2f76076545c05af165f7d57962ddb13cf4947da52dd0cdaed3"
     },
     "compat/__init__.py": {
-      "size_bytes": 1491,
-      "sha256": "f984aa4634c5f8532f720dd9954306c509d21bfde9b82edf3613d5e93b10c016"
+      "size_bytes": 1485,
+      "sha256": "3ee0177ce79c947f6af74345aa9143d2e7406bac152a7852c9d911942d0de561"
     },
     "compat/bootstrap.py": {
       "size_bytes": 3285,
       "sha256": "2f31279e2b0fdcd5b642b2f0b7ff38b0dd16962b375171c7c6477529ffd84db9"
     },
     "compat/cache_namespace.py": {
-      "size_bytes": 1989,
-      "sha256": "20b8e2fb85aaa7158d401b0bbe924ede9e960b922ff4b79885cf3062155bc488"
+      "size_bytes": 1990,
+      "sha256": "d0b12afe08cbc64dbbcd61e430836e5e23647086d4818302b3319293b181b949"
     }
   }
 }

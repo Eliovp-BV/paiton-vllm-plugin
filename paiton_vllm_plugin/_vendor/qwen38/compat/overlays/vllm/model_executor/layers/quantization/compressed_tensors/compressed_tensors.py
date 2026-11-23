@@ -164,15 +164,15 @@ class CompressedTensorsConfig(QuantizationConfig):
         if isinstance(layer, LinearBase):
             # collect schemes
             quant_scheme = self.get_scheme(layer=layer, layer_name=prefix)
-            # --- radiance (patch_nvfp4_mxfp4.py): optional bf16 -> MXFP4 for unmatched linears ---
+            # --- paiton (patch_nvfp4_mxfp4.py): optional bf16 -> MXFP4 for unmatched linears ---
             if quant_scheme is None:
-                import os as _radiance_os
-                if _radiance_os.environ.get("RADIANCE_NVFP4_MXFP4", "0") == "1":
-                    import radiance_nvfp4 as _radiance_nvfp4
+                import os as _paiton_os
+                if _paiton_os.environ.get("PAITON_RT_NVFP4_MXFP4", "0") == "1":
+                    import paiton_nvfp4 as _paiton_nvfp4
 
-                    _radiance_cls = _radiance_nvfp4.bf16_scheme_class(prefix)
-                    if _radiance_cls is not None:
-                        quant_scheme = _radiance_cls()
+                    _paiton_cls = _paiton_nvfp4.bf16_scheme_class(prefix)
+                    if _paiton_cls is not None:
+                        quant_scheme = _paiton_cls()
             input_tfms, output_tfms = get_linear_transform_schemes(
                 layer, prefix, self.transform_config, self.packed_modules_mapping
             )
@@ -810,14 +810,14 @@ class CompressedTensorsConfig(QuantizationConfig):
                     "For NVFP4 weights, input quantization must also be NVFP4 "
                     "format, None for NVFP4A16"
                 )
-            # --- radiance (patch_nvfp4_mxfp4.py): NVFP4 -> MXFP4 at load on gfx12x ---
-            import os as _radiance_os
-            if _radiance_os.environ.get("RADIANCE_NVFP4_MXFP4", "0") == "1":
-                import radiance_nvfp4 as _radiance_nvfp4
+            # --- paiton (patch_nvfp4_mxfp4.py): NVFP4 -> MXFP4 at load on gfx12x ---
+            import os as _paiton_os
+            if _paiton_os.environ.get("PAITON_RT_NVFP4_MXFP4", "0") == "1":
+                import paiton_nvfp4 as _paiton_nvfp4
 
-                _radiance_cls = _radiance_nvfp4.scheme_class()
-                if _radiance_cls is not None:
-                    return _radiance_cls()
+                _paiton_cls = _paiton_nvfp4.scheme_class()
+                if _paiton_cls is not None:
+                    return _paiton_cls()
             return CompressedTensorsW4A4Fp4()
 
         if self._is_mxfp4_w4a8_fp8(weight_quant, input_quant):
@@ -914,14 +914,14 @@ class CompressedTensorsConfig(QuantizationConfig):
                         CompressedTensorsW8A8Fp8.get_min_capability(), error=False
                     )
                 if is_fp8_w8a8_supported:
-                    # --- radiance (patch_nvfp4_mxfp4.py): optional FP8 -> MXFP4 at load ---
-                    import os as _radiance_os
-                    if _radiance_os.environ.get("RADIANCE_NVFP4_MXFP4", "0") == "1":
-                        import radiance_nvfp4 as _radiance_nvfp4
+                    # --- paiton (patch_nvfp4_mxfp4.py): optional FP8 -> MXFP4 at load ---
+                    import os as _paiton_os
+                    if _paiton_os.environ.get("PAITON_RT_NVFP4_MXFP4", "0") == "1":
+                        import paiton_nvfp4 as _paiton_nvfp4
 
-                        _radiance_cls = _radiance_nvfp4.fp8_scheme_class(layer_name)
-                        if _radiance_cls is not None:
-                            return _radiance_cls()
+                        _paiton_cls = _paiton_nvfp4.fp8_scheme_class(layer_name)
+                        if _paiton_cls is not None:
+                            return _paiton_cls()
                     return CompressedTensorsW8A8Fp8(
                         weight_quant=weight_quant,
                         is_static_input_scheme=(

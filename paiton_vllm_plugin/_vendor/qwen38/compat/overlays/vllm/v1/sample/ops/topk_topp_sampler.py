@@ -460,16 +460,16 @@ def compiled_random_sample(logits: torch.Tensor) -> torch.Tensor:
     return probs.div(q).argmax(dim=-1).view(-1)
 
 
-# radiance (patch_topk_triton_rows.py): row count at or above which apply_top_k_top_p uses the
+# paiton (patch_topk_triton_rows.py): row count at or above which apply_top_k_top_p uses the
 # Triton kernel rather than a vocab-wide sort. Upstream hardcodes 8; see the patch for the
 # measurements. Set to 8 to restore upstream behaviour.
-_RADIANCE_TRITON_MIN_ROWS = int(
-    __import__("os").environ.get("RADIANCE_TOPK_TRITON_MIN_ROWS") or 1
+_PAITON_RT_TRITON_MIN_ROWS = int(
+    __import__("os").environ.get("PAITON_RT_TOPK_TRITON_MIN_ROWS") or 1
 )
 
 
-_RADIANCE_TOPK_COMPOSITE = (
-    __import__("os").environ.get("RADIANCE_TOPK_COMPOSITE", "1") == "1"
+_PAITON_RT_TOPK_COMPOSITE = (
+    __import__("os").environ.get("PAITON_RT_TOPK_COMPOSITE", "1") == "1"
 )
 
 
@@ -477,14 +477,14 @@ def apply_top_k_top_p(
     logits: torch.Tensor, k: torch.Tensor | None, p: torch.Tensor | None,
     max_top_k: int = 0,
 ) -> torch.Tensor:
-    # radiance (patch_topk_composite.py): when every row's top_k is known (on the CPU) to be
+    # paiton (patch_topk_composite.py): when every row's top_k is known (on the CPU) to be
     # a small cap, the exact mask only needs the top-KCAP candidates. torch.topk is a
     # multi-block radix select that fills the GPU where the one-program-per-row Triton
-    # kernel cannot: 907 us -> ~0.1 ms at 8-9 rows, measured. See radiance_topk.py.
-    if _RADIANCE_TOPK_COMPOSITE and k is not None and max_top_k > 0:
-        import radiance_topk
-        if max_top_k <= radiance_topk.KCAP:
-            return radiance_topk.apply_top_k_top_p_composite(logits, k, p)
+    # kernel cannot: 907 us -> ~0.1 ms at 8-9 rows, measured. See paiton_topk.py.
+    if _PAITON_RT_TOPK_COMPOSITE and k is not None and max_top_k > 0:
+        import paiton_topk
+        if max_top_k <= paiton_topk.KCAP:
+            return paiton_topk.apply_top_k_top_p_composite(logits, k, p)
     if p is None and k is None:
         return logits
 

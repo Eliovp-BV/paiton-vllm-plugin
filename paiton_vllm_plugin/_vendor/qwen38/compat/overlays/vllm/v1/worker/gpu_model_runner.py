@@ -5001,7 +5001,7 @@ class GPUModelRunner(
                     scheduler_output,
                     shift_computed_tokens=1,
                 )
-                # RADIANCE: align the placeholder mask with the drafter's
+                # PAITON: align the placeholder mask with the drafter's
                 # compacted token layout (disable_padded_drafter_batch drops
                 # rejected tokens via token_indices; the mask is built at
                 # scheduled scale). Without this the mask outlives the draft
@@ -5072,9 +5072,9 @@ class GPUModelRunner(
                         vllm_config=self.vllm_config,
                         model_config=self.model_config,
                     )
-                # RADIANCE: merge each GDN layer's two input projections into one GEMM.
-                import radiance_gdnmerge as _radiance_gdnmerge
-                _radiance_gdnmerge.merge_model(self.model)
+                # PAITON: merge each GDN layer's two input projections into one GEMM.
+                import paiton_gdnmerge as _paiton_gdnmerge
+                _paiton_gdnmerge.merge_model(self.model)
                 lookback_depth = getattr(self.model, "token_lookback_depth", 0)
                 if lookback_depth > 0:
                     self.lookback_token_ids = self._make_buffer(

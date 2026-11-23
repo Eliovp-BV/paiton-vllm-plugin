@@ -17,11 +17,11 @@ import sys
 MASTER='PAITON_DFLASH_NATIVE'
 MODEL='vllm.model_executor.models.qwen3_dflash'
 UTILS='vllm.v1.worker.gpu.spec_decode.dflash.utils'
-DISPATCH='radiance_kernels'
+DISPATCH='paiton_kernels'
 SUFFIX='_paiton_native_plugin_v1'
-HASHES={MODEL:'dbc33566a7ea355a5aafded0333b3e23af430e800e9e0e84ba7a7c99d6d2873b',
-        UTILS:'960680811fd87ae45f5d4bab574b12884ce231110e09d9df8f945ecf4c5ccac6',
-        DISPATCH:'7b7fa7047d4922d4fd1750a09beb8dc392978296a8f654a3d7ae05735ece6548'}
+HASHES={MODEL:'77e8dbc99a0a14bd9639c4db6f409ed7f14e22cbb7230e34e7eff8c4c3949625',
+        UTILS:'0adf91e52a3cab62ff5ad4beb0b912c96ba243ecb7b09a85e1bef87eb3779cc6',
+        DISPATCH:'147537a76fb2c8bc18e50aa90a4a4142a0226ba4302fd34f56a89d2d4502f285'}
 
 def enabled(env):
     value=env.get(MASTER,'0')

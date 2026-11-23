@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "date": "2026-09-16",
-  "scope": "Single-GPU BetterBench 0.6.0 quick screen, same MXFP4 checkpoint; stronger HIP-matched GGZ repeat is headline baseline",
+  "scope": "Single-GPU BetterBench 0.6.0 quick screen, same MXFP4 checkpoint; stronger HIP-matched reference-backend repeat is headline baseline",
   "hardware": {
     "gpu": "AMD Radeon AI PRO R9700",
     "count": 1,
@@ -20,12 +20,12 @@
   },
   "target_checkpoint_lock": "../../checkpoint.lock.json",
   "upstream": {
-    "repository": "https://github.com/GGZ14/vllm-mxfp4",
+    "repository": "The reference backend's vLLM fork",
     "revision": "92eed82fcbb1cca31f7a9108c6371a0bba647ee2",
-    "base_image": "stilldeadcode/vllm-radiance@sha256:45694209177a55a1ab3ba6702fe6e978b1b66a6e66ae3fc066f8d579f7bc4c25",
+    "base_image": "Reference-engine image sha256:45694209177a55a1ab3ba6702fe6e978b1b66a6e66ae3fc066f8d579f7bc4c25",
     "libr4d_repository": "https://codeberg.org/StillDeadcode/libr4d",
     "libr4d_revision": "b9e42ab7202f53a3bc13d415f5d41481f9ca311b",
-    "patch": "r4d_radiance_extras.patch from the pinned GGZ revision",
+    "patch": "the r4d extras patch from the pinned reference-backend revision",
     "locally_built_image": "sha256:4ea2d8b041e0684e6fc662df977f7c8cdc8813f59969683d38d58c97a0e8b1cc",
     "warmed_local_image": "sha256:2f343e1bddab0a80cd9be5132f9e4f72e2f9a40a9c12e4b19be99455fb8af2bc",
     "local_images_published": false,
@@ -40,7 +40,7 @@
   "cache_budget_bytes": 5368709120,
   "reported_cache_capacity_tokens": {
     "paiton": 74430,
-    "ggz": 25746
+    "refb": 25746
   },
   "matched_hip_settings": {
     "DEBUG_HIP_DYNAMIC_QUEUES": "0",
@@ -74,8 +74,8 @@
       "started_ns": 1789553755312033756
     },
     {
-      "name": "ggz-current-quick",
-      "raw_results": "data/ggz-current-quick.json",
+      "name": "refb-current-quick",
+      "raw_results": "data/refb-current-quick.json",
       "original_private_results_sha256": "82577450bd13d8e36b0cb86fa9de16acd449f8c340c5e26dfc50501bcbcb1e60",
       "published_results_sha256": "3cec86a1a00668260dffc70b179aad760a8e126d0f8c384fc9a435b821a52e20",
       "unchanged_non_environment_payload_sha256": "c56c399bcc13335b58d58d62fc7c3f84d18909d2f495989c10f8f8330dd9a324",
@@ -88,8 +88,8 @@
       "started_ns": 1789554508930716373
     },
     {
-      "name": "ggz-current-hipmatched-quick",
-      "raw_results": "data/ggz-current-hipmatched-quick.json",
+      "name": "refb-current-hipmatched-quick",
+      "raw_results": "data/refb-current-hipmatched-quick.json",
       "original_private_results_sha256": "5c8cc5945539fce9fe4953caf330441afc1ed74fd20edf8b1b0aa802a725f3a9",
       "published_results_sha256": "cc2d18d81ab1ed369794e18f019661c7514aa6642f5dee8e3a09ade151c9bc04",
       "unchanged_non_environment_payload_sha256": "f5e75ae780c83abf6e717d7b18085c075ac0256eb4c020bade6069fcf6f8720a",

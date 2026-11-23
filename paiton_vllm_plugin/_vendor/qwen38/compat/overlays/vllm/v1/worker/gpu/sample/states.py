@@ -120,7 +120,7 @@ class SamplingStates:
         top_k, top_p = self.get_top_k_top_p(expanded_idx_mapping, idx_mapping_np)
         if top_k is None and top_p is None:
             return logits
-        # radiance (patch_topk_composite.py): CPU-known bound, no sync.
+        # paiton (patch_topk_composite.py): CPU-known bound, no sync.
         kmax = 0 if top_k is None else int(self.top_k.np[idx_mapping_np].max())
         return apply_top_k_top_p(
             logits, top_k, top_p,

@@ -246,9 +246,9 @@ def use_aiter_triton_gemm(n, m, k, dtype):
 
 
 try:
-    import radiance_gemm as _radiance_gemm
+    import paiton_gemm as _paiton_gemm
 except Exception:
-    _radiance_gemm = None
+    _paiton_gemm = None
 def wvsplitkrc_dispatch(n: int, k: int, m: int, cu_count: int) -> tuple[int, bool]:
     """Pick the K-shard split for wvSplitKrc and say whether the shape fits.
 
@@ -300,11 +300,11 @@ def rocm_unquantized_gemm_impl(
         return linear_batch_invariant(x, weight, bias)
 
     from vllm.platforms.rocm import on_gfx1x, on_gfx9, on_gfx950, on_gfx1250
-    # --- RADIANCE skinny GEMM kernel (patch_skinny_gemm.py) ---
-    if (_radiance_gemm is not None and _radiance_gemm.ENABLED and bias is None
+    # --- PAITON skinny GEMM kernel (patch_skinny_gemm.py) ---
+    if (_paiton_gemm is not None and _paiton_gemm.ENABLED and bias is None
             and weight.dim() == 2 and x.dtype == torch.bfloat16
             and weight.dtype == torch.bfloat16):
-        _out = _radiance_gemm.maybe_gemm(x, weight)
+        _out = _paiton_gemm.maybe_gemm(x, weight)
         if _out is not None:
             return _out
 

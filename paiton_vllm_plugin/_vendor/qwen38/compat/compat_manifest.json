@@ -3,17 +3,17 @@
   "/usr/local/lib/python3.14/dist-packages/aiter/ops/triton/utils/gemm_config_utils.py": {
    "original_sha256": "ef69018fcb290380cceca7465b860b70ac6deba5afb6a3d3bb0dd49127eeed27",
    "overlay": "overlays/aiter/ops/triton/utils/gemm_config_utils.py",
-   "overlay_sha256": "df4f114b1314f4aa40e9dfd429e1fdfa7d9a757b8570d9117af957278520813b"
+   "overlay_sha256": "614540b014e53c1a8cddcc020e19a6d7a46b02bf6999dd5742ef756dc21b5072"
   },
   "/usr/local/lib/python3.14/dist-packages/torch/_dynamo/utils.py": {
    "original_sha256": "e550c68c924e1c0babaf31fc629e900c1d3b6ecbcf10aa88442d39b405b7102a",
    "overlay": "overlays/torch/_dynamo/utils.py",
-   "overlay_sha256": "26d8965f44526721be4b65f23f12264b001eaa76386310ce6557407b4c6641ad"
+   "overlay_sha256": "57781e276d42acfdfe44df18cbc255c4709801f6027b4e62683afbb33b06b4eb"
   },
   "/usr/local/lib/python3.14/dist-packages/transformers/utils/chat_template_utils.py": {
    "original_sha256": "976ecbdd024eea4457524d76ced50b368b5592af3970526e4bd9063672da6dd4",
    "overlay": "overlays/transformers/utils/chat_template_utils.py",
-   "overlay_sha256": "c0ff13aab6253b2dec139a41441272141ee5a14fad037ec1043e27f5f498b996"
+   "overlay_sha256": "6ad5209d8fd55ed15ef35440427caee90c524237da14da2744ac36e76c86c78c"
   },
   "/usr/local/lib/python3.14/dist-packages/triton/backends/amd/driver.py": {
    "original_sha256": "24b908043301e5dfcdbc4cdb17b9b7313e650cdfd4098b2ebfb998af8994be4e",
@@ -33,12 +33,12 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/compilation/passes/fusion/rocm_aiter_fusion.py": {
    "original_sha256": "1816146c60e67136539eff661feb095648af0e2c9c7a3409fee0b456f83ceb82",
    "overlay": "overlays/vllm/compilation/passes/fusion/rocm_aiter_fusion.py",
-   "overlay_sha256": "30d66a511cd1c8adffd4b2efac5102035c4a5fe02758c81cb1b7573238deac0a"
+   "overlay_sha256": "d93910da5dfe8420679fd90b7613ae9d49dc55e1ce8ffc9ff1016e3b90587d8c"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/config/model.py": {
    "original_sha256": "04ca37ea1d50128a7ddede30e7baa4e0a56bccec85091577a2c81c5de1a8fab8",
    "overlay": "overlays/vllm/config/model.py",
-   "overlay_sha256": "6b4a5e91250dcafec39da918ffff6b1df5650c9d1c2cd01c4714951d2d9dad7a"
+   "overlay_sha256": "3c1411b1be77f1c0a5f02fba57314d278eb7759cab9beece9d3b562b0f655fe6"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py": {
    "original_sha256": "f9e2f9ad8a637b54c88589ebc58353b236fafe6688def4b22b68f275decbbc6b",
@@ -48,42 +48,42 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/kernels/linear/__init__.py": {
    "original_sha256": "cdca783b61e4c8dec26b348ac510a18e798118e2adb437a381fd2bc88a69beb1",
    "overlay": "overlays/vllm/model_executor/kernels/linear/__init__.py",
-   "overlay_sha256": "f9f8d2c0880695ff68d60bee1ae54b15b866f431556c3121244df54aa45693ff"
+   "overlay_sha256": "0220721f64b71b71d5137e524d02005fdac235d7a7205109bdea4ab063539003"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/kernels/linear/mxfp4/aiter.py": {
    "original_sha256": "23e02fc645bb22475bc11c51ebff6bd87a150484cc9bbb2615d86bf3c3f07c57",
    "overlay": "overlays/vllm/model_executor/kernels/linear/mxfp4/aiter.py",
-   "overlay_sha256": "61a07ac9e9b679cd354589acc34768a7697e7ad066d17b5507734203a31196d9"
+   "overlay_sha256": "782e73a69710ed54ecc38a99b442160570caec86295380abe570ddf7222aa803"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/kernels/linear/scaled_mm/BlockScaledMMLinearKernel.py": {
    "original_sha256": "7ddf3bcf7db9a14dbd2512298d456e6dc941bb3952af7456caebbcbc20fb9b98",
    "overlay": "overlays/vllm/model_executor/kernels/linear/scaled_mm/BlockScaledMMLinearKernel.py",
-   "overlay_sha256": "df292e684a58f25083a08ae9e2f3b67e16b6af83a833757d7b5f3dcfd7f5f0fa"
+   "overlay_sha256": "987294f952d75be60d656fa6ea0a812fcf66cbbc9e35124a755c213ec263501e"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/kernels/linear/scaled_mm/triton.py": {
    "original_sha256": "caa5eaaa8ae7a046038e6597ee426463654926e25654ee53fc0d43b76f2b1403",
    "overlay": "overlays/vllm/model_executor/kernels/linear/scaled_mm/triton.py",
-   "overlay_sha256": "23b965b5f89508e4327788e4af45059331809e4ec027bff6b689360e8bbd2a1d"
+   "overlay_sha256": "5865223d2eadb22a8876152041ea7998393463bff7ee1f094fef0af10c00d640"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/mamba/abstract.py": {
    "original_sha256": "d89a4e6b9a2dab282648f098c9747a69eef4b32edb757b215d84d41a50b3d81b",
    "overlay": "overlays/vllm/model_executor/layers/mamba/abstract.py",
-   "overlay_sha256": "29097c3757d45b31309d719bb4956dc7ae052b14fc23618306fd5731106ed4c0"
+   "overlay_sha256": "e340f3470d7dfd32b1622b9cdb2533b1ffd3d265b2b13976b4c00a75fed9acb2"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
    "original_sha256": "3fbf257fef7f303b0082fdbedce4394df74b78ad9a594157079c89632b5c221e",
    "overlay": "overlays/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
-   "overlay_sha256": "97e240ddd436fb5554a3f805ae33eaf781c8be503c0126502b85d14187fd3372"
+   "overlay_sha256": "a663f1def9c256ac5157876834bfd51796a4798ccd4ec5afe7d8900cb345ec21"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/mamba/ops/causal_conv1d.py": {
    "original_sha256": "cb16cc9250c4195c09d6d83b43bba607c2d749b621d8d135a920443d1577265f",
    "overlay": "overlays/vllm/model_executor/layers/mamba/ops/causal_conv1d.py",
-   "overlay_sha256": "86ae1891e067eb98f356eb7a0e0ef683e5cfe997ca8efcb7073b1d978ea2f141"
+   "overlay_sha256": "16c3a0e5956a7b62d3f777ab507a34136affed3593ed3cbaff1f544c9c41ffda"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors.py": {
    "original_sha256": "4832a1ba12f4619f65e5526cba8b7319a0f3d464af0014ddc0260d5f0eeb5ed1",
    "overlay": "overlays/vllm/model_executor/layers/quantization/compressed_tensors/compressed_tensors.py",
-   "overlay_sha256": "7aeef8daf9f6a596766342989532d77aeef389614e428b6cbba965ec922fe92a"
+   "overlay_sha256": "c7002d7f9584e1b2646bad3a4c144d8542b586bb2881709d7ba80bd60cbd1d87"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/rotary_embedding/mrope.py": {
    "original_sha256": "922e8ba623e959e428ef103ba268be17b52bfafb8c5faa640cff8a8f42fc9a15",
@@ -93,27 +93,27 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/utils.py": {
    "original_sha256": "f36f9bcae56b78dac817058b2a2bb0b0609f4c5de10cfe93db8c76e49bdaf03e",
    "overlay": "overlays/vllm/model_executor/layers/utils.py",
-   "overlay_sha256": "307141bf1fbc6abcd1fe4a47e284ed90d034c25783a6ed5232b1b44eec11c4a3"
+   "overlay_sha256": "fed9050180065840244d2694513f0aee101ddde99226f413ae34dd2520c3e2ac"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/vocab_parallel_embedding.py": {
    "original_sha256": "10e17024bd5a5915e0d486e7a78a96d62e77bce803e1afd27feae7ad2042edc0",
    "overlay": "overlays/vllm/model_executor/layers/vocab_parallel_embedding.py",
-   "overlay_sha256": "9e444d6a1e74ac969d050170ddd9b73970a05cd3f8b8a0e81fa6de763488a1bf"
+   "overlay_sha256": "f5afa74daa175e6754eeaf2078866fdc19fa4400da7b91a4604d3dbe285fbfaf"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/model_loader/default_loader.py": {
    "original_sha256": "3101d49e14d78321ad9aa2aa5fb1a8d478d1c8a57511d12433afa5a174a53615",
    "overlay": "overlays/vllm/model_executor/model_loader/default_loader.py",
-   "overlay_sha256": "69ffb8ee4ec4700ac8403826a60629eda39f1808a4063f188ebd76dddcee626d"
+   "overlay_sha256": "dac61e38252ca9947fc2153c78820a2da1680a537431a79d778ed866513cf6d0"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/models/qwen3_dflash.py": {
    "original_sha256": "5375543288e72219abc1fc777219a640f0d173b3e8ac531718d666483a46ea7a",
    "overlay": "overlays/vllm/model_executor/models/qwen3_dflash.py",
-   "overlay_sha256": "dbc33566a7ea355a5aafded0333b3e23af430e800e9e0e84ba7a7c99d6d2873b"
+   "overlay_sha256": "77e8dbc99a0a14bd9639c4db6f409ed7f14e22cbb7230e34e7eff8c4c3949625"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/models/qwen3_dflash2.py": {
    "original_sha256": "11ac6ba8c6db702375970e68cd042b98783a5c43b87f9bfa27e88463316bf499",
    "overlay": "overlays/vllm/model_executor/models/qwen3_dflash2.py",
-   "overlay_sha256": "3ed429b2d11722c0634858d496fd3e83a22796098393165108837cf8804eb399"
+   "overlay_sha256": "e54889816937bee8c0c7af09dbc48d32997250866bdbf2125f154839408bfb01"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/parser/abstract_parser.py": {
    "original_sha256": "35810e909e8927fa087d5dfbdaa85bb3d2920faa51dae6b6780c8b1a915f4368",
@@ -128,12 +128,12 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/parser/qwen3.py": {
    "original_sha256": "2fa80f910f0da453c2134027564a3859cb1f2ec01035198b40f11da37fe0ac0a",
    "overlay": "overlays/vllm/parser/qwen3.py",
-   "overlay_sha256": "5f4d3bcb4c7215f4963fc98ba320e1e9870e6f87c863d8edb22cdef2faec92f0"
+   "overlay_sha256": "782b32bb166806587f1d91a7b9b3e5c9544e1b5ca59cf093bfa5faea8174d6dd"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/platforms/rocm.py": {
    "original_sha256": "673191c16304fec9c1bdfc76907e902d430f3bd31a5085cdec4590caa196be5f",
    "overlay": "overlays/vllm/platforms/rocm.py",
-   "overlay_sha256": "f001cca3407107a61b383765619a4ff3efea031cff20e6a461a5c07d7d8e1bc1"
+   "overlay_sha256": "78f36f1c8ca543e857c37b5bfd8c95ef360f1e8a0a20ce320d7ddfa2d2b1cf22"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/plugins/__init__.py": {
    "original_sha256": "06942d64e526c2c7407265e1903d625c4d2118d8d7fc39c616b1cc6aa6fc2c8f",
@@ -143,7 +143,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/third_party/flash_linear_attention/ops/chunk.py": {
    "original_sha256": "c105ead259e86aedc248c53e7c4cef07034d0ff12da608d80265d1dd0990803f",
    "overlay": "overlays/vllm/third_party/flash_linear_attention/ops/chunk.py",
-   "overlay_sha256": "e6c16f2fbca99cb9d9aa7bdf1aa894a51c5b2d4ee2a4014d3bf33ace005be344"
+   "overlay_sha256": "0cf93060e5caf788cdd3ebeb7e40523232063210d4145cfc1c4a8abf45dcb721"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/third_party/flash_linear_attention/ops/solve_tril.py": {
    "original_sha256": "88098d2dd05ad0fbd4639dcf34100920f89510664f87c48af42bd74fb9df60cc",
@@ -158,27 +158,27 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/attention/backends/gdn_attn.py": {
    "original_sha256": "ce951db92bb58b5b655ff00a89d0ffc68f8fbfb936e1e2a72a5da543cdf9d2f4",
    "overlay": "overlays/vllm/v1/attention/backends/gdn_attn.py",
-   "overlay_sha256": "289f2f4a410c0dbde8e89f85a71861e9aa5225b11a435da463f3ca543a9aa732"
+   "overlay_sha256": "c9054eb562ce66e46725baf7714046fb3b3f73e45e73b7af03181c5c69f79b4d"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/attention/backends/registry.py": {
    "original_sha256": "793790be7ad5824835e1dfc7222b2b0637847b66a3d82206d64818191b3eecf4",
    "overlay": "overlays/vllm/v1/attention/backends/registry.py",
-   "overlay_sha256": "80e4a97ae8b22999b6d6e8ab93112aba27f49e52917ea52ca31a91738f3e4bd5"
+   "overlay_sha256": "c84dd0425069c493ca93ca418fdafbc137aaca2100a203f027d7846c562fd4eb"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/core/kv_cache_utils.py": {
    "original_sha256": "af4164bca819f1cdc416077522a7019936fd38a523a482283eb91b08dae0e57a",
    "overlay": "overlays/vllm/v1/core/kv_cache_utils.py",
-   "overlay_sha256": "8c1739193ff469edee1497bc76f25032336db1a3875123e3f4593911b4bcff4b"
+   "overlay_sha256": "39fc4b894845a918da10937ddabdc60aba6f5c1fdd381bd3c36855d37064f3c2"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/core/sched/async_scheduler.py": {
    "original_sha256": "38d296e77e4d612e696241c67298eb1ca9b6a48b483cd33d35495bf31691032e",
    "overlay": "overlays/vllm/v1/core/sched/async_scheduler.py",
-   "overlay_sha256": "cf40ef31c85b08308625b12f7f418ddbd71d5876b553739a3871f3392b29007d"
+   "overlay_sha256": "03ec5b3034ea854697d9322f351ba2fd674f50b1f465e50bb04300882116678c"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/core/sched/scheduler.py": {
    "original_sha256": "d9a39870286c424cef2fc0730e24092ee3df67e848608e2278944846bab804ae",
    "overlay": "overlays/vllm/v1/core/sched/scheduler.py",
-   "overlay_sha256": "d3149abb7b27417cf02a8bc07de02a4415a9dec28cf9a42eef687d2eb932072f"
+   "overlay_sha256": "4eaf2a5b918ca18390bf7bae504e88b500f94c1cefb0b25524956a35488bbedc"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/core/single_type_kv_cache_manager.py": {
    "original_sha256": "fe38816a388bb5b615231f621adc208e3893d20349865d041cc4f646d4d89b0a",
@@ -188,7 +188,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/engine/core.py": {
    "original_sha256": "458fd729771681b124d3a4d5b1c575f689bf789a5e0c8cc9f5c524eb6ec84f87",
    "overlay": "overlays/vllm/v1/engine/core.py",
-   "overlay_sha256": "27a318c52069343bb3fca4289307a597d5ce3233d4cfc80693e712de37bad097"
+   "overlay_sha256": "ea2be9b84002d4d75c8289fbb88a50074c31231421bddee06744560da0d1b4ee"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py": {
    "original_sha256": "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff",
@@ -203,37 +203,37 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/sample/metadata.py": {
    "original_sha256": "6582cfe1a240c7ddb975f0ef6dd7dcd28dcf0fc7670394390250013977aa7ffd",
    "overlay": "overlays/vllm/v1/sample/metadata.py",
-   "overlay_sha256": "191b7a32a1fb1bd30e60049749781017df6681b07b1dfbbf467c431636bbdc78"
+   "overlay_sha256": "9cd3d6ab8bea8da8af9291e39962d5373c7d9ffda06e4afc0a8e8fdc51e3ac84"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/sample/ops/topk_topp_sampler.py": {
    "original_sha256": "970afd0e8565ddfdcf50dc99892d893b20cb186214cc35e15aeb97d1dba90bd0",
    "overlay": "overlays/vllm/v1/sample/ops/topk_topp_sampler.py",
-   "overlay_sha256": "d171328edc2893d769401f4459884d043f8df90dfb4d39a68492b34f925d51ed"
+   "overlay_sha256": "d4bf84b68da3e99a4250202cb105cd9ad2424b5b317edf2815bdd9b5aee44e41"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/sample/rejection_sampler.py": {
    "original_sha256": "9acaefa7ff3ff02649adf3a2edc4a7281d0089c23566fe5ff140c5f820d88ac4",
    "overlay": "overlays/vllm/v1/sample/rejection_sampler.py",
-   "overlay_sha256": "0a46849a131ca06240bf3c03590eff522013bff1303ca4b281d0fc9751d0ed01"
+   "overlay_sha256": "50b0f0e4ceb900aeca87f3de3bd69903a7771ad1b9639486a059af088696177b"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/spec_decode/llm_base_proposer.py": {
    "original_sha256": "8df7969c47e177dd8940303680f65ac8a71f316af5108977316281887b91769b",
    "overlay": "overlays/vllm/v1/spec_decode/llm_base_proposer.py",
-   "overlay_sha256": "8cd93b0ff189e830cd8e56dadd0389ec3caeefa7137ebf9c5e9ac83711751d1b"
+   "overlay_sha256": "cc9cc80bbd0eec194dc9ef193f5f0fe5aa53504c2057c8ec27e43d9f48b9ed1d"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/async_utils.py": {
    "original_sha256": "1797a8abdb46bba9d30d0507d725796ec72ad836f6778a1ece4590fd74b911c9",
    "overlay": "overlays/vllm/v1/worker/gpu/async_utils.py",
-   "overlay_sha256": "8b826452f7df8d5eff497cff898e7d86f627335a48c507b06b80d0cb610f00d8"
+   "overlay_sha256": "8a9250194f1d00944477ea919c36378312ac53f7427430990a33cae90be1ca94"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/attn_utils.py": {
    "original_sha256": "4ff080ab9c815037b53daceae4bd4654b5e9077b02e534bfb86b40f2a0edbe82",
    "overlay": "overlays/vllm/v1/worker/gpu/attn_utils.py",
-   "overlay_sha256": "7f6701acbd7489dbb180b6516c3c65b9f8554bd09516409860d0217ba961cde7"
+   "overlay_sha256": "ad684886060bc51f2d32956c565da6ba3cc688c49c25cbb7570b5171074bcc5d"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/model_runner.py": {
    "original_sha256": "5240fe8d62d403e466a4aa07a28fb7af5c0f1e9b9c3bb08c4003185bde461f87",
    "overlay": "overlays/vllm/v1/worker/gpu/model_runner.py",
-   "overlay_sha256": "2e032e9b81a3b7f3d52644e7b44e528b190df3828fd4da1fecee93e7405fc338"
+   "overlay_sha256": "02597b09ee1bd8e908403c0a05153da5bd1f90234858669e42bfe8696b463eee"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/model_states/mamba_hybrid.py": {
    "original_sha256": "262de489e3c02a2b1b93acd2a0d88ddced82ecebe050ca95ea91ba3fe501e6f4",
@@ -243,37 +243,37 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/sample/sampler.py": {
    "original_sha256": "620b0ff1bea504ebe61794b91ab07cdc243d3d05f8dea4c4044c374add76270b",
    "overlay": "overlays/vllm/v1/worker/gpu/sample/sampler.py",
-   "overlay_sha256": "e5f982508e29d0793f0dd2d4d7f3cf6a743880138a9f423e60c2bd03056d7ef0"
+   "overlay_sha256": "4c93339b656d2d7c6c70478050c906aff9406792568e35afa6ffb2c7756ffcf8"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/sample/states.py": {
    "original_sha256": "7dbccea6fb6e24830dafb447a43f93fd0539f33ef02f1b5bf7c2547234cbffa3",
    "overlay": "overlays/vllm/v1/worker/gpu/sample/states.py",
-   "overlay_sha256": "77d5294d22ae6f39b1c049b7036933c4c138d65c136cf399ff40b779c0007bce"
+   "overlay_sha256": "3afa03c371370efc03ff91d756d59db6354b34fce62e577acb227cfc979527b0"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/spec_decode/dflash/utils.py": {
    "original_sha256": "f0584417149c0a6fa67e700b2a725e40a41f4546a806b26e6cc64b64c59cfd66",
    "overlay": "overlays/vllm/v1/worker/gpu/spec_decode/dflash/utils.py",
-   "overlay_sha256": "960680811fd87ae45f5d4bab574b12884ce231110e09d9df8f945ecf4c5ccac6"
+   "overlay_sha256": "0adf91e52a3cab62ff5ad4beb0b912c96ba243ecb7b09a85e1bef87eb3779cc6"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu/spec_decode/dflash2/speculator.py": {
    "original_sha256": "f9f5b5d2623e09fb9f16d4a2e1353c7014d6a01939563e511d9f3eeec7c8163d",
    "overlay": "overlays/vllm/v1/worker/gpu/spec_decode/dflash2/speculator.py",
-   "overlay_sha256": "2d135eed2bbe93f1b71906f71257800359f8c09e91a0c92ec58cbc2509994747"
+   "overlay_sha256": "adc8a894eefcf3395e804613c475a718ca6889dc9cd7b5bd1e00a3bfaac38920"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu_input_batch.py": {
    "original_sha256": "79f1dad9d093f404ad84d8e94906227d69620d356175654e4e8dd1377b55f388",
    "overlay": "overlays/vllm/v1/worker/gpu_input_batch.py",
-   "overlay_sha256": "69ac1ce3b73de7d95a99e36c8f9e1c1af70f118323ad7bd27b7098898fafc965"
+   "overlay_sha256": "ace45f0fc8551200cda4b8cd6b1787d20b99a57700ecbd4f29557b1efba165db"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu_model_runner.py": {
    "original_sha256": "4cf95efe4ea8caa3110dcd231ff95ceb97e8136f5056e6bdd388300a484c4a81",
    "overlay": "overlays/vllm/v1/worker/gpu_model_runner.py",
-   "overlay_sha256": "02d368263667e0aad516723814a216d54eb39cade53ac711021e7db2d5cb65e8"
+   "overlay_sha256": "1eafce8d8f1639761d0ad039d371bca1e5888c4e84be685ff5ef445d7b93025a"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/worker/gpu_worker.py": {
    "original_sha256": "e970aa29a738aa15cd963d9f9202ca6d3d504e98fd344959fd998e940472a5a0",
    "overlay": "overlays/vllm/v1/worker/gpu_worker.py",
-   "overlay_sha256": "71e4a9c9538ff0dc875274a46536a8a8ccf533fcc3a4c4654d0e5e2c9244e546"
+   "overlay_sha256": "8979687a1f12ee6ad04609a3aef0edf9cfa3f9250af29baf0284272073da7ddc"
   }
  },
  "native_provider": "off",

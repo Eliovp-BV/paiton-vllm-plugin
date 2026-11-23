@@ -397,9 +397,9 @@ class GPUModelRunner(LoRAModelRunnerMixin):
                     vllm_config=self.vllm_config,
                     model_config=self.vllm_config.model_config,
                 )
-            # RADIANCE: merge each GDN layer's two input projections into one GEMM.
-            import radiance_gdnmerge as _radiance_gdnmerge
-            _radiance_gdnmerge.merge_model(self.model)
+            # PAITON: merge each GDN layer's two input projections into one GEMM.
+            import paiton_gdnmerge as _paiton_gdnmerge
+            _paiton_gdnmerge.merge_model(self.model)
             # PAITON: opt-in host-memory input embedding (PAITON_HOST_EMBED=1); before the drafter shares the
             # module and before compile/capture bake the weight address into the graphs.
             import paiton_host_embed as _paiton_host_embed
@@ -1674,18 +1674,18 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             logits = logits[:, : self.vocab_size]
         else:
             sample_hidden_states = hidden_states[input_batch.logits_indices]
-            # --- RADIANCE int2 verify head (patch_verify_head.py) ---
+            # --- PAITON int2 verify head (patch_verify_head.py) ---
             try:
-                import radiance_verifyhead as _radiance_vh
-                _radiance_vh.before_compute_logits(self, input_batch, grammar_output)
-            except Exception as _radiance_head_error:
+                import paiton_verifyhead as _paiton_vh
+                _paiton_vh.before_compute_logits(self, input_batch, grammar_output)
+            except Exception as _paiton_head_error:
                 # External initialization diagnostic; preserve full-head fallback.
-                if not getattr(self, "_radiance_verify_head_error_reported", False):
-                    self._radiance_verify_head_error_reported = True
+                if not getattr(self, "_paiton_verify_head_error_reported", False):
+                    self._paiton_verify_head_error_reported = True
                     import sys
                     import traceback
-                    sys.stderr.write("[radiance.verifyhead] INITIALIZATION_OR_GATE_FAILURE: "
-                                     + repr(_radiance_head_error) + "\n")
+                    sys.stderr.write("[paiton.verifyhead] INITIALIZATION_OR_GATE_FAILURE: "
+                                     + repr(_paiton_head_error) + "\n")
                     traceback.print_exc(file=sys.stderr)
                     sys.stderr.flush()
             logits = self.model.compute_logits(sample_hidden_states)
@@ -1693,7 +1693,7 @@ class GPUModelRunner(LoRAModelRunnerMixin):
             # logprobs: full-vocab rows, whole prefill chunks the int2 kernel cannot launch) must
             # take the exact head. Absent/unarmed verify head: nothing to disarm.
             try:
-                _radiance_vh._state["lp"]._radiance_fast_ok = False
+                _paiton_vh._state["lp"]._paiton_fast_ok = False
             except Exception:
                 pass
 

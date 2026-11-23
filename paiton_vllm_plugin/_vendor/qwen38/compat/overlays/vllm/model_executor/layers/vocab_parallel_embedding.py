@@ -280,17 +280,17 @@ class VocabParallelEmbedding(PluggableLayer):
             self.tp_size = get_tensor_model_parallel_world_size()
         self.tp_rank = tp_rank
         self.num_embeddings = num_embeddings
-        # --- radiance (patch_tp3_pad.py): pad the vocab to a multiple TP=3 divides (64 -> 192
-        # when RADIANCE_TP_PAD is set; unchanged otherwise). The padded tail is zero-filled by
+        # --- paiton (patch_tp3_pad.py): pad the vocab to a multiple TP=3 divides (64 -> 192
+        # when PAITON_RT_TP_PAD is set; unchanged otherwise). The padded tail is zero-filled by
         # weight_loader below and masked by LogitsProcessor via org_vocab_size, as before.
         try:
-            import radiance_tp3pad as _radiance_tp3pad
+            import paiton_tp3pad as _paiton_tp3pad
         except ImportError:
             import os as _os
-            if _os.environ.get("RADIANCE_TP_PAD", "").strip() not in ("", "0"):
+            if _os.environ.get("PAITON_RT_TP_PAD", "").strip() not in ("", "0"):
                 raise
         else:
-            padding_size = _radiance_tp3pad.vocab_pad_multiple(padding_size)
+            padding_size = _paiton_tp3pad.vocab_pad_multiple(padding_size)
         self.padding_size = padding_size
         self.org_vocab_size = org_num_embeddings or num_embeddings
         self.num_added_embeddings = num_embeddings - self.org_vocab_size

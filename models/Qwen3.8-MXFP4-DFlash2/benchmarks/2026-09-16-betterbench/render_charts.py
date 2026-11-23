@@ -20,13 +20,13 @@ from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 
 PAITON = "#087F8C"
-GGZ = "#D98520"
+REFB = "#D98520"
 INK = "#162D3B"
 MUTED = "#51616E"
 GRID = "#DCE4E9"
 BACKGROUND = "#FFFFFF"
-RUNS = ("paiton-release-repeat", "ggz-current-hipmatched-quick")
-LABELS = ("Paiton release", "GGZ14 current · HIP settings matched")
+RUNS = ("paiton-release-repeat", "refb-current-hipmatched-quick")
+LABELS = ("Paiton release", "Reference backend, HIP settings matched")
 
 plt.rcParams.update({
     "font.family": "DejaVu Sans",
@@ -66,7 +66,7 @@ def heading(ax, title, subtitle):
 def grouped_bars(ax, groups, values, ylabel, formatter, ylim=None):
     width = 0.34
     positions = list(range(len(groups)))
-    for series, color, offset in zip(values, (PAITON, GGZ), (-width / 2, width / 2)):
+    for series, color, offset in zip(values, (PAITON, REFB), (-width / 2, width / 2)):
         bars = ax.bar([x + offset for x in positions], series, width=width,
                       color=color, edgecolor=BACKGROUND, linewidth=0.6)
         ax.bar_label(bars, labels=[formatter(v) for v in series], padding=6,
@@ -82,10 +82,10 @@ def grouped_bars(ax, groups, values, ylabel, formatter, ylim=None):
 
 
 def two_horizontal(ax, values, xlabel, formatter):
-    bars = ax.barh([1, 0], values, color=(PAITON, GGZ), height=0.45)
+    bars = ax.barh([1, 0], values, color=(PAITON, REFB), height=0.45)
     ax.bar_label(bars, labels=[formatter(v) for v in values], padding=8,
                  fontsize=13, fontweight="bold", color=INK)
-    ax.set_yticks([1, 0], ["Paiton", "GGZ14"])
+    ax.set_yticks([1, 0], ["Paiton", "Reference backend"])
     ax.set_xlim(0, max(values) * 1.3)
     ax.set_ylim(-0.55, 1.55)
     ax.tick_params(length=0, pad=7)
@@ -98,7 +98,7 @@ def two_horizontal(ax, values, xlabel, formatter):
 def header(fig, title, subtitle, legend_y):
     fig.text(0.07, 0.956, title, fontsize=23, fontweight="bold", va="top")
     fig.text(0.07, 0.915, subtitle, fontsize=11, color=MUTED, va="top")
-    fig.legend(handles=[Patch(facecolor=c, label=n) for c, n in zip((PAITON, GGZ), LABELS)],
+    fig.legend(handles=[Patch(facecolor=c, label=n) for c, n in zip((PAITON, REFB), LABELS)],
                loc="upper left", bbox_to_anchor=(0.065, legend_y), frameon=False,
                ncol=2, handlelength=1.6, columnspacing=2.4)
 
@@ -111,7 +111,7 @@ def footer(fig, y):
              "BetterBench 0.6.0 · 128-token generation cap · 52 measured requests per run · 16 September 2026",
              fontsize=9.5, color=MUTED)
     fig.text(0.07, y - 0.048,
-             "Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched GGZ14 run shown.",
+             "Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched reference-backend run shown.",
              fontsize=9.5, color=MUTED)
 
 
@@ -142,7 +142,7 @@ def overview(results, provenance):
 
     a = axes[1, 1]
     capacities = provenance["reported_cache_capacity_tokens"]
-    vals = [capacities["paiton"], capacities["ggz"]]
+    vals = [capacities["paiton"], capacities["refb"]]
     heading(a, "Reported capacity · fixed 5 GiB cache", f"Startup log values · {vals[0] / vals[1]:.2f}× token capacity")
     two_horizontal(a, vals, "Reported cache tokens · higher is better", lambda x: f"{x:,.0f}")
     a.text(0, -0.33, "Capacity is runtime-reported, not a completed long-context test.",
@@ -155,7 +155,7 @@ def tradeoffs(results):
     fig, axes = plt.subplots(1, 2, figsize=(14, 8.8))
     fig.subplots_adjust(left=0.08, right=0.95, top=0.71, bottom=0.29, wspace=0.3)
     header(fig, "Latency and per-request speed",
-           "The same one-GPU runs, including metrics that favor GGZ14", 0.867)
+           "The same one-GPU runs, including metrics that favor the reference backend", 0.867)
     groups = [f"C{row['level']}" for row in results[0]["concurrency"]]
     vals = [[median(row["ttft_ms"]) for row in run["concurrency"]] for run in results]
     heading(axes[0], "Median time to first token", "Includes server queueing + HTTP · lower is better")
@@ -165,9 +165,9 @@ def tradeoffs(results):
     grouped_bars(axes[1], groups, vals, "Output tokens / second", lambda x: f"{x:.1f}")
     for ax in axes:
         ax.set_xlabel("Concurrent requests · eight requests per level", labelpad=10)
-    fig.text(0.08, 0.202, "GGZ14 has lower TTFT at C1 and C2, and higher per-request decode at C4 and C8.",
+    fig.text(0.08, 0.202, "The reference backend has lower TTFT at C1 and C2, and higher per-request decode at C4 and C8.",
              fontsize=11, color=INK, fontweight="bold")
-    fig.text(0.08, 0.169, "At C8, Paiton completes the batch faster despite GGZ14's higher per-request decode rate.",
+    fig.text(0.08, 0.169, "At C8, Paiton completes the batch faster despite the reference backend's higher per-request decode rate.",
              fontsize=11, color=MUTED)
     footer(fig, 0.096)
     return fig

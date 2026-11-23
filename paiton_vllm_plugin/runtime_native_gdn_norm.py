@@ -72,7 +72,7 @@ def install():
     if _installed:
         return
     import torch
-    import radiance_arnq as reference
+    import paiton_arnq as reference
 
     path = Path(os.environ['PAITON_RUNTIME_COMPAT_GDN_NORM_MANIFEST']).resolve(strict=True)
     manifest = json.loads(path.read_text())
@@ -117,7 +117,7 @@ def install():
                 selected.add(m)
                 print(f'[paiton.runtime_gdn_norm] native rows={m}; threads=768', flush=True)
         else:
-            q, scale = torch.ops.radiance.gdn_norm_quant(x, z, w, epsilon)
+            q, scale = torch.ops.paiton.gdn_norm_quant(x, z, w, epsilon)
         return q, scale
 
     @produce.register_fake

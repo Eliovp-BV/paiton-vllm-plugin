@@ -1,6 +1,6 @@
-"""radiance (gfx1201 / RDNA4) custom kernel dispatcher: the single place that picks which kernels vLLM
+"""paiton (gfx1201 / RDNA4) custom kernel dispatcher: the single place that picks which kernels vLLM
 launches for block-FP8 GEMM, plus the preshuffle-GEMM and tuned unified-attention config hooks. vLLM's
-source hooks (installed by patch_radiance_dispatch.py) only delegate here, so routing changes live in
+source hooks (installed by patch_paiton_dispatch.py) only delegate here, so routing changes live in
 this file instead of a vLLM patch.
 
 The dispatch fns run inside vLLM's torch.compiled region, so they must be dynamo-traceable: plain shape
@@ -21,9 +21,9 @@ except Exception:
 
 # ---- preshuffle GEMM ----
 # Shuffle each block-fp8 weight once at load (shuffle_weight + reshape to [N//16, K*16]), transpose the
-# act-scale per forward, run AITER's preshuffle kernel. Gated by RADIANCE_PRESHUFFLE=1; when off, weights
+# act-scale per forward, run AITER's preshuffle kernel. Gated by PAITON_RT_PRESHUFFLE=1; when off, weights
 # aren't shuffled so the shape-detected route in block_scaled_mm stays a no-op.
-PRESHUFFLE = os.environ.get("RADIANCE_PRESHUFFLE", "0") == "1"
+PRESHUFFLE = os.environ.get("PAITON_RT_PRESHUFFLE", "0") == "1"
 try:
     import aiter.ops.triton.gemm.basic.gemm_a8w8_blockscale as _PS
     from aiter.ops.shuffle import shuffle_weight as _shuffle_weight
@@ -47,7 +47,7 @@ def _ps_cfg(M, N, K):
 # lanes.
 
 if _PS is not None:
-    @torch.library.custom_op("radiance::preshuffle_gemm", mutates_args=())
+    @torch.library.custom_op("paiton::preshuffle_gemm", mutates_args=())
     def preshuffle_gemm(A: torch.Tensor, B: torch.Tensor, As: torch.Tensor,
                         Bs: torch.Tensor, N: int, K: int) -> torch.Tensor:
         cfg = _ps_cfg(A.shape[0], N, K)
@@ -65,15 +65,15 @@ def install_load_hook():
     if not PRESHUFFLE or _PS is None:
         return
     import vllm.model_executor.layers.quantization.fp8 as _f8
-    if getattr(_f8.Fp8LinearMethod, "_radiance_preshuffle_wrapped", False):
+    if getattr(_f8.Fp8LinearMethod, "_paiton_preshuffle_wrapped", False):
         return
     _orig = _f8.Fp8LinearMethod.process_weights_after_loading
 
     def _wrapped(self, layer):
         _orig(self, layer)
         try:
-            # A layer radiance_w4 has already packed to 4 bits has no fp8 weight left to shuffle.
-            if getattr(layer, "_radiance_w4", None) is not None:
+            # A layer paiton_w4 has already packed to 4 bits has no fp8 weight left to shuffle.
+            if getattr(layer, "_paiton_w4", None) is not None:
                 return
             if not getattr(self, "block_quant", False):
                 return
@@ -91,16 +91,16 @@ def install_load_hook():
                 return
             w_sh = _shuffle_weight(w.data, (16, 16))
             if w_sh.numel() != N * Kk:          # shuffle must preserve element count
-                sys.stderr.write(f"[radiance] preshuffle skip N={N} K={Kk}: numel {w_sh.numel()} != {N*Kk}\n"); return
+                sys.stderr.write(f"[paiton] preshuffle skip N={N} K={Kk}: numel {w_sh.numel()} != {N*Kk}\n"); return
             layer.weight = torch.nn.Parameter(w_sh.reshape(N // 16, Kk * 16).contiguous(), requires_grad=False)
-            layer._radiance_preshuffled = (N, Kk)
-            layer._radiance_N = N           # true output dim (weight.shape[0] is now N//16)
+            layer._paiton_preshuffled = (N, Kk)
+            layer._paiton_N = N           # true output dim (weight.shape[0] is now N//16)
         except Exception as e:
-            sys.stderr.write(f"[radiance] preshuffle skipped a layer: {e!r}\n")
+            sys.stderr.write(f"[paiton] preshuffle skipped a layer: {e!r}\n")
 
     _f8.Fp8LinearMethod.process_weights_after_loading = _wrapped
-    _f8.Fp8LinearMethod._radiance_preshuffle_wrapped = True
-    sys.stderr.write("[radiance] preshuffle weight-shuffle-at-load hook installed\n")
+    _f8.Fp8LinearMethod._paiton_preshuffle_wrapped = True
+    sys.stderr.write("[paiton] preshuffle weight-shuffle-at-load hook installed\n")
     sys.stderr.flush()
 
 
@@ -204,7 +204,7 @@ def install_attn_config_hook():
         import aiter.ops.triton.attention.unified_attention as UA
     except Exception:
         return
-    if getattr(UA, "_radiance_attn_wrapped", False):
+    if getattr(UA, "_paiton_attn_wrapped", False):
         return
     FP8 = torch.float8_e4m3fn
     _o3, _o2 = UA.select_3d_config, UA.select_2d_config
@@ -248,7 +248,7 @@ def install_attn_config_hook():
                 if not logged_decode[0]:
                     logged_decode[0] = True
                     sys.stderr.write(
-                        f"[radiance] decode 3D geometry: BLOCK_M={block_m or 'stock'} "
+                        f"[paiton] decode 3D geometry: BLOCK_M={block_m or 'stock'} "
                         f"TILE={ac['TILE_SIZE']} splits={seg} warps={ac['num_warps']} "
                         f"(seqs={geo[1]} tokens={geo[0]} kv={max_seqlen_k})\n")
                     sys.stderr.flush()
@@ -318,14 +318,14 @@ def install_attn_config_hook():
 
     patched = 0
     for mod in targets:
-        if getattr(mod, "_radiance_attn_wrapped", False):
+        if getattr(mod, "_paiton_attn_wrapped", False):
             continue
         mod.select_3d_config = _s3
         mod.select_2d_config = _s2
         mod.kernel_unified_attention_3d = _Wide3D()
-        mod._radiance_attn_wrapped = True
+        mod._paiton_attn_wrapped = True
         patched += 1
-    sys.stderr.write(f"[radiance] attn tuned-config override installed on {patched} module alias"
+    sys.stderr.write(f"[paiton] attn tuned-config override installed on {patched} module alias"
                      f"{'es' if patched != 1 else ''}\n")
     sys.stderr.flush()
 
@@ -383,7 +383,7 @@ def install_r4d_report():
         return      # no library, nothing to report
     from vllm.v1.worker.gpu_worker import Worker
 
-    if getattr(Worker.compile_or_warm_up_model, "_radiance_r4d_report", False):
+    if getattr(Worker.compile_or_warm_up_model, "_paiton_r4d_report", False):
         return
     _orig = Worker.compile_or_warm_up_model
 
@@ -393,58 +393,58 @@ def install_r4d_report():
             if self.rank == 0:
                 lines = _r4d_report_lines()
                 if lines:
-                    sys.stderr.write("".join(f"[radiance] {ln}\n" for ln in lines))
+                    sys.stderr.write("".join(f"[paiton] {ln}\n" for ln in lines))
                     sys.stderr.flush()
         except Exception as e:
-            sys.stderr.write(f"[radiance] R4D selection report failed: {e!r}\n")
+            sys.stderr.write(f"[paiton] R4D selection report failed: {e!r}\n")
         return result
 
-    compile_or_warm_up_model._radiance_r4d_report = True
+    compile_or_warm_up_model._paiton_r4d_report = True
     Worker.compile_or_warm_up_model = compile_or_warm_up_model
 
 
 def install_all():
-    """Install every gated radiance runtime hook. Called once per process by the vLLM plugin loader,
+    """Install every gated paiton runtime hook. Called once per process by the vLLM plugin loader,
     after torch/vllm/aiter are imported but before the model loads. Idempotent; each hook is env-gated."""
     try:
         # Before the preshuffle hook: both wrap process_weights_after_loading, and the 4-bit packer
         # has to see the plain weight rather than a shuffled one.
-        import radiance_w4
-        radiance_w4.install_load_hook()          # RADIANCE_FAST_DRAFT (default off)
+        import paiton_w4
+        paiton_w4.install_load_hook()          # PAITON_RT_FAST_DRAFT (default off)
     except Exception as e:
-        sys.stderr.write(f"[radiance] radiance_w4 install failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] paiton_w4 install failed: {e!r}\n")
     try:
         install_load_hook()
     except Exception as e:
-        sys.stderr.write(f"[radiance] install_load_hook failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] install_load_hook failed: {e!r}\n")
     try:
         install_attn_config_hook()
     except Exception as e:
-        sys.stderr.write(f"[radiance] install_attn_config_hook failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] install_attn_config_hook failed: {e!r}\n")
     try:
-        import radiance_allreduce
-        radiance_allreduce.install_custom_ar()   # RADIANCE_USE_R4D_AR (default on)
+        import paiton_allreduce
+        paiton_allreduce.install_custom_ar()   # PAITON_RT_USE_R4D_AR (default on)
     except Exception as e:
-        sys.stderr.write(f"[radiance] install_custom_ar failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] install_custom_ar failed: {e!r}\n")
     try:
-        import radiance_draft
-        radiance_draft.install()                 # RADIANCE_DYNAMIC_DRAFT (default off)
+        import paiton_draft
+        paiton_draft.install()                 # PAITON_RT_DYNAMIC_DRAFT (default off)
     except Exception as e:
-        sys.stderr.write(f"[radiance] radiance_draft install failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] paiton_draft install failed: {e!r}\n")
     try:
-        import radiance_drafthead
-        radiance_drafthead.install()             # RADIANCE_FAST_DRAFT: 2-bit draft head + exact rerank
+        import paiton_drafthead
+        paiton_drafthead.install()             # PAITON_RT_FAST_DRAFT: 2-bit draft head + exact rerank
     except Exception as e:
-        sys.stderr.write(f"[radiance] radiance_drafthead install failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] paiton_drafthead install failed: {e!r}\n")
     try:
-        import radiance_vit_attn
-        radiance_vit_attn.install()              # gfx12x, needs the R4D library
+        import paiton_vit_attn
+        paiton_vit_attn.install()              # gfx12x, needs the R4D library
     except Exception as e:
-        sys.stderr.write(f"[radiance] radiance_vit_attn install failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] paiton_vit_attn install failed: {e!r}\n")
     try:
         install_r4d_report()
     except Exception as e:
-        sys.stderr.write(f"[radiance] install_r4d_report failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] install_r4d_report failed: {e!r}\n")
 
 
 def block_scaled_mm(kernel, A, B, As, Bs):
@@ -455,7 +455,7 @@ def block_scaled_mm(kernel, A, B, As, Bs):
     M = A.shape[0]
     if GFX12 and _PS is not None and B.shape[1] == A.shape[1] * 16:   # preshuffled weight
         N = B.shape[0] * 16
-        return torch.ops.radiance.preshuffle_gemm(A, B, As, Bs, N, A.shape[1])
+        return torch.ops.paiton.preshuffle_gemm(A, B, As, Bs, N, A.shape[1])
     if GFX12 and M <= 8:
         return torch.ops.vllm.rocm_aiter_triton_gemm_a8w8_blockscale(
             A, B, As, Bs, kernel.config.out_dtype)

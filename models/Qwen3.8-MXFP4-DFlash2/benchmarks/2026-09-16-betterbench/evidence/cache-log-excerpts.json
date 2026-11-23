@@ -1,5 +1,5 @@
 {
-  "scope": "Only generic framework cache/admission messages are exported. The Running3/Waiting5 example is from the first GGZ run, not the headline repeat. Full logs remain private.",
+  "scope": "Only generic framework cache/admission messages are exported. The Running3/Waiting5 example is from the first reference-backend run, not the headline repeat. Full logs remain private.",
   "logs": [
     {
       "run": "paiton-release-repeat",
@@ -12,7 +12,7 @@
       ]
     },
     {
-      "run": "ggz-current-hipmatched-quick",
+      "run": "refb-current-hipmatched-quick",
       "original_private_engine_log_sha256": "82f35824272b6dfb23b4b22b610066bde190e0a185c605a4dac8b3a7e2c81571",
       "excerpts": [
         {
@@ -26,7 +26,7 @@
       ]
     },
     {
-      "run": "ggz-current-quick",
+      "run": "refb-current-quick",
       "original_private_engine_log_sha256": "eab88ff84228e012f3ca0074c25f3a1adc0a885d3c177f7d051939c86ec81399",
       "excerpts": [
         {

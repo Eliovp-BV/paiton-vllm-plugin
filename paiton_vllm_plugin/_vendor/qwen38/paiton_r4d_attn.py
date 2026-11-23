@@ -1,4 +1,4 @@
-"""R4D attention: the RADIANCE gfx1201 (RDNA4) attention kernels, wired in as a vLLM backend.
+"""R4D attention: the PAITON gfx1201 (RDNA4) attention kernels, wired in as a vLLM backend.
 
 Select it with `--attention-backend R4D`. With speculative decoding, give the drafter the same
 backend: `--speculative-config '{..., "attention_backend": "R4D"}'`.
@@ -55,8 +55,8 @@ from vllm.v1.attention.backends.triton_attn import (
 
 def _say(msg: str) -> None:
     # This module is outside the `vllm` logger namespace, where vLLM installs its handler, so a
-    # logger here would be silently dropped. The other radiance modules write to stderr too.
-    sys.stderr.write(f"[radiance] {msg}\n")
+    # logger here would be silently dropped. The other paiton modules write to stderr too.
+    sys.stderr.write(f"[paiton] {msg}\n")
 
 
 # RTLD_DEEPBIND is load-bearing. tilelang (pulled in through aiter) puts its libhip_stub.so into
@@ -104,8 +104,8 @@ _KV_DTYPE_NAMES = {"auto": "bf16", "bfloat16": "bf16", "fp8": "fp8_e4m3", "fp8_e
 # The master switch for the whole libr4d integration (patch_r4d.py). This backend is the one place
 # it cannot silently fall back: it was asked for by name on the command line, so it refuses to load
 # and says why, rather than serving something slower than what was asked for.
-USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
-_OFF_MSG = "RADIANCE_USE_R4D=0 turns the R4D kernel library off; drop --attention-backend R4D too"
+USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
+_OFF_MSG = "PAITON_RT_USE_R4D=0 turns the R4D kernel library off; drop --attention-backend R4D too"
 
 
 def _bind(op: str, **geometry):

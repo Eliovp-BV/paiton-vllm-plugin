@@ -71,9 +71,9 @@ class GDNAttentionMetadata:
     non_spec_token_indx: torch.Tensor | None = None
 
     num_accepted_tokens: torch.Tensor | None = None  # shape: [batch,]
-    # radiance lazy gdn: the stash block of every batch row (window column 1), for prefill
-    # invalidation. None unless RADIANCE_GDN_LAZY=1.
-    radiance_stash_indices: torch.Tensor | None = None
+    # paiton lazy gdn: the stash block of every batch row (window column 1), for prefill
+    # invalidation. None unless PAITON_RT_GDN_LAZY=1.
+    paiton_stash_indices: torch.Tensor | None = None
     uniform_spec_sequence_length: int | None = None  # None for ragged batches
 
     # Pre-computed FLA chunk metadata (avoids GPU->CPU sync in prepare_chunk_indices)
@@ -91,10 +91,10 @@ class GDNAttentionMetadata:
     token_chunk_offset_ptr: torch.Tensor | None = None
 
 
-_RADIANCE_GDN_META = __import__("os").environ.get("RADIANCE_GDN_META", "1") == "1"
+_PAITON_RT_GDN_META = __import__("os").environ.get("PAITON_RT_GDN_META", "1") == "1"
 
 
-def _radiance_arange(builder, n: int, device) -> torch.Tensor:
+def _paiton_arange(builder, n: int, device) -> torch.Tensor:
     """arange(n) as a slice of one cached buffer -- read-only downstream.
 
     Never populate the cache during a graph capture: an allocation made there comes from the
@@ -102,22 +102,22 @@ def _radiance_arange(builder, n: int, device) -> torch.Tensor:
     step would be reading reused memory. Capture falls back to the stock allocation, and the
     first ordinary build fills the cache.
     """
-    c = getattr(builder, "_radiance_arange_buf", None)
+    c = getattr(builder, "_paiton_arange_buf", None)
     if c is None or c.numel() < n or c.device != device:
         if torch.cuda.is_current_stream_capturing():
             return torch.arange(n, dtype=torch.int32, device=device)
         c = torch.arange(max(n, 4096), dtype=torch.int32, device=device)
-        builder._radiance_arange_buf = c
+        builder._paiton_arange_buf = c
     return c[:n]
 
 
-def _radiance_empty_idx(builder, device) -> torch.Tensor:
-    c = getattr(builder, "_radiance_empty_buf", None)
+def _paiton_empty_idx(builder, device) -> torch.Tensor:
+    c = getattr(builder, "_paiton_empty_buf", None)
     if c is None or c.device != device:
         if torch.cuda.is_current_stream_capturing():
             return torch.empty(0, dtype=torch.int32, device=device)
         c = torch.empty(0, dtype=torch.int32, device=device)
-        builder._radiance_empty_buf = c
+        builder._paiton_empty_buf = c
     return c
 
 
@@ -183,8 +183,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                 self.compilation_config.max_cudagraph_capture_size,
             )
 
-        import os as _rl_os  # radiance lazy gdn: 2 state columns (running, stash)
-        self._rad_lazy = _rl_os.environ.get("RADIANCE_GDN_LAZY", "0") == "1"
+        import os as _rl_os  # paiton lazy gdn: 2 state columns (running, stash)
+        self._rad_lazy = _rl_os.environ.get("PAITON_RT_GDN_LAZY", "0") == "1"
         self.spec_state_indices_tensor: torch.Tensor = torch.empty(
             (self.decode_cudagraph_max_bs, 2 if self._rad_lazy else self.num_spec + 1),
             dtype=torch.int32,
@@ -294,8 +294,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             ),
         )
 
-    # radiance (patch_gdn_shared_build.py): the runner passes a per-step dict here.
-    _radiance_shared_build = True
+    # paiton (patch_gdn_shared_build.py): the runner passes a per-step dict here.
+    _paiton_shared_build = True
 
     def build(  # type: ignore[override]
         self,
@@ -304,16 +304,16 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         num_accepted_tokens: torch.Tensor | None = None,
         num_decode_draft_tokens_cpu: torch.Tensor | None = None,
         fast_build: bool = False,
-        _radiance_shared: dict | None = None,
+        _paiton_shared: dict | None = None,
     ) -> GDNAttentionMetadata:
         m = common_attn_metadata
 
-        # radiance (patch_gdn_shared_build.py): a previous GDN group already built this
+        # paiton (patch_gdn_shared_build.py): a previous GDN group already built this
         # step's metadata. Only the block-table-derived indices are per-group; everything
         # else is copied buffer-to-buffer from the first group's already-padded buffers
         # into THIS builder's buffers (each group's cudagraph captured its own addresses).
-        if _radiance_shared and _radiance_shared.get("kind") == "spec_fast":
-            sh = _radiance_shared
+        if _paiton_shared and _paiton_shared.get("kind") == "spec_fast":
+            sh = _paiton_shared
             import dataclasses as _dc
             bt = mamba_get_block_table_tensor(
                 m.block_table_tensor, m.seq_lens, self.kv_cache_spec,
@@ -336,7 +336,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             self.num_accepted_tokens[:bs].copy_(sh["acc_src"], non_blocking=True)
             return _dc.replace(
                 sh["md"],
-                radiance_stash_indices=(bt[:bs, 1] if self._rad_lazy else None),  # radiance lazy gdn
+                paiton_stash_indices=(bt[:bs, 1] if self._rad_lazy else None),  # paiton lazy gdn
                 spec_state_indices_tensor=sst,
                 spec_sequence_masks=self.spec_sequence_masks[:bs],
                 spec_token_indx=self.spec_token_indx[: sh["si_n"]],
@@ -363,9 +363,9 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
 
         uniform_spec_sequence_length = None
         spec_sequence_masks_cpu: torch.Tensor | None = None
-        # --- RADIANCE (patch_gdn_metadata.py): one numpy pass over the same buffer
+        # --- PAITON (patch_gdn_metadata.py): one numpy pass over the same buffer
         # instead of mask / index / sum / item and then the mask a second time.
-        _r_np = _RADIANCE_GDN_META and num_decode_draft_tokens_cpu is not None
+        _r_np = _PAITON_RT_GDN_META and num_decode_draft_tokens_cpu is not None
         _ndt_np = num_decode_draft_tokens_cpu.numpy() if _r_np else None
         _mask_np = None if _ndt_np is None else _ndt_np >= 0
         if not self.use_spec_decode or num_decode_draft_tokens_cpu is None:
@@ -444,7 +444,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
 
             # Use CPU tensors to avoid CPU-GPU sync
             if _r_np:
-                # --- RADIANCE: same integers, one numpy pass. `size` is the numpy
+                # --- PAITON: same integers, one numpy pass. `size` is the numpy
                 # spelling of `size(0)` for these 1-D per-request vectors.
                 # non_spec_sequence_masks_cpu is left as a tensor above: unlike
                 # non_spec_query_lens_cpu it escapes this block and indexes torch
@@ -490,13 +490,13 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                     num_spec_decodes * (self.num_spec + 1),
                     query_start_loc_cpu[-1].item(),
                 )
-                if _RADIANCE_GDN_META:
-                    # --- RADIANCE: both of these depend only on their length and are
+                if _PAITON_RT_GDN_META:
+                    # --- PAITON: both of these depend only on their length and are
                     # read once, by the copy_ into the persistent buffers below.
-                    spec_token_indx = _radiance_arange(
+                    spec_token_indx = _paiton_arange(
                         self, spec_token_size, query_start_loc.device
                     )
-                    non_spec_token_indx = _radiance_empty_idx(
+                    non_spec_token_indx = _paiton_empty_idx(
                         self, query_start_loc.device
                     )
                 else:
@@ -510,7 +510,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                     )
                 # Padded sequences trail the spec decodes, so slice them off
                 # rather than gather with the host mask (an H2D copy + a kernel).
-                # (upstream 0.32; replaces r4's RADIANCE mask-all slice, so _rad_mask_all stays False)
+                # (upstream 0.32; replaces r4's PAITON mask-all slice, so _rad_mask_all stays False)
                 spec_state_indices_tensor = block_table_tensor[
                     :num_spec_decodes, : self.num_spec + 1
                 ]
@@ -717,7 +717,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             non_spec_query_start_loc[num_decodes + 1 :].fill_(non_spec_num_query_tokens)
 
         attn_metadata = GDNAttentionMetadata(
-            radiance_stash_indices=(block_table_tensor[:, 1] if self._rad_lazy else None),  # radiance lazy gdn
+            paiton_stash_indices=(block_table_tensor[:, 1] if self._rad_lazy else None),  # paiton lazy gdn
             num_prefills=num_prefills,
             num_prefill_tokens=num_prefill_tokens,
             num_decodes=num_decodes,
@@ -747,16 +747,16 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             batch_ptr=batch_ptr,
             token_chunk_offset_ptr=token_chunk_offset_ptr,
         )
-        # radiance (patch_gdn_shared_build.py): make this build reusable by the step's
+        # paiton (patch_gdn_shared_build.py): make this build reusable by the step's
         # remaining GDN groups. Only the steady spec-decode cudagraph shape qualifies.
         if (
-            _radiance_shared is not None
-            and not _radiance_shared
+            _paiton_shared is not None
+            and not _paiton_shared
             and _rad_fastpath
             and num_prefills == 0
             and num_decodes == 0
         ):
-            _radiance_shared.update(
+            _paiton_shared.update(
                 kind="spec_fast", md=attn_metadata, nsd=num_spec_decodes,
                 mask_all=_rad_mask_all,
                 mask_rows=(spec_sequence_masks_cpu.numel()

@@ -1762,12 +1762,12 @@ def init_worker_distributed_environment(
     ensure_ec_transfer_initialized(vllm_config)
 
 
-# ---- RADIANCE step trace (patch_step_trace.py) ----------------------------------------------
+# ---- PAITON step trace (patch_step_trace.py) ----------------------------------------------
 import os as _rt_os, time as _rt_time
-_RT_N = int(_rt_os.environ.get("RADIANCE_STEP_TRACE", "0") or 0)
+_RT_N = int(_rt_os.environ.get("PAITON_RT_STEP_TRACE", "0") or 0)
 if _RT_N > 0:
     from vllm.logger import init_logger as _rt_init_logger
-    _rt_log = _rt_init_logger("vllm.radiance.steptrace")
+    _rt_log = _rt_init_logger("vllm.paiton.steptrace")
     import statistics as _rt_stats, torch as _rt_torch
     _RT = {"em": [], "st": [], "rpc": [], "gpu": [], "tail": [], "toks": [], "evs": [], "n": 0, "last_st_end": None}
     _rt_orig_em = Worker.execute_model
@@ -1819,4 +1819,4 @@ if _RT_N > 0:
 
     Worker.execute_model = _rt_execute_model
     Worker.sample_tokens = _rt_sample_tokens
-    _rt_log.info("RADIANCE_STEP_TRACE=%d armed (Worker.execute_model / sample_tokens / AsyncOutput.get_output wrapped)", _RT_N)
+    _rt_log.info("PAITON_RT_STEP_TRACE=%d armed (Worker.execute_model / sample_tokens / AsyncOutput.get_output wrapped)", _RT_N)

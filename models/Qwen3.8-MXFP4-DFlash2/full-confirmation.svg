@@ -601,7 +601,7 @@ L 987.84 332.424
    </g>
   </g>
   <g id="text_47">
-   <text style="font-weight: 700; font-size: 18px; font-family: 'DejaVu Sans'; text-anchor: start" x="60.48" y="21.885188" transform="rotate(-0 60.48 21.885188)">Paiton vs Radiance: full 188-request confirmation</text>
+   <text style="font-weight: 700; font-size: 18px; font-family: 'DejaVu Sans'; text-anchor: start" x="60.48" y="21.885188" transform="rotate(-0 60.48 21.885188)">Paiton vs the reference engine: full 188-request confirmation</text>
   </g>
   <g id="text_48">
    <text style="font-size: 9px; font-family: 'DejaVu Sans'; fill: #485260" transform="translate(60.48 391.389539)">One R9700 · same target and DFlash2 snapshots · 5 GiB FP8 cache · 8K context</text>
@@ -617,7 +617,7 @@ z
 " style="fill: #7966ca"/>
    </g>
    <g id="text_49">
-    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start" x="91.1" y="42.882281" transform="rotate(-0 91.1 42.882281)">Radiance + DFlash2</text>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start" x="91.1" y="42.882281" transform="rotate(-0 91.1 42.882281)">Reference engine + DFlash2</text>
    </g>
    <g id="patch_25">
     <path d="M 224.313437 42.882281 

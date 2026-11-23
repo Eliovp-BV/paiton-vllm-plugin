@@ -1,4 +1,4 @@
-"""RADIANCE 4-bit drafter weights: pack the DFlash2 drafter to 4 bits and run it on r4d.
+"""PAITON 4-bit drafter weights: pack the DFlash2 drafter to 4 bits and run it on r4d.
 
 A speculative decode step reads the drafter's weights once and the target's once, and at a decode
 batch of eight rows neither GEMM has any arithmetic intensity to speak of -- the drafter's MLP moves
@@ -35,7 +35,7 @@ WHERE IT HOOKS. `begin_draft()` / `end_draft()` bracket the drafter's get_model 
 so the load hook claims the drafter's linears and only the drafter's: the target is loaded outside
 that bracket and never sees this. Conversion runs inside process_weights_after_loading, before the
 preshuffle hook would have shuffled the weight, so there is no shuffled layout to invert. The layer
-then carries `_radiance_w4` and its quant_method's apply is replaced; the preshuffle hook checks for
+then carries `_paiton_w4` and its quant_method's apply is replaced; the preshuffle hook checks for
 that attribute and leaves the layer alone.
 """
 import os
@@ -43,14 +43,14 @@ import sys
 
 import torch
 
-USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
-# ONE switch for the whole tuned drafter stack, shared with radiance_drafthead: RADIANCE_FAST_DRAFT.
+USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
+# ONE switch for the whole tuned drafter stack, shared with paiton_drafthead: PAITON_RT_FAST_DRAFT.
 # There is deliberately no separate knob for the weight format, the kernel crossover or the clip
 # search -- those were sweeps, they are finished, and the measured answer is baked below. Each half
 # of the stack engages only where it applies: the 2-bit head works under any drafter, and this
 # module's 4-bit weights only under a dflash one, because patch_dflash_w4 is what brackets the
 # drafter's weight load. Under mtp nothing here fires.
-ENABLED = USE_R4D and os.environ.get("RADIANCE_FAST_DRAFT", "0") == "1"
+ENABLED = USE_R4D and os.environ.get("PAITON_RT_FAST_DRAFT", "0") == "1"
 # Clip-search steps for the quantizer (0 would be plain min/max). 20 is the swept value.
 _CLIP = 20
 
@@ -102,7 +102,7 @@ _A8_M = 16
 # rocBLAS lays a weight this small out as a handful of workgroups. Opt-in
 # An explicit shape list rather than "anything with a config": these
 # are the only bf16 linears left in the drafter and claiming an unexpected one would be silent.
-# Mutually exclusive with RADIANCE_SKINNY_GEMM=all by construction -- that hook lives under
+# Mutually exclusive with PAITON_RT_SKINNY_GEMM=all by construction -- that hook lives under
 # UnquantizedLinearMethod.apply, and a converted layer no longer goes through it.
 
 
@@ -111,7 +111,7 @@ _A8_M = 16
 # Ratios below are against the same block-fp8 reference the other tables use, which is NOT what
 # these layers actually run -- they run bf16 rocBLAS, ~33.7 us (kernel_projection) and ~89.5 us
 # (hidden_projection) in the serve, or ~23.3 / ~6.9 through gemm_bf16_nt_m64 under
-# RADIANCE_SKINNY_GEMM=all. Against the skinny path, 4 bits is another ~3x.
+# PAITON_RT_SKINNY_GEMM=all. Against the skinny path, 4 bits is another ~3x.
 _CFG_UNQUANT: dict = {
     (1280, 5120): [(16, (1, 4, 1, 1, 1)), (32, (1, 4, 1, 1, 1)),
                    (48, (1, 4, 1, 1, 1)), (64, (1, 4, 1, 1, 0))],   # 8.19 .. 14.56 us
@@ -150,20 +150,20 @@ try:
 except Exception as e:
     _r4d = None
     ENABLED = False
-    sys.stderr.write(f"[radiance.w4] r4d import failed, disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.w4] r4d import failed, disabled: {e!r}\n")
 
 _GEMM = None
 if ENABLED:
     _name = _r4d.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a16")
     if _name is None:
         ENABLED = False
-        sys.stderr.write("[radiance.w4] no w4a16 gemm_nt kernel in this r4d build, disabled\n")
+        sys.stderr.write("[paiton.w4] no w4a16 gemm_nt kernel in this r4d build, disabled\n")
     else:
         _GEMM = getattr(_r4d, _name)
         _MAX_M = int(_r4d.GEMM_W4_MAX_M)
         if int(_r4d.GEMM_W4_GROUP) != GROUP:
             ENABLED = False
-            sys.stderr.write("[radiance.w4] r4d group %d != %d, disabled\n"
+            sys.stderr.write("[paiton.w4] r4d group %d != %d, disabled\n"
                              % (int(_r4d.GEMM_W4_GROUP), GROUP))
 
 # The int8-WMMA kernel reads the SAME packed weight (see pack() below) and is asked for separately,
@@ -173,7 +173,7 @@ if ENABLED and _A8_M:
     _a8 = _r4d.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a8")
     _qa = _r4d.select("quant_act", K=5120, dtype="bf16")
     if _a8 is None or _qa is None or int(getattr(_r4d, "GEMM_W4A8_GROUP", 0)) != GROUP:
-        sys.stderr.write("[radiance.w4] no w4a8 path in this r4d build, staying on f16\n")
+        sys.stderr.write("[paiton.w4] no w4a8 path in this r4d build, staying on f16\n")
     else:
         _A8, _QACT = getattr(_r4d, _a8), getattr(_r4d, _qa)
 
@@ -277,7 +277,7 @@ def prepare(W, group=GROUP, clip_steps=_CLIP):
 # ---- the linear ------------------------------------------------------------------------------
 
 if ENABLED:
-    @torch.library.custom_op("radiance::w4_gemm", mutates_args=())
+    @torch.library.custom_op("paiton::w4_gemm", mutates_args=())
     def w4_gemm(a: torch.Tensor, wq: torch.Tensor, wsz: torch.Tensor,
                 N: int, WV: int, SK: int, MB: int, NPW: int, NT: int) -> torch.Tensor:
         M, K = a.shape
@@ -291,7 +291,7 @@ if ENABLED:
         return torch.empty((a.shape[0], N), dtype=torch.bfloat16, device=a.device)
 
 if ENABLED and _A8 is not None:
-    @torch.library.custom_op("radiance::w4a8_gemm", mutates_args=())
+    @torch.library.custom_op("paiton::w4a8_gemm", mutates_args=())
     def w4a8_gemm(a: torch.Tensor, wq: torch.Tensor, wsz: torch.Tensor,
                   N: int, WV: int, SK: int, MB: int, NPW: int, NT: int) -> torch.Tensor:
         M, K = a.shape
@@ -338,13 +338,13 @@ class _W4LinearMethod:
         if _A8 is not None and m > _A8_M:
             cfg = config_for(self.N, self.K, m, _CFG_A8)
             if cfg is not None:
-                return torch.ops.radiance.w4a8_gemm(
+                return torch.ops.paiton.w4a8_gemm(
                     x2.to(torch.bfloat16).contiguous(), self.wq, self.wsz, self.N, *cfg)
         cfg = config_for(self.N, self.K, m)
         if cfg is None:
-            raise RuntimeError("radiance.w4: no config for N=%d K=%d M=%d"
+            raise RuntimeError("paiton.w4: no config for N=%d K=%d M=%d"
                                % (self.N, self.K, m))
-        return torch.ops.radiance.w4_gemm(
+        return torch.ops.paiton.w4_gemm(
             x2.to(torch.float16).contiguous(), self.wq, self.wsz, self.N, *cfg)
 
     def apply(self, layer, x, bias=None):
@@ -394,23 +394,23 @@ def maybe_convert(method, layer):
         if N % 16 or K % GROUP or config_for(N, K, 8) is None:
             if (N, K) not in _seen:
                 _seen.add((N, K))
-                sys.stderr.write("[radiance.w4] declined N=%d K=%d (no measured config)\n" % (N, K))
+                sys.stderr.write("[paiton.w4] declined N=%d K=%d (no measured config)\n" % (N, K))
             return False
         bf = _dequant_block_fp8(w.data, ws.data)
         wq, wsz = prepare(bf)
         del bf
         layer.weight = torch.nn.Parameter(torch.empty(0, dtype=torch.float8_e4m3fn,
                                                       device=w.device), requires_grad=False)
-        layer._radiance_w4 = (N, K)
-        layer._radiance_N = N
+        layer._paiton_w4 = (N, K)
+        layer._paiton_N = N
         layer.quant_method = _W4LinearMethod(method, wq, wsz, N, K)
         if (N, K) not in _seen:
             _seen.add((N, K))
-            sys.stderr.write("[radiance.w4] converted N=%d K=%d  %.1f MiB -> %.1f MiB\n"
+            sys.stderr.write("[paiton.w4] converted N=%d K=%d  %.1f MiB -> %.1f MiB\n"
                              % (N, K, N * K / 2**20, (wq.numel() + wsz.numel()) * 4 / 2**20))
         return True
     except Exception as e:
-        sys.stderr.write(f"[radiance.w4] conversion skipped a layer: {e!r}\n")
+        sys.stderr.write(f"[paiton.w4] conversion skipped a layer: {e!r}\n")
         return False
 
 
@@ -439,16 +439,16 @@ def maybe_convert_bf16(method, layer):
         wq, wsz = prepare(w.data)
         layer.weight = torch.nn.Parameter(torch.empty(0, dtype=w.dtype, device=w.device),
                                           requires_grad=False)
-        layer._radiance_w4 = (N, K)
-        layer._radiance_N = N
+        layer._paiton_w4 = (N, K)
+        layer._paiton_N = N
         layer.quant_method = _W4LinearMethod(method, wq, wsz, N, K)
         if ("bf16", N, K) not in _seen:
             _seen.add(("bf16", N, K))
-            sys.stderr.write("[radiance.w4] converted bf16 N=%d K=%d  %.1f MiB -> %.1f MiB\n"
+            sys.stderr.write("[paiton.w4] converted bf16 N=%d K=%d  %.1f MiB -> %.1f MiB\n"
                              % (N, K, N * K * 2 / 2**20, (wq.numel() + wsz.numel()) * 4 / 2**20))
         return True
     except Exception as e:
-        sys.stderr.write(f"[radiance.w4] bf16 conversion skipped a layer: {e!r}\n")
+        sys.stderr.write(f"[paiton.w4] bf16 conversion skipped a layer: {e!r}\n")
         return False
 
 
@@ -468,7 +468,7 @@ def install_load_hook():
     if not ENABLED:
         return
     import vllm.model_executor.layers.quantization.fp8 as _f8
-    if getattr(_f8.Fp8LinearMethod, "_radiance_w4_wrapped", False):
+    if getattr(_f8.Fp8LinearMethod, "_paiton_w4_wrapped", False):
         return
     _orig = _f8.Fp8LinearMethod.process_weights_after_loading
 
@@ -477,13 +477,13 @@ def install_load_hook():
         maybe_convert(self, layer)
 
     _f8.Fp8LinearMethod.process_weights_after_loading = _wrapped
-    _f8.Fp8LinearMethod._radiance_w4_wrapped = True
-    sys.stderr.write("[radiance.w4] 4-bit drafter hook installed\n")
+    _f8.Fp8LinearMethod._paiton_w4_wrapped = True
+    sys.stderr.write("[paiton.w4] 4-bit drafter hook installed\n")
 
     # With a bf16 drafter checkpoint this is the main path, not a side one: every drafter linear
     # arrives here rather than at the fp8 hook above.
     import vllm.model_executor.layers.linear as _lin
-    if not getattr(_lin.UnquantizedLinearMethod, "_radiance_w4_wrapped", False):
+    if not getattr(_lin.UnquantizedLinearMethod, "_paiton_w4_wrapped", False):
         _orig_u = _lin.UnquantizedLinearMethod.process_weights_after_loading
 
         def _wrapped_u(self, layer):
@@ -491,6 +491,6 @@ def install_load_hook():
             maybe_convert_bf16(self, layer)
 
         _lin.UnquantizedLinearMethod.process_weights_after_loading = _wrapped_u
-        _lin.UnquantizedLinearMethod._radiance_w4_wrapped = True
-        sys.stderr.write("[radiance.w4] bf16 drafter hook installed\n")
+        _lin.UnquantizedLinearMethod._paiton_w4_wrapped = True
+        sys.stderr.write("[paiton.w4] bf16 drafter hook installed\n")
     sys.stderr.flush()

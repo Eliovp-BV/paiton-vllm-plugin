@@ -2165,7 +2165,7 @@ class Scheduler(SchedulerInterface):
                 num_sampled = self.num_sampled_tokens_per_step
                 num_accepted = max(len(generated_token_ids) - num_sampled, 0)
                 num_rejected = num_draft_tokens - num_accepted
-                self._radiance_dynw_observe(request, num_accepted, num_draft_tokens)
+                self._paiton_dynw_observe(request, num_accepted, num_draft_tokens)
                 # Rejections roll back num_computed_tokens (and, under async
                 # scheduling, num_output_placeholders, which covers the spec
                 # tokens). A stale rejection count predates the preemption
@@ -2616,7 +2616,7 @@ class Scheduler(SchedulerInterface):
             request.spec_token_ids = self.structured_output_manager.validate_tokens(
                 request, spec_token_ids
             )
-            self._radiance_cap_spec_width(request)
+            self._paiton_cap_spec_width(request)
 
     def update_draft_token_ids_in_output(
         self, draft_token_ids: DraftTokenIds, scheduler_output: SchedulerOutput
@@ -3486,18 +3486,18 @@ class Scheduler(SchedulerInterface):
         return sync_failed_req_ids
 
 
-# ---- RADIANCE dynamic verify width (patch_dynwidth.py) --------------------------------------
+# ---- PAITON dynamic verify width (patch_dynwidth.py) --------------------------------------
 import math as _rad_math
 import os as _rad_os
 
-_RAD_DYNW = _rad_os.environ.get("RADIANCE_DYNAMIC_WIDTH", "0") == "1"
-_RAD_DYNW_ALPHA = float(_rad_os.environ.get("RADIANCE_DYNW_ALPHA", "0.35"))
-_RAD_DYNW_MARGIN = int(_rad_os.environ.get("RADIANCE_DYNW_MARGIN", "2"))
-_RAD_DYNW_MIN = int(_rad_os.environ.get("RADIANCE_DYNW_MIN", "2"))
-_RAD_DYNW_MIN_BATCH = int(_rad_os.environ.get("RADIANCE_DYNW_MIN_BATCH", "3"))
+_RAD_DYNW = _rad_os.environ.get("PAITON_RT_DYNAMIC_WIDTH", "0") == "1"
+_RAD_DYNW_ALPHA = float(_rad_os.environ.get("PAITON_RT_DYNW_ALPHA", "0.35"))
+_RAD_DYNW_MARGIN = int(_rad_os.environ.get("PAITON_RT_DYNW_MARGIN", "2"))
+_RAD_DYNW_MIN = int(_rad_os.environ.get("PAITON_RT_DYNW_MIN", "2"))
+_RAD_DYNW_MIN_BATCH = int(_rad_os.environ.get("PAITON_RT_DYNW_MIN_BATCH", "3"))
 
 
-def _radiance_dynw_observe(self, request, num_accepted, num_draft_tokens):
+def _paiton_dynw_observe(self, request, num_accepted, num_draft_tokens):
     if not _RAD_DYNW or num_draft_tokens <= 0:
         return
     # Full acceptance of a capped width is evidence the cap binds; observe one above it so the
@@ -3509,7 +3509,7 @@ def _radiance_dynw_observe(self, request, num_accepted, num_draft_tokens):
     )
 
 
-def _radiance_cap_spec_width(self, request):
+def _paiton_cap_spec_width(self, request):
     if not _RAD_DYNW or not request.spec_token_ids:
         return
     # The cap only pays where the batch's summed verify rows cross real cost boundaries; below
@@ -3529,16 +3529,16 @@ def _radiance_cap_spec_width(self, request):
         del request.spec_token_ids[w:]
 
 
-Scheduler._radiance_dynw_observe = _radiance_dynw_observe
-Scheduler._radiance_cap_spec_width = _radiance_cap_spec_width
+Scheduler._paiton_dynw_observe = _paiton_dynw_observe
+Scheduler._paiton_cap_spec_width = _paiton_cap_spec_width
 
 
-# ---- RADIANCE step trace (patch_step_trace.py) ----------------------------------------------
+# ---- PAITON step trace (patch_step_trace.py) ----------------------------------------------
 import os as _rt_os, time as _rt_time
-_RT_N = int(_rt_os.environ.get("RADIANCE_STEP_TRACE", "0") or 0)
+_RT_N = int(_rt_os.environ.get("PAITON_RT_STEP_TRACE", "0") or 0)
 if _RT_N > 0:
     from vllm.logger import init_logger as _rt_init_logger
-    _rt_log = _rt_init_logger("vllm.radiance.steptrace")
+    _rt_log = _rt_init_logger("vllm.paiton.steptrace")
     _RTS = {"sch": [], "upd": [], "period": [], "gap": [], "n": 0, "last_sch": None, "last_upd_end": None}
     _rt_orig_schedule = Scheduler.schedule
     _rt_orig_update = Scheduler.update_from_output

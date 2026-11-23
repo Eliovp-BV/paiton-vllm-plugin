@@ -68,9 +68,9 @@ from vllm.utils.torch_utils import (
 from vllm.v1.attention.backends.gdn_attn import GDNAttentionMetadata
 
 try:
-    import radiance_gdn as _radiance_gdn
+    import paiton_gdn as _paiton_gdn
 except Exception:
-    _radiance_gdn = None
+    _paiton_gdn = None
 
 # Optional ROCm AITER Triton kernels for the GDN decode path.
 # Availability is checked centrally via rocm_aiter_ops; the actual function
@@ -1036,8 +1036,8 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             mixed_qkv, z = mixed_qkvz.split([qkv_size, z_size], dim=-1)
             z = z.reshape(z.size(0), -1, self.head_v_dim)
             b, a = self.split_ba(ba)
-            # --- RADIANCE (patch_gdn_glue.py): the R4D core reads strided gates ---
-            if not (_radiance_gdn is not None and _radiance_gdn.STRIDED_GATES):
+            # --- PAITON (patch_gdn_glue.py): the R4D core reads strided gates ---
+            if not (_paiton_gdn is not None and _paiton_gdn.STRIDED_GATES):
                 b = b.contiguous()
                 a = a.contiguous()
 
@@ -1046,8 +1046,8 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
         # ============================================================
         # Note: we should not use torch.empty here like other attention backends,
         # see discussions in https://github.com/vllm-project/vllm/pull/28182
-        # --- RADIANCE (patch_gdn_glue.py): the rx5 fused_update zeroes the pad rows itself ---
-        _alloc = (torch.empty if (_radiance_gdn is not None and _radiance_gdn.EMPTY_OUT)
+        # --- PAITON (patch_gdn_glue.py): the rx5 fused_update zeroes the pad rows itself ---
+        _alloc = (torch.empty if (_paiton_gdn is not None and _paiton_gdn.EMPTY_OUT)
                   else torch.zeros)
         core_attn_out = _alloc(
             (num_tokens, self.num_v_heads // self.tp_size, self.head_v_dim),
@@ -1375,16 +1375,16 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             self._warmup_prefill_kernels(mixed_qkv, 0)
             return
 
-        # --- RADIANCE all-R4D gated delta net (patch_r4d.py) ---
+        # --- PAITON all-R4D gated delta net (patch_r4d.py) ---
         # conv_prep -> kkt_solve -> chunk_scan for a prefill step, conv_update ->
         # recurrent_update for a speculative decode step. Returns False for any step it
         # does not cover, which leaves the Triton body below exactly as it was.
-        if _radiance_gdn is not None and _radiance_gdn.ALL:
-            if _radiance_gdn.forward_core_fused(self, mixed_qkv, b, a, core_attn_out):
+        if _paiton_gdn is not None and _paiton_gdn.ALL:
+            if _paiton_gdn.forward_core_fused(self, mixed_qkv, b, a, core_attn_out):
                 return
             b = b.contiguous()   # patch_gdn_glue.py: the Triton body below wants them packed
             a = a.contiguous()
-            if _radiance_gdn.EMPTY_OUT:   # the Triton body writes only real rows
+            if _paiton_gdn.EMPTY_OUT:   # the Triton body writes only real rows
                 core_attn_out.zero_()
 
         assert isinstance(attn_metadata, GDNAttentionMetadata)

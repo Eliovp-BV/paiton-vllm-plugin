@@ -680,17 +680,17 @@ class ModelConfig:
         if dict_overrides:
             self._apply_dict_overrides(hf_config, dict_overrides)
         self.hf_text_config = get_hf_text_config(self.hf_config)
-        # --- radiance (patch_tp3_pad.py): TP=3 via dummy-head padding, RADIANCE_TP_PAD ---
+        # --- paiton (patch_tp3_pad.py): TP=3 via dummy-head padding, PAITON_RT_TP_PAD ---
         # hf_text_config is the nested config object itself, so widening it here is seen by
-        # every later reader. Inert unless RADIANCE_TP_PAD is set.
+        # every later reader. Inert unless PAITON_RT_TP_PAD is set.
         try:
-            import radiance_tp3pad as _radiance_tp3pad
+            import paiton_tp3pad as _paiton_tp3pad
         except ImportError:
             import os as _os
-            if _os.environ.get("RADIANCE_TP_PAD", "").strip() not in ("", "0"):
+            if _os.environ.get("PAITON_RT_TP_PAD", "").strip() not in ("", "0"):
                 raise
         else:
-            _radiance_tp3pad.maybe_pad_config(self.hf_config, self.hf_text_config)
+            _paiton_tp3pad.maybe_pad_config(self.hf_config, self.hf_text_config)
         self.model_arch_config = self.get_model_arch_config()
         self.attention_chunk_size = getattr(
             self.hf_text_config, "attention_chunk_size", None
