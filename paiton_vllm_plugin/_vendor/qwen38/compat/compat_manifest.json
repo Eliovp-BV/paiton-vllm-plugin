@@ -193,7 +193,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py": {
    "original_sha256": "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff",
    "overlay": "overlays/vllm/v1/kv_offload/cpu/gpu_worker.py",
-   "overlay_sha256": "9a8665b0c6aa5a286077536b3c4d891cdd10f7d902722dfdba8c3ee68c0080d4"
+   "overlay_sha256": "fed9e6438e6b52ea4d703a2d8b1adc1fdaf7ab291124e9c99062022ef6ba8eee"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/spec.py": {
    "original_sha256": "12af986b9482049ea657218e31db262b372f0bfe4e73e383136bbd85533b508d",
