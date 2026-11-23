@@ -63,7 +63,7 @@ class Aliases(importlib.abc.MetaPathFinder):
             )
         if "." in fullname:
             return None
-        if fullname in ("r4d", "paiton_mxfp4_fp8"):
+        if fullname in ("pdk", "paiton_mxfp4_fp8"):
             return importlib.util.spec_from_file_location(
                 fullname, self.bundle / (fullname + ".so")
             )
@@ -165,7 +165,7 @@ def initialize():
     receipts = json.loads((DATA / "qwen38-adapters.json").read_text())
     for name, record in receipts["files"].items():
         verify_file(VENDOR / name, record)
-    for name in ("paiton_kernels", "paiton_mxfp4", "r4d", "paiton_runtime_compat"):
+    for name in ("paiton_kernels", "paiton_mxfp4", "pdk", "paiton_runtime_compat"):
         if name in sys.modules:
             raise PreparationError(
                 "late-activation",

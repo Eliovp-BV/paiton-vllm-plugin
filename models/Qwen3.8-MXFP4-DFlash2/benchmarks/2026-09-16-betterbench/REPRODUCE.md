@@ -82,9 +82,9 @@ Build this external runtime locally before launching it. Its tested inputs are r
 
 - The reference backend's vLLM fork at `92eed82fcbb1cca31f7a9108c6371a0bba647ee2`.
 - Base `reference-engine image sha256:45694209177a55a1ab3ba6702fe6e978b1b66a6e66ae3fc066f8d579f7bc4c25`.
-- [libr4d](https://codeberg.org/StillDeadcode/libr4d) at `b9e42ab7202f53a3bc13d415f5d41481f9ca311b`, with the r4d extras patch from that reference-backend revision.
+- the reference kernel library at `b9e42ab7202f53a3bc13d415f5d41481f9ca311b`, with the pdk extras patch from that reference-backend revision.
 
-The base image alone is insufficient. Follow the pinned upstream setup/build documentation and serve-mxfp4.sh: apply its startup patches and module/config copies, compile its `paiton_mxfp4_fp8.hip` for `gfx1201`, and install the pinned, patched `r4d.so`. The measured build used two compilation jobs. Perform build preparation without GPU devices. Preserve the original target checkpoint and select DFlash2; this experiment does not use the upstream MTP rewrite.
+The base image alone is insufficient. Follow the pinned upstream setup/build documentation and serve-mxfp4.sh: apply its startup patches and module/config copies, compile its `paiton_mxfp4_fp8.hip` for `gfx1201`, and install the pinned, patched `pdk.so`. The measured build used two compilation jobs. Perform build preparation without GPU devices. Preserve the original target checkpoint and select DFlash2; this experiment does not use the upstream MTP rewrite.
 
 The experiment's built and warmed image hashes identify **local artifacts**, not published images you can pull. A rebuild is not guaranteed to reproduce their bytes or compilation-cache state. Save your source revisions, build log, image ID and installed package versions with new measurements. The following launch command expects a locally prepared image with the same patched stack already installed; it is not a replacement build recipe.
 

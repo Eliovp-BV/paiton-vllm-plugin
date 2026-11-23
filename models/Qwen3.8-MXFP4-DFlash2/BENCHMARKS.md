@@ -126,7 +126,7 @@ for an 8,192-token per-request limit and up to eight concurrent requests.
 - Stock completed the common 54-request matrix. Its earlier full preset was
   interrupted for runtime cost, so it has no full-preset aggregate result.
 
-The reference engine and StillDeadcode/libr4d are credited for the adapted kernel techniques.
+The reference engine and the reference kernel library are credited for the adapted kernel techniques.
 Implementation research and correctness diagnostics remain in the private
 engineering records. Commands, model/artifact hashes, raw timing samples,
 request counts, engine audits, and memory evidence are retained for review.

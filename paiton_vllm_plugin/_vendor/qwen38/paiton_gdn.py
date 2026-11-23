@@ -1,6 +1,6 @@
 """PAITON fused gated-delta-net prefill dispatch.
 
-Wraps R4D's `gdn_chunk_scan_k128_v128_c64_bf16`, which replaces three of the five Triton kernels
+Wraps PDK's `gdn_chunk_scan_k128_v128_c64_bf16`, which replaces three of the five Triton kernels
 FLA runs per GDN layer during prefill -- recompute_w_u_fwd (the WY representation),
 chunk_gated_delta_rule_fwd_h (the recurrent state scan) and chunk_fwd_o (the output) -- with one
 kernel that keeps the recurrent state in WMMA accumulators across the whole chunk loop. h, w, u and
@@ -10,7 +10,7 @@ bytes.
 The cumsum, the K-gram and the triangular inverse (solve_tril) are NOT replaced; they stay on the
 Triton path and their outputs feed this kernel.
 
-Enabled with the rest of the library by PAITON_RT_USE_R4D. The kernel name carries the geometry it
+Enabled with the rest of the library by PAITON_RT_USE_PDK. The kernel name carries the geometry it
 is compiled for, and this
 module checks a model against it before dispatching: anything else falls back to FLA silently and
 per call, so a model with a different GDN shape keeps working.
@@ -20,33 +20,33 @@ import sys
 
 import torch
 
-# PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_PDK is the master switch for the whole libpdk integration (patch_pdk.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
-ENABLED = USE_R4D
+USE_PDK = os.environ.get("PAITON_RT_USE_PDK", "1") == "1"
+ENABLED = USE_PDK
 
 try:
-    import r4d as _r4d
+    import pdk as _pdk
 except Exception as e:  # library missing or failed to load: stay on FLA
-    _r4d = None
+    _pdk = None
     ENABLED = False
-    sys.stderr.write(f"[paiton.gdn] r4d import failed, fused GDN disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.gdn] pdk import failed, fused GDN disabled: {e!r}\n")
 
-# The geometry the kernel is compiled for, read from the library rather than copied here -- r4d
+# The geometry the kernel is compiled for, read from the library rather than copied here -- pdk
 # reports it, and one source for it is the point. The entry point rejects a mismatch anyway, but
 # checking first keeps the fallback silent instead of raising out of a forward pass.
-HEAD_K = int(_r4d.GDN_HEAD_K) if _r4d is not None else 128
-HEAD_V = int(_r4d.GDN_HEAD_V) if _r4d is not None else 128
-CHUNK = int(_r4d.GDN_CHUNK) if _r4d is not None else 64
+HEAD_K = int(_pdk.GDN_HEAD_K) if _pdk is not None else 128
+HEAD_V = int(_pdk.GDN_HEAD_V) if _pdk is not None else 128
+CHUNK = int(_pdk.GDN_CHUNK) if _pdk is not None else 64
 CONV_WIDTH = 4
 
 
 def _bind(op: str, **geometry):
     """The entry point this build has for a geometry, or None if it has none."""
-    if _r4d is None or not USE_R4D:
+    if _pdk is None or not USE_PDK:
         return None   # asking would put a query in the report for a library that is switched off
-    name = _r4d.select(op, **geometry)
-    return getattr(_r4d, name) if name else None
+    name = _pdk.select(op, **geometry)
+    return getattr(_pdk, name) if name else None
 
 
 # One handle per stage, resolved once. The entry-point names carry the geometry they are compiled
@@ -77,12 +77,12 @@ def _bind_narrow_state(op: str, tag: str, fragment: str, **geometry):
     entry. Handing that a 16-bit cache makes it read twice the bytes the buffer holds, which faults
     the queue rather than raising -- so trust the NAME, not the lookup.
     """
-    if _r4d is None or not USE_R4D:
+    if _pdk is None or not USE_PDK:
         return None
-    name = _r4d.select(op, state_dtype=tag, **geometry)
+    name = _pdk.select(op, state_dtype=tag, **geometry)
     if not name or fragment not in name:
         return None
-    return getattr(_r4d, name, None)
+    return getattr(_pdk, name, None)
 
 
 # One handle per (stage, state dtype). fp16 is the better 16-bit state on gfx1201 -- 10 mantissa
@@ -99,7 +99,7 @@ _FUSED_UPDATE_NARROW = {
     for dt, (tag, frag) in _STATE_TAGS.items()
 }
 # PAITON_RT_GDN_LAZY=1 (paiton_gdn_lazy.py): one base state per sequence plus a candidate stash
-# instead of a snapshot per candidate. Needs libr4d rx10+ (gdn_lazy_update) and patch_gdn_lazy.py,
+# instead of a snapshot per candidate. Needs libpdk rx10+ (gdn_lazy_update) and patch_gdn_lazy.py,
 # which makes the allocator hand out ONE speculative block. Under it the spec window is two
 # columns [base, stash]; a step the lazy path cannot take must raise, never fall back to FLA,
 # because FLA would write candidate snapshots into columns that do not exist.
@@ -108,7 +108,7 @@ _LAZY_UPDATE = _bind("gdn_lazy_update", head_k=HEAD_K, head_v=HEAD_V, state_dtyp
 _LAZY_UPDATE_NARROW = ({dt: _bind_narrow_state("gdn_lazy_update", tag, frag, head_k=HEAD_K, head_v=HEAD_V)
                         for dt, (tag, frag) in _STATE_TAGS.items()} if LAZY else {})
 if LAZY and _LAZY_UPDATE is None:
-    raise RuntimeError("PAITON_RT_GDN_LAZY=1 but this libr4d has no gdn_lazy_update kernel (needs rx10+)")
+    raise RuntimeError("PAITON_RT_GDN_LAZY=1 but this libpdk has no gdn_lazy_update kernel (needs rx10+)")
 # The fused decode step (conv -> grid barrier -> recurrent in ONE launch) removes one kernel
 # boundary per GDN layer per forward. Bit-identical to the pair by construction. Off by default
 # until the serving A/B has run; needs a build whose registry has gdn_fused_update.
@@ -116,7 +116,7 @@ FUSED_UPDATE_ON = os.environ.get("PAITON_RT_GDN_FUSED_UPDATE", "0") == "1" and _
 # (seq, v-head) items above which the decode step takes the conv+recurrent PAIR instead of the
 # fused kernel; 32 = the fused kernel's FU_MAXWG, i.e. one sequence at H=24. Env-tunable for A/B.
 FUSED_MAX_ITEMS = int(os.environ.get("PAITON_RT_GDN_FUSED_MAX_ITEMS", "32"))
-# patch_gdn_glue.py reads this: skip vLLM's .contiguous() on the (b, a) gate slices; the R4D
+# patch_gdn_glue.py reads this: skip vLLM's .contiguous() on the (b, a) gate slices; the PDK
 # kernels take the row stride. Default 0 until the serving A/B lands.
 STRIDED_GATES = os.environ.get("PAITON_RT_GDN_STRIDED_GATES", "0") == "1"
 # patch_gdn_glue.py reads this: allocate core_attn_out with torch.empty instead of torch.zeros.
@@ -268,14 +268,14 @@ def fused_prefill(q, k, v, A, g, beta, scale, initial_state, output_final_state,
 # The whole layer: conv_prep -> kkt_solve -> chunk_scan on the prefill path, conv_update ->
 # recurrent_update on the decode path. Nothing below calls a Triton kernel.
 #
-# This is installed as a prologue on QwenGatedDeltaNetAttention._forward_core (patch_r4d.py):
+# This is installed as a prologue on QwenGatedDeltaNetAttention._forward_core (patch_pdk.py):
 # it either handles the step and returns True, or returns False and lets the original body run
 # unchanged. The gate is deliberately narrow -- the two shapes a step of this serve actually takes,
 # a chunked-prefill batch and a speculative-decode batch -- because the shapes it does not take
 # still have a correct implementation one return away, and because a wrong answer here is not
 # recoverable downstream.
 #
-# What the fused path is worth over calling the same five R4D kernels through the op-level seams:
+# What the fused path is worth over calling the same five PDK kernels through the op-level seams:
 # the conv output (34 MB per layer per rank at this model's chunk size) never reaches HBM, which
 # is most of the preamble's cost.
 # =================================================================================================
@@ -313,7 +313,7 @@ def _first(kind: str):
     """Announce the first step of each kind the fused path takes, so a log shows what ran."""
     if kind not in _seen:
         _seen.add(kind)
-        sys.stderr.write(f"[paiton.gdn] all-R4D {kind} path live\n")
+        sys.stderr.write(f"[paiton.gdn] all-PDK {kind} path live\n")
 
 
 def _fb(why: str):
@@ -500,7 +500,7 @@ def _lazy_invalidate(ssm_state, md, H):
 
 
 def _plan(self, mixed_qkv, b, a, core_attn_out):
-    """Decide whether this step is one the R4D path covers, and gather what it needs.
+    """Decide whether this step is one the PDK path covers, and gather what it needs.
 
     Everything that could raise on an unexpected metadata shape happens here, BEFORE any kernel
     runs, so an unhandled case costs a fallback rather than a half-updated state cache.
@@ -534,11 +534,11 @@ def _plan(self, mixed_qkv, b, a, core_attn_out):
     # The temporal state may be fp32 (the HF config's mamba_ssm_dtype) or 16-bit
     # (--mamba-ssm-cache-dtype=float16/bfloat16, which halves the state traffic that is the whole
     # cost of the decode kernels). Each width needs a kernel compiled for it; decline rather than
-    # fault if this libr4d has only the fp32 one.
+    # fault if this libpdk has only the fp32 one.
     if ssm_state.dtype in (torch.bfloat16, torch.float16):
         if (_RECURRENT_UPDATE_NARROW.get(ssm_state.dtype) is None
                 or _FUSED_UPDATE_NARROW.get(ssm_state.dtype) is None):
-            return no(f"ssm state is {ssm_state.dtype} but this libr4d has no matching "
+            return no(f"ssm state is {ssm_state.dtype} but this libpdk has no matching "
                       f"narrow-state kernel")
     elif ssm_state.dtype != torch.float32:
         return no(f"ssm state dtype {ssm_state.dtype}")
@@ -596,8 +596,8 @@ def _plan(self, mixed_qkv, b, a, core_attn_out):
 
 
 def forward_core_fused(self, mixed_qkv, b, a, core_attn_out) -> bool:
-    """Handle this step entirely in R4D, or return False and leave it to the original path."""
-    if not ALL or _r4d is None:
+    """Handle this step entirely in PDK, or return False and leave it to the original path."""
+    if not ALL or _pdk is None:
         return False
     try:
         plan = _plan(self, mixed_qkv, b, a, core_attn_out)

@@ -214,7 +214,7 @@ docker run --rm --name paiton-qwen38-65k-cached --network host \
   --enable-chunked-prefill \
   --language-model-only \
   --safetensors-load-strategy lazy \
-  --attention-backend R4D \
+  --attention-backend PDK \
   --compilation-config '{"cudagraph_capture_sizes": [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64], "pass_config": {"fuse_norm_quant": true, "fuse_act_quant": true}}' \
   --speculative-config '{"method":"dflash","model":"/hf-hub/models--tcclaviger--Qwen3.8-27B-DFlash2-FP8/snapshots/ee0cb26a8279b7910cc28d82a8a3e15e4728d56f","num_speculative_tokens":7,"draft_tensor_parallel_size":1,"attention_backend":"TRITON_ATTN","max_model_len":65536,"disable_padded_drafter_batch":true,"draft_sample_method":"greedy"}' \
   --mamba-cache-mode align \

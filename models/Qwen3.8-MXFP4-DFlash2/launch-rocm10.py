@@ -439,7 +439,7 @@ def release_command(release):
         '--max-num-batched-tokens', '4096', '--kv-cache-dtype', 'fp8',
         '--kv-cache-memory-bytes', str(cache), '--gpu-memory-utilization', '0.98',
         '--no-enable-prefix-caching', '--enable-chunked-prefill', '--language-model-only',
-        '--safetensors-load-strategy', 'lazy', '--attention-backend', 'R4D',
+        '--safetensors-load-strategy', 'lazy', '--attention-backend', 'PDK',
         '--compilation-config', json.dumps(compilation),
         '--speculative-config', json.dumps(speculative), '--mamba-cache-mode', mamba,
         '--mamba-cache-dtype', 'bfloat16', '--mamba-ssm-cache-dtype', 'float16',

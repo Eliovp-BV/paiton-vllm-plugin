@@ -4,7 +4,7 @@ WHAT. In the stock graph every o_proj/out_proj/down_proj does: all-reduce -> tra
 (residual add + Gemma rms_norm) -> traced per-token fp8 quant -> the next paiton linear.
 At decode M=8 that epilogue is 2-3 inductor kernels tiled for the M=8192 compile hint
 (XBLOCK=1: ~4.4 us active + 2 dispatch gaps per site, 128 sites per step). This module
-replaces it with ONE custom op per site: AR (r4d, unchanged) + paiton_mxfp4_add_rms_quant, a HIP
+replaces it with ONE custom op per site: AR (pdk, unchanged) + paiton_mxfp4_add_rms_quant, a HIP
 kernel measured BIT-IDENTICAL to the traced reference on every production shape (q codes,
 scales, and residual all exact — see ~/mxfp4_work escha? no: scratchpad arnq_test.py) at
 ~2.4 us/launch.
@@ -94,7 +94,7 @@ def ar_add_rms_quant(y: torch.Tensor, residual: torch.Tensor, weight: torch.Tens
     ro = torch.empty((M, K), dtype=residual.dtype, device=y.device)
     stream = torch.cuda.current_stream().cuda_stream
     c = _paiton_comm()
-    # Decode fast path: AR + the whole epilogue in ONE kernel (libr4d exact_nq, one block per
+    # Decode fast path: AR + the whole epilogue in ONE kernel (libpdk exact_nq, one block per
     # row -- rx4). The branch is shape/dtype-only, so both TP ranks take the same side every
     # call and the per-block seq counters stay in lockstep. Prefill (M > 512) falls through to
     # the plain AR (which routes big messages to wht6) + the standalone epilogue kernel.

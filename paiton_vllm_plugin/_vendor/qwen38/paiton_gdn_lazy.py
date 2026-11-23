@@ -3,8 +3,8 @@
 vLLM's align mode keeps ONE running state per request in the mamba cache and, under speculative
 decode, one extra block per draft token so every candidate can snapshot its state (2 + SPEC pages
 per request per mamba layer group). PAITON_RT_GDN_LAZY=1 keeps one extra block instead: a stash of
-the last step's candidate inputs, replayed on the next step by libr4d's gdn_lazy_update kernel
-(see r4d_gdn_lazy_update_k128_v128.h). Per-request cost drops from 9 pages to 3 at SPEC=7.
+the last step's candidate inputs, replayed on the next step by libpdk's gdn_lazy_update kernel
+(see pdk_gdn_lazy_update_k128_v128.h). Per-request cost drops from 9 pages to 3 at SPEC=7.
 
 What vLLM still expects from the cache are its two temporal-state copies (vllm/v1/worker/
 mamba_utils.py): before a forward, a request whose running block moved across a mamba block
@@ -66,11 +66,11 @@ class _Tables:
         self.dtb_ptrs = torch.tensor(dtbs, dtype=torch.int64, device=dev)
         self.n = len(ptrs)
         self.H, self.Hg, self.K, self.V, self.st_head, self.dtype = geom
-        import r4d
+        import pdk
         tag = {torch.float16: "f16state", torch.float32: "fp32state"}.get(self.dtype)
         if tag is None:
             raise RuntimeError(f"lazy GDN: no materialize kernel for a {self.dtype} state cache")
-        self.fn = getattr(r4d, f"gdn_lazy_materialize_k128_v128_bf16_{tag}")
+        self.fn = getattr(pdk, f"gdn_lazy_materialize_k128_v128_bf16_{tag}")
         _log(f"materialize tables: {self.n} temporal states, H {self.H} Hg {self.Hg} "
              f"st_head {self.st_head} state {self.dtype}")
 

@@ -1,4 +1,4 @@
-"""PAITON 4-bit drafter weights: pack the DFlash2 drafter to 4 bits and run it on r4d.
+"""PAITON 4-bit drafter weights: pack the DFlash2 drafter to 4 bits and run it on pdk.
 
 A speculative decode step reads the drafter's weights once and the target's once, and at a decode
 batch of eight rows neither GEMM has any arithmetic intensity to speak of -- the drafter's MLP moves
@@ -43,24 +43,24 @@ import sys
 
 import torch
 
-USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
+USE_PDK = os.environ.get("PAITON_RT_USE_PDK", "1") == "1"
 # ONE switch for the whole tuned drafter stack, shared with paiton_drafthead: PAITON_RT_FAST_DRAFT.
 # There is deliberately no separate knob for the weight format, the kernel crossover or the clip
 # search -- those were sweeps, they are finished, and the measured answer is baked below. Each half
 # of the stack engages only where it applies: the 2-bit head works under any drafter, and this
 # module's 4-bit weights only under a dflash one, because patch_dflash_w4 is what brackets the
 # drafter's weight load. Under mtp nothing here fires.
-ENABLED = USE_R4D and os.environ.get("PAITON_RT_FAST_DRAFT", "0") == "1"
+ENABLED = USE_PDK and os.environ.get("PAITON_RT_FAST_DRAFT", "0") == "1"
 # Clip-search steps for the quantizer (0 would be plain min/max). 20 is the swept value.
 _CLIP = 20
 
-GROUP = 128          # K per (scale, zero) pair; must equal r4d.GEMM_W4_GROUP
+GROUP = 128          # K per (scale, zero) pair; must equal pdk.GEMM_W4_GROUP
 _MAX_M = 64          # the kernel's band; overwritten from the library below when it loads
 KPB = 64             # K per packed block: four k steps, sixteen bytes per lane
 _ROWS = 2048         # output rows converted at a time, to bound the packer's temporaries
 
 # k offset inside a 16-wide WMMA step for nibble 0..7 of a packed dword, before the lane's
-# 4*(lane>>4). See r4d_gemm_w4a16_nt_m64.hip: the unpack emits nibbles 0,2,4,6,1,3,5,7 as fragment
+# 4*(lane>>4). See pdk_gemm_w4a16_nt_m64.hip: the unpack emits nibbles 0,2,4,6,1,3,5,7 as fragment
 # elements 0..7, and element e sits at k = 8*(e>>2) + (e&3).
 _KOFF = (0, 8, 1, 9, 2, 10, 3, 11)
 
@@ -146,36 +146,36 @@ _LOADING_DRAFT = False
 _seen: set = set()
 
 try:
-    import r4d as _r4d
+    import pdk as _pdk
 except Exception as e:
-    _r4d = None
+    _pdk = None
     ENABLED = False
-    sys.stderr.write(f"[paiton.w4] r4d import failed, disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.w4] pdk import failed, disabled: {e!r}\n")
 
 _GEMM = None
 if ENABLED:
-    _name = _r4d.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a16")
+    _name = _pdk.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a16")
     if _name is None:
         ENABLED = False
-        sys.stderr.write("[paiton.w4] no w4a16 gemm_nt kernel in this r4d build, disabled\n")
+        sys.stderr.write("[paiton.w4] no w4a16 gemm_nt kernel in this pdk build, disabled\n")
     else:
-        _GEMM = getattr(_r4d, _name)
-        _MAX_M = int(_r4d.GEMM_W4_MAX_M)
-        if int(_r4d.GEMM_W4_GROUP) != GROUP:
+        _GEMM = getattr(_pdk, _name)
+        _MAX_M = int(_pdk.GEMM_W4_MAX_M)
+        if int(_pdk.GEMM_W4_GROUP) != GROUP:
             ENABLED = False
-            sys.stderr.write("[paiton.w4] r4d group %d != %d, disabled\n"
-                             % (int(_r4d.GEMM_W4_GROUP), GROUP))
+            sys.stderr.write("[paiton.w4] pdk group %d != %d, disabled\n"
+                             % (int(_pdk.GEMM_W4_GROUP), GROUP))
 
 # The int8-WMMA kernel reads the SAME packed weight (see pack() below) and is asked for separately,
 # because a build can have one and not the other.
 _A8 = _QACT = None
 if ENABLED and _A8_M:
-    _a8 = _r4d.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a8")
-    _qa = _r4d.select("quant_act", K=5120, dtype="bf16")
-    if _a8 is None or _qa is None or int(getattr(_r4d, "GEMM_W4A8_GROUP", 0)) != GROUP:
-        sys.stderr.write("[paiton.w4] no w4a8 path in this r4d build, staying on f16\n")
+    _a8 = _pdk.select("gemm_nt", M=64, K=5120, N=5120, dtype="w4a8")
+    _qa = _pdk.select("quant_act", K=5120, dtype="bf16")
+    if _a8 is None or _qa is None or int(getattr(_pdk, "GEMM_W4A8_GROUP", 0)) != GROUP:
+        sys.stderr.write("[paiton.w4] no w4a8 path in this pdk build, staying on f16\n")
     else:
-        _A8, _QACT = getattr(_r4d, _a8), getattr(_r4d, _qa)
+        _A8, _QACT = getattr(_pdk, _a8), getattr(_pdk, _qa)
 
 
 # ---- quantizer ---------------------------------------------------------------------------------
@@ -198,7 +198,7 @@ def quantize(W, group=GROUP, clip_steps=_CLIP):
     shifts the nibble into its byte's high half and reads the byte signed, which needs a two's
     complement code; the f16 kernel builds 1024+n and subtracts a constant, which needs offset
     binary and a fixed zero.  A symmetric grid is the one both can express, with the f16 kernel
-    converting between them in two instructions (see R4D_GEMM_W4_TWOS).
+    converting between them in two instructions (see PDK_GEMM_W4_TWOS).
 
     The range is not the absolute max.  A group of 128 weights is a sample and its extremes are
     where the sample is thinnest, so spending a level reaching them costs more in the middle than it
@@ -311,7 +311,7 @@ if ENABLED and _A8 is not None:
 
 def config_for(n, k, m, table=None):
     """(WV, SK, MB, NPW, NT) for this shape and batch, or None to decline it."""
-    if _GEMM is None or not (1 <= m <= int(_r4d.GEMM_W4_MAX_M)):
+    if _GEMM is None or not (1 <= m <= int(_pdk.GEMM_W4_MAX_M)):
         return None
     band = (_CFG if table is None else table).get((n, k))
     if band is None:

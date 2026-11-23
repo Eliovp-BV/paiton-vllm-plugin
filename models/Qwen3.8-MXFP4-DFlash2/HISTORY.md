@@ -875,7 +875,7 @@ private; the runtime package contains only the external adapter, allowlisted
 native libraries, and runtime metadata.
 
 The reference engine and
-[StillDeadcode/libr4d](https://codeberg.org/StillDeadcode/libr4d) are credited for
+the reference kernel library are credited for
 the adapted kernel techniques. [Third-party attribution and terms](THIRD_PARTY_NOTICES.md).
 
 The ordinary CLI deployment check passes streaming, eight concurrent requests,

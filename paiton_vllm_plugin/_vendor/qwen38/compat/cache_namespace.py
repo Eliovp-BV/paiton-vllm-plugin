@@ -42,8 +42,8 @@ def configure(root, manifest):
                 for f in sorted(base.rglob('*') if base.name == 'paiton' else base.glob('*')):
                     if 'cache-seed' in f.parts:   # the shipped compile-cache seed is not a runtime piece
                         continue
-                    if f.is_file() and (base.name == 'paiton' or f.name.startswith(('paiton', 'r4d',
-                                                                                        'libr4d', 'zzz'))):
+                    if f.is_file() and (base.name == 'paiton' or f.name.startswith(('paiton', 'pdk',
+                                                                                        'libpdk', 'zzz'))):
                         st = f.stat()
                         listing.append((str(f), st.st_size, int(st.st_mtime)))
         value['paiton_runtime'] = hashlib.sha256(json.dumps(listing).encode()).hexdigest()

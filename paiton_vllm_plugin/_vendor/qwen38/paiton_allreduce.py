@@ -5,8 +5,8 @@ Mirrors vLLM's CustomAllreduce (ca_comm) interface, so it slots into CudaCommuni
 existing size-gated dispatch. should_custom_ar returns True only for small messages in the win band;
 larger or other messages fall through to RCCL.
 
-Kernels: r4d.ar_oneshot_2rank_exact (exact bf16) and r4d.ar_oneshot_2rank_wht6 (Walsh-Hadamard rotated
-6-bit payload, used for large messages when PAITON_RT_USE_R4D_AR_QUANT=1). Both come from the R4D gfx1201 kernel
+Kernels: pdk.ar_oneshot_2rank_exact (exact bf16) and pdk.ar_oneshot_2rank_wht6 (Walsh-Hadamard rotated
+6-bit payload, used for large messages when PAITON_RT_USE_PDK_AR_QUANT=1). Both come from the PDK gfx1201 kernel
 library; both are one-shot push all-reduces for exactly two P2P-connected ranks, which is what their
 names say, and they share the same scratch, flags and seq counters. PUSH model. Each rank writes its
 input into the peer's IPC scratch, then reduces (local input + peer data now in the local scratch) into out. Only scratch and flags
@@ -16,8 +16,8 @@ at capture), and scratch is double-buffered by seq parity. Multi-block: each blo
 chunk and drives its own flag handshake, spreading the push across CUs (PCIe) and the reduce across CUs.
 
 Env:
-  PAITON_RT_USE_R4D_AR (1)      1 = install the kernel on the TP group, 0 = RCCL
-  PAITON_RT_USE_R4D_AR_QUANT (1) 1 = compress the payload (rotated 6-bit, group-scaled) for large messages
+  PAITON_RT_USE_PDK_AR (1)      1 = install the kernel on the TP group, 0 = RCCL
+  PAITON_RT_USE_PDK_AR_QUANT (1) 1 = compress the payload (rotated 6-bit, group-scaled) for large messages
 """
 import os
 import sys
@@ -65,9 +65,9 @@ class PaitonAllreduce:
             _log(f"custom AR: no process group ({e!r})")
             return
         try:
-            import r4d as ext
+            import pdk as ext
         except Exception as e:
-            _log(f"custom AR disabled: r4d import failed ({e!r})")
+            _log(f"custom AR disabled: pdk import failed ({e!r})")
             return
         self._ext = ext
 
@@ -128,11 +128,11 @@ class PaitonAllreduce:
              f"finegrained={fine_used} drain={self.drain} acq={self.acq} nt={self.nt} "
              f"nb={self.min_nb}..{self.max_nb})")
 
-        # Optional compressed payload path (PAITON_RT_USE_R4D_AR_QUANT). Additive; shares this class's
+        # Optional compressed payload path (PAITON_RT_USE_PDK_AR_QUANT). Additive; shares this class's
         # scratch, flags and seq counters. Only large (bandwidth-bound) messages take it; smaller
         # ones keep the exact bf16 kernel above. On by default; set 0 for the exact
         # (RCCL-identical) bf16 path.
-        self.ar_quant = os.environ.get("PAITON_RT_USE_R4D_AR_QUANT", "1") == "1"
+        self.ar_quant = os.environ.get("PAITON_RT_USE_PDK_AR_QUANT", "1") == "1"
         self.quant_min_bytes = _QUANT_MIN_BYTES
         # Threads/block and block cap for the compressed path. The shipped 1024/48 assumed the
         # kernel is wire-bound; its LOCAL traffic (~280 MB/call at the 80 MiB message) says the
@@ -144,12 +144,12 @@ class PaitonAllreduce:
         self._locpk = None
         if self.ar_quant:
             try:
-                import r4d as qext
+                import pdk as qext
                 self._qgroup = int(qext.AR_WHT6_GROUP)
                 # numel is the one per-message term in the question: a group is the smallest
                 # message this path will send, and _quant_ok() enforces the multiple per call.
                 # PAITON_RT_AR_QBITS (patch_ar_qbits.py): symbol width on the wire. 6 is the
-                # shipped kernel; 5 and 4 need a libr4d that carries them (rx8+).
+                # shipped kernel; 5 and 4 need a libpdk that carries them (rx8+).
                 self.qbits = int(os.environ.get("PAITON_RT_AR_QBITS", "6"))
                 qgeom = dict(world_size=self.world_size, exact=0, dtype="bf16",
                              numel=self._qgroup)
@@ -157,7 +157,7 @@ class PaitonAllreduce:
                     qgeom["bits"] = self.qbits
                 qname = qext.select("allreduce", **qgeom)
                 if qname is None and self.qbits != 6:
-                    _log(f"AR_QUANT: no {self.qbits}-bit all-reduce in this libr4d; using 6")
+                    _log(f"AR_QUANT: no {self.qbits}-bit all-reduce in this libpdk; using 6")
                     self.qbits = 6
                     qgeom.pop("bits")
                     qname = qext.select("allreduce", **qgeom)
@@ -165,7 +165,7 @@ class PaitonAllreduce:
                     raise RuntimeError("no lossy all-reduce kernel in this build")
                 # the table answers wht6 for any width it does not carry; report what actually runs
                 if qname[-1].isdigit() and int(qname[-1]) != self.qbits:
-                    _log(f"AR_QUANT: {self.qbits}-bit not in this libr4d; {qname} serves")
+                    _log(f"AR_QUANT: {self.qbits}-bit not in this libpdk; {qname} serves")
                     self.qbits = int(qname[-1])
                 self._ar_wht6 = getattr(qext, qname)
                 self._qext = qext
@@ -286,13 +286,13 @@ def install_custom_ar():
     """Wrap CudaCommunicator.all_reduce so small TP messages take the one-shot kernel and everything
     else falls through to RCCL. Wrapping rather than replacing ca_comm is required: vLLM's RocmAiter fusion
     pass asserts isinstance(ca_comm, CustomAllreduce), and ca_comm is already inert on ROCm. Env-gated
-    by PAITON_RT_USE_R4D_AR, idempotent."""
-    # PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py):
+    by PAITON_RT_USE_PDK_AR, idempotent."""
+    # PAITON_RT_USE_PDK is the master switch for the whole libpdk integration (patch_pdk.py):
     # with it off the TP group keeps RCCL, exactly as in an image built without the library.
-    if os.environ.get("PAITON_RT_USE_R4D", "1") != "1":
-        _log("custom all-reduce not installed: PAITON_RT_USE_R4D=0")
+    if os.environ.get("PAITON_RT_USE_PDK", "1") != "1":
+        _log("custom all-reduce not installed: PAITON_RT_USE_PDK=0")
         return
-    if os.environ.get("PAITON_RT_USE_R4D_AR", "1") != "1":
+    if os.environ.get("PAITON_RT_USE_PDK_AR", "1") != "1":
         return
     from vllm.distributed.device_communicators.cuda_communicator import CudaCommunicator
 
@@ -306,7 +306,7 @@ def install_custom_ar():
         self.paiton_comm = None
         try:
             # only the TP group does custom AR (matches vLLM's own gating)
-            # ws 2 or 3 (patch_ar_3rank.py); which of them has a kernel is r4d.select's answer
+            # ws 2 or 3 (patch_ar_3rank.py); which of them has a kernel is pdk.select's answer
             if "tp" in getattr(self, "unique_name", "") and getattr(self, "world_size", 1) in (2, 3):
                 comm = PaitonAllreduce(self.cpu_group, self.device)
                 if not comm.disabled:
@@ -325,4 +325,4 @@ def install_custom_ar():
     CudaCommunicator.__init__ = _patched_init
     CudaCommunicator.all_reduce = _patched_all_reduce
     CudaCommunicator._paiton_ar_patched = True
-    _log("fast-reduce hook armed (PAITON_RT_USE_R4D_AR=1, all_reduce wrap)")
+    _log("fast-reduce hook armed (PAITON_RT_USE_PDK_AR=1, all_reduce wrap)")

@@ -73,7 +73,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py": {
    "original_sha256": "3fbf257fef7f303b0082fdbedce4394df74b78ad9a594157079c89632b5c221e",
    "overlay": "overlays/vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
-   "overlay_sha256": "a663f1def9c256ac5157876834bfd51796a4798ccd4ec5afe7d8900cb345ec21"
+   "overlay_sha256": "651a4967debcdd482ffd0d1e56407aa14e5d08dda961c5276697500e39e71585"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/model_executor/layers/mamba/ops/causal_conv1d.py": {
    "original_sha256": "cb16cc9250c4195c09d6d83b43bba607c2d749b621d8d135a920443d1577265f",
@@ -143,7 +143,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/third_party/flash_linear_attention/ops/chunk.py": {
    "original_sha256": "c105ead259e86aedc248c53e7c4cef07034d0ff12da608d80265d1dd0990803f",
    "overlay": "overlays/vllm/third_party/flash_linear_attention/ops/chunk.py",
-   "overlay_sha256": "0cf93060e5caf788cdd3ebeb7e40523232063210d4145cfc1c4a8abf45dcb721"
+   "overlay_sha256": "e3b750ef93035643ceaefad2e1b70961bf25f0b7bc7192c1b29a51483c1aa2e9"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/third_party/flash_linear_attention/ops/solve_tril.py": {
    "original_sha256": "88098d2dd05ad0fbd4639dcf34100920f89510664f87c48af42bd74fb9df60cc",
@@ -163,7 +163,7 @@
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/attention/backends/registry.py": {
    "original_sha256": "793790be7ad5824835e1dfc7222b2b0637847b66a3d82206d64818191b3eecf4",
    "overlay": "overlays/vllm/v1/attention/backends/registry.py",
-   "overlay_sha256": "c84dd0425069c493ca93ca418fdafbc137aaca2100a203f027d7846c562fd4eb"
+   "overlay_sha256": "4d80baad4b2ce770ce0e1733cde4f852db55ca129da709013deae56298b8a203"
   },
   "/usr/local/lib/python3.14/dist-packages/vllm/v1/core/kv_cache_utils.py": {
    "original_sha256": "af4164bca819f1cdc416077522a7019936fd38a523a482283eb91b08dae0e57a",

@@ -120,7 +120,7 @@
     },
     "compat/overlays/vllm/third_party/flash_linear_attention/ops/chunk.py": {
       "size_bytes": 9380,
-      "sha256": "0cf93060e5caf788cdd3ebeb7e40523232063210d4145cfc1c4a8abf45dcb721"
+      "sha256": "e3b750ef93035643ceaefad2e1b70961bf25f0b7bc7192c1b29a51483c1aa2e9"
     },
     "compat/overlays/vllm/third_party/flash_linear_attention/ops/solve_tril.py": {
       "size_bytes": 20109,
@@ -220,7 +220,7 @@
     },
     "paiton_gdn_merged_prefill_adapter.py": {
       "size_bytes": 7044,
-      "sha256": "52542e18eecad0a1ee8b921f698b4e7ba7de0f56a5cf2331aa82345e15139b1b"
+      "sha256": "1a25ed879b59e930de877addfd57619aee1201d1a027072f3da46b30eaefd6d0"
     },
     "paiton_gdn_merged_prefill_policy.py": {
       "size_bytes": 1813,
@@ -228,7 +228,7 @@
     },
     "paiton_gdn_tiled_adapter.py": {
       "size_bytes": 9668,
-      "sha256": "903455f004439720060531b29b792d7651c8a11a3e6d14aa28c841ef3048bae6"
+      "sha256": "257874b57224bf34b2b71e515e999f131b0fc58ebf9bd34b162e49ad40ae0bd7"
     },
     "paiton_gdn_tiled_policy.py": {
       "size_bytes": 2040,
@@ -236,11 +236,11 @@
     },
     "paiton_prefill_attention_adapter.py": {
       "size_bytes": 6917,
-      "sha256": "6978341fd249fbd316eb827cbcbee26f3d194da3ce62928d6bd64e28cc4cfe81"
+      "sha256": "bb36d882746824760ac3310297865cd51c0941b14d89726ae4818ff36c98d0c0"
     },
     "paiton_prefill_attention_policy.py": {
       "size_bytes": 1044,
-      "sha256": "90fb9f1e757745abea69486017206be945e163c90d57627ad1b5bc9dc18518b2"
+      "sha256": "10652655f20d15a7a7ce5bfae32538dceaf615d61f26b68a69dc1f38141e62f3"
     },
     "paiton_prefill_tall_adapter.py": {
       "size_bytes": 5887,
@@ -284,7 +284,7 @@
     },
     "paiton_allreduce.py": {
       "size_bytes": 17182,
-      "sha256": "89533a50a65d3fbfc393b714a0f9d41c5cf42323a10ce5bffd3f991efeae7cb4"
+      "sha256": "8f1138c8b80ec979c7eabebe45d954f74d55a3a5f33aae3defab0cbcb10c57d0"
     },
     "paiton_amdsmi.py": {
       "size_bytes": 1267,
@@ -292,11 +292,11 @@
     },
     "paiton_arnq.py": {
       "size_bytes": 18278,
-      "sha256": "15e2e3ad73fd5cf23a8bf88a4a63bd72a561e01db673379dc57bd3c87805d380"
+      "sha256": "66e43fb01bc995f44e04d1aa1495a4d1612dbbe2b163c262fccc2ca89efd0613"
     },
     "paiton_aroverlap.py": {
       "size_bytes": 8253,
-      "sha256": "599f5732d7a26e15472fa03a87e5c089a565f75a9fa8af7a5e9671626be9b303"
+      "sha256": "2c3dfd086abbfcfc0856a328728bcc37c5a77c00235aea3383a7bb91a15f1dcc"
     },
     "paiton_draft.py": {
       "size_bytes": 17882,
@@ -312,11 +312,11 @@
     },
     "paiton_gdn.py": {
       "size_bytes": 37248,
-      "sha256": "b2c2fa8857349d29395615ce9e19d7fc391364f08d47a2af4fe52326294016df"
+      "sha256": "47faefebf59a8126121350476a17951032c324585e763667beee0170aaf0b6c8"
     },
     "paiton_gdn_lazy.py": {
       "size_bytes": 5260,
-      "sha256": "125cc12a0c6dcb9aa99e14f0997e93116f7cdffa2debe17b0d64613ce0fe887b"
+      "sha256": "1e89b9bec2349f4665f34ed22f8eef735494aaac7b8b8f43806e7540e55b15e6"
     },
     "paiton_gdnmerge.py": {
       "size_bytes": 11389,
@@ -324,27 +324,27 @@
     },
     "paiton_gemm.py": {
       "size_bytes": 7821,
-      "sha256": "c4f88d702a8ab18ef6c7646df2efc6c02f5066572b12e0afe5f7a4791738ab19"
+      "sha256": "840fe01d79e0d451274bd73bb63824ffbb84b4a1c8af4da4b4693f3fe9ca11e6"
     },
     "paiton_kernels.py": {
       "size_bytes": 23541,
-      "sha256": "147537a76fb2c8bc18e50aa90a4a4142a0226ba4302fd34f56a89d2d4502f285"
+      "sha256": "d422cd6b26fe81b37a4ab820dd5815c1a1b3cb7df80819f28f0884e51d4522d5"
     },
     "paiton_mxfp4.py": {
       "size_bytes": 50795,
-      "sha256": "c54502fb859d46fc9d50d738fe073d4e6b2cb3408a447d8291bdaece187a738d"
+      "sha256": "7cf4bbce6e0e73e5dcedd19ec3a0fe5136adb9506eb53d21407fb3d52dd15cd3"
     },
     "paiton_nvfp4.py": {
       "size_bytes": 21032,
       "sha256": "ef3a237d46aefbeee4a293d2c08cac1d9143a36ec0150cdd745b98849bfa5e9d"
     },
-    "paiton_r4d_attn.py": {
+    "paiton_pdk_attn.py": {
       "size_bytes": 20116,
-      "sha256": "7798a436ae4fa5e419a4f0ea737f76b45029c2111a29766f02b294033ff6d5c7"
+      "sha256": "4b44f891130ef2969c7c7c1521f036d9ef389722df79f397df0e0318317927dc"
     },
     "paiton_rmsquant.py": {
       "size_bytes": 2879,
-      "sha256": "b0df7f505f2ab1bb945662ef9773e705739fcd48605c1d79e876fad9c8991f61"
+      "sha256": "ecc79dd9f09109fe49353197704b436d01aae61df569b8bff576a9bf3d7397d4"
     },
     "paiton_topk.py": {
       "size_bytes": 3526,
@@ -352,7 +352,7 @@
     },
     "paiton_tp3pad.py": {
       "size_bytes": 20602,
-      "sha256": "8618957f3ffdc2e83d29c52ee29f82ec87cb247741ba3346f2d690972b4a2d59"
+      "sha256": "8723daac293858d349cb18043b0230cb9b3eae7a15b4d79b2bb26d58490928aa"
     },
     "paiton_verifyhead.py": {
       "size_bytes": 12461,
@@ -360,11 +360,11 @@
     },
     "paiton_vit_attn.py": {
       "size_bytes": 9117,
-      "sha256": "93ad7c9119b678251e7e3ef325c0099357691633fc224474e03ca3764214bb8e"
+      "sha256": "059e6085970d0f61b9f296d7b526dfd46ce94abbe6c6a0d5fb4399a33647b517"
     },
     "paiton_w4.py": {
       "size_bytes": 25490,
-      "sha256": "f03b9ccc257bcd2f76076545c05af165f7d57962ddb13cf4947da52dd0cdaed3"
+      "sha256": "5b7539c44f71ac89b150d2ee385820918b6503a3e4af947f38bb8f0f5df59617"
     },
     "compat/__init__.py": {
       "size_bytes": 1485,

@@ -54,7 +54,7 @@ def chunk_gated_delta_rule_fwd(
     A = solve_tril(
         A=A, cu_seqlens=cu_seqlens, chunk_indices=chunk_indices, output_dtype=k.dtype
     )
-    # --- PAITON fused GDN prefill kernel (patch_r4d.py) ---
+    # --- PAITON fused GDN prefill kernel (patch_pdk.py) ---
     # One kernel for the WY representation, the state scan and the output. It returns None
     # for any shape it was not compiled for, which leaves the Triton path below untouched.
     if _paiton_gdn is not None and _paiton_gdn.ENABLED and SUPPRESS_LEVEL < 3:

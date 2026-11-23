@@ -1,7 +1,7 @@
 """Overlap the tensor-parallel all-reduce with the producing GEMM at prefill.
 
 WHY. The RowParallel linears (mlp down_proj, attention o_proj, gdn out_proj) end in an 80 MiB
-all-reduce at CHUNK=8192 that is strictly serialized behind the GEMM: 1.32 ms per call on the r4d
+all-reduce at CHUNK=8192 that is strictly serialized behind the GEMM: 1.32 ms per call on the pdk
 P2P kernel, 15.5% of prefill GPU time in the 40k profile, and transport-bound on PCIe -- the wht6
 payload is already 6-bit, so the only lever left is hiding it. vLLM 0.27's async-TP machinery
 (passes/fusion/collective_fusion.py) cannot do it here: it pattern-matches torch mm ops and
@@ -33,7 +33,7 @@ unsliced reduction -- the same drift class as the AR quantization itself.
 VERDICT (2026-08-29): MEASURED AND NEGATIVE -- ships default OFF, kept for re-ablation.
 Serving prefill at 10k/40k/106k: baseline 5003/4648/3831 t/s; SLICES=1 (op structure, no
 overlap) 4905/4518/3778 (-2 to -2.8%: the lost allreduce_rms fusion plus the assembly copies);
-SLICES=4 4721/4390/3697 (-3.5 to -5.6%: WORSE than not overlapping). The r4d oneshot AR is a
+SLICES=4 4721/4390/3697 (-3.5 to -5.6%: WORSE than not overlapping). The pdk oneshot AR is a
 spin-wait kernel: while it waits on the peer over PCIe it occupies CUs, so running it beside the
 GEMM slices is CONTENTION, not hiding -- the overlap steals exactly the compute it hides under.
 A truly-async AR needs the transfer on the SDMA engines (hipMemcpyPeerAsync + local reduce),

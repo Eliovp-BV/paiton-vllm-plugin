@@ -1,7 +1,7 @@
-"""PAITON skinny bf16 GEMM dispatch. Routes small unquantized projections to the R4D gfx1201
+"""PAITON skinny bf16 GEMM dispatch. Routes small unquantized projections to the PDK gfx1201
 kernel `gemm_bf16_nt_m64` (C[M,N] = x[M,K] @ W[N,K]^T, one 16x16x16 WMMA per row tile per 16 of K,
 split-K reduced in LDS) from vLLM's ROCm unquantized-linear chokepoint. Enabled with the rest of the
-library by PAITON_RT_USE_R4D.
+library by PAITON_RT_USE_PDK.
 
 Two shapes qualify on this box, and they are the same problem twice: a projection whose weight is
 under a megabyte, so rocBLAS lays it out as a handful of workgroups and leaves the GPU idle while
@@ -28,15 +28,15 @@ import sys
 
 import torch
 
-# PAITON_RT_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_PDK is the master switch for the whole libpdk integration (patch_pdk.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-USE_R4D = os.environ.get("PAITON_RT_USE_R4D", "1") == "1"
+USE_PDK = os.environ.get("PAITON_RT_USE_PDK", "1") == "1"
 # PAITON_RT_SKINNY_GEMM: 0 takes just this dispatch out without disabling the rest of the library,
 # which is what an A/B of it against rocBLAS needs; "all" adds the shapes in _CFG_TAXED.
 _MODE = os.environ.get("PAITON_RT_SKINNY_GEMM", "1")
-ENABLED = USE_R4D and _MODE != "0"
+ENABLED = USE_PDK and _MODE != "0"
 # Each distinct (N, K, M) this dispatch claims is logged once; a shape that never appears stayed on
-# the path it would have taken without R4D.
+# the path it would have taken without PDK.
 _seen: set = set()
 
 M_MIN = 6          # below this vLLM's own wvSplitK serves the shape
@@ -90,11 +90,11 @@ if _MODE == "all":
     _CFG.update(_CFG_TAXED)
 
 try:
-    import r4d as _r4d                     # the compiled R4D kernel library
+    import pdk as _pdk                     # the compiled PDK kernel library
 except Exception as e:                     # library missing or failed to load: stay on rocBLAS
-    _r4d = None
+    _pdk = None
     ENABLED = False
-    sys.stderr.write(f"[paiton.gemm] r4d import failed, disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.gemm] pdk import failed, disabled: {e!r}\n")
 
 _GEMM = None
 _M_MAX = 0
@@ -102,14 +102,14 @@ if ENABLED:
     # The entry point carries the shape it is compiled for, so ask the library which kernel it has
     # rather than naming one here. M=64 excludes the older dot2 kernel, whose accumulators cap it at
     # 16; None means this build predates the WMMA one and every shape below stays on the path it
-    # would have taken without R4D.
-    _name = _r4d.select("gemm_nt", M=64, K=5120, dtype="bf16")
+    # would have taken without PDK.
+    _name = _pdk.select("gemm_nt", M=64, K=5120, dtype="bf16")
     if _name is None:
         ENABLED = False
         sys.stderr.write("[paiton.gemm] no gemm_nt kernel for M<=64 bf16, disabled\n")
     else:
-        _GEMM = getattr(_r4d, _name)
-        _M_MAX = int(_r4d.GEMM64_MAX_M)
+        _GEMM = getattr(_pdk, _name)
+        _M_MAX = int(_pdk.GEMM64_MAX_M)
         sys.stderr.write(
             "[paiton.gemm] skinny GEMM kernel ENABLED for M in [%d,%d]: %s\n"
             % (M_MIN, _M_MAX, ", ".join("%dx%d" % nk for nk in sorted(_CFG))))

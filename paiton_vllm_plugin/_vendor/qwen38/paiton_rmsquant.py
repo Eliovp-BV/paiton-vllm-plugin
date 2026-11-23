@@ -20,7 +20,7 @@ torch.library.custom_op is opaque to inductor, so a custom-op replacement runs a
 ~8 elementwise kernels -- measured, that pushed launches per forward from 1904 to 2009 and made step
 time worse. Written as plain torch, inductor traces it and fuses the whole norm+quant into a single
 triton kernel, which is the point. A HIP kernel can replace it later behind the same call site
-(libr4d's r4d_gdn_gated_rmsnorm_h128_bf16 is the template); this is the version that has to be beaten.
+(libpdk's pdk_gdn_gated_rmsnorm_h128_bf16 is the template); this is the version that has to be beaten.
 """
 import os
 import torch

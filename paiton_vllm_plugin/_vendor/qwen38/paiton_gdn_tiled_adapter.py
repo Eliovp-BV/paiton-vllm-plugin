@@ -11,8 +11,8 @@ import time
 from paiton_gdn_tiled_policy import Policy, FLAG
 
 TARGET='paiton_arnq'
-SOURCE_SHA='15e2e3ad73fd5cf23a8bf88a4a63bd72a561e01db673379dc57bd3c87805d380'
-CONSUMER_SHA='c54502fb859d46fc9d50d738fe073d4e6b2cb3408a447d8291bdaece187a738d'
+SOURCE_SHA='66e43fb01bc995f44e04d1aa1495a4d1612dbbe2b163c262fccc2ca89efd0613'
+CONSUMER_SHA='7cf4bbce6e0e73e5dcedd19ec3a0fe5136adb9506eb53d21407fb3d52dd15cd3'
 ROOT=Path('/opt/paiton/runtime/gdn-tiled')
 LIB=AUDIT=POLICY=None
 CALLS=FALLBACKS=0

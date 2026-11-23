@@ -330,28 +330,28 @@ def install_attn_config_hook():
     sys.stderr.flush()
 
 
-# ---- R4D kernel selection report ----
-# Which R4D kernel serves which part of the model is decided by r4d.select(), and every one of
+# ---- PDK kernel selection report ----
+# Which PDK kernel serves which part of the model is decided by pdk.select(), and every one of
 # those calls happens at import time, scattered across five modules, before there is any log a
-# reader is following. The library records the questions (see selections() in r4d_module.hip);
+# reader is following. The library records the questions (see selections() in pdk_module.hip);
 # this prints them back once the worker is up, which is the moment a user is actually looking.
 #
 # It is deliberately the whole log rather than the kernels that were bound: a query that resolved
 # to nothing is the more useful line of the two, because it names the constraint that sent this
 # model down a fallback path.
 
-def _r4d_report_lines():
+def _pdk_report_lines():
     """The selection report as a list of lines, or None when there is nothing to report."""
-    import r4d
+    import pdk
 
-    rows = r4d.selections()
+    rows = pdk.selections()
     if not rows:
         return None
-    version = getattr(r4d, "__version__", "?")
-    built = len(r4d.kernels())
+    version = getattr(pdk, "__version__", "?")
+    built = len(pdk.kernels())
     hit = sum(1 for r in rows if r["kernel"])
     out = [
-        f"R4D kernel selection: libr4d {version}, {built} kernels built, "
+        f"PDK kernel selection: libpdk {version}, {built} kernels built, "
         f"{hit} of {len(rows)} queries resolved"
     ]
     # Pad the op names into a column so the queries line up; the query itself is free-form, since
@@ -368,8 +368,8 @@ def _r4d_report_lines():
     return out
 
 
-def install_r4d_report():
-    """Print the R4D selection report once the model is loaded and the graphs are captured.
+def install_pdk_report():
+    """Print the PDK selection report once the model is loaded and the graphs are captured.
 
     compile_or_warm_up_model is the worker's last init step, so by the time it returns every hook
     has imported and every select() has been made -- including the ones on paths that only resolve
@@ -378,12 +378,12 @@ def install_r4d_report():
     Never fatal: this is a log line, and a serve must
     not fail to start over one."""
     try:
-        import r4d  # noqa: F401
+        import pdk  # noqa: F401
     except Exception:
         return      # no library, nothing to report
     from vllm.v1.worker.gpu_worker import Worker
 
-    if getattr(Worker.compile_or_warm_up_model, "_paiton_r4d_report", False):
+    if getattr(Worker.compile_or_warm_up_model, "_paiton_pdk_report", False):
         return
     _orig = Worker.compile_or_warm_up_model
 
@@ -391,15 +391,15 @@ def install_r4d_report():
         result = _orig(self, *a, **kw)
         try:
             if self.rank == 0:
-                lines = _r4d_report_lines()
+                lines = _pdk_report_lines()
                 if lines:
                     sys.stderr.write("".join(f"[paiton] {ln}\n" for ln in lines))
                     sys.stderr.flush()
         except Exception as e:
-            sys.stderr.write(f"[paiton] R4D selection report failed: {e!r}\n")
+            sys.stderr.write(f"[paiton] PDK selection report failed: {e!r}\n")
         return result
 
-    compile_or_warm_up_model._paiton_r4d_report = True
+    compile_or_warm_up_model._paiton_pdk_report = True
     Worker.compile_or_warm_up_model = compile_or_warm_up_model
 
 
@@ -423,7 +423,7 @@ def install_all():
         sys.stderr.write(f"[paiton] install_attn_config_hook failed: {e!r}\n")
     try:
         import paiton_allreduce
-        paiton_allreduce.install_custom_ar()   # PAITON_RT_USE_R4D_AR (default on)
+        paiton_allreduce.install_custom_ar()   # PAITON_RT_USE_PDK_AR (default on)
     except Exception as e:
         sys.stderr.write(f"[paiton] install_custom_ar failed: {e!r}\n")
     try:
@@ -438,13 +438,13 @@ def install_all():
         sys.stderr.write(f"[paiton] paiton_drafthead install failed: {e!r}\n")
     try:
         import paiton_vit_attn
-        paiton_vit_attn.install()              # gfx12x, needs the R4D library
+        paiton_vit_attn.install()              # gfx12x, needs the PDK library
     except Exception as e:
         sys.stderr.write(f"[paiton] paiton_vit_attn install failed: {e!r}\n")
     try:
-        install_r4d_report()
+        install_pdk_report()
     except Exception as e:
-        sys.stderr.write(f"[paiton] install_r4d_report failed: {e!r}\n")
+        sys.stderr.write(f"[paiton] install_pdk_report failed: {e!r}\n")
 
 
 def block_scaled_mm(kernel, A, B, As, Bs):

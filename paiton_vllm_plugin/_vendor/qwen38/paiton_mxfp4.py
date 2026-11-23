@@ -60,7 +60,7 @@ def a_tiled_take(q, M: int, K: int) -> bool:
 # lane l onto N row l&15, so in checkpoint order a half-wave reads sixteen rows K/2 bytes apart --
 # fully strided, on the operand that dominates decode traffic. Reordering once here makes a wave's
 # weight read 128 contiguous bytes. Same total bytes; this is a permutation, not a re-quantisation,
-# so it cannot move numerics. It is what libr4d's r4d_gemm_mxfp4a8_nt_m64 reads, and the HIP
+# so it cannot move numerics. It is what libpdk's pdk_gemm_mxfp4a8_nt_m64 reads, and the HIP
 # kernels take it via PAITON_RT_MXFP4_WPERM, which must agree with this flag or the weight is read
 # as garbage -- one env var drives both.
 CHECK_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_CHECK_MAX_M", "128"))
@@ -70,31 +70,31 @@ if WPERM:
     # unforwarded flag reads as "the change did nothing" rather than as a mistake. A whole
     # WPERM A/B was measured twice at 0 before this line existed.
     sys.stderr.write("[paiton.mxfp4] weight layout: FRAGMENT ORDER (PAITON_RT_MXFP4_WPERM=1)\n")
-# Route the decode band to libr4d's r4d_gemm_mxfp4a8_nt_m64 instead of our own decode kernel.
+# Route the decode band to libpdk's pdk_gemm_mxfp4a8_nt_m64 instead of our own decode kernel.
 # Requires WPERM: that kernel reads fragment order and has no LDS staging to hide a strided read
 # behind, which is exactly why it needs the permute and why it is faster once it has it.
-R4D_DECODE_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_R4D_DECODE_MAX_M", "0"))
-_r4d = None
-if R4D_DECODE_MAX_M > 0:
+PDK_DECODE_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_PDK_DECODE_MAX_M", "0"))
+_pdk = None
+if PDK_DECODE_MAX_M > 0:
     if not WPERM:
-        raise RuntimeError("[paiton.mxfp4] PAITON_RT_MXFP4_R4D_DECODE_MAX_M needs "
-                           "PAITON_RT_MXFP4_WPERM=1: the r4d kernel only reads fragment order")
+        raise RuntimeError("[paiton.mxfp4] PAITON_RT_MXFP4_PDK_DECODE_MAX_M needs "
+                           "PAITON_RT_MXFP4_WPERM=1: the pdk kernel only reads fragment order")
     try:
-        import r4d as _r4d
-        if _r4d.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
-            sys.stderr.write("[paiton.mxfp4] r4d has no mxfp4a8 gemm_nt; decode stays on ours\n")
-            _r4d = None
+        import pdk as _pdk
+        if _pdk.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
+            sys.stderr.write("[paiton.mxfp4] pdk has no mxfp4a8 gemm_nt; decode stays on ours\n")
+            _pdk = None
         else:
-            sys.stderr.write(f"[paiton.mxfp4] r4d decode kernel ON (M<={R4D_DECODE_MAX_M})\n")
+            sys.stderr.write(f"[paiton.mxfp4] pdk decode kernel ON (M<={PDK_DECODE_MAX_M})\n")
     except Exception as _e:                     # noqa: BLE001
-        sys.stderr.write(f"[paiton.mxfp4] r4d import failed, decode stays on ours: {_e!r}\n")
-        _r4d = None
+        sys.stderr.write(f"[paiton.mxfp4] pdk import failed, decode stays on ours: {_e!r}\n")
+        _pdk = None
 
 
-def _r4d_cfg(M, K):
-    """(WV, SK, MB, NPW) for the r4d decode GEMM.
+def _pdk_cfg(M, K):
+    """(WV, SK, MB, NPW) for the pdk decode GEMM.
 
-    Close to the per-shape optima measured in libr4d's bench_mxfp4_gemm.py: deeper split-K pays at
+    Close to the per-shape optima measured in libpdk's bench_mxfp4_gemm.py: deeper split-K pays at
     small M where there is not enough N to fill the part, and less so once MB widens. SK is capped
     so K stays divisible by SK*32 and so WV*SK*32 threads and (WV*NPW)*SK*1024 bytes of LDS both
     stay in range.
@@ -230,8 +230,8 @@ SHADOW_NK = tuple(int(v) for v in _sh.split(":")) if _sh else None
 # That is why the kernel always verified correct and the model was still garbage: the GEMM was
 # faithfully computing on a poisoned row. Zeroing non-finite inputs matches what the mxfp4 path
 # effectively does, and the model is coherent under aiter with the same NaN present.
-# Default OFF since the libr4d GDN overflows are fixed at source (see README). Kept as a safety
-# net for a stock r4d.so, where it is the difference between PPL 8.4004 and 653586 -- but with the
+# Default OFF since the libpdk GDN overflows are fixed at source (see README). Kept as a safety
+# net for a stock pdk.so, where it is the difference between PPL 8.4004 and 653586 -- but with the
 # patched library it is a pure elementwise cost, and measured quality is BETTER without it
 # (8.3706 fixed/no-sanitize vs 8.4004 stock/sanitize).
 SANITIZE_X = os.environ.get("PAITON_RT_MXFP4_SANITIZE", "0") == "1"
@@ -445,10 +445,10 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
         out = _slab[PAD_OUT:PAD_OUT + M * N].view(M, N)   # view keeps the slab alive
     else:
         out = torch.empty((M, N), device=x.device, dtype=torch.bfloat16)
-    if (_r4d is not None and folded and M <= R4D_DECODE_MAX_M
+    if (_pdk is not None and folded and M <= PDK_DECODE_MAX_M
             and N % 16 == 0 and K % 32 == 0):
-        _wv, _sk, _mb, _npw = _r4d_cfg(M, K)
-        _r4d.gemm_mxfp4a8_nt_m64(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
+        _wv, _sk, _mb, _npw = _pdk_cfg(M, K)
+        _pdk.gemm_mxfp4a8_nt_m64(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
                                  weight_scale.data_ptr(), weight_ref.data_ptr(), out.data_ptr(),
                                  M, K, N, _wv, _sk, _mb, _npw,
                                  torch.cuda.current_stream().cuda_stream)

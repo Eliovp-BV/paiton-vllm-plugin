@@ -13,7 +13,7 @@ Both stacks load the same original target and drafter files, tokenizer and chat 
 
 Both use tensor parallelism 1, an 8,192-token context limit, seven speculative tokens, unpadded draft batches, FP8 KV, at most eight sequences, 4,096-token prefill chunks, synchronous scheduling and disabled prefix caching. Both allocate **5 GiB to cache**. Identical checkpoint storage does not imply identical runtime arithmetic: attention implementations and draft policies differ.
 
-Paiton uses its published image with vLLM `0.28.0+rocm723`; the reference-backend stack uses vLLM `0.27.1` and repository revision `92eed82fcbb1cca31f7a9108c6371a0bba647ee2`. Effective graph modes are respectively `FULL_DECODE_ONLY` and `FULL_AND_PIECEWISE`. [Provenance](provenance.json) pins the images, source and libr4d revision. This is a serving-stack comparison, not an isolated kernel experiment.
+Paiton uses its published image with vLLM `0.28.0+rocm723`; the reference-backend stack uses vLLM `0.27.1` and repository revision `92eed82fcbb1cca31f7a9108c6371a0bba647ee2`. Effective graph modes are respectively `FULL_DECODE_ONLY` and `FULL_AND_PIECEWISE`. [Provenance](provenance.json) pins the images, source and the reference kernel library revision. This is a serving-stack comparison, not an isolated kernel experiment.
 
 The stronger reference-backend repeat adds the four HIP settings used by Paiton: `DEBUG_HIP_DYNAMIC_QUEUES=0`, `HIP_FORCE_DEV_KERNARG=1`, `HSA_NO_SCRATCH_RECLAIM=1` and `HSA_ENABLE_IPC_MODE_LEGACY=1`. It also reuses compilation caches. Its improvement cannot establish any individual flag's causal effect. Some first-use framework compilation warnings remained in both repeated runs; this is not a fully warmed sustained-load qualification.
 

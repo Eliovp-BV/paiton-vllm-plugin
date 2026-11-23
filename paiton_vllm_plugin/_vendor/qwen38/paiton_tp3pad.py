@@ -13,7 +13,7 @@ ranks 0 and 1 are all-real. Nothing is rewritten on disk.
 Geometry (TP3_PADDING_PLAN.md):
 
   target (text_config)      stock -> padded   per rank    why
-    num_attention_heads      24  -> 36        12          keeps GQA 6 (the R4D attention kernels
+    num_attention_heads      24  -> 36        12          keeps GQA 6 (the PDK attention kernels
     num_key_value_heads       4  ->  6         2          are compiled for head 256 / GQA 6)
     linear_num_key_heads     16  -> 18         6          16 does not divide by 3
     linear_num_value_heads   48  -> 54        18          V/K ratio 3 is baked into the GDN layout

@@ -1036,7 +1036,7 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             mixed_qkv, z = mixed_qkvz.split([qkv_size, z_size], dim=-1)
             z = z.reshape(z.size(0), -1, self.head_v_dim)
             b, a = self.split_ba(ba)
-            # --- PAITON (patch_gdn_glue.py): the R4D core reads strided gates ---
+            # --- PAITON (patch_gdn_glue.py): the PDK core reads strided gates ---
             if not (_paiton_gdn is not None and _paiton_gdn.STRIDED_GATES):
                 b = b.contiguous()
                 a = a.contiguous()
@@ -1375,7 +1375,7 @@ class QwenGatedDeltaNetAttention(GatedDeltaNetAttention):
             self._warmup_prefill_kernels(mixed_qkv, 0)
             return
 
-        # --- PAITON all-R4D gated delta net (patch_r4d.py) ---
+        # --- PAITON all-PDK gated delta net (patch_pdk.py) ---
         # conv_prep -> kkt_solve -> chunk_scan for a prefill step, conv_update ->
         # recurrent_update for a speculative decode step. Returns False for any step it
         # does not cover, which leaves the Triton body below exactly as it was.
