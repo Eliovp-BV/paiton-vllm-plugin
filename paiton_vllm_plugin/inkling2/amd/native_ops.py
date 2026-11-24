@@ -66,8 +66,9 @@ def _library():
         ):
             fn = getattr(lib, "PaitonInkling2Ops" + name)
             fn.restype, fn.argtypes = C.c_int, args
-        for name, args in (("Int8Rows", [p, p, p, i, i, p]), ("LmHeadInt8", [p, p, p, p, i, i, i, f, p])):
-            if hasattr(lib, "PaitonInkling2Ops" + name):   # in ABI 3 libraries built after the int8 rows were added
+        for name, args in (("Int8Rows", [p, p, p, i, i, p]), ("LmHeadInt8", [p, p, p, p, i, i, i, f, p]),
+                           ("LinearFp8", [p, p, p, p, i, i, i, i, p]), ("LinearInt8", [p, p, p, p, i, i, i, i, p])):
+            if hasattr(lib, "PaitonInkling2Ops" + name):   # in later builds of ABI 3 only
                 fn = getattr(lib, "PaitonInkling2Ops" + name)
                 fn.restype, fn.argtypes = C.c_int, args
         _lib, _abi = lib, abi
@@ -78,6 +79,11 @@ def head_formats() -> tuple[str, ...]:
     """The 8-bit LM head row formats the loaded library has."""
     lib = _library()
     return (*(("fp8",) if _abi >= 3 else ()), *(("int8",) if hasattr(lib, "PaitonInkling2OpsInt8Rows") else ()))
+
+
+def proj_formats() -> tuple[str, ...]:
+    """The 8-bit row formats the loaded library has a linear layer for."""
+    return head_formats() if hasattr(_library(), "PaitonInkling2OpsLinearInt8") else ()
 
 
 def _call(name: str, device: torch.device, *args) -> None:
@@ -282,6 +288,48 @@ def linear(x: torch.Tensor, weight: torch.Tensor, out_dtype: torch.dtype = BF16,
     return out
 
 
+def linear_rows(x: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, fmt: str, out_dtype: torch.dtype = BF16,
+                rows: slice | None = None) -> torch.Tensor:
+    """`x @ W.T` for bf16 `x` `(T, K)` on the 8-bit rows `(codes, scale)` that
+    `head_rows(W, fmt)` made of the bf16 matrix `W`; `rows` takes a row range.
+    K must be a multiple of 128."""
+    n, k = codes.shape
+    start = 0
+    if rows is not None:
+        start, stop, _ = rows.indices(n)
+        n = stop - start
+    out = torch.empty((x.shape[0], n), dtype=out_dtype, device=x.device)
+    if x.shape[0]:
+        _call("LinearFp8" if fmt == "fp8" else "LinearInt8", x.device, _ptr(x, BF16, "linear x"),
+              _ptr(codes, torch.uint8, "linear codes") + start * k, _ptr(scale, F32, "linear scale") + start * 4,
+              out.data_ptr(), x.shape[0], n, k, out_dtype == F32)
+    return out
+
+
+# PAITON_INK2_PROJ=fp8 or int8 (default bf16): the attention input and output
+# projections read 8-bit rows with one scale per row, converted on the card the
+# first time a weight is used (the bf16 weight stays where it is).
+PROJ = os.environ.get("PAITON_INK2_PROJ", "bf16")
+if PROJ not in ("bf16", "fp8", "int8"):
+    raise ValueError("PAITON_INK2_PROJ must be bf16, fp8 or int8")
+_proj_rows: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
+
+
+def _rows_of(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    key = weight.data_ptr()
+    if key not in _proj_rows:
+        if PROJ not in proj_formats():
+            raise ValueError(f"the operator library has no linear layer on {PROJ} rows (has {proj_formats()})")
+        _proj_rows[key] = head_rows(weight, PROJ)
+    return _proj_rows[key]
+
+
+def o_project(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+    """The attention output projection (`wo_ud`): `linear(x, weight)`, or the
+    same on 8-bit rows with `PAITON_INK2_PROJ`."""
+    return linear(x, weight) if PROJ == "bf16" else linear_rows(x, *_rows_of(weight), PROJ)
+
+
 def linear_k_groups(x: torch.Tensor, weight: torch.Tensor, out_dtype: torch.dtype = F32) -> torch.Tensor:
     """The port's K-grouped projection: the same product on the native kernel."""
     return linear(x, weight, out_dtype)
@@ -295,9 +343,14 @@ def qkvr_project(x_q: torch.Tensor, x_k: torch.Tensor, x_v: torch.Tensor, weight
     are column views of one `(T, 6552)` buffer (row stride 6552 values); k and
     v are contiguous `(T, 1024)`, as the short convolution takes them."""
     q_side, kv = sum(split_sizes[:4]), split_sizes[4]
-    query = linear(x_q, weight, rows=slice(0, q_side))
-    k = linear(x_k, weight, rows=slice(q_side, q_side + kv))
-    v = linear(x_v, weight, rows=slice(q_side + kv, q_side + 2 * kv))
+    if PROJ == "bf16":
+        project = lambda x, rows: linear(x, weight, rows=rows)  # noqa: E731
+    else:
+        codes, scale = _rows_of(weight)
+        project = lambda x, rows: linear_rows(x, codes, scale, PROJ, rows=rows)  # noqa: E731
+    query = project(x_q, slice(0, q_side))
+    k = project(x_k, slice(q_side, q_side + kv))
+    v = project(x_v, slice(q_side + kv, q_side + 2 * kv))
     views, at = [], 0
     for size in split_sizes[:4]:
         views.append(query[:, at:at + size])
