@@ -23,6 +23,7 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertEqual(argv[-2:], ['--max-num-seqs', '1'])
         self.assertEqual(argv[argv.index('--host') + 1], '127.0.0.1')
         self.assertIn('--enforce-eager', argv)
+        self.assertEqual(argv[argv.index('--quantization') + 1], 'inkling2')
 
     def test_drafter_is_on_unless_switched_off(self):
         argv = server.command('/checkpoint')
