@@ -132,7 +132,7 @@ cd paiton-vllm-plugin
 ```
 
 Already cloned it? Run `git pull` in your checkout. The launcher pins the **24 November r6** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@{{PIN:R6_DIGEST}}`, and Docker pulls it on the first
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@sha256:e96b59ecd4de5fd27859469f99e2d90393561dcfcd53ccdd197d87bc6f10555a`, and Docker pulls it on the first
 start ([what changed](REFERENCE.md#release-notes-24-november-2026)). r6 is built on a new base image, so Docker
 downloads most of it again even if you have r5. Earlier releases run with the launcher of the r5 tag:
 [run an earlier release](HISTORY.md#run-an-earlier-release).

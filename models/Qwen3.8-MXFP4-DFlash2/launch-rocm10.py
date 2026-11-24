@@ -21,7 +21,7 @@ IMAGES = {
     # 380efeed), with the Paiton runtime names, 19 vLLM bookkeeping kernels in native HIP, prefix-cache hits without the
     # EAGLE block drop in every text mode with the 4-bit cache (ALL_TEXT_NO_DROP_IMAGE_SUFFIXES) and its own
     # compile-cache seed. Older images run with the launcher at OLDER_IMAGES_LAUNCHER_TAG.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@{{PIN:R6_DIGEST}}',
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@sha256:e96b59ecd4de5fd27859469f99e2d90393561dcfcd53ccdd197d87bc6f10555a',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {

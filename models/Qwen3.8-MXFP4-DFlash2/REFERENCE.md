@@ -27,7 +27,7 @@ with the launcher of the r5 tag ([how](README.md#mxfp4-on-r5)).
 
 ### Release notes: 24 November 2026 (image r6, current)
 
-The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6` (`{{PIN:R6_DIGEST}}`) moves the
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6` (`sha256:e96b59ecd4de5fd27859469f99e2d90393561dcfcd53ccdd197d87bc6f10555a`) moves the
 27B to a new base: AMD's `rocm/vllm` image, pinned by digest
 `sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003`, with ROCm 10.2.0, vLLM 0.32.0, PyTorch
 2.14.0 and Python 3.14. r5 ran on ROCm 10.0, vLLM 0.29 and Python 3.12. The 3-bit weights are r5's (revision
