@@ -23,7 +23,21 @@ torch.manual_seed(0)
 cfg = types.SimpleNamespace(**json.load(open(f"{model_dir}/config.json"))["text_config"])
 fixture = np.load(fixture_path)
 worst = 0.0
-with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cuda:0") as ckpt:
+STAGE = torch.empty(32 << 20, dtype=torch.uint8).pin_memory()
+
+
+def to_card(tensor: torch.Tensor) -> torch.Tensor:
+    """Upload through one pinned 32 MB buffer: large pageable copies cause KFD queue evictions on shared hosts."""
+    out = torch.empty(tensor.shape, dtype=tensor.dtype, device="cuda:0")
+    src, dst = tensor.contiguous().view(-1).view(torch.uint8), out.view(-1).view(torch.uint8)
+    for i in range(0, src.numel(), STAGE.numel()):
+        n = min(STAGE.numel(), src.numel() - i)
+        STAGE[:n].copy_(src[i:i + n])
+        dst[i:i + n].copy_(STAGE[:n])
+    return out
+
+
+with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cpu") as ckpt:
     for layer in sorted({int(k.split("_")[0][1:]) for k in fixture.files}):
         prefix = f"model.llm.layers.{layer}.mlp.experts."
         fmt = "nvfp4" if f"{prefix}w13_weight_amax" in ckpt.keys() else "mxfp8"
@@ -32,7 +46,7 @@ with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cu
             experts = (Inkling2NativeExperts(cfg, fmt) if native
                        else Inkling2BringupExperts(cfg, fmt, act_quant, True)).to("cuda:0")
             for name, param in experts.named_parameters():
-                param.data = ckpt.get_tensor(prefix + name)
+                param.data = to_card(ckpt.get_tensor(prefix + name))
             if not native:
                 experts.process_weights_after_loading()
             for call in sorted({k.split("_")[1] for k in fixture.files if k.startswith(f"L{layer}_")}):
