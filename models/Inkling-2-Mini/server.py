@@ -72,13 +72,22 @@ def main():
                         help='address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)')
     parser.add_argument('--api-key', default=None,
                         help='opt-in: require this key on /v1 requests (passed to vLLM as VLLM_API_KEY, never printed)')
+    parser.add_argument('--int8-attention', action='store_true',
+                        help='opt-in: attention projection weights as 8-bit rows instead of bf16; about 9 %% faster '
+                             'decode, a small measurable change of the output distribution (KL +0.003)')
     args, extra = parser.parse_known_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
     snapshot = prepare(args.offline, args.verify)
     if args.download_only:
         return
-    os.environ.update(HF_HUB_OFFLINE='1', PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native')
+    os.environ['HF_HUB_OFFLINE'] = '1'
+    if args.int8_attention:
+        os.environ['PAITON_INK2_PROJ'] = 'int8'
+    # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
+    for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='2', PAITON_INK2_LMHEAD='int8').items():
+        os.environ.setdefault(name, value)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
     argv = command(snapshot, args.host, extra)

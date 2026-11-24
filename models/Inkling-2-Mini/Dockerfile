@@ -16,7 +16,8 @@ ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     XDG_CACHE_HOME=/models/cache VLLM_CACHE_ROOT=/models/cache/vllm VLLM_DO_NOT_TRACK=1 \
     PAITON_INK2_MOE_SO=/opt/paiton/inkling2/lib/inkling2_moe_gfx1201.so \
     PAITON_INK2_ATTN_SO=/opt/paiton/inkling2/lib/inkling2_attn_gfx1201.so \
-    PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so
+    PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so \
+    PAITON_INK2_STEP_SO=/opt/paiton/inkling2/lib/inkling2_step_gfx1201.so
 ARG PLUGIN_REVISION=local
 LABEL org.opencontainers.image.revision="${PLUGIN_REVISION}" \
       org.opencontainers.image.title="Paiton Inkling 2 Mini R9700" \
