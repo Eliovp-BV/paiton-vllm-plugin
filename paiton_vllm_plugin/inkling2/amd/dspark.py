@@ -8,6 +8,8 @@ implementation's draft (RMSNorms as flashinfer's, bf16 logits)."""
 from collections.abc import Iterable
 from typing import cast
 
+import os
+
 import torch
 from torch import nn
 
@@ -36,6 +38,9 @@ from vllm.v1.attention.backends.flash_attn import (
 from vllm.v1.worker.gpu.sample.greedy_argmax import greedy_argmax
 
 from ..configs import Inkling2DSparkConfig
+
+if os.environ.get("PAITON_INK2_OPS", "") == "native":
+    raise NotImplementedError("the DSpark drafter is not ported to the native operators yet")
 from ..speculator_config import Inkling2DSparkSpeculatorConfig
 from .ops.attention import block_decode_attention, plan_decode_attention
 from .ops.dspark import (

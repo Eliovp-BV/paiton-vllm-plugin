@@ -8,6 +8,7 @@ are TP-sharded with the KV heads; the attn-/mlp-output streams are replicated
 full-width on every rank.
 """
 
+import os
 from typing import cast
 
 import torch
@@ -19,13 +20,23 @@ from vllm.distributed import (
 )
 from vllm.forward_context import get_forward_context
 from vllm.model_executor.utils import set_weight_attrs
-from vllm.models.inkling.amd.sconv_swa_attn import (
-    InklingConvState,
-    InklingSconvMetadata,
-)
 
-from .ops.linear import linear_k_groups
-from .ops.sconv import short_conv
+# PAITON_INK2_OPS=native: the conv state, its metadata and the convolution come
+# from Paiton's native operator library; vLLM's `sconv_swa_attn` module and
+# `amd/ops/` (both Triton) are not imported.
+NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
+if NATIVE_OPS:
+    from . import native_ops
+    from .conv_state import InklingConvState, InklingSconvMetadata
+    from .native_ops import short_conv
+else:
+    from vllm.models.inkling.amd.sconv_swa_attn import (
+        InklingConvState,
+        InklingSconvMetadata,
+    )
+
+    from .ops.linear import linear_k_groups
+    from .ops.sconv import short_conv
 
 K_STREAM, V_STREAM, ATTN_STREAM, MLP_STREAM = range(4)
 
@@ -108,6 +119,8 @@ class Inkling2ShortConv(nn.Module):
         """Per-token tap deltas `(T, num_heads * W)` projected from `x`."""
         if not self.dynamic:
             return None
+        if NATIVE_OPS:
+            return native_ops.linear(x, self.weight_proj)
         # Same dispatch as the reference ``linear``: fp32 1024-wide K groups.
         if self.weight_proj.shape[1] >= 2560 and self.weight_proj.shape[0] not in (
             1,
