@@ -48,7 +48,8 @@ IMAGE_PAD_ID = 200054
 
 PATCH_SIZE = 40
 # bf16 bit pattern of every raw pixel value: index 0 is -1 (padding), 1 + v is v.
-_BF16_BITS = torch.arange(-1, 256).to(torch.bfloat16).view(torch.int16).numpy()
+# On the host whatever default device is active at import: vLLM imports this module inside a card context too.
+_BF16_BITS = torch.arange(-1, 256, device="cpu").to(torch.bfloat16).view(torch.int16).numpy()
 # Dummy (profiling) images are at most this many pixels per side.
 MAX_DUMMY_IMAGE_SIDE = 2048
 
