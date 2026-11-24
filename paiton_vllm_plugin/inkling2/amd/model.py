@@ -53,16 +53,27 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from .attention import Inkling2Attention
-from .experts_bringup import Inkling2BringupMoE
-from .experts_native import Inkling2NativeMoE
-from .moe import Inkling2MoE
-from .ops.attention import compute_log_scaling_tau
 from . import ops_dump
-from .ops.attn_res import attn_res
-from .ops.norm import rms_norm
+from .attention import Inkling2Attention
+from .experts_native import Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
-from .vision import Inkling2VisionEncoder, VisionMetadata
+
+# PAITON_INK2_OPS=native: every small operator runs on Paiton's native operator
+# library (`native_ops.py`), and no module under `amd/ops/` (Triton) is imported
+# from here. The experts must be native too, vision is not ported.
+NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
+if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
+    raise ValueError("PAITON_INK2_OPS must be unset or native")
+if NATIVE_OPS:
+    from . import native_ops
+    from .native_ops import attn_res, rms_norm
+else:
+    from .experts_bringup import Inkling2BringupMoE
+    from .moe import Inkling2MoE
+    from .ops.attention import compute_log_scaling_tau
+    from .ops.attn_res import attn_res
+    from .ops.norm import rms_norm
+    from .vision import Inkling2VisionEncoder, VisionMetadata
 
 
 TAP_DIR = os.environ.get("PAITON_INK2_TAP_DIR")
@@ -176,6 +187,8 @@ class Inkling2DecoderLayer(nn.Module):
         mode = os.environ.get("PAITON_INK2_EXPERTS", "")
         if mode not in ("", "ref-a", "ref-b", "native"):
             raise ValueError("PAITON_INK2_EXPERTS must be unset, ref-a, ref-b or native")
+        if NATIVE_OPS and mode != "native":
+            raise ValueError("PAITON_INK2_OPS=native needs PAITON_INK2_EXPERTS=native")
         self.mlp: nn.Module
         if mode == "native":
             # Paiton's native expert library (gfx1201), weights as stored.
@@ -259,6 +272,14 @@ class Inkling2Model(nn.Module):
         # Fixture recorder: one call per forward (text only).
         ops_dump.forward += 1
         ops_dump.where = "pre"
+        if NATIVE_OPS:
+            # Lookup and embed norm in one launch.
+            return native_ops.embed_norm(
+                input_ids,
+                self.embed_tokens.weight,
+                self.embed_norm.weight[0],
+                self.embed_norm.eps,
+            )
         return ops_dump.record(
             "embed",
             {"input_ids": input_ids, "weight_key": "model.llm.embed.weight"},
@@ -266,7 +287,8 @@ class Inkling2Model(nn.Module):
         )
 
     def _log_scaling_tau(self, positions: torch.Tensor) -> torch.Tensor | None:
-        if self.config.log_scaling_n_floor is None:
+        # The native attention computes the scaling itself from the positions.
+        if self.config.log_scaling_n_floor is None or NATIVE_OPS:
             return None
         return compute_log_scaling_tau(
             positions, self.config.log_scaling_n_floor, self.config.log_scaling_alpha
@@ -402,11 +424,19 @@ class Inkling2ForConditionalGeneration(
             raise ValueError("Inkling2 does not support prompt embeddings")
         self.config = config
         self.text_config = text_config = config.text_config
-        self.visual = (
-            Inkling2VisionEncoder(config.vision_config, text_config.hidden_size)
-            if config.vision_config is not None
+        wants_images = (
+            config.vision_config is not None
             and vllm_config.model_config.multimodal_config is not None
             and vllm_config.model_config.multimodal_config.get_limit_per_prompt("image")
+        )
+        if wants_images and NATIVE_OPS:
+            raise NotImplementedError(
+                "vision is not ported to the native operators yet: serve with "
+                '--limit-mm-per-prompt \'{"image": 0}\''
+            )
+        self.visual = (
+            Inkling2VisionEncoder(config.vision_config, text_config.hidden_size)
+            if wants_images
             else None
         )
         model_cls: type[Inkling2Model] = Inkling2Model
@@ -622,6 +652,13 @@ class Inkling2ForConditionalGeneration(
         return out
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
+        if NATIVE_OPS:
+            return native_ops.lm_head(
+                hidden_states,
+                self.lm_head.weight,
+                self.text_config.vocab_size,
+                self.text_config.final_logit_softcapping,
+            )
         return ops_dump.record(
             "lm_head",
             {"hidden": hidden_states, "weight_key": "model.llm.unembed.weight"},

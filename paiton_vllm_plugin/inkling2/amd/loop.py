@@ -33,8 +33,13 @@ from .model import (
     Inkling2RMSNorm,
 )
 from . import ops_dump
-from .ops.attn_res import attn_res
-from .ops.loop import blend_rms_norm, pair_rms_norm
+from .model import NATIVE_OPS
+
+if NATIVE_OPS:
+    from .native_ops import attn_res, blend_rms_norm, controller_products, pair_rms_norm
+else:
+    from .ops.attn_res import attn_res
+    from .ops.loop import blend_rms_norm, pair_rms_norm
 
 LOOP_STREAMS = ("attn", "k", "v", "mlp")
 
@@ -106,6 +111,9 @@ class Inkling2LoopDecoderLayer(Inkling2DecoderLayer):
         pair = pair_rms_norm(dest, message)
         down = self.controller_down[streams]
         up = self.controller_gain_forget[streams]
+        if NATIVE_OPS:
+            gain_forget = controller_products(pair, down, up)
+            return blend_rms_norm(dest, message, gain_forget, norm_weight, norm_eps)
 
         def gemms() -> torch.Tensor:
             hidden = torch.bmm(pair, down.transpose(1, 2))
