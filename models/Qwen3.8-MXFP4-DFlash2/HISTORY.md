@@ -488,15 +488,29 @@ Moved from the quickstart on 7 October 2026; the quickstart keeps only current r
 
 ### Run an earlier release
 
-Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
-its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
-`--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261119-r4`, `…-20261118-r3`, `…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
-`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
-and by its digest alone; an image under any other tag or an image ID counts as the current image.
+The launcher of the current release runs image r6 and refuses r5 and every earlier image. Those run with the launcher
+of the r5 release: check out its tag first.
 
 ```bash
-# 19 November r4, the previous release: every row
+git fetch origin tag qwen38-rocm10-vllm029-20261123-r5
+git checkout qwen38-rocm10-vllm029-20261123-r5
+```
+
+Then add `--image` with the exact reference below to the command of your row. The weights stay the same; give each
+image its own runtime cache folder. With an earlier reference, the r5 launcher builds the Docker command of that
+release; `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
+Docker runs exactly that image. The r5 launcher recognises an earlier image by its tag (`…-20261119-r4`, `…-20261118-r3`, `…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
+`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
+and by its digest alone; an image under any other tag or an image ID counts as r5.
+
+```bash
+# 23 November r5, the previous release: every row, MXFP4 included (the r5 launcher pins it, so --image is optional)
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261123"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121
+
+# 19 November r4: every row
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261119"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
@@ -545,8 +559,8 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
   --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
 ```
 
-To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"` again
-and drop `--image`.
+To return to the current release, run `git checkout main` and
+`export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"` again, and drop `--image`.
 
 The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
 (`--extend-cache`, and `--host-cache-gib` with `--mode long-kv4`): there a cache hit could resume from the wrong

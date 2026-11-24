@@ -22,10 +22,13 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4
 [What you get](#what-you-get) · [Set up](#set-up) · [Ways to run](#ways-to-run) · [Options](#advanced-options) ·
 [Benchmarks](#current-benchmark-results) · [Earlier releases](#run-an-earlier-release)
 
-**Current release: 23 November.** Image r5 with the 7 November 3-bit weights (revision
-`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged). In `--mode long-kv4` the next turn of an agent conversation
-re-reads less of the previous prompt: at 200K tokens of context its first token comes after 1.08 s instead of 1.58 s
-([release notes](REFERENCE.md#release-notes-23-november-2026)). The 18 November image r3 made prompt reading faster: a
+**Current release: 24 November.** Image r6 with the 7 November 3-bit weights (revision
+`aee42dfdb78e851462743120a575bf2d6f7b9882`, unchanged, nothing new to download). r6 runs on ROCm 10.2.0, vLLM 0.32.0,
+PyTorch 2.14.0 and Python 3.14 (r5: ROCm 10.0, vLLM 0.29, Python 3.12). In `--mode long-kv4` an agent conversation at
+about 200K tokens of context decodes 12.2 to 12.8 % faster per draft step than on r5, and a 120K-token prompt asked
+again from the RAM tier gets its first token after 0.33 to 0.34 s instead of 1.10 to 1.12 s
+([release notes](REFERENCE.md#release-notes-24-november-2026)). r6 serves the 3-bit weights only; the MXFP4 rows run
+on image r5 ([how](#mxfp4-on-r5)). The 18 November image r3 made prompt reading faster: a
 112 to 523-token prompt gets its first token 4 to 17 % sooner, and `--mode long-kv4` reads a new 228K-token prompt in
 99 s instead of 103 s. One request decodes about 1 % faster than on r2, with the same greedy output, token for token
 ([measured](HISTORY.md#image-r3)). If your 3-bit download is older than 7 November, run
@@ -70,7 +73,8 @@ text stays ready, so a follow-up question about it starts in seconds instead of 
 | `run-mxfp4.sh`: most accurate | 65,536 | 174,634 | 120,277 | 2 | no |
 
 Every row except MXFP4 `--mode long` takes up to 8 requests at once; short requests share the cache with the long
-ones. A request longer than its row allows is refused (HTTP 400).
+ones. A request longer than its row allows is refused (HTTP 400). The two `run-mxfp4.sh` rows run on image r5
+([how](#mxfp4-on-r5)).
 
 What each row gives up:
 
@@ -127,10 +131,24 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ```
 
-Already cloned it? Run `git pull` in your checkout. The launcher pins the **23 November r5** image,
-`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121`, and Docker pulls it on the first
-start ([what changed](REFERENCE.md#release-notes-23-november-2026)). If you already have r4, the pull is a 250 kB layer. Earlier releases stay runnable:
+Already cloned it? Run `git pull` in your checkout. The launcher pins the **24 November r6** image,
+`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@sha256:DIGEST_AFTER_PUSH`, and Docker pulls it on the first
+start ([what changed](REFERENCE.md#release-notes-24-november-2026)). r6 is built on a new base image, so Docker
+downloads most of it again even if you have r5. Earlier releases run with the launcher of the r5 tag:
 [run an earlier release](HISTORY.md#run-an-earlier-release).
+
+<a id="mxfp4-on-r5"></a>
+
+The MXFP4 weights run on image r5. The MXFP4 path was not checked again on r6's new base, so this launcher refuses
+`run-mxfp4.sh` (and `run-rocm10.sh` without `PAITON_W3ROT_DIR`) with a message. After the
+[download](#download-the-weights), check out the r5 tag and start the MXFP4 row there; `git checkout main` returns to
+r6:
+
+```bash
+git fetch origin tag qwen38-rocm10-vllm029-20261123-r5
+git checkout qwen38-rocm10-vllm029-20261123-r5
+bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh
+```
 
 <a id="model-weights-and-existing-downloads"></a>
 
@@ -524,8 +542,8 @@ with eight image requests at once and repeated cold 4K images; the first token o
   tuning.
 - Launcher updates since the 5 October image: [6 October](HISTORY.md#launcher-update-6-october-2026-evening),
   [11 October](HISTORY.md#launcher-update-11-october-2026), [26 October](HISTORY.md#launcher-update-26-october-2026).
-- [Run an earlier release](HISTORY.md#run-an-earlier-release) with `--image`, and the command lines of earlier
-  releases.
+- [Run an earlier release](HISTORY.md#run-an-earlier-release) with the launcher of the r5 tag and `--image`, and the
+  command lines of earlier releases.
 - Native serving without the container: `paiton serve qwen38-nvfp4` serves a separate preset (text only, 65K, FP8 KV,
   without DFlash2 or the 3-bit weights; bundle `qwen38-rocm10-native-20260921`, profile `qwen38-nvfp4-w4a8-text-65k`,
   the same pinned target revision). [Native setup](REFERENCE.md#native-serving).

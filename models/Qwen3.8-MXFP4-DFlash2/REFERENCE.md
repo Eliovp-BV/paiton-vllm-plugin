@@ -3,7 +3,7 @@
 Start with the [quickstart](README.md#pick-how-to-run-it) to pick the weights and mode and launch the current image.
 This page holds detailed measurements and advanced setup. Earlier releases are in the [history](HISTORY.md).
 
-- [Release notes of the current image](#release-notes-23-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
+- [Release notes of the current image](#release-notes-24-november-2026); earlier ones are in the [history](HISTORY.md#earlier-release-notes)
 - [Existing Hugging Face cache](#already-in-the-hugging-face-cache)
 - [GPU and memory controls](#gpu-context-and-memory-controls)
 - [Long context and prefix caching](#long-context-200k-and-220k)
@@ -20,11 +20,93 @@ This page holds detailed measurements and advanced setup. Earlier releases are i
 
 The older `run-rocm10.sh` commands on this page choose 3-bit when `PAITON_W3ROT_DIR`
 is set and MXFP4 otherwise. The quickstart's `run-mxfp4.sh` and `run-3bit.sh`
-select the weight mode explicitly; both use the same launcher and pinned image.
+select the weight mode explicitly. Since image r6 the launcher serves the 3-bit weights only: MXFP4 runs on image r5
+with the launcher of the r5 tag ([how](README.md#mxfp4-on-r5)).
+
+<a id="release-notes-24-november-2026"></a>
+
+### Release notes: 24 November 2026 (image r6, current)
+
+The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6` (`sha256:DIGEST_AFTER_PUSH`) moves the
+27B to a new base: AMD's `rocm/vllm` image, pinned by digest
+`sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003`, with ROCm 10.2.0, vLLM 0.32.0, PyTorch
+2.14.0 and Python 3.14. r5 ran on ROCm 10.0, vLLM 0.29 and Python 3.12. The 3-bit weights are r5's (revision
+`aee42dfdb78e851462743120a575bf2d6f7b9882`), so there is nothing new to download. Update this repository to get the
+launcher that selects r6; `--dry-run` prints the full Docker command.
+
+- The native libraries are r5's, rebuilt for the new base; the MXFP4 module keeps r5's device code. One native
+  library is new: the 19 bookkeeping kernels that vLLM's model runner calls on every step (input preparation, block
+  tables, slot mapping, sampler bookkeeping) run as native HIP instead of Triton. They give the same results as the
+  Triton kernels: 0 mismatches in 14,361 launches compared side by side.
+- r6 serves the 3-bit weights only. The MXFP4 path was not checked again on the new base, so the launcher refuses
+  `run-mxfp4.sh`, and `run-rocm10.sh` without `PAITON_W3ROT_DIR`, and names the r5 tag. MXFP4 runs on image r5 with
+  the launcher of that tag ([how](README.md#mxfp4-on-r5)). This launcher also refuses r5 and the earlier images; they
+  run the same way ([run an earlier release](HISTORY.md#run-an-earlier-release)).
+- A prefix-cache hit reuses more of the cached prompt in more modes. vLLM drops the last block from every prefix-cache
+  hit when the server runs a drafter of the EAGLE kind (1,600 tokens on vLLM 0.32, 800 on 0.29), because such a
+  drafter's cache entry at one position also depends on the next token. The DFlash2 drafter computes each position's
+  entry from the target model's hidden state at that position alone, so it does not need the drop. r5 turned the drop
+  off in `--mode long-kv4` without the cache tiers. r6 also turns it off with the RAM and SSD tiers
+  (`--host-cache-gib`, `--extend-cache`) and in `--mode long-512k`; `--dry-run` shows it as
+  `"disable_eagle_block_drop": true` in `--speculative-config`. With `--vision` the drop stays on, as on r5, because
+  that case was not measured without it; `--mode long` (FP8 cache) also keeps it.
+- vLLM 0.32 refuses a request with HTTP 400 when its `cache_salt` contains `/`, `@`, `\` or NUL or is longer than 128
+  characters; r5 accepted those. At start the server log warns "no KV cache group could be identified as the draft
+  model's". That warning is expected and harmless.
+
+Measured against r5 with each server on one R9700 at 300 W and a fresh server for every run, mirrored over two cards:
+on the first card r5 ran first, on the second card r6 ran first. A cell with two numbers gives the first card,
+then the second. Per draft step is the server's decode time divided by its draft steps, so it does not depend on how
+many tokens each step accepted. The agent rows replay recorded agent conversations turn by turn, one conversation at a
+time. The cache tier rows ran in `--mode long-kv4`.
+
+| Measured, r6 against r5 | First card / second card |
+| --- | ---: |
+| `--mode long-kv4`, agent conversation at about 200K tokens, decode per draft step | 12.8 / 12.2 % faster |
+| `--mode long-kv4`, short agent conversations, decode per draft step | 2.68 / 2.73 % faster |
+| `--mode long-kv4 --vision`, decode per draft step | 0.78 / 0.92 % faster |
+| One request, greedy, decode per draft step | 0.47 / 0.43 % faster |
+| Four requests at once, greedy, decode per draft step | 0.13 / 0.18 % faster |
+| 16 agent prompts of about 10K tokens, one request, decode per draft step | 0.37 / 0.41 % faster |
+| Prompt reading at about 2K, 8K, 32K and 56K tokens, tokens per second | 0.05 to 0.41 % faster |
+
+| Measured | r5 | r6 |
+| --- | ---: | ---: |
+| Start until ready, warm compile cache, default mode | 117 to 136 s | 93 to 96 s |
+| The same with `--vision` | 156 / 156 s | 112 / 115 s |
+| Start until ready: SSD tier, RAM tier, `--mode long-512k` | 128 / 125, 129 / 132, 125 / 123 s | 105 / 102, 109 / 113, 115 / 94 s |
+| RAM tier (`--host-cache-gib 32`): first token of a 120,001-token prompt asked again after eviction | 1.12 / 1.10 s (118,400 tokens from RAM) | 0.34 / 0.33 s (120,000 tokens from RAM) |
+| SSD tier (`--extend-cache disk`): first token after a restart, 32K conversation plus a question | 1.12 / 1.12 s (30,400 tokens reused) | 0.62 / 0.60 s (32,000 tokens reused) |
+| The same with a 64K / 128K conversation | 1.14 / 1.13 and 1.77 / 1.76 s | 1.10 / 1.12 and 1.74 / 1.75 s |
+| `--mode long-512k`: first token of a 300K-token prompt asked again with 400 more tokens | 1.55 / 1.52 s | 1.51 / 1.49 s |
+| The same with a 500K-token prompt | 2.37 / 2.33 s | 2.34 / 2.25 s |
+| Reading a new prompt: 120K (RAM tier), 300K and 500K (`--mode long-512k`) | 39.98 / 39.76, 147.19 / 146.84, 338.23 / 335.07 s | 39.54 / 39.27, 146.51 / 146.27, 336.93 / 335.58 s |
+| Decode per draft step with the RAM and SSD tiers | 28.15 / 27.64 ms | 27.90 / 27.38 ms |
+
+- At about 200K tokens the first token of an agent turn came after 4.22 / 4.18 s on average, against 4.24 / 4.22 s on
+  r5. On short agent turns it reaches the client 1 to 2 ms later: r6's replies open with a tool call more often, and
+  the tool parser holds the stream until the call is complete.
+- Draft acceptance is the same: 3.814 and 3.810 tokens per draft for one greedy request. With the cache tiers both
+  images write the same text.
+- The cache-hit gains come from the drop: the RAM and 32K SSD rows reuse 1,600 more tokens of the stored prompt, so
+  the request recomputes 1,600 fewer. Reading a new prompt takes as long as on r5; the 500K read on the second card is
+  the one cold row where r6 is behind (335.58 against 335.07 s), and on both cards the second run of that row was the
+  faster one.
+- A greedy answer from a cache hit equals a cold read of the same prompt for the 32K and 64K SSD restores, 4 of 4 RAM
+  re-asks and 2 of 2 512K re-asks. The 128K SSD restore and its cold twin differ from token 29 (on r5 they agree): the
+  restored request and the cold read split the prompt into prefill chunks at different places, which changes the
+  rounding. Earlier images show the same effect (r2 on a 128K prefix hit without the tiers, also from token 29), and
+  both texts are valid outputs of the model.
+
+Limits: one card type (R9700) and one conversation at a time in the agent replays. The numbers come from two release
+candidates with r6's runtime files on an earlier build of the same AMD base image (the same ROCm, vLLM and PyTorch
+versions; r6's base is built from the released ROCm 10.2 packages). The first candidate gave the decode, prompt,
+replay, vision and default start rows, the second, which adds r6's launcher and cache tier change, the cache tier and
+512K rows. The MXFP4 path was not measured on r6.
 
 <a id="release-notes-23-november-2026"></a>
 
-### Release notes: 23 November 2026 (image r5, current)
+### Release notes: 23 November 2026 (image r5)
 
 The image `ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5` (`sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121`) is the 19 November
 r4 image with the vLLM scheduler file changed, plus the two files that record its checksum. The native libraries,
@@ -704,7 +786,7 @@ Math, code and long-context retrieval stay within noise; knowledge recall drops
 by about 3 points. DFlash2 acceptance changes by −0.4% to +2.8%. Outputs differ
 from the MXFP4 path, greedy ones included. **For maximum knowledge accuracy, use
 MXFP4** (`--weights mxfp4`, or leave `PAITON_W3ROT_DIR` unset); it keeps this
-release's other improvements.
+release's other improvements. Since image r6, MXFP4 runs on image r5 ([how](README.md#mxfp4-on-r5)).
 
 The 3-bit weights replace the language model's weights and are tied to the pinned
 target revision; with `--vision`, the vision encoder comes from the target
