@@ -131,9 +131,10 @@ def swiglu_quantize(
     routed, num_routed = rows
     max_rows = routed.numel()
     if max_rows <= 512:
-        # Few rows: a program per 256 columns.
-        assert n % 256 == 0
-        head, tail = 256, 0
+        # Few rows: a program per 256 columns (128 for Inkling 2 Mini's
+        # intermediate size 1152).
+        head, tail = 256 if n % 256 == 0 else 128, 0
+        assert n % head == 0
     else:
         # Whole rows, as a power-of-two head and tail.
         head = 1 << (n.bit_length() - 1)
