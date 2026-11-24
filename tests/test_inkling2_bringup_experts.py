@@ -46,13 +46,19 @@ def test_experts_forward_matches_loop(act_quant):
     x = torch.randn(5, 64).to(torch.bfloat16)
     idx = torch.tensor([[0, 1], [1, 2], [3, 0], [2, 3], [1, 0]])
     wt = torch.rand(5, 2)
-    fq = eb.fq_mxfp8 if act_quant else (lambda t: t)
+    bf16 = torch.bfloat16
     ref = torch.zeros(5, 64)
     for t in range(5):
         for j in range(2):
-            e = idx[t, j]
-            gate_up = (fq(x[t : t + 1].float()) @ w13[e].T).to(torch.bfloat16).float()
+            e, row = idx[t, j], x[t : t + 1]
+            if act_quant:  # fp32 GEMMs on the quantized inputs
+                gate_up = (eb.fq_mxfp8(row.float()) @ w13[e].T).to(bf16).float()
+            else:  # bf16 GEMMs
+                gate_up = torch.nn.functional.linear(row, w13[e].to(bf16)).float()
             gate, up = gate_up[:, 0::2], gate_up[:, 1::2]
-            h = (torch.tanh(gate / 4.0) * 4.0 * torch.sigmoid(gate) * up).to(torch.bfloat16).float()
-            ref[t] += (fq(h * wt[t, j]) @ w2[e].T)[0] if act_quant else (h @ w2[e].T)[0] * wt[t, j]
-    assert torch.allclose(ex(x, idx, wt).float(), ref.to(torch.bfloat16).float(), rtol=1e-2, atol=1e-2)
+            h = (torch.tanh(gate / 4.0) * 4.0 * torch.sigmoid(gate) * up).to(bf16)
+            if act_quant:
+                ref[t] += (eb.fq_mxfp8(h.float() * wt[t, j]) @ w2[e].T)[0]
+            else:
+                ref[t] += torch.nn.functional.linear(h, w2[e].to(bf16)).float()[0] * wt[t, j]
+    assert torch.allclose(ex(x, idx, wt).float(), ref.to(bf16).float(), rtol=1e-2, atol=1e-2)
