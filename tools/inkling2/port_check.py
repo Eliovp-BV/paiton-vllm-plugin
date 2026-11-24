@@ -1,11 +1,19 @@
-"""Check the Inkling 2 port against reference fixtures (bring-up tool, eager mode, one sequence, greedy).
+"""Check the Inkling 2 port against reference fixtures (bring-up tool, eager mode, greedy).
 
-Usage: PAITON_INK2_TAP_DIR=<empty dir> python3 port_check.py <model dir> <fixture dir> <out dir> [teacher]
-For every `<fixture dir>/<name>.npz` (keys input_ids, greedy) it feeds the fixture's token ids to vLLM, generates as
-many greedy tokens as the fixture holds, and writes `<out dir>/<name>.npz` in the fixture layout (input_ids,
-last_logits, argmax, greedy, hidden) from the prefill forward's tap file, so the reference's compare script reads both.
-With `teacher` it feeds the fixture's prompt and greedy tokens in one forward instead and prints how often the
-port's top-1 token equals the fixture's at the generated positions (nothing is written).
+Usage: python3 port_check.py <model dir> <fixture dir> <out dir> [teacher | gen] [key=value ...]
+For every `<fixture dir>/<name>.npz` (keys input_ids, greedy):
+  (no mode)  feeds the fixture's token ids, generates as many greedy tokens as the fixture holds and writes
+             `<out dir>/<name>.npz` in the fixture layout (input_ids, last_logits, argmax, greedy, hidden) from the
+             prefill forward's tap file, so the reference's compare script reads both. Needs PAITON_INK2_TAP_DIR
+             (an empty directory) and one sequence at a time.
+  teacher    feeds the prompt and the fixture's greedy tokens in one forward and prints how often the port's top-1
+             token equals the fixture's at the generated positions (nothing is written; needs the tap directory).
+             `<fixture dir>` may be several directories joined by commas.
+  gen        generates all prompts in one call (no tap) and writes input_ids and greedy only: the decode path
+             under the serving options below, to be checked afterwards with `teacher`.
+Options: seqs=N (max_num_seqs), batched=N (max_num_batched_tokens: prompts longer than N are prefilled in chunks),
+prefix=1 (prefix caching on; `gen` then generates everything a second time and prints whether the tokens repeat),
+maxlen=N (max_model_len), kvbytes=N (kv_cache_memory_bytes).
 """
 import glob
 import os
@@ -17,28 +25,53 @@ from vllm import LLM, SamplingParams
 
 
 def main() -> None:
-    model_dir, fixture_dir, out_dir = sys.argv[1:4]
-    teacher = sys.argv[4:] == ["teacher"]
-    tap_dir = os.environ["PAITON_INK2_TAP_DIR"]
-    llm = LLM(model=model_dir, quantization="inkling2", enforce_eager=True, max_model_len=8192, max_num_seqs=1,
-              limit_mm_per_prompt={"image": 0}, enable_prefix_caching=False, seed=0)
-    for path in sorted(glob.glob(f"{fixture_dir}/*.npz")):
-        name, fixture = os.path.basename(path)[:-4], np.load(path)
+    model_dir, fixture_dirs, out_dir = sys.argv[1:4]
+    mode = next((a for a in sys.argv[4:] if "=" not in a), "")
+    opt = {k: int(v) for k, v in (a.split("=") for a in sys.argv[4:] if "=" in a)}
+    assert mode in ("", "teacher", "gen") and not set(opt) - {"seqs", "batched", "prefix", "maxlen", "kvbytes"}
+    tap_dir = os.environ.get("PAITON_INK2_TAP_DIR")
+    assert (tap_dir is None) == (mode == "gen"), "the tap is for one sequence per forward: unset it for gen only"
+    extra = {"max_num_batched_tokens": opt["batched"]} if "batched" in opt else {}
+    if "kvbytes" in opt:
+        extra["kv_cache_memory_bytes"] = opt["kvbytes"]
+    llm = LLM(model=model_dir, quantization="inkling2", enforce_eager=True, max_model_len=opt.get("maxlen", 8192),
+              max_num_seqs=opt.get("seqs", 1), limit_mm_per_prompt={"image": 0},
+              enable_prefix_caching=bool(opt.get("prefix")), seed=0, **extra)
+    paths = [p for d in fixture_dirs.split(",") for p in sorted(glob.glob(f"{d}/*.npz"))]
+    if mode == "gen":
+        fixtures = [np.load(p) for p in paths]
+        prompts = [{"prompt_token_ids": f["input_ids"].tolist()} for f in fixtures]
+        params = [SamplingParams(temperature=0.0, max_tokens=len(f["greedy"]), skip_special_tokens=False)
+                  for f in fixtures]
+        first = [o.outputs[0].token_ids for o in llm.generate(prompts, params)]
+        for path, fixture, tokens in zip(paths, fixtures, first):
+            np.savez(f"{out_dir}/{os.path.basename(path)}", input_ids=fixture["input_ids"], greedy=np.array(tokens))
+            print(os.path.basename(path)[:-4], "tokens", len(fixture["input_ids"]), "generated", len(tokens), flush=True)
+        if opt.get("prefix"):
+            second = [o.outputs[0].token_ids for o in llm.generate(prompts, params)]
+            for path, a, b in zip(paths, first, second):
+                same = [x == y for x, y in zip(a, b)]
+                print(os.path.basename(path)[:-4], "second pass (prefix cache hit) equal to the first",
+                      f"{sum(same)}/{len(a)}", "first miss at", same.index(False) if False in same else None, flush=True)
+        print("PORT CHECK DONE")
+        return
+    for path in paths:
+        name, fixture = path if "," in fixture_dirs else os.path.basename(path)[:-4], np.load(path)
         ids = fixture["input_ids"].tolist()
         prompt_len, greedy = len(ids), fixture["greedy"]
-        if teacher:
+        if mode == "teacher":
             ids += greedy[:-1].tolist()
         seen = set(os.listdir(tap_dir))
-        params = SamplingParams(temperature=0.0, max_tokens=1 if teacher else len(greedy), skip_special_tokens=False)
+        params = SamplingParams(temperature=0.0, max_tokens=1 if mode else len(greedy), skip_special_tokens=False)
         out = llm.generate([{"prompt_token_ids": ids}], params)[0].outputs[0]
         prefill = None
         for tap in sorted(set(os.listdir(tap_dir)) - seen):
             data = torch.load(f"{tap_dir}/{tap}")
-            if data["positions"].tolist() == list(range(len(ids))):
+            if prefill is None and data["positions"].tolist() == list(range(len(ids))):
                 prefill = data
-                break
+            os.remove(f"{tap_dir}/{tap}")  # a 2,400-token forward's tap is 1 GB
         assert prefill is not None, f"{name}: no tap of a {len(ids)}-token forward (prompt split over forwards?)"
-        if teacher:
+        if mode == "teacher":
             same = prefill["argmax"].numpy()[prompt_len - 1 :] == greedy
             print(name, "teacher-forced top-1 equal to fixture", f"{same.sum()}/{len(same)}", round(same.mean(), 4),
                   "first miss at", int(same.argmin()) if not same.all() else None, flush=True)

@@ -57,6 +57,7 @@ from .attention import Inkling2Attention
 from .experts_bringup import Inkling2BringupMoE
 from .moe import Inkling2MoE
 from .ops.attention import compute_log_scaling_tau
+from . import ops_dump
 from .ops.attn_res import attn_res
 from .ops.norm import rms_norm
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
@@ -251,7 +252,14 @@ class Inkling2Model(nn.Module):
         return Inkling2DecoderLayer(config, layer_id, quant_config, prefix)
 
     def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
-        return self.embed_norm(self.embed_tokens(input_ids))
+        # Fixture recorder: one call per forward (text only).
+        ops_dump.forward += 1
+        ops_dump.where = "pre"
+        return ops_dump.record(
+            "embed",
+            {"input_ids": input_ids, "weight_key": "model.llm.embed.weight"},
+            lambda: self.embed_norm(self.embed_tokens(input_ids)),
+        )
 
     def _log_scaling_tau(self, positions: torch.Tensor) -> torch.Tensor | None:
         if self.config.log_scaling_n_floor is None:
@@ -607,7 +615,11 @@ class Inkling2ForConditionalGeneration(
         return out
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
-        return self.logits_processor(self.lm_head, hidden_states)
+        return ops_dump.record(
+            "lm_head",
+            {"hidden": hidden_states, "weight_key": "model.llm.unembed.weight"},
+            lambda: self.logits_processor(self.lm_head, hidden_states),
+        )
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
         params = dict(self.named_parameters())
