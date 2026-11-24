@@ -68,6 +68,11 @@ def register_paiton_models() -> None:
     """
     if not _enabled("register_paiton_models"):
         return
+    if os.environ.get("PAITON_INKLING2") == "1":
+        # Inkling 2 uses vLLM's ROCm platform and its own model code only.
+        from .inkling2 import register as register_inkling2
+        register_inkling2()
+        return
     if os.environ.get("PAITON_PLUGIN_MODE") == "native":
         from .execution.bootstrap import register_worker
         register_worker()
