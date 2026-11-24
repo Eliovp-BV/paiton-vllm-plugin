@@ -742,3 +742,27 @@ class Inkling2ForConditionalGeneration(
 
 
 __all__ = ["Inkling2ForConditionalGeneration"]
+
+
+if os.environ.get("PAITON_INK2_TIME"):
+    # Bring-up timing of the forward: time spent in Python and launches, then
+    # the wait until the card has finished (a synchronize, so not for serving).
+    import time
+
+    _forward, _stat = Inkling2ForConditionalGeneration.forward, [0, 0.0, 0.0]
+
+    def _timed_forward(self, *args, **kwargs):
+        t0 = time.perf_counter()
+        out = _forward(self, *args, **kwargs)
+        t1 = time.perf_counter()
+        torch.cuda.synchronize()
+        _stat[0] += 1
+        _stat[1] += t1 - t0
+        _stat[2] += time.perf_counter() - t1
+        if _stat[0] % 100 == 0:
+            print(f"INK2 TIME forwards {_stat[0]}: python and launches {10 * _stat[1]:.2f} ms, "
+                  f"then wait for the card {10 * _stat[2]:.2f} ms (mean of 100)", flush=True)
+            _stat[1] = _stat[2] = 0.0
+        return out
+
+    Inkling2ForConditionalGeneration.forward = _timed_forward
