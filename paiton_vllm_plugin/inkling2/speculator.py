@@ -6,6 +6,9 @@ vLLM 0.32's DSpark base does the rest: the block layout (anchor plus seven masks
 Chosen by `drafter.install()` for `--speculative-config '{"method": "dspark", "num_speculative_tokens": 7}'`.
 """
 
+import os
+import time
+
 import torch
 import torch.nn as nn
 
@@ -13,6 +16,29 @@ from vllm.config import VllmConfig
 from vllm.v1.worker.gpu.input_batch import InputBatch
 from vllm.v1.worker.gpu.spec_decode.dspark.speculator import DSparkSpeculator
 from vllm.v1.worker.gpu.spec_decode.dspark.utils import load_dspark_model
+
+
+def _timed(label: str, fn, rows_of, max_rows: int):
+    """PAITON_INK2_DRAFT_TIME: mean ms of `fn` over calls of at most `max_rows` rows (the decode steps), printed
+    every 100 calls. Synchronizes around each call, so not for serving."""
+    stat = [0, 0.0]
+
+    def wrapper(*args, **kwargs):
+        if rows_of(*args, **kwargs) > max_rows:
+            return fn(*args, **kwargs)
+        torch.cuda.synchronize()
+        start = time.perf_counter()
+        out = fn(*args, **kwargs)
+        torch.cuda.synchronize()
+        stat[0] += 1
+        stat[1] += time.perf_counter() - start
+        if stat[0] % 100 == 0:
+            print(f"INK2 DRAFT TIME {label}: {10 * stat[1]:.2f} ms (mean of 100, calls of at most {max_rows} rows)",
+                  flush=True)
+            stat[1] = 0.0
+        return out
+
+    return wrapper
 
 
 class Inkling2DSparkSpeculator(DSparkSpeculator):
@@ -34,6 +60,23 @@ class Inkling2DSparkSpeculator(DSparkSpeculator):
     def load_draft_model(self, target_model: nn.Module, target_attn_layer_names: set[str]) -> nn.Module:
         model = load_dspark_model(target_model, self.vllm_config)
         model.attach_target(target_model.get_language_model())
+        if os.environ.get("PAITON_INK2_DRAFT_TIME"):
+            rows = self.max_num_reqs * self.num_query_per_req
+            target_model.forward = _timed("verify forward", target_model.forward,
+                                          lambda *a, **k: (k["positions"] if "positions" in k else a[1]).shape[0], rows)
+            self.propose = _timed("draft step", self.propose,
+                                  lambda *a, **k: (k["input_batch"] if "input_batch" in k else a[0]).num_tokens, rows)
+        if os.environ.get("PAITON_INK2_DRAFT_TIME") == "2":
+            # Parts of a draft step (each synchronizes; the Markov head's figure contains the base logits).
+            for label, name, rows_of in (
+                ("draft step: context keys", "precompute_and_store_context_kv", lambda *a, **k: a[0].shape[0]),
+                ("draft step: three layers", "forward", lambda *a, **k: 0),
+                ("draft step: base logits", "compute_logits", lambda *a, **k: 0),
+                ("draft step: Markov head with base logits", "markov_tokens", lambda *a, **k: 0),
+            ):
+                setattr(model, name, _timed(label, getattr(model, name), rows_of, rows))
+            self.prepare_context_anchor = _timed("draft step: Markov features", self.prepare_context_anchor,
+                                                 lambda *a, **k: 0, rows)
         return model
 
     def prepare_context_anchor(self, input_batch: InputBatch, num_rejected: torch.Tensor) -> None:

@@ -3,20 +3,24 @@
     python3 drafter_check.py run <model dir> <out.json> <prompts.json>[,<prompts.json>...] [extra vllm serve args...]
     python3 drafter_check.py compare <off.json> <on.json>
 
-`run` starts `vllm serve`, asks every text prompt once (temperature 0, the prompt's `max_new_tokens` or 64) and
-stores the token ids. With a drafter it also stores vLLM's spec-decode counters per prompt: tokens per verify step
+`run` starts `vllm serve`, asks every text prompt once (temperature 0, the prompt's `max_new_tokens` or 64), then
+the reference script's long prompt (the ids of `code_low` 50 times), and stores the token ids. INK2_USERS=4 sends
+four prompts at once (then the counters are per run, not per prompt). With a drafter it also stores vLLM's spec-decode counters per prompt: tokens per verify step
 = 1 + accepted drafts / draft steps (the first token of a reply comes from the prefill, as in the reference
 script `quality/dspark_ref.py`, whose figure this is compared with). `compare` prints, per prompt, where the two
 replies first differ; exit code 1 when any differs. Bring-up tool: one request at a time.
 """
 import json
+import os
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
 
 URL = "http://127.0.0.1:18971"
+USERS = int(os.environ.get("INK2_USERS", "1"))  # requests sent at once
 
 
 def post(path, body):
@@ -30,9 +34,25 @@ def counters():
     for line in urllib.request.urlopen(URL + "/metrics", timeout=30).read().decode().splitlines():
         if line.startswith("vllm:spec_decode_num_") and "_created" not in line:
             name = line.split("{")[0].split(" ")[0].removeprefix("vllm:spec_decode_num_").removesuffix("_total")
-            if name in ("drafts", "draft_tokens", "accepted_tokens"):
+            if name == "accepted_tokens_per_pos":  # accepted drafts at draft position 0, 1, ...
+                name = "pos" + line.split('position="')[1].split('"')[0]
+            if name in ("drafts", "draft_tokens", "accepted_tokens") or name.startswith("pos"):
                 out[name] = out.get(name, 0.0) + float(line.rsplit(" ", 1)[1])
     return out
+
+
+def ask(name, path, body, rows, i):
+    """One greedy request; its token ids into rows[i]."""
+    t0 = time.time()
+    try:
+        reply = post(path, body)
+    except urllib.error.HTTPError as error:  # a prompt the API refuses (tool arguments as an object)
+        print(name, "skipped: HTTP", error.code, flush=True)
+        return
+    choice = reply["choices"][0]
+    tokens = [e["token"] for e in choice["logprobs"]["content"]] if "message" in choice else choice["logprobs"]["tokens"]
+    rows[i] = {"prompt_tokens": reply["usage"]["prompt_tokens"], "tokens": [int(t.split(":")[1]) for t in tokens],
+               "finish_reason": choice["finish_reason"], "seconds": round(time.time() - t0, 2)}
 
 
 def run(model_dir, out_json, prompt_files, extra):
@@ -49,7 +69,7 @@ def run(model_dir, out_json, prompt_files, extra):
             except OSError:
                 time.sleep(3)
         print(f"server ready after {time.time() - start:.0f} s", flush=True)
-        results = {}
+        results, requests, long_ids = {}, [], None
         for prompt in (p for f in prompt_files.split(",") for p in json.load(open(f))):
             if prompt["name"].startswith("img_"):
                 continue
@@ -60,27 +80,50 @@ def run(model_dir, out_json, prompt_files, extra):
                 body["tools"] = prompt["tools"]
             if "reasoning_effort" in prompt:
                 body["chat_template_kwargs"] = {"reasoning_effort": prompt["reasoning_effort"]}
-            before, t0 = counters(), time.time()
-            try:
-                reply = post("/v1/chat/completions", body)
-            except urllib.error.HTTPError as error:  # a prompt the API refuses (tool arguments as an object)
-                print(prompt["name"], "skipped: HTTP", error.code, flush=True)
-                continue
-            seconds, after = time.time() - t0, counters()
-            choice = reply["choices"][0]
-            ids = [int(entry["token"].split(":")[1]) for entry in choice["logprobs"]["content"]]
-            row = {"prompt_tokens": reply["usage"]["prompt_tokens"], "tokens": ids,
-                   "finish_reason": choice["finish_reason"], "seconds": round(seconds, 2)}
-            if after:
-                delta = {k: after[k] - before.get(k, 0.0) for k in after}
-                row.update(delta, tokens_per_step=round(1 + delta["accepted_tokens"] / max(delta["drafts"], 1), 3))
-            results[prompt["name"]] = row
-            print(prompt["name"], json.dumps({k: v for k, v in row.items() if k != "tokens"}), flush=True)
+            requests.append((prompt["name"], "/v1/chat/completions", body))
+            if prompt["name"] == "code_low":  # the reference script's long prompt: these ids 50 times (2,400 tokens)
+                long_ids = post("/tokenize", {"model": "inkling2", "messages": prompt["messages"],
+                                              "add_generation_prompt": True,
+                                              "chat_template_kwargs": body["chat_template_kwargs"]})["tokens"] * 50
+        if long_ids:
+            requests.append(("long", "/v1/completions", {
+                "model": "inkling2", "prompt": long_ids, "temperature": 0, "max_tokens": 64,
+                "skip_special_tokens": False, "logprobs": 1, "return_tokens_as_token_ids": True}))
+        drafts = accepted = wall = wall_tokens = 0.0
+        first = counters()
+        for start in range(0, len(requests), USERS):  # USERS requests at once
+            group = requests[start : start + USERS]
+            rows, before, t0 = [None] * len(group), counters(), time.time()
+            threads = [threading.Thread(target=ask, args=(*request, rows, i)) for i, request in enumerate(group)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            if start:  # the first group warms the server up
+                wall, wall_tokens = wall + time.time() - t0, wall_tokens + sum(len(r["tokens"]) for r in rows if r)
+            after = counters()
+            delta = {k: after[k] - before.get(k, 0.0) for k in after}
+            drafts, accepted = drafts + delta.get("drafts", 0.0), accepted + delta.get("accepted_tokens", 0.0)
+            for (name, _, _), row in zip(group, rows):
+                if row is None:
+                    continue
+                if delta and USERS == 1:
+                    row.update(delta, tokens_per_step=round(1 + delta["accepted_tokens"] / max(delta["drafts"], 1), 3))
+                results[name] = row
+                print(name, json.dumps({k: v for k, v in row.items() if k != "tokens"}), flush=True)
             json.dump(results, open(out_json, "w"), indent=1)
-        drafts = sum(r.get("drafts", 0) for r in results.values())
         if drafts:
-            accepted = sum(r["accepted_tokens"] for r in results.values())
             print(f"all: {1 + accepted / drafts:.3f} tokens per verify step ({accepted:.0f} accepted in {drafts:.0f} steps)")
+            last = counters()
+            by_pos = [last[k] - first.get(k, 0.0) for k in sorted((k for k in last if k.startswith("pos")),
+                                                                  key=lambda k: int(k[3:]))]
+            # what a draft cut after k tokens would have yielded, from this run's accepted counts per position
+            print("tokens per step if only the first k drafts were verified:",
+                  ", ".join(f"k={k + 1}: {1 + sum(by_pos[: k + 1]) / drafts:.3f}" for k in range(len(by_pos))))
+        seconds = sum(r["seconds"] for n, r in results.items() if n != next(iter(results)))
+        tokens = sum(len(r["tokens"]) for n, r in results.items() if n != next(iter(results)))
+        print(f"all but the first request: {tokens} tokens in {seconds:.2f} s of request time = {tokens / seconds:.1f} tokens/s")
+        print(f"{USERS} at once, all but the first group: {wall_tokens:.0f} tokens in {wall:.2f} s = {wall_tokens / max(wall, 1e-9):.1f} tokens/s")
         print("DRAFTER CHECK DONE", flush=True)
     finally:
         server.terminate()
@@ -91,6 +134,10 @@ def compare(off_json, on_json):
     off, on = json.load(open(off_json)), json.load(open(on_json))
     differ = 0
     for name in off:
+        if name not in on:
+            differ += 1
+            print(f"{name:14s} missing in the second run")
+            continue
         a, b = off[name]["tokens"], on[name]["tokens"]
         first = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), None)
         same = first is None and len(a) == len(b)
