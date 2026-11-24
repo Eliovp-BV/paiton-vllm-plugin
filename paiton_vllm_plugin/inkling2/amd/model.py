@@ -2,12 +2,16 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Inkling2 model (AMD).
 
+Looped checkpoints (`loop_config`) are `Inkling2LoopModel` (`loop.py`).
+
 Decoder layers are tied together by block attention residuals: instead of a
 single residual stream, each sublayer input is a learned softmax mix over the
 outputs of previous blocks of `n_layers_per_attn_res_block` layers plus the
 running partial block. Residual blocks are stored in bf16; mixes are fp32.
 """
 
+import itertools
+import os
 from collections import Counter
 from collections.abc import Callable, Hashable, Iterable, Sequence
 from typing import Any
@@ -18,6 +22,7 @@ from torch import nn
 
 from vllm.config import VllmConfig
 from vllm.distributed import tensor_model_parallel_all_reduce
+from vllm.model_executor.layers.attention_layer_base import AttentionLayerBase
 from vllm.model_executor.layers.logits_processor import LogitsProcessor
 from vllm.model_executor.layers.vocab_parallel_embedding import (
     ParallelLMHead,
@@ -49,12 +54,17 @@ from ..processing import (
 )
 from ..quant_config import Inkling2QuantConfig
 from .attention import Inkling2Attention
+from .experts_bringup import Inkling2BringupMoE
 from .moe import Inkling2MoE
 from .ops.attention import compute_log_scaling_tau
 from .ops.attn_res import attn_res
 from .ops.norm import rms_norm
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 from .vision import Inkling2VisionEncoder, VisionMetadata
+
+
+TAP_DIR = os.environ.get("PAITON_INK2_TAP_DIR")
+_TAP_COUNT = itertools.count()
 
 
 class Inkling2RMSNorm(nn.Module):
@@ -124,7 +134,10 @@ class Inkling2DecoderLayer(nn.Module):
         layer_id: int,
         quant_config: Inkling2QuantConfig | None,
         prefix: str,
+        num_passes: int = 1,
     ) -> None:
+        """`num_passes > 1` (a loop core layer) gives each pass its own KV and
+        conv-state caches."""
         super().__init__()
         self.is_local = layer_id in config.local_layer_ids
         num_kv_heads = (
@@ -132,15 +145,23 @@ class Inkling2DecoderLayer(nn.Module):
             if self.is_local
             else config.num_key_value_heads
         )
-        self.conv_state = Inkling2ConvState(
-            num_kv_heads=num_kv_heads,
-            head_dim=config.swa_head_dim if self.is_local else config.head_dim,
-            hidden_size=config.hidden_size,
-            kernel_size=config.sconv_kernel_size,
-            prefix=f"{prefix}.conv_state",
+        self.conv_states = tuple(
+            Inkling2ConvState(
+                num_kv_heads=num_kv_heads,
+                head_dim=config.swa_head_dim if self.is_local else config.head_dim,
+                hidden_size=config.hidden_size,
+                kernel_size=config.sconv_kernel_size,
+                prefix=f"{prefix}.conv_state" + (f".pass{p}" if p else ""),
+            )
+            for p in range(num_passes)
         )
+        self.conv_state = self.conv_states[0]
         self.attn = Inkling2Attention(
-            config, self.is_local, self.conv_state, prefix=f"{prefix}.attn"
+            config,
+            self.is_local,
+            self.conv_state,
+            prefix=f"{prefix}.attn",
+            pass_conv_states=self.conv_states[1:],
         )
         eps = config.rms_norm_eps
         # Local layers: attn_norm; full layers: q/k/v_input_norm, stacked.
@@ -149,13 +170,22 @@ class Inkling2DecoderLayer(nn.Module):
             config.hidden_size, eps, num_inputs=self.num_attn_inputs
         )
         self.mlp_norm = Inkling2RMSNorm(config.hidden_size, eps)
-        if quant_config is None or not quant_config.is_mxfp8_layer(layer_id):
-            raise ValueError(
-                f"Inkling2 on ROCm runs MXFP8 experts only (layer {layer_id} "
-                "is not MXFP8); use an all-MXFP8 checkpoint such as "
-                "Inkling-2-Small-MXFP8"
+        mxfp8 = quant_config is not None and quant_config.is_mxfp8_layer(layer_id)
+        mode = os.environ.get("PAITON_INK2_EXPERTS", "")
+        if mode not in ("", "ref-a", "ref-b"):
+            raise ValueError("PAITON_INK2_EXPERTS must be unset, ref-a or ref-b")
+        self.mlp: nn.Module
+        if mxfp8 and not mode:
+            self.mlp = Inkling2MoE(config)
+        else:
+            # NVFP4 experts have no ROCm kernel yet: PyTorch bring-up path on
+            # dequantized weights (`experts_bringup.py`), not a serving path.
+            self.mlp = Inkling2BringupMoE(
+                config,
+                "mxfp8" if mxfp8 else "nvfp4",
+                act_quant=mode != "ref-a",
+                round_bf16=bool(mode),
             )
-        self.mlp = Inkling2MoE(config)
         self.attn_sconv, self.mlp_sconv = (
             Inkling2ShortConv(
                 config.hidden_size, config.sconv_kernel_size, self.conv_state, stream
@@ -168,11 +198,20 @@ class Inkling2DecoderLayer(nn.Module):
         positions: torch.Tensor,
         inputs: Sequence[torch.Tensor],
         tau: torch.Tensor | None,
+        pass_idx: int = 0,
     ) -> torch.Tensor:
-        """This rank's partial attention output on the normalized `inputs`."""
-        if self.is_local:
-            return self.attn(positions, inputs[0])
-        return self.attn(positions, inputs[0], inputs[1], inputs[2], tau)
+        """This rank's partial attention output on the normalized `inputs`
+        (one for local layers, or separate q/k/v inputs)."""
+        if self.is_local and len(inputs) == 1:
+            return self.attn(positions, inputs[0], pass_idx=pass_idx)
+        return self.attn(
+            positions,
+            inputs[0],
+            inputs[1],
+            inputs[2],
+            None if self.is_local else tau,
+            pass_idx,
+        )
 
 
 class Inkling2Model(nn.Module):
@@ -193,7 +232,7 @@ class Inkling2Model(nn.Module):
             config.hidden_size, config.rms_norm_eps, out_dtype=None
         )
         self.layers = nn.ModuleList(
-            Inkling2DecoderLayer(config, i, quant_config, f"{prefix}.layers.{i}")
+            self._make_layer(config, i, quant_config, f"{prefix}.layers.{i}")
             for i in range(config.num_hidden_layers)
         )
         self.attn_res = Inkling2AttnRes(config)
@@ -202,8 +241,24 @@ class Inkling2Model(nn.Module):
         # id num_hidden_layers stands for the final-norm output.
         self.aux_hidden_state_layers: tuple[int, ...] = ()
 
+    def _make_layer(
+        self,
+        config: Inkling2ModelConfig,
+        layer_id: int,
+        quant_config: Inkling2QuantConfig | None,
+        prefix: str,
+    ) -> Inkling2DecoderLayer:
+        return Inkling2DecoderLayer(config, layer_id, quant_config, prefix)
+
     def embed_input_ids(self, input_ids: torch.Tensor) -> torch.Tensor:
         return self.embed_norm(self.embed_tokens(input_ids))
+
+    def _log_scaling_tau(self, positions: torch.Tensor) -> torch.Tensor | None:
+        if self.config.log_scaling_n_floor is None:
+            return None
+        return compute_log_scaling_tau(
+            positions, self.config.log_scaling_n_floor, self.config.log_scaling_alpha
+        )
 
     def _mix(
         self,
@@ -229,13 +284,7 @@ class Inkling2Model(nn.Module):
         stack = inputs_embeds.new_empty((max_blocks + 1, num_tokens, hidden))
         stack[0].copy_(inputs_embeds)
         num_blocks = 0
-        tau = None
-        if self.config.log_scaling_n_floor is not None:
-            tau = compute_log_scaling_tau(
-                positions,
-                self.config.log_scaling_n_floor,
-                self.config.log_scaling_alpha,
-            )
+        tau = self._log_scaling_tau(positions)
         for i, layer in enumerate(self.layers):
             partial = stack[num_blocks]
             if i in self.aux_hidden_state_layers:
@@ -332,10 +381,6 @@ class Inkling2ForConditionalGeneration(
                 "Inkling2 on ROCm requires gfx950 (CDNA4, MI350 series): its "
                 "kernels are written and validated for that architecture only"
             )
-        if config.text_config.loop_config is not None:
-            raise ValueError(
-                "Looped Inkling2 checkpoints (Inkling 2 Mini) are not supported on ROCm"
-            )
         if vllm_config.model_config.enable_prompt_embeds:
             # The reference applies embed_norm to raw input embeddings, which
             # cannot be told apart from already-normalized ones here.
@@ -349,7 +394,12 @@ class Inkling2ForConditionalGeneration(
             and vllm_config.model_config.multimodal_config.get_limit_per_prompt("image")
             else None
         )
-        self.model = Inkling2Model(text_config, quant_config, f"{prefix}model")
+        model_cls: type[Inkling2Model] = Inkling2Model
+        if text_config.loop_config is not None:
+            from .loop import Inkling2LoopModel
+
+            model_cls = Inkling2LoopModel
+        self.model = model_cls(text_config, quant_config, f"{prefix}model")
         self.lm_head = ParallelLMHead(
             text_config.padded_vocab_size, text_config.hidden_size
         )
@@ -361,6 +411,20 @@ class Inkling2ForConditionalGeneration(
 
     def get_language_model(self) -> nn.Module:
         return self
+
+    def process_weights_after_loading(self) -> None:
+        # vLLM 0.32 runs this model-level hook and the attention layers' own
+        # (main's `finalize_model_weights` runs every module's): run the rest.
+        package = __name__.rsplit(".", 1)[0]
+        for module in self.modules():
+            if (
+                module is not self
+                and type(module).__module__.startswith(package)
+                and not isinstance(module, AttentionLayerBase)
+            ):
+                hook = getattr(module, "process_weights_after_loading", None)
+                if callable(hook):
+                    hook()
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
@@ -520,7 +584,25 @@ class Inkling2ForConditionalGeneration(
         if inputs_embeds is None:
             assert input_ids is not None
             inputs_embeds = self.model.embed_input_ids(input_ids)
-        return self.model(positions, inputs_embeds)
+        out = self.model(positions, inputs_embeds)
+        tap = getattr(self.model, "tap", None)
+        if tap:
+            # Bring-up check (PAITON_INK2_TAP_DIR, eager runs): per-visit
+            # states and logits of every forward, in the reference's layout.
+            logits = self.compute_logits(out[0] if isinstance(out, tuple) else out)
+            assert logits is not None
+            path = f"{TAP_DIR}/fwd{next(_TAP_COUNT):05d}-{os.getpid()}.pt"
+            torch.save(
+                {
+                    "positions": positions.cpu(),
+                    "hidden": torch.stack(tap),
+                    "last_logits": logits[-1].float().cpu(),
+                    "argmax": logits.argmax(-1).cpu(),
+                },
+                path,
+            )
+            tap.clear()
+        return out
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
         return self.logits_processor(self.lm_head, hidden_states)
@@ -583,9 +665,4 @@ class Inkling2ForConditionalGeneration(
         return loaded
 
 
-class Inkling2LoopForConditionalGeneration(Inkling2ForConditionalGeneration):
-    """The `inkling2_loop` checkpoints' architecture name; their loop config
-    is rejected at construction."""
-
-
-__all__ = ["Inkling2ForConditionalGeneration", "Inkling2LoopForConditionalGeneration"]
+__all__ = ["Inkling2ForConditionalGeneration"]

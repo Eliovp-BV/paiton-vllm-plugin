@@ -24,7 +24,7 @@ RMS-normalizes V per head and writes both to the paged KV cache.
 
 import torch
 
-from vllm.models.inkling2.amd.ops.norm import qr_clip_rel_tokens
+from .norm import qr_clip_rel_tokens
 from vllm.triton_utils import tl, triton
 
 

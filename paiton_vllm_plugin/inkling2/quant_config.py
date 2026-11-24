@@ -17,7 +17,7 @@ from vllm.model_executor.layers.quantization.base_config import (
     QuantizationConfig,
     QuantizeMethodBase,
 )
-from vllm.models.inkling2.configs import INKLING2_ARCHITECTURES
+from .configs import INKLING2_ARCHITECTURES
 
 _COMPUTE_DTYPES = ("float32", "bfloat16", "mxfp8", "nvfp4")
 

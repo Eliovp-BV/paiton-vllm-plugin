@@ -12,7 +12,6 @@ import torch
 
 from vllm.triton_utils import tl, tldevice, triton
 
-from .norm import rsqrt
 
 
 @triton.jit
@@ -32,8 +31,8 @@ def _pair_rms_norm_kernel(
     mask = cols < D
     dest = tl.load(Dest + s * stride_dest_s + t * D + cols, mask, other=0)
     message = tl.load(Message + (s * T + t) * D + cols, mask, other=0)
-    dest_rstd = rsqrt(tl.div_rn(tl.sum(dest * dest), D) + eps)
-    message_rstd = rsqrt(tl.div_rn(tl.sum(message * message), D) + eps)
+    dest_rstd = tl.rsqrt(tl.div_rn(tl.sum(dest * dest), D) + eps)
+    message_rstd = tl.rsqrt(tl.div_rn(tl.sum(message * message), D) + eps)
     out = Out + (s * T + t) * (2 * D)
     tl.store(out + cols, (dest * dest_rstd).to(Out.dtype.element_ty), mask)
     tl.store(out + D + cols, (message * message_rstd).to(Out.dtype.element_ty), mask)
@@ -88,7 +87,7 @@ def _blend_rms_norm_kernel(
         tl.load(GainForget + row * (2 * D) + D + cols, mask, other=0)
     )
     x = (1.0 - forget) * dest + gain * message
-    rstd = rsqrt(tl.div_rn(tl.sum(x * x), D) + norm_eps)
+    rstd = tl.rsqrt(tl.div_rn(tl.sum(x * x), D) + norm_eps)
     y = x * rstd
     y = y * tl.load(NormW + s * stride_w_s + cols, mask, other=0).to(tl.float32)
     tl.store(Out + row * D + cols, y.to(Out.dtype.element_ty), mask)
