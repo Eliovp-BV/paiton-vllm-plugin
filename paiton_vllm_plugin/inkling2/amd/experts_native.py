@@ -7,17 +7,14 @@ MXFP8 weights stay in the checkpoint layout on the card, and the library
 applies the trained input quantization itself. The library has no framework
 dependency; this module only hands it device pointers.
 
-No Triton and no upstream operator module is imported here.
-
-shortcut: the router is PyTorch fp32 until the library's native router entry
-point exists (expert piece, `native/inkling2_moe`); then it is called here.
+The router (bf16 logits, top 8, routing weights) is the library's too. No
+Triton, no upstream operator module and no PyTorch operator is used here.
 """
 
 import ctypes as C
 import os
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 
 
@@ -44,6 +41,11 @@ def _library():
         _lib.PaitonInkling2MoeLayer.restype = C.c_int
         _lib.PaitonInkling2MoeLayer.argtypes = (
             [C.POINTER(_Weights)] + [C.c_void_p] * 5 + [C.c_size_t, C.c_int, C.c_int, C.c_void_p]
+        )
+        _lib.PaitonInkling2MoeRouteLayer.restype = C.c_int
+        _lib.PaitonInkling2MoeRouteLayer.argtypes = (
+            [C.POINTER(_Weights)] + [C.c_void_p] * 3 + [C.c_float] + [C.c_void_p] * 5
+            + [C.c_size_t, C.c_int, C.c_int, C.c_void_p]
         )
     return _lib
 
@@ -88,9 +90,26 @@ class Inkling2NativeExperts(nn.Module):
                 setattr(w, f"{name}_denominator", denominator.item())
         return w
 
-    def forward(self, x: torch.Tensor, idx: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
-        """bf16 `(T, H)` rows, their `(T, 8)` experts and fp32 routing
-        weights -> bf16 `(T, H)`."""
+    def _workspace(self, x: torch.Tensor) -> torch.Tensor:
+        need = _library().PaitonInkling2MoeWorkspaceBytes(x.shape[0], self.flags)
+        # One workspace per card for all layers: the calls of one stream run in order.
+        workspace = _workspace.get(x.device)
+        if workspace is None or workspace.numel() < need:
+            workspace = _workspace[x.device] = torch.empty(need, dtype=torch.uint8, device=x.device)
+        return workspace
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        idx: torch.Tensor | None = None,
+        weights: torch.Tensor | None = None,
+        gate: nn.Module | None = None,
+        route_scale: float = 1.0,
+    ) -> torch.Tensor:
+        """bf16 `(T, H)` rows -> bf16 `(T, H)`. With `gate` the library
+        routes the rows itself (gate weight bf16 `(128, H)`, bias fp32
+        `(128,)`); with `idx` `(T, 8)` and fp32 `weights` it uses those
+        routes (fixture checks)."""
         tokens = x.shape[0]
         out = torch.empty(x.shape, dtype=torch.float32, device=x.device)
         if tokens == 0:
@@ -99,26 +118,22 @@ class Inkling2NativeExperts(nn.Module):
         if self._w is None:
             self._w = self._weights()
         assert x.dtype == torch.bfloat16
-        x, idx, weights = x.contiguous(), idx.int().contiguous(), weights.float().contiguous()
-        need = lib.PaitonInkling2MoeWorkspaceBytes(tokens, self.flags)
-        # One workspace per card for all layers: the calls of one stream run in order.
-        workspace = _workspace.get(x.device)
-        if workspace is None or workspace.numel() < need:
-            workspace = _workspace[x.device] = torch.empty(need, dtype=torch.uint8, device=x.device)
-        rc = lib.PaitonInkling2MoeLayer(
-            C.byref(self._w),
-            x.data_ptr(),
-            idx.data_ptr(),
-            weights.data_ptr(),
-            out.data_ptr(),
-            workspace.data_ptr(),
-            workspace.numel(),
-            tokens,
-            self.flags,
-            torch.cuda.current_stream(x.device).cuda_stream,
-        )
+        x, workspace = x.contiguous(), self._workspace(x)
+        tail = (out.data_ptr(), workspace.data_ptr(), workspace.numel(), tokens, self.flags,
+                torch.cuda.current_stream(x.device).cuda_stream)
+        if gate is not None:
+            assert gate.weight.dtype == torch.bfloat16 and gate.bias.dtype == torch.float32
+            idx = torch.empty((tokens, 8), dtype=torch.int32, device=x.device)
+            weights = torch.empty((tokens, 8), dtype=torch.float32, device=x.device)
+            rc = lib.PaitonInkling2MoeRouteLayer(
+                C.byref(self._w), gate.weight.data_ptr(), gate.bias.data_ptr(), None, route_scale,
+                x.data_ptr(), idx.data_ptr(), weights.data_ptr(), *tail)
+        else:
+            idx, weights = idx.int().contiguous(), weights.float().contiguous()
+            rc = lib.PaitonInkling2MoeLayer(
+                C.byref(self._w), x.data_ptr(), idx.data_ptr(), weights.data_ptr(), *tail)
         if rc != 0:
-            raise RuntimeError(f"PaitonInkling2MoeLayer failed with HIP error {rc}")
+            raise RuntimeError(f"the native expert layer failed with HIP error {rc}")
         return out.to(x.dtype)
 
 
@@ -128,7 +143,7 @@ class Inkling2NativeMoE(nn.Module):
     def __init__(self, config, expert_format: str) -> None:
         super().__init__()
         assert config.n_shared_experts == 0 and config.use_gate_bias
-        self.topk, self.route_scale = config.num_experts_per_tok, config.route_scale
+        self.route_scale = config.route_scale
         self.gate = nn.Module()
         self.gate.weight = nn.Parameter(
             torch.empty(config.n_routed_experts, config.hidden_size, dtype=torch.bfloat16),
@@ -140,9 +155,4 @@ class Inkling2NativeMoE(nn.Module):
         self.experts = Inkling2NativeExperts(config, expert_format)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Top-k of sigmoid + bias; weights are the renormalized sigmoids times route_scale.
-        scores = torch.sigmoid(F.linear(x.float(), self.gate.weight.float()))
-        idx = torch.topk(scores + self.gate.bias, self.topk, dim=-1, sorted=False).indices
-        weights = scores.gather(1, idx)
-        weights = weights / (weights.sum(-1, keepdim=True) + 1e-20) * self.route_scale
-        return self.experts(x, idx, weights)
+        return self.experts(x, gate=self.gate, route_scale=self.route_scale)

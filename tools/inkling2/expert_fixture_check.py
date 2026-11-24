@@ -1,6 +1,6 @@
 """Check the bring-up experts against an expert-layer fixture (keys L<layer>_c<call>_{x,idx,w,yA,yB}).
 
-Usage: python3 expert_fixture_check.py <model dir> <fixture.npz> [noise | native]
+Usage: python3 expert_fixture_check.py <model dir> <fixture.npz> [noise | native | route]
 yA: bf16 expert inputs; yB: the trained input quantization. Weights are dequantized from the checkpoint and rounded
 to bf16, as the PyTorch reference that made the fixture does. `noise` (for example 0.005) multiplies each input by
 1 + noise * N(0, 1) first: how far the outputs move for input differences of that size.
@@ -17,7 +17,8 @@ from paiton_vllm_plugin.inkling2.amd.experts_bringup import Inkling2BringupExper
 from paiton_vllm_plugin.inkling2.amd.experts_native import Inkling2NativeExperts
 
 model_dir, fixture_path = sys.argv[1:3]
-native = sys.argv[3:4] == ["native"]  # the native library against the fixture's trained-arithmetic key (yB2, else yB)
+route = sys.argv[3:4] == ["route"]  # as native, and the library routes the rows itself (gate from the checkpoint)
+native = route or sys.argv[3:4] == ["native"]  # the native library against the fixture's trained-arithmetic key (yB2, else yB)
 noise = float(sys.argv[3]) if len(sys.argv) > 3 and not native else 0.0
 torch.manual_seed(0)
 cfg = types.SimpleNamespace(**json.load(open(f"{model_dir}/config.json"))["text_config"])
@@ -41,7 +42,9 @@ with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cp
     for layer in sorted({int(k.split("_")[0][1:]) for k in fixture.files}):
         prefix = f"model.llm.layers.{layer}.mlp.experts."
         fmt = "nvfp4" if f"{prefix}w13_weight_amax" in ckpt.keys() else "mxfp8"
-        keyB = "yB2" if any(k.endswith("_yB2") for k in fixture.files) else "yB"
+        keyB = next((k for k in ("yB3", "yB2") if any(f.endswith("_" + k) for f in fixture.files)), "yB")
+        gate = types.SimpleNamespace(weight=to_card(ckpt.get_tensor(prefix[:-8] + "gate.weight")),
+                                     bias=to_card(ckpt.get_tensor(prefix[:-8] + "gate.bias"))) if route else None
         for act_quant, key in ((True, keyB),) if native else ((False, "yA"), (True, "yB")):
             experts = (Inkling2NativeExperts(cfg, fmt) if native
                        else Inkling2BringupExperts(cfg, fmt, act_quant, True)).to("cuda:0")
@@ -54,7 +57,8 @@ with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cp
                                   for n in ("x", "idx", "w", key))
                 if noise:
                     x = x.float() * (1 + noise * torch.randn_like(x.float()))
-                y = experts(x.to(torch.bfloat16), idx, w).float()
+                y = (experts(x.to(torch.bfloat16), gate=gate, route_scale=cfg.route_scale) if route
+                     else experts(x.to(torch.bfloat16), idx, w)).float()
                 rel = ((y - ref).norm() / ref.norm()).item()
                 worst = max(worst, rel)
                 print(f"layer {layer} {fmt} {call} {key}: rel diff {rel:.5f}  max abs {(y - ref).abs().max().item():.4f}"
