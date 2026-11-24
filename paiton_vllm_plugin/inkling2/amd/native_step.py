@@ -22,7 +22,9 @@ from .experts_native import _Weights
 from .native_attention import _int32, _Layer
 
 BF16, F32 = torch.bfloat16, torch.float32
-FLAGS = int(os.environ.get("PAITON_INK2_STEP_FLAGS", "0"))  # 1: one attention call per decode visit
+# 1: one attention call per decode visit; 2: the operator library's fused launches; 4: in a forward of more than
+# 64 rows the loop controller's two products are linear calls (sequencer build 7 on). Same bits with any of them.
+FLAGS = int(os.environ.get("PAITON_INK2_STEP_FLAGS", "0"))
 TIME = bool(os.environ.get("PAITON_INK2_TIME"))  # bring-up: print the library calls per forward
 _P = C.c_void_p
 

@@ -759,11 +759,18 @@ __all__ = ["Inkling2ForConditionalGeneration"]
 if os.environ.get("PAITON_INK2_TIME"):
     # Bring-up timing of the forward: time spent in Python and launches, then
     # the wait until the card has finished (a synchronize, so not for serving).
+    # PAITON_INK2_TIME=2 adds one line (and one entry of TIMES) for every forward of 64 rows or more: rows, keys,
+    # the two times, the time since the previous forward ended and the sequencer's library calls.
     import time
 
     _forward, _stat = Inkling2ForConditionalGeneration.forward, [0, 0.0, 0.0]
+    _each, _last, TIMES = os.environ["PAITON_INK2_TIME"] == "2", [None], []
 
     def _timed_forward(self, *args, **kwargs):
+        positions = kwargs.get("positions", args[1] if len(args) > 1 else None)
+        each = _each and positions is not None and positions.shape[0] >= 64
+        step = getattr(self.model, "_native_step", None) if each else None
+        before = step.call_counts() if step is not None else None
         t0 = time.perf_counter()
         out = _forward(self, *args, **kwargs)
         t1 = time.perf_counter()
@@ -775,6 +782,15 @@ if os.environ.get("PAITON_INK2_TIME"):
             print(f"INK2 TIME forwards {_stat[0]}: python and launches {10 * _stat[1]:.2f} ms, "
                   f"then wait for the card {10 * _stat[2]:.2f} ms (mean of 100)", flush=True)
             _stat[1] = _stat[2] = 0.0
+        t2 = time.perf_counter()
+        if each:
+            step = getattr(self.model, "_native_step", None)
+            calls = [n - b for n, b in zip(step.call_counts(), before)] if step is not None and before else []
+            TIMES.append((positions.shape[0], int(positions.max()) + 1, 1e3 * (t1 - t0), 1e3 * (t2 - t1),
+                          1e3 * (t0 - (_last[0] or t0)), calls))
+            print("INK2 TIME forward of {} rows, {} keys: python and launches {:.2f} ms, card {:.2f} ms, {:.2f} ms "
+                  "since the previous forward, library calls {}".format(*TIMES[-1]), flush=True)
+        _last[0] = t2
         return out
 
     Inkling2ForConditionalGeneration.forward = _timed_forward
