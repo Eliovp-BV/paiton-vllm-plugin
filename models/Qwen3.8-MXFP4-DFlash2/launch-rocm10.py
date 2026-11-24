@@ -17,14 +17,17 @@ import time
 
 
 IMAGES = {
-    # The 23 November release (r5): the 19 November r4 image with prefix-cache hits that keep the previous prompt's tail
-    # in --mode long-kv4 (DFLASH_NO_DROP_IMAGE_SUFFIXES); everything else, the native libraries included, is r4's. Block
-    # verification of the drafted tokens as on r3 and r4 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images
-    # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
+    # The 24 November release (r6): the r5 runtime on AMD's rocm/vllm image (ROCm 10.2, vLLM 0.32, Python 3.14; digest
+    # 380efeed), with the Paiton runtime names, 19 vLLM bookkeeping kernels in native HIP, prefix-cache hits without the
+    # EAGLE block drop in every text mode with the 4-bit cache (ALL_TEXT_NO_DROP_IMAGE_SUFFIXES) and its own
+    # compile-cache seed. Older images run with the launcher at OLDER_IMAGES_LAUNCHER_TAG.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@{{PIN:R6_DIGEST}}',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 23 November release (r5): r4 plus prefix-cache hits that keep the previous prompt's tail in --mode long-kv4;
+    # it reads the old runtime names, so it runs with the launcher at OLDER_IMAGES_LAUNCHER_TAG
+    '20261123-r5': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
     # the 19 November release (r4): r3 plus the n-gram co-drafting fix; each follow-up turn recomputes one more 800-token unit
     '20261119-r4': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     # the 18 November release (r3): r2 plus faster native kernels and block verification; PAITON_NGRAM_CODRAFT=1 does not arm
@@ -198,6 +201,7 @@ PRE_PAITON_NAME_IMAGE_SUFFIXES = tuple(f'qwen38-rocm102-vllm032-20261123-{c}' fo
 OLDER_IMAGES_LAUNCHER_TAG = 'qwen38-rocm10-vllm029-20261123-r5'
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261123-r5': 'sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
     '20261119-r4': 'sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     '20261118-r3': 'sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     '20261107-r2': 'sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
@@ -551,7 +555,8 @@ def refuse_pre_paiton_name_image(args):
         return
     name, digest = _image_parts(args)
     old_digests = set(IMAGES_BY_RELEASE_DIGEST.values()) | {
-        image.partition('@')[2] for image in (*IMAGES.values(), *PREVIOUS_IMAGES.values())}
+        image.partition('@')[2] for image in (*IMAGES.values(), *PREVIOUS_IMAGES.values())
+        if image.partition('@')[0].rpartition(':')[2].startswith(PRE_PAITON_NAME_TAG_PREFIXES)}
     if (name.rpartition(':')[2].startswith(PRE_PAITON_NAME_TAG_PREFIXES) or name.endswith(PRE_PAITON_NAME_IMAGE_SUFFIXES)
             or (digest and digest in old_digests)):
         raise ValueError(f'{args.image or IMAGES[args.release]} predates the Paiton runtime names: this launcher serves '

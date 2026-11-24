@@ -101,8 +101,10 @@ class Rocm10LauncherTests(unittest.TestCase):
 
     def test_images_before_c4_are_refused_with_the_older_launcher_tag(self):
         self.overrides['REFUSE_PRE_PAITON_NAME_IMAGES'] = True
-        old = [(), ('--release', '200k'), ('--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c3b'),
+        old = [('--image', launcher.PREVIOUS_IMAGES['20261123-r5']), ('--release', '200k'),
+               ('--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c3b'),
                ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261119-r4']),
+               ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261123-r5']),
                ('--image', launcher.PREVIOUS_IMAGES['20261005-r1'].partition('@')[0])]
         for args in old:
             result = self.run_launcher('--dry-run', *args)
@@ -110,6 +112,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             self.assertIn('predates the Paiton runtime names', result.stderr)
             self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', result.stderr)
         self.command('--image', C4_IMAGE)
+        self.command()   # the default r6 image carries the Paiton names
 
     def test_default_exec_preserves_release_limits_and_runs_on_the_first_r9700(self):
         command = self.command()
@@ -1054,7 +1057,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        self.assertTrue(launcher.IMAGES['65k'].startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-'))
+        self.assertTrue(launcher.IMAGES['65k'].startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-'))
         self.assertEqual(launcher.MODES, {
             '65k': 'no flags', 'long': '--context 262144',
             'long-kv4': '--context 262144 --kv-cache kv4 --prefix-caching on --system-memory-weights',
@@ -1367,16 +1370,16 @@ class Rocm10LauncherTests(unittest.TestCase):
                                                '--system-memory-weights'))
         self.assertEqual(value(command, '--max-model-len'), '524288')
         self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], 524288)
+        # vLLM 0.32 images (r6, the default) also get the scaled length, which 0.32 no longer derives from the YaRN factor
         self.assertEqual(json.loads(value(command, '--hf-overrides')),
-                         {'text_config': {'rope_parameters': {'rope_type': 'yarn', 'factor': 2.0,
-                                                              'original_max_position_embeddings': 262144}}})
+                         {'text_config': {'rope_parameters': launcher.YARN_FACTOR_2, 'max_position_embeddings': 524288}})
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(815 * 14336000))
         self.assertIn('--enable-prefix-caching', command)
         self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
-        # vLLM 0.32 images also get the scaled length, which 0.32 no longer derives from the YaRN factor
-        upstream = self.dry_run('--mode', 'long-512k', '--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c6')
-        self.assertEqual(json.loads(value(upstream, '--hf-overrides')),
-                         {'text_config': {'rope_parameters': launcher.YARN_FACTOR_2, 'max_position_embeddings': 524288}})
+        older = self.dry_run('--mode', 'long-512k', '--image', launcher.PREVIOUS_IMAGES['20261123-r5'])
+        self.assertEqual(json.loads(value(older, '--hf-overrides')),
+                         {'text_config': {'rope_parameters': {'rope_type': 'yarn', 'factor': 2.0,
+                                                              'original_max_position_embeddings': 262144}}})
         self.assertIn('PAITON_HOST_EMBED=1', command)
         mount = next(item for item in command if item.endswith(':/models/draft/config.json:ro'))
         self.assertFalse(Path(mount.split(':')[0]).exists())          # written only when the launcher runs
@@ -1800,11 +1803,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('Warning:', self.run_launcher('--dry-run', '--mode', 'long-kv4').stderr)
 
     def test_previous_release_images_keep_their_behaviour(self):
-        image = launcher.IMAGES['65k']
+        # against r5, the last vLLM 0.29 release (r6, the default, adds the vLLM 0.32 settings)
+        image = launcher.PREVIOUS_IMAGES['20261123-r5']
 
         def on(old, options):
-            # the current image adds block verification to the speculative config; the older images keep token-wise
-            command = self.dry_run(*options)
+            # r5 adds block verification to the speculative config; the older images keep token-wise
+            command = self.dry_run(*options, '--image', image)
             index = command.index('--speculative-config') + 1
             spec = json.loads(command[index])
             self.assertEqual(spec.pop('rejection_sample_method'), 'block')
@@ -2008,17 +2012,19 @@ class Rocm10LauncherTests(unittest.TestCase):
         import types
         self._w3rot()
         flag = 'PAITON_PC_DFLASH_NO_DROP=1'
-        self.assertTrue(launcher._image_parts(types.SimpleNamespace(image=None, release='65k'))[0]
+        r5 = ('--image', launcher.PREVIOUS_IMAGES['20261123-r5'])   # r6 (the default) uses the vLLM 0.32 switch instead
+        self.assertTrue(launcher._image_parts(types.SimpleNamespace(image=r5[1], release='65k'))[0]
                         .endswith(launcher.DFLASH_NO_DROP_IMAGE_SUFFIXES))
-        command = self.dry_run('--mode', 'long-kv4')
+        command = self.dry_run('--mode', 'long-kv4', *r5)
         self.assertIn(flag, command[:command.index('serve')])
-        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights'))
+        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights', *r5))
         self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--image',
                                          'paiton-qwen38-local:qwen38-rocm10-vllm029-20261123-r5'))
-        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--host-cache-gib', '4'),
-                        ('--mode', 'long-512k'), ('--mode', 'long'), ('--mode', '65k'),
-                        ('--mode', 'long-kv4', '--prefix-caching', 'off'),
-                        ('--mode', 'long-kv4', '--image', launcher.PREVIOUS_IMAGES['20261119-r4'])):
+        for options in (('--mode', 'long-kv4', '--vision', *r5), ('--mode', 'long-kv4', '--host-cache-gib', '4', *r5),
+                        ('--mode', 'long-512k', *r5), ('--mode', 'long', *r5), ('--mode', '65k', *r5),
+                        ('--mode', 'long-kv4', '--prefix-caching', 'off', *r5),
+                        ('--mode', 'long-kv4', '--image', launcher.PREVIOUS_IMAGES['20261119-r4']),
+                        ('--mode', 'long-kv4')):
             with self.subTest(options=options):
                 self.assertNotIn(flag, self.dry_run(*options))
 
@@ -2365,9 +2371,9 @@ class Rocm10LauncherTests(unittest.TestCase):
                                          'bash', str(rel / wrapper), '--dry-run',
                                          *(('--image', C4_IMAGE, *options) if options is not None else ())],
                                         cwd=repo, capture_output=True, text=True)
-                if options is None:   # the released default predates c4: refused, pointing at the older launcher
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertIn('launcher at tag', result.stderr)
+                if options is None:   # the released default (r6) serves; earlier images need the older launcher tag
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn(launcher.IMAGES['65k'], json.loads(result.stdout))
                     continue
                 self.assertEqual(result.returncode, 0, result.stderr)
                 argv = json.loads(result.stdout)
