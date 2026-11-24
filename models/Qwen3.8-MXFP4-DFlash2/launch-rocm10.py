@@ -1486,7 +1486,12 @@ def engine_command(args, weights='mxfp4'):
     if threshold is not None:
         command += ['--long-prefill-token-threshold', str(threshold)]
     if context is not None and context > KV4_MAX_CONTEXT:
-        command += ['--hf-overrides', json.dumps({'text_config': {'rope_parameters': YARN_FACTOR_2}})]
+        text_config = {'rope_parameters': YARN_FACTOR_2}
+        if _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+            # vLLM 0.32 reads a YaRN model's max_position_embeddings as already scaled (0.29 multiplied the original by
+            # the factor) and refuses 524288 otherwise; the rope itself only uses the original length and the factor
+            text_config['max_position_embeddings'] = KV4_YARN_CONTEXT
+        command += ['--hf-overrides', json.dumps({'text_config': text_config})]
     if getattr(args, 'host_cache_gib', None):
         command += ['--kv-offloading-size', f'{args.host_cache_gib:g}', '--kv-offloading-backend', 'native']
     if getattr(args, 'disk_cache_dir', None):

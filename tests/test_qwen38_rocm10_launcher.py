@@ -1373,6 +1373,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(815 * 14336000))
         self.assertIn('--enable-prefix-caching', command)
         self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
+        # vLLM 0.32 images also get the scaled length, which 0.32 no longer derives from the YaRN factor
+        upstream = self.dry_run('--mode', 'long-512k', '--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c6')
+        self.assertEqual(json.loads(value(upstream, '--hf-overrides')),
+                         {'text_config': {'rope_parameters': launcher.YARN_FACTOR_2, 'max_position_embeddings': 524288}})
         self.assertIn('PAITON_HOST_EMBED=1', command)
         mount = next(item for item in command if item.endswith(':/models/draft/config.json:ro'))
         self.assertFalse(Path(mount.split(':')[0]).exists())          # written only when the launcher runs
