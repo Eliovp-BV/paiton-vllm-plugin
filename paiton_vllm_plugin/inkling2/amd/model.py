@@ -783,15 +783,26 @@ if os.environ.get("PAITON_INK2_TIME"):
 if os.environ.get("PAITON_INK2_HASH"):
     # Bring-up check: one line per forward and per logits call with a hash of the result's bytes, appended to
     # <PAITON_INK2_HASH>.<pid>. Two runs made the same forwards with the same bits when their files are equal.
-    # Each line synchronizes, so not for serving.
+    # Each line synchronizes, so not for serving. PAITON_INK2_HASH_TAPS=5,23,41 also asks every forward for the
+    # drafter's taps at those visits and hashes them (the caller still gets the hidden rows alone).
     import hashlib
 
     _hash_path = f"{os.environ['PAITON_INK2_HASH']}.{os.getpid()}"
+    _hash_taps = tuple(int(v) for v in os.environ.get("PAITON_INK2_HASH_TAPS", "").split(",") if v)
 
     def _hashed(name, fn):
         def wrapper(self, *args, **kwargs):
-            out = fn(self, *args, **kwargs)
+            taps = name == "forward" and _hash_taps and not self.model.aux_hidden_state_layers
+            if taps:
+                self.model.aux_hidden_state_layers = _hash_taps
+            try:
+                out = fn(self, *args, **kwargs)
+            finally:
+                if taps:
+                    self.model.aux_hidden_state_layers = ()
             tensors = [out] if isinstance(out, torch.Tensor) else [out[0], *out[1]]
+            if taps:
+                out = out[0]
             with open(_hash_path, "a") as f:
                 for t in tensors:
                     data = t.contiguous().view(torch.uint8).cpu().numpy()
