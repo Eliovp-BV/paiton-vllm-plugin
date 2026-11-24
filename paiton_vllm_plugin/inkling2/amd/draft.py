@@ -6,8 +6,9 @@ and seven mask rows go through three dense layers that attend over keys made fro
 a recurrent Markov head picks the seven draft tokens one after the other.
 
 Every operation on the card is a library call:
-- `PAITON_INK2_DSPARK_SO` (ABI 1): the MLP of a draft layer, the Markov head (context, step with the vocabulary
-  product, soft cap and argmax, token read-out) and the fold of `hidden_out` into the unembedding;
+- `PAITON_INK2_DSPARK_SO` (ABI 1 or 2): the MLP of a draft layer, the Markov head (context, step with the vocabulary
+  product, soft cap and argmax, token read-out; ABI 2 also returns the probability of each draft token) and the
+  fold of `hidden_out` into the unembedding;
 - `PAITON_INK2_DRAFT_ATTN_SO` (else `PAITON_INK2_ATTN_SO`; attention ABI 2 with the draft entries): context keys
   and the block attention of a layer, both with their norms and RoPE;
 - the operator library (`native_ops`, a build with `MixRmsNorm` and `AddRmsNorm`): RMS norms, the mix of the four
@@ -60,8 +61,8 @@ def _libraries():
         attn, dspark = C.CDLL(attn_path), C.CDLL(dspark_path)
         if attn.PaitonInkling2AttnAbiVersion() != 2 or not hasattr(attn, "PaitonInkling2DraftDecode"):
             raise RuntimeError(f"{attn_path}: need attention ABI 2 with the draft entries")
-        if dspark.PaitonInkling2DsparkGetAbiVersion() != 1:
-            raise RuntimeError(f"{dspark_path}: DSpark ABI {dspark.PaitonInkling2DsparkGetAbiVersion()}, need 1")
+        if dspark.PaitonInkling2DsparkGetAbiVersion() not in (1, 2):
+            raise RuntimeError(f"{dspark_path}: DSpark ABI {dspark.PaitonInkling2DsparkGetAbiVersion()}, need 1 or 2")
         p, i, i64, z = C.c_void_p, C.c_int, C.c_int64, C.c_size_t
         attn.PaitonInkling2AttnWorkspaceBytes.restype = z
         attn.PaitonInkling2AttnWorkspaceBytes.argtypes = [i, i, p]
@@ -73,6 +74,9 @@ def _libraries():
         dspark.PaitonInkling2DsparkMarkovStep.argtypes = [p] * 9 + [z, p, p, C.c_float, i, i, p, z, p, i, p]
         dspark.PaitonInkling2DsparkTokens.argtypes = [p, p, i, p]
         dspark.PaitonInkling2DsparkFold.argtypes = [p] * 5 + [i, p]
+        if hasattr(dspark, "PaitonInkling2DsparkMarkovStepProb"):  # ABI 2: the step with the probability sums
+            dspark.PaitonInkling2DsparkMarkovStepProb.argtypes = [p] * 9 + [z, p, p, C.c_float, i, i, p, z, p, p, i, p]
+            dspark.PaitonInkling2DsparkTokenProbs.argtypes = [p, p, C.c_float, p, p, i, p]
         _libs = attn, dspark
     return _libs
 
@@ -370,14 +374,18 @@ class Inkling2DSparkModel(nn.Module):
         return native_ops.linear(hidden_states, self.lm_head.weight)
 
     def markov_tokens(self, hidden: torch.Tensor, f_rnn: torch.Tensor, anchors: torch.Tensor,
-                      confidence: torch.Tensor | None = None) -> torch.Tensor:
+                      probabilities: bool = False) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
         """Greedy draft tokens, int32 `(steps, requests)`. `hidden`: the mask rows in (request, step) order;
-        `f_rnn` `(requests, hidden)`; `anchors`: the token before the first draft, per request. `confidence`
-        (fp32 `(requests, steps)`, optional) receives the draft distribution's probability of each draft token."""
+        `f_rnn` `(requests, hidden)`; `anchors`: the token before the first draft, per request. With
+        `probabilities` also fp32 `(steps, requests)`: the draft distribution's probability of each draft token
+        (the library's own sums over the soft-capped logits; needs DSpark ABI 2)."""
         lib, model, device = _libraries()[1], self.model, hidden.device
+        if probabilities and not hasattr(lib, "PaitonInkling2DsparkMarkovStepProb"):
+            raise ValueError("draft probabilities need a DSpark library with MarkovStepProb (ABI 2)")
         reqs = f_rnn.shape[0]
         steps = hidden.shape[0] // reqs
         rank, stream = self.config.markov_rank, _stream(device)
+        softcap = self.config.final_logit_softcapping
         base = self.compute_logits(hidden)
         vocab_rows = base.shape[1]
         context = torch.empty((steps, reqs, 3 * rank), dtype=F32, device=device)
@@ -387,23 +395,26 @@ class Inkling2DSparkModel(nn.Module):
         state = torch.zeros((2, reqs, rank), dtype=BF16, device=device)
         latent = torch.empty((reqs, rank), dtype=BF16, device=device)
         keys = torch.zeros((steps, reqs), dtype=torch.int64, device=device)  # the library's 64-bit argmax keys
+        sums = torch.zeros((steps, reqs, 2), dtype=torch.int64, device=device) if probabilities else None
         tokens = torch.empty((steps, reqs), dtype=torch.int32, device=device)
         anchors = _int32(anchors)
-        logits = None if confidence is None else torch.empty((reqs, vocab_rows), dtype=BF16, device=device)
         for i in range(steps):
             # The step reads the previous token from the keys of the step before: no host round trip.
-            _ok(lib.PaitonInkling2DsparkMarkovStep(
-                context[i].data_ptr(), state[i % 2].data_ptr(), state[1 - i % 2].data_ptr(), latent.data_ptr(),
-                anchors.data_ptr() if i == 0 else None, keys[i - 1].data_ptr() if i else None,
-                model.markov_w1.data_ptr(), model.rnn_proj.data_ptr(), base.data_ptr() + i * vocab_rows * 2,
-                steps * vocab_rows, self.fold_weight.data_ptr(), self.fold_bias.data_ptr(),
-                self.config.final_logit_softcapping, self.config.vocab_size, vocab_rows,
-                None if logits is None else logits.data_ptr(), vocab_rows,
-                keys[i].data_ptr(), reqs, stream), "PaitonInkling2DsparkMarkovStep")
-            if logits is not None:
-                # temporary: PyTorch operations on the card (experiment); the Markov step should return this value
-                row = logits[:, : self.config.vocab_size].float()
-                confidence[:, i] = torch.exp(row.max(dim=1).values - torch.logsumexp(row, dim=1))
-        _ok(lib.PaitonInkling2DsparkTokens(keys.data_ptr(), tokens.data_ptr(), steps * reqs, stream),
-            "PaitonInkling2DsparkTokens")
-        return tokens
+            step = (context[i].data_ptr(), state[i % 2].data_ptr(), state[1 - i % 2].data_ptr(), latent.data_ptr(),
+                    anchors.data_ptr() if i == 0 else None, keys[i - 1].data_ptr() if i else None,
+                    model.markov_w1.data_ptr(), model.rnn_proj.data_ptr(), base.data_ptr() + i * vocab_rows * 2,
+                    steps * vocab_rows, self.fold_weight.data_ptr(), self.fold_bias.data_ptr(),
+                    softcap, self.config.vocab_size, vocab_rows, None, 0, keys[i].data_ptr())
+            if sums is None:
+                _ok(lib.PaitonInkling2DsparkMarkovStep(*step, reqs, stream), "PaitonInkling2DsparkMarkovStep")
+            else:
+                _ok(lib.PaitonInkling2DsparkMarkovStepProb(*step, sums[i].data_ptr(), reqs, stream),
+                    "PaitonInkling2DsparkMarkovStepProb")
+        if sums is None:
+            _ok(lib.PaitonInkling2DsparkTokens(keys.data_ptr(), tokens.data_ptr(), steps * reqs, stream),
+                "PaitonInkling2DsparkTokens")
+            return tokens
+        probs = torch.empty((steps, reqs), dtype=F32, device=device)
+        _ok(lib.PaitonInkling2DsparkTokenProbs(keys.data_ptr(), sums.data_ptr(), softcap, tokens.data_ptr(),
+                                               probs.data_ptr(), steps * reqs, stream), "PaitonInkling2DsparkTokenProbs")
+        return tokens, probs
