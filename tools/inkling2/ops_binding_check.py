@@ -8,7 +8,8 @@ Runs the kernel piece's own comparisons (`check.py` and `ref.py` of the compiler
 tensors through `paiton_vllm_plugin.inkling2.amd.native_ops` in place of the ctypes harness: the same rows, limits
 and pass counts as `check.py` on the same fixtures. Then:
   - the convenience calls (`qkvr_project`, `controller_products`, `lm_head`, `linear_k_groups`) against the plain
-    `linear` calls they are made of, bit for bit;
+    `linear` calls they are made of, bit for bit, and the projection switch `PAITON_INK2_PROJ` on every 8-bit
+    format of the library;
   - the import rule of the native mode: with `amd/attention.py` replaced by a stub (the lead's file), importing
     `amd/loop.py` pulls in no module under `amd/ops/` and none under `vllm.models.inkling.amd`.
 Host arrays go to the card and back through one pinned 32 MB buffer.
@@ -116,6 +117,9 @@ class TorchOps:
     def head_free(self, handle) -> None:
         pass
 
+    def linear_rows(self, fmt, x, handle, lo, hi, out_f32, repeat=1):
+        return self.down(native_ops.linear_rows(self.up(x), *handle, fmt, F32 if out_f32 else BF16, rows=slice(lo, hi)))
+
     def lm_head_rows(self, fmt, x, handle, soft_cap=0.0, repeat=1):
         return self.down(native_ops.lm_head_rows(self.up(x), *handle, soft_cap, fmt))
 
@@ -191,6 +195,33 @@ def extras(ops: TorchOps) -> bool:
     return ok
 
 
+def proj_switch(ops: TorchOps) -> bool:
+    """PAITON_INK2_PROJ: `qkvr_project` and `o_project` on 8-bit rows equal `linear_rows` on the rows of the weight."""
+    g = torch.Generator().manual_seed(4)
+    rand = lambda *shape: ops.up(torch.randn(shape, generator=g).to(BF16).view(torch.int16).numpy())  # noqa: E731
+    same = lambda a, b: torch.equal(a.contiguous().view(torch.int16), b.contiguous().view(torch.int16))  # noqa: E731
+    x, w, wo, y = [rand(40, 2304) for _ in range(3)], rand(8600, 2304), rand(2304, 3072), rand(40, 3072)
+    cols, ok = (0, 3072, 3456, 6528, 6552, 7576, 8600), True
+    for fmt in native_ops.proj_formats():
+        native_ops.PROJ = fmt   # the switch is read at import; set it for this test
+        native_ops._proj_rows.clear()
+        try:
+            got = native_ops.qkvr_project(*x, w, [3072, 384, 3072, 24, 1024, 1024])
+            codes, scale = native_ops.head_rows(w, fmt)
+            full = [native_ops.linear_rows(xi, codes, scale, fmt) for xi in x]
+            good = all(same(got[i], full[(0, 0, 0, 0, 1, 2)[i]][:, cols[i]:cols[i + 1]]) for i in range(6))
+            out = native_ops.o_project(y, wo)
+            good &= same(out, native_ops.linear_rows(y, *native_ops.head_rows(wo, fmt), fmt))
+            good &= not same(out, native_ops.linear(y, wo))   # it did run on the 8-bit rows
+        finally:
+            native_ops.PROJ = "bf16"
+            native_ops._proj_rows.clear()
+        print(f"projection switch, {fmt} rows: {'ok' if good else 'FAIL'}", flush=True)
+        ok &= good
+    torch.cuda.synchronize()
+    return ok
+
+
 def import_rule() -> bool:
     name = "paiton_vllm_plugin.inkling2.amd.attention"
     stub = types.ModuleType(name)
@@ -208,9 +239,11 @@ if __name__ == "__main__":
     assert os.environ.get("PAITON_INK2_OPS") == "native", "set PAITON_INK2_OPS=native"
     ops = TorchOps()
     ops.head_formats = native_ops.head_formats()   # none with an ABI 2 library: check.py then leaves those rows out
+    ops.proj_formats = native_ops.proj_formats()
     failed = check.run_checks(ops, fixtures, ckpt, head_rows)
     torch.cuda.synchronize()
     failed |= not extras(ops)
+    failed |= not proj_switch(ops)
     failed |= not import_rule()
     print("OPS BINDING CHECK", "FAILED" if failed else "PASSED")
     sys.exit(1 if failed else 0)
