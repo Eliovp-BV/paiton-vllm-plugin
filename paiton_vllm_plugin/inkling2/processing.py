@@ -2,9 +2,10 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Inkling2 image preprocessing and vLLM multimodal processing.
 
-The renderer emits one `<|content_image|>` token per image. The processor
-replaces it with `<|content_image|>` followed by `rows * cols` copies of
-`IMAGE_PAD_ID`; only the pad positions receive vision embeddings.
+The checkpoint's chat template emits `<|content_image|><|unused_200054|>` per
+image. The processor replaces that one `IMAGE_PAD_ID` with `rows * cols` copies
+of it, as the reference processor does; the pad positions receive the vision
+embeddings.
 """
 
 from __future__ import annotations
@@ -39,9 +40,9 @@ from vllm.multimodal.processing import (
     PromptUpdateDetails,
 )
 
-# <|content_image|>: block marker emitted by the renderer, kept verbatim.
+# <|content_image|>: block marker emitted by the chat template, kept verbatim.
 IMAGE_MARKER_ID = 200005
-IMAGE_PLACEHOLDER = "<|content_image|>"
+IMAGE_PLACEHOLDER = "<|content_image|><|unused_200054|>"
 # <|unused_200054|>: one per decoder image token, overwritten by embeddings.
 IMAGE_PAD_ID = 200054
 
@@ -201,7 +202,7 @@ class Inkling2MultiModalProcessor(BaseMultiModalProcessor[Inkling2ProcessingInfo
         # Build marker ids directly: the tokenizer may not parse special text.
         mm_data = self.dummy_inputs.get_dummy_mm_data(seq_len, mm_counts, mm_options)
         return ProcessorInputs(
-            prompt=[IMAGE_MARKER_ID] * mm_counts.get("image", 0),
+            prompt=[IMAGE_MARKER_ID, IMAGE_PAD_ID] * mm_counts.get("image", 0),
             mm_data_items=self.info.parse_mm_data(mm_data, validate=False),
         )
 
@@ -250,11 +251,11 @@ class Inkling2MultiModalProcessor(BaseMultiModalProcessor[Inkling2ProcessingInfo
             assert isinstance(grid_thw, torch.Tensor)
             num_tokens = int(grid_thw.prod())
             return PromptUpdateDetails.select_token_id(
-                [IMAGE_MARKER_ID] + [IMAGE_PAD_ID] * num_tokens, IMAGE_PAD_ID
+                [IMAGE_PAD_ID] * num_tokens, IMAGE_PAD_ID
             )
 
         return [
             PromptReplacement(
-                modality="image", target=[IMAGE_MARKER_ID], replacement=replacement
+                modality="image", target=[IMAGE_PAD_ID], replacement=replacement
             )
         ]

@@ -48,8 +48,8 @@ def main() -> None:
         fixture = np.load(fixture_dirs)
         ids, greedy = fixture["prompt_input_ids"].tolist(), fixture["prompt_greedy"]
         first, pads = ids.index(200054), ids.count(200054)
-        # The processor expands the image marker (the token before the pad run) to the pads itself.
-        prompt = {"prompt_token_ids": ids[:first] + ids[first + pads :],
+        # The processor expands the one pad after the image marker to the image's pads itself.
+        prompt = {"prompt_token_ids": ids[: first + 1] + ids[first + pads :],
                   "multi_modal_data": {"image": Image.fromarray(fixture["img1_image_rgb_uint8"])}}
         params = SamplingParams(temperature=0.0, max_tokens=len(greedy), skip_special_tokens=False)
         out = llm.generate([prompt], params)[0].outputs[0]
