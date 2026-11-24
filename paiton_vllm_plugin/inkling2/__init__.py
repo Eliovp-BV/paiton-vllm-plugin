@@ -14,21 +14,25 @@ serve with `--quantization inkling2`.
 from .configs import Inkling2LoopMMConfig, Inkling2MMConfig
 
 
-class _NoModelOptQuantMixin:
+class _NoModelOptQuant:
+    """config.json declares a ModelOpt `quantization_config`; the per-tensor
+    precisions are in hf_quant_config.json. vLLM 0.32 reads that file only
+    when the config carries none (main special-cases "inkling2"), so the
+    config never holds one."""
+
+    quantization_config = property(lambda self: None, lambda self, value: None)
+
+
+# Each class needs its own `__init__`: transformers generates one for config
+# subclasses without it, which would bypass the sub-config parsing.
+class PaitonInkling2MMConfig(_NoModelOptQuant, Inkling2MMConfig):
     def __init__(self, **kwargs) -> None:
-        # config.json declares a ModelOpt `quantization_config`; the per-tensor
-        # precisions are in hf_quant_config.json. vLLM 0.32 reads that file
-        # only when the config carries none (main special-cases "inkling2").
-        kwargs.pop("quantization_config", None)
         super().__init__(**kwargs)
 
 
-class PaitonInkling2MMConfig(_NoModelOptQuantMixin, Inkling2MMConfig):
-    pass
-
-
-class PaitonInkling2LoopMMConfig(_NoModelOptQuantMixin, Inkling2LoopMMConfig):
-    pass
+class PaitonInkling2LoopMMConfig(_NoModelOptQuant, Inkling2LoopMMConfig):
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
 
 
 def register() -> None:

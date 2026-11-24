@@ -85,12 +85,15 @@ class Inkling2AttentionPassCache(nn.Module, AttentionLayerBase):
     def __init__(
         self,
         prefix: str,
+        num_heads: int,
         num_kv_heads: int,
         head_dim: int,
         sliding_window: int | None,
     ) -> None:
         super().__init__()
         self.prefix = prefix
+        # Read by the metadata builders of the layer's attention group.
+        self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads
         self.head_dim = head_dim
         self.sliding_window = sliding_window
@@ -212,6 +215,7 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
         self.pass_caches = nn.ModuleList(
             Inkling2AttentionPassCache(
                 f"{prefix}.pass{p}",
+                self.num_heads,
                 self.num_kv_heads,
                 self.head_dim,
                 self.sliding_window if is_local else None,
