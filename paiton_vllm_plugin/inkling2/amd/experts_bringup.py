@@ -21,7 +21,7 @@ PAITON_INK2_EXPERTS picks what a layer uses (read in `amd/model.py`):
 per-expert outer scale's amax before that, as the PyTorch reference does when
 it loads the checkpoint (its loader casts every source tensor to bf16).
 
-shortcut: one Python loop over the routed experts per call and fp32 GEMMs,
+shortcut: one Python loop over the routed experts per call on fp32 weights,
 block-error sums are plain fp32 sums (upstream sums pairwise, so a rare
 4-vs-6 tie can differ); replace with the native expert kernel.
 """
@@ -176,19 +176,22 @@ class Inkling2BringupExperts(nn.Module):
         weights -> bf16 `(T, H)`."""
         fq = fq_nvfp4 if self.nvfp4 else fq_mxfp8
         out = torch.zeros(x.shape, dtype=torch.float32, device=x.device)
-        xq = fq(x.float()) if self.act_quant else x.float()
+        # With `act_quant` the GEMMs run in fp32 on the quantized inputs;
+        # without it in bf16, as the reference does.
+        xq = fq(x.float()) if self.act_quant else x
         for e in idx.unique().tolist():
             tok, pos = torch.where(idx == e)
             # w13 rows are interleaved (gate, up) pairs.
-            gate_up = F.linear(xq[tok], self.w13[e]).to(x.dtype).float()
+            gate_up = F.linear(xq[tok], self.w13[e].to(xq.dtype)).to(x.dtype).float()
             gate, up = gate_up[:, 0::2], gate_up[:, 1::2]
             h = self._softcap(gate, self.gate_cap) * torch.sigmoid(gate)
-            h = (h * self._softcap(up, self.up_cap)).to(x.dtype).float()
+            h = (h * self._softcap(up, self.up_cap)).to(x.dtype)
             routed = weights[tok, pos, None]
             if self.act_quant:
-                out.index_add_(0, tok, F.linear(fq(h * routed), self.w2[e]))
+                out.index_add_(0, tok, F.linear(fq(h.float() * routed), self.w2[e]))
             else:
-                out.index_add_(0, tok, F.linear(h, self.w2[e]) * routed)
+                down = F.linear(h, self.w2[e].to(x.dtype)).float()
+                out.index_add_(0, tok, down * routed)
         return out.to(x.dtype)
 
 
