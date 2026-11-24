@@ -34,6 +34,13 @@ from .native_attention import NativeAttention, _Batch, _Cache, _int32, _ok, _row
 
 BF16, F32 = torch.bfloat16, torch.float32
 
+# PAITON_INK2_DRAFT_LOGITS: the draft's base logits (7 rows over the whole unembedding per request and step).
+# bf16 (default): the operator library's Linear. wide: its LinearBf16 (the LM head's kernel form, other fp32
+# summation order). int8: int8 rows with one scale per row (half the bytes).
+DRAFT_LOGITS = os.environ.get("PAITON_INK2_DRAFT_LOGITS", "bf16")
+if DRAFT_LOGITS not in ("bf16", "wide", "int8"):
+    raise ValueError("PAITON_INK2_DRAFT_LOGITS must be bf16, wide or int8")
+
 
 class _DraftLayer(C.Structure):  # PaitonInkling2DraftLayer
     _fields_ = [("q_norm", C.c_void_p), ("k_norm", C.c_void_p), ("k_norm_ctx", C.c_void_p),
@@ -85,7 +92,7 @@ def _param(*shape: int) -> nn.Parameter:
 
 
 class Inkling2DraftLayer(nn.Module):
-    def __init__(self, config: Inkling2DSparkConfig, is_local: bool, prefix: str) -> None:
+    def __init__(self, config: Inkling2DSparkConfig, is_local: bool, block: int, prefix: str) -> None:
         super().__init__()
         hidden, head, mlp = config.hidden_size, config.head_dim, config.intermediate_size
         self.q_size = config.num_attention_heads * head
@@ -101,17 +108,18 @@ class Inkling2DraftLayer(nn.Module):
             f"{prefix}.attn", config.num_attention_heads, config.num_key_value_heads, head,
             config.sliding_window_size if is_local else None)
         # Keys a block sees: itself and, on local layers, the window before it.
-        self.window = config.sliding_window_size + config.draft_block_size if is_local else 0
+        self.window = config.sliding_window_size + block if is_local else 0
         self.native: _DraftLayer | None = None
 
 
 class Inkling2DSparkDecoder(nn.Module):
-    def __init__(self, config: Inkling2DSparkConfig, max_model_len: int, prefix: str) -> None:
+    def __init__(self, config: Inkling2DSparkConfig, max_model_len: int, block: int, prefix: str) -> None:
         super().__init__()
         self.config = config
+        self.block = block  # rows per request: the anchor and the masks
         hidden, rank = config.hidden_size, config.markov_rank
         self.layers = nn.ModuleList(
-            Inkling2DraftLayer(config, i in config.local_layer_ids, f"{prefix}.layers.{i}")
+            Inkling2DraftLayer(config, i in config.local_layer_ids, block, f"{prefix}.layers.{i}")
             for i in range(config.num_hidden_layers))
         self.norm, self.mask_embed, self.markov_dflare_norm = _param(hidden), _param(hidden), _param(hidden)
         self.fuse_weight = _param(config.num_hidden_layers + 1, len(config.target_layer_ids))
@@ -126,6 +134,7 @@ class Inkling2DSparkDecoder(nn.Module):
                              rope_parameters={"rope_type": "default", "rope_theta": config.rope_theta}).cos_sin_cache
         self.cos_sin = table.to(dtype=F32, device=self.norm.device).contiguous()
         self.fuse_alpha: torch.Tensor | None = None
+        self.native_mix = False
         self.workspace = torch.empty(0, dtype=torch.uint8)  # of the attention library, grown on demand
         # The target's embedding (set by vLLM's load_dspark_model) and its norm (set by attach_target).
         self.embed_tokens: nn.Module | None = None
@@ -157,8 +166,10 @@ class Inkling2DSparkDecoder(nn.Module):
     def mix(self, features: torch.Tensor, row: int, weight: torch.Tensor) -> torch.Tensor:
         """RMS norm of the `fuse_alpha[row]`-weighted sum of the target features, `(T, taps * hidden)` in."""
         assert self.fuse_alpha is not None
+        if self.native_mix:
+            return native_ops.mix_rms_norm(features, self.fuse_alpha[row], weight, self.config.rms_norm_eps)
         taps = features.view(features.shape[0], -1, self.config.hidden_size)
-        # temporary: PyTorch operations on the card, until the operator library has the mix (asked of P1)
+        # temporary: PyTorch operations on the card when the operator library is older than its MixRmsNorm
         mixed = taps[:, 0].float() * self.fuse_alpha[row, 0]
         for tap in range(1, taps.shape[1]):
             mixed += taps[:, tap].float() * self.fuse_alpha[row, tap]
@@ -166,7 +177,9 @@ class Inkling2DSparkDecoder(nn.Module):
 
     def _add_norm(self, x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
         """In place `residual += x`; returns the RMS norm of the unrounded sum."""
-        # temporary: the add is a PyTorch operation on the card, until the operator library has add + norm (asked of P1)
+        if self.native_mix:
+            return native_ops.add_rms_norm(x, residual, weight, self.config.rms_norm_eps)
+        # temporary: the add is a PyTorch operation on the card when the operator library is older than its AddRmsNorm
         total = residual.float() + x.float()
         residual.copy_(total)
         return native_ops.rms_norm(total, weight, self.config.rms_norm_eps, BF16)
@@ -179,7 +192,7 @@ class Inkling2DSparkDecoder(nn.Module):
         if not isinstance(attn_metadata, dict) or kv_cache.numel() == 0:
             return out  # memory profiling run: no cache yet
         md = attn_metadata[layer.cache.prefix]
-        block = self.config.draft_block_size
+        block = self.block
         reqs = min(qkv.shape[0] // block, md.seq_lens.shape[0])
         tokens = reqs * block
         if tokens == 0:
@@ -220,7 +233,7 @@ class Inkling2DSparkDecoder(nn.Module):
 
     def forward(self, input_ids: torch.Tensor, positions: torch.Tensor) -> torch.Tensor:
         """Hidden rows `(T, hidden)` of the blocks: per request the anchor, then the masks."""
-        block = self.config.draft_block_size
+        block = self.block
         ids = input_ids.view(-1, block)
         x = self.mask_embed.expand(ids.shape[0], block, -1).clone()
         x[:, 0] = self.embed(ids[:, 0].contiguous())
@@ -254,15 +267,18 @@ class Inkling2DSparkModel(nn.Module):
         assert spec is not None
         config = spec.draft_model_config.hf_config
         assert isinstance(config, Inkling2DSparkConfig)
-        if spec.num_speculative_tokens != config.draft_block_size - 1:
-            raise ValueError("Inkling 2 DSpark requires num_speculative_tokens = "
-                             f"{config.draft_block_size - 1} (the checkpoint's block size - 1)")
+        # The checkpoint's block is an anchor and 7 masks. A shorter block (fewer masks) drafts fewer tokens for a
+        # cheaper verify call; vLLM main allows the full block only.
+        if not 1 <= spec.num_speculative_tokens < config.draft_block_size:
+            raise ValueError("Inkling 2 DSpark drafts 1 to "
+                             f"{config.draft_block_size - 1} tokens (the checkpoint's block size - 1)")
         if vllm_config.model_config.max_model_len > config.max_position_embeddings:
             raise ValueError(f"Inkling 2 DSpark drafts up to {config.max_position_embeddings} positions; "
                              "set --max-model-len to at most that")
         self.config = config
         # vLLM 0.32 builds the draft without a prefix: the cache layers need names apart from the target's.
-        self.model = Inkling2DSparkDecoder(config, vllm_config.model_config.max_model_len, f"{prefix}dspark")
+        self.model = Inkling2DSparkDecoder(config, vllm_config.model_config.max_model_len,
+                                           spec.num_speculative_tokens + 1, f"{prefix}dspark")
         self.lm_head: nn.Module | None = None  # the target's, set by vLLM's load_dspark_model
 
     def load_weights(self, weights: Iterable[tuple[str, torch.Tensor]]) -> set[str]:
@@ -288,6 +304,8 @@ class Inkling2DSparkModel(nn.Module):
         model.embed_norm = target_model.model.embed_norm
         device = model.norm.device
         model.fuse_alpha = torch.softmax(model.fuse_weight.float().cpu(), dim=-1).to(device)
+        # Later builds of the operator library (and its bindings) have the mix and the residual add with their norms.
+        model.native_mix = hasattr(native_ops, "has") and native_ops.has("MixRmsNorm") and native_ops.has("AddRmsNorm")
         for layer in model.layers:
             layer.native = _DraftLayer(layer.q_norm.data_ptr(), layer.k_norm.data_ptr(), layer.k_norm_ctx.data_ptr(),
                                        model.cos_sin.data_ptr(), layer.window)
@@ -299,6 +317,8 @@ class Inkling2DSparkModel(nn.Module):
             head.data_ptr(), model.hidden_out.data_ptr(), model.hidden_out_bias.data_ptr(),
             self.fold_weight.data_ptr(), self.fold_bias.data_ptr(), head.shape[0], _stream(device)),
             "PaitonInkling2DsparkFold")
+        # shortcut: an own int8 copy of all padded rows (463 MB); share the target's rows once it keeps the padded ones
+        self.head_rows = native_ops.head_rows(head, "int8") if DRAFT_LOGITS == "int8" else None
 
     def get_draft_kv_cache_layer_names(self) -> list[str]:
         return [layer.cache.prefix for layer in self.model.layers]
@@ -343,6 +363,10 @@ class Inkling2DSparkModel(nn.Module):
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """bf16 base logits over all rows of the unembedding (a bf16 product, as the reference)."""
+        if self.head_rows is not None:
+            return native_ops.linear_rows(hidden_states, *self.head_rows, "int8")
+        if DRAFT_LOGITS == "wide":
+            return native_ops.linear_wide(hidden_states, self.lm_head.weight)
         return native_ops.linear(hidden_states, self.lm_head.weight)
 
     def markov_tokens(self, hidden: torch.Tensor, f_rnn: torch.Tensor, anchors: torch.Tensor) -> torch.Tensor:
