@@ -356,7 +356,7 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
             "o_linear",
             # 14 MB per layer: once, with the prefill forward's calls.
             {"x": output, "weight": weight if ops_dump.forward == ops_dump.FIRST else None},
-            lambda: native_ops.linear(output, weight)
+            lambda: native_ops.o_project(output, weight)
             if NATIVE_OPS
             else nn.functional.linear(output, weight),
         )
