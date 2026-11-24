@@ -46,6 +46,8 @@ IMAGE_PLACEHOLDER = "<|content_image|>"
 IMAGE_PAD_ID = 200054
 
 PATCH_SIZE = 40
+# bf16 bit pattern of every raw pixel value: index 0 is -1 (padding), 1 + v is v.
+_BF16_BITS = torch.arange(-1, 256).to(torch.bfloat16).view(torch.int16).numpy()
 # Dummy (profiling) images are at most this many pixels per side.
 MAX_DUMMY_IMAGE_SIDE = 2048
 
@@ -102,26 +104,27 @@ class Inkling2ImageProcessor:
         return math.ceil(height / PATCH_SIZE), math.ceil(width / PATCH_SIZE)
 
     def preprocess(self, images: Sequence[ImageInput]) -> dict[str, torch.Tensor]:
-        decoded = [torch.from_numpy(decode_image(image)) for image in images]
+        # numpy only: vLLM's profile run calls this in the engine process, and after
+        # the fork into it a large torch CPU fill waits forever on the thread pool.
+        decoded = [decode_image(image) for image in images]
         grids = [self.get_grid(pixels.shape[1], pixels.shape[0]) for pixels in decoded]
-        out = torch.empty(
+        bits = np.empty(
             (sum(rows * cols for rows, cols in grids), PATCH_SIZE, PATCH_SIZE, 3),
-            dtype=torch.bfloat16,
+            dtype=np.int16,
         )
         start = 0
         for pixels, (rows, cols) in zip(decoded, grids):
             height, width, _ = pixels.shape
-            if (height, width) != (rows * PATCH_SIZE, cols * PATCH_SIZE):
-                padded = pixels.new_full(
-                    (rows * PATCH_SIZE, cols * PATCH_SIZE, 3), -1, dtype=torch.bfloat16
-                )
-                padded[:height, :width] = pixels
-                pixels = padded
-            cells = pixels.view(rows, PATCH_SIZE, cols, PATCH_SIZE, 3)
-            out[start : start + rows * cols].view(
+            # Index into _BF16_BITS: 0 is the padding value -1.
+            padded = np.zeros((rows * PATCH_SIZE, cols * PATCH_SIZE, 3), dtype=np.intp)
+            padded[:height, :width] = pixels
+            padded[:height, :width] += 1
+            cells = _BF16_BITS[padded].reshape(rows, PATCH_SIZE, cols, PATCH_SIZE, 3)
+            bits[start : start + rows * cols].reshape(
                 rows, cols, PATCH_SIZE, PATCH_SIZE, 3
-            ).copy_(cells.permute(0, 2, 1, 3, 4))
+            )[...] = cells.transpose(0, 2, 1, 3, 4)
             start += rows * cols
+        out = torch.from_numpy(bits).view(torch.bfloat16)
         return {
             "vision_pixels": out,
             "vision_grid_thw": torch.tensor(
