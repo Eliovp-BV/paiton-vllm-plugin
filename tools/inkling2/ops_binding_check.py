@@ -1,7 +1,8 @@
 """Check the plugin's binding of the native operator library on the per-operator fixtures.
 
 Usage: PAITON_INK2_OPS=native PAITON_INK2_EXPERTS=native PAITON_INK2_OPS_SO=<inkling2_ops_gfx1201.so> \
-       python3 ops_binding_check.py <compiler native/inkling2_ops dir> <fixtures/ops/runNN[/prompt]> <model safetensors>
+       python3 ops_binding_check.py <compiler native/inkling2_ops dir> <fixtures/ops/runNN[/prompt]> <model safetensors> \
+                                    [<folder of npz files with LM head inputs `final`>]
 
 Runs the kernel piece's own comparisons (`check.py` and `ref.py` of the compiler component, numpy only) with torch
 tensors through `paiton_vllm_plugin.inkling2.amd.native_ops` in place of the ctypes harness: the same rows, limits
@@ -23,6 +24,7 @@ import torch
 from paiton_vllm_plugin.inkling2.amd import native_ops
 
 check_dir, fixtures, ckpt = sys.argv[1:4]
+head_rows = sys.argv[4] if len(sys.argv) > 4 else None   # LM head inputs for the 8-bit head gates (ABI 3 library)
 sys.path.insert(0, check_dir)
 import check  # noqa: E402  (the compiler component's harness)
 
@@ -97,7 +99,25 @@ class TorchOps:
     def embed_norm(self, table, vocab, ids, weight, eps, repeat=1):
         t, _ = self.weight(table, 2304)
         assert t.shape[0] == vocab
-        return self.down(native_ops.embed_norm(self.up(ids).long(), t, self.up(weight)[0], eps))
+        return self.down(native_ops.embed_norm(self.up(ids), t, self.up(weight)[0], eps))   # int32 and int64 ids
+
+    def lm_head(self, x, w, n, soft_cap=0.0, repeat=1):
+        t, row = self.weight(w, x.shape[-1])
+        assert row == 0
+        return self.down(native_ops.lm_head(self.up(x), t, n, soft_cap))
+
+    def head_rows(self, fmt, w, n, k):
+        t, row = self.weight(w, k)
+        return native_ops.head_rows(t[row:row + n], fmt)
+
+    def head_get(self, handle, lo, hi):
+        return self.down(handle[0][lo:hi]), self.down(handle[1][lo:hi])
+
+    def head_free(self, handle) -> None:
+        pass
+
+    def lm_head_rows(self, fmt, x, handle, soft_cap=0.0, repeat=1):
+        return self.down(native_ops.lm_head_rows(self.up(x), *handle, soft_cap, fmt))
 
     def pair_rms_norm(self, dest, message, repeat=1):
         dt, mt = self.up(dest), self.up(message)
@@ -160,7 +180,8 @@ def extras(ops: TorchOps) -> bool:
                      native_ops.linear(native_ops.linear(pair, down), up, F32))
         head = rand(2600, 2304)
         logits = native_ops.lm_head(x[0], head, 2570, 30.0)
-        good &= tuple(logits.shape) == (tokens, 2570) and same(logits, native_ops.linear(x[0], head, F32, 30.0)[:, :2570])
+        ref_logits = native_ops.linear(x[0], head, F32, 30.0)[:, :2570]   # the LM head kernel sums in another order
+        good &= tuple(logits.shape) == (tokens, 2570) and bool((logits - ref_logits).abs().max() <= 3e-4)
         good &= same(native_ops.linear_k_groups(x[0], head, BF16), native_ops.linear(x[0], head))
         empty = native_ops.linear(x[0][:0], head)
         good &= tuple(empty.shape) == (0, 2600)
@@ -186,7 +207,8 @@ def import_rule() -> bool:
 if __name__ == "__main__":
     assert os.environ.get("PAITON_INK2_OPS") == "native", "set PAITON_INK2_OPS=native"
     ops = TorchOps()
-    failed = check.run_checks(ops, fixtures, ckpt)
+    ops.head_formats = native_ops.head_formats()   # none with an ABI 2 library: check.py then leaves those rows out
+    failed = check.run_checks(ops, fixtures, ckpt, head_rows)
     torch.cuda.synchronize()
     failed |= not extras(ops)
     failed |= not import_rule()
