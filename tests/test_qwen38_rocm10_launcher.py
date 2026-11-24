@@ -2034,9 +2034,18 @@ class Rocm10LauncherTests(unittest.TestCase):
             return json.loads(value(command, '--speculative-config'))
 
         self.assertIs(spec('--mode', 'long-kv4').get('disable_eagle_block_drop'), True)
-        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--host-cache-gib', '4'),
-                        ('--mode', 'long-512k'), ('--mode', 'long-kv4', '--prefix-caching', 'off')):
+        all_text = ('--mode', 'long-kv4', '--host-cache-gib', '4'), ('--mode', 'long-512k')
+        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--prefix-caching', 'off')):
             with self.subTest(options=options):
+                self.assertNotIn('disable_eagle_block_drop', spec(*options))
+        # images with the drafter trim without the drop skip it also with the host tier and at 524,288 tokens
+        self.assertTrue(image.endswith(launcher.ALL_TEXT_NO_DROP_IMAGE_SUFFIXES))
+        for options in all_text:
+            with self.subTest(options=options):
+                self.assertIs(spec(*options).get('disable_eagle_block_drop'), True)
+        image = 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c6'
+        for options in all_text:
+            with self.subTest(image=image, options=options):
                 self.assertNotIn('disable_eagle_block_drop', spec(*options))
 
     def test_mode_with_the_mxfp4_weights(self):

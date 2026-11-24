@@ -154,6 +154,16 @@ def get_sliding_window_size_in_chunks(
 
 
 _PAITON_DEBUG_UNALIGNED = os.environ.get("PAITON_HOST_KV_DEBUG_UNALIGNED", "0") == "1"
+
+
+def _paiton_drafter_groups(kv_group_configs, speculative_config) -> set[int]:
+    """PAITON: the groups the drafter trim applies to: EAGLE groups, and with the DFlash drafter its sliding-window
+    groups also when disable_eagle_block_drop leaves is_eagle_group unset (their chunks still take whole slots)."""
+    dflash = getattr(speculative_config, "method", None) == "dflash"
+    return {
+        c.group_idx for c in kv_group_configs
+        if c.is_eagle_group or (dflash and isinstance(c.kv_cache_spec, SlidingWindowSpec))
+    }
 def resolve_mamba_align_size(
     spec: "OffloadingSpec", kv_cache_config: KVCacheConfig
 ) -> int | None:
@@ -617,11 +627,14 @@ class OffloadingConnectorScheduler:
         # (EAGLE) groups' sliding-window chunks only those within the window (+ the verify chunk) before such a
         # boundary can serve a hit, so only those are stored (PAITON_HOST_KV_DRAFTER_TRIM=0 stores every chunk).
         self._paiton_retention = vllm_config.cache_config.prefix_cache_retention_interval or 0
+        self._paiton_drafter_groups = _paiton_drafter_groups(
+            self.config.kv_group_configs, vllm_config.speculative_config
+        )
         self._paiton_trim_drafter = (
             os.environ.get("PAITON_HOST_KV_DRAFTER_TRIM", "1") != "0"
             and self._mamba_align_size is not None
             and self._paiton_retention > 0
-            and any(c.is_eagle_group for c in self.config.kv_group_configs)
+            and bool(self._paiton_drafter_groups)
         )
         self._partial_tail_block_size = (
             self.config.kv_group_configs[0].tokens_per_block
@@ -1794,7 +1807,7 @@ class OffloadingConnectorScheduler:
                     abs_chunk_idx = start_chunk_idx + key_idx
                     if (
                         self._paiton_trim_drafter
-                        and group_config.is_eagle_group
+                        and group_config.group_idx in self._paiton_drafter_groups
                         and group_config.sliding_window_size_in_chunks is not None
                         and not self._paiton_drafter_chunk_reachable(
                             req,

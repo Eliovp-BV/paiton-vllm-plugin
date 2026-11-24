@@ -48,9 +48,22 @@ class Store:
         return LookupResult.HIT if key in self.stored else LookupResult.MISS
 
 
-def _scheduler(stored, aligned=True):
-    configs = tuple(types.SimpleNamespace(group_idx=g, tokens_per_chunk=c, sliding_window_size_in_chunks=w,
-                                          is_eagle_group=e) for g, (c, w, e) in GROUPS.items())
+def _spec(group):
+    # bare instances for the isinstance checks: the GDN groups also have a one-chunk window in the offload config
+    cls = conn.SlidingWindowSpec if group == 8 else conn.MambaSpec if GROUPS[group][1] else conn.FullAttentionSpec
+    return cls.__new__(cls)
+
+
+def _configs(drop=True):
+    # disable_eagle_block_drop (drop=False) leaves every group's is_eagle_group unset
+    return tuple(types.SimpleNamespace(group_idx=g, tokens_per_chunk=c, sliding_window_size_in_chunks=w,
+                                       is_eagle_group=e and drop, kv_cache_spec=_spec(g),
+                                       load_window_size_in_chunks=lambda num_tokens, w=w: w)
+                 for g, (c, w, e) in GROUPS.items())
+
+
+def _scheduler(stored, aligned=True, drop=True):
+    configs = _configs(drop)
     full = [g for g, (_, w, _) in GROUPS.items() if w is None]
     sliding = sorted((g for g, (_, w, _) in GROUPS.items() if w is not None), key=lambda g: GROUPS[g][1], reverse=True)
     s = types.SimpleNamespace(config=types.SimpleNamespace(kv_group_configs=configs), manager=Store(stored),
@@ -71,7 +84,7 @@ def _keys(prompt):
 
 def _status(prompt, local=0):
     req = types.SimpleNamespace(num_tokens=prompt, request_id="r")
-    return types.SimpleNamespace(num_locally_computed_tokens=local, req=req, req_context=None,
+    return types.SimpleNamespace(num_locally_computed_tokens=local, req=req, req_context=None, max_load_tokens=None,
                                  group_states=[types.SimpleNamespace(offload_keys=k) for k in _keys(prompt)])
 
 
@@ -178,10 +191,10 @@ def test_partial_tail_hits_stay_off_with_a_draft_group():
 RET = 32000
 
 
-def _retained(prompt):
+def _retained(prompt, drop=True):
     """Boundaries with a retained recurrent state for one prompt: multiples of the retention interval, the replay
-    boundary and the tail checkpoint."""
-    tail = prompt // ALIGN * ALIGN - ALIGN
+    boundary and, with the EAGLE drop, the tail checkpoint."""
+    tail = prompt // ALIGN * ALIGN - ALIGN if drop else 0
     return {k * RET for k in range(1, prompt // RET + 1)} | {(prompt - 1) // ALIGN * ALIGN} | ({tail} if tail > 0 else set())
 
 
@@ -191,36 +204,52 @@ def _trim_scheduler():
     return s
 
 
-def _req(prompt):
-    return types.SimpleNamespace(num_prompt_tokens=prompt, paiton_eagle_ckpt=prompt // ALIGN * ALIGN - ALIGN,
-                                 shared_prefix_boundary=None)
+def _req(prompt, drop=True):
+    req = types.SimpleNamespace(num_prompt_tokens=prompt, shared_prefix_boundary=None)
+    if drop:                            # the scheduler overlay sets the tail checkpoint only with the drop
+        req.paiton_eagle_ckpt = prompt // ALIGN * ALIGN - ALIGN
+    return req
 
 
-@pytest.mark.parametrize("prompt", [3308, 32000, 33552, 64801, 130001, 256801, 258000, 262143])
-def test_trim_keeps_exactly_the_reachable_drafter_chunks(prompt):
-    s, req = _trim_scheduler(), _req(prompt)
+def test_dflash_drafter_groups_are_trimmed_without_the_drop():
+    dflash, eagle = types.SimpleNamespace(method="dflash"), types.SimpleNamespace(method="eagle3")
+    assert conn._paiton_drafter_groups(_configs(drop=True), dflash) == {8}
+    assert conn._paiton_drafter_groups(_configs(drop=False), dflash) == {8}
+    assert conn._paiton_drafter_groups(_configs(drop=False), eagle) == set()
+    assert conn._paiton_drafter_groups(_configs(drop=False), None) == set()
+    # the store loop and the trim switch go through that set, not is_eagle_group
+    source = OVERLAY.read_text()
+    assert "and group_config.group_idx in self._paiton_drafter_groups" in source
+    assert "and bool(self._paiton_drafter_groups)" in source
+
+
+@pytest.mark.parametrize("drop", [True, False])
+@pytest.mark.parametrize("prompt", [3308, 32000, 33552, 64801, 130001, 256801, 258000, 262143, 300400, 500400])
+def test_trim_keeps_exactly_the_reachable_drafter_chunks(prompt, drop):
+    s, req = _trim_scheduler(), _req(prompt, drop)
     kept = {i for i in range(prompt // DRAFT_CHUNK) if s._paiton_drafter_chunk_reachable(req, i, DRAFT_CHUNK, DRAFT_WINDOW)}
-    want = {i for b in _retained(prompt) for i in range(b // DRAFT_CHUNK - DRAFT_WINDOW, b // DRAFT_CHUNK + 1)
+    want = {i for b in _retained(prompt, drop) for i in range(b // DRAFT_CHUNK - DRAFT_WINDOW, b // DRAFT_CHUNK + 1)
             if 0 <= i < prompt // DRAFT_CHUNK}
     assert kept == want
     if prompt > 200000:
         assert len(kept) < 0.2 * (prompt // DRAFT_CHUNK)       # most drafter chunks are no longer stored
 
 
-def test_trim_leaves_every_host_hit_unchanged():
+@pytest.mark.parametrize("drop", [True, False])
+def test_trim_leaves_every_host_hit_unchanged(drop):
     rng = random.Random(4)
     s_trim = _trim_scheduler()
     for _ in range(300):
-        prompt = rng.randint(1600, 262144)
-        req = _req(prompt)
+        prompt = rng.randint(1600, 524288)
+        req = _req(prompt, drop)
         keys = _keys(prompt)
-        states = {b // ALIGN - 1 for b in _retained(prompt)}
+        states = {b // ALIGN - 1 for b in _retained(prompt, drop)}
         full = {k for ks in keys for k in ks
                 if GROUPS[k[0]][1] is None or (GROUPS[k[0]][1] == 1 and k[1] in states) or k[0] == 8}
         trimmed = {k for k in full
                    if k[0] != 8 or s_trim._paiton_drafter_chunk_reachable(req, k[1], DRAFT_CHUNK, DRAFT_WINDOW)}
-        a = _scheduler(full)._lookup_complete_chunks(_status(prompt))
-        b = _scheduler(trimmed)._lookup_complete_chunks(_status(prompt))
+        a = _scheduler(full, drop=drop)._lookup_complete_chunks(_status(prompt))
+        b = _scheduler(trimmed, drop=drop)._lookup_complete_chunks(_status(prompt))
         assert a == b, (prompt, a, b)
         if b:
             assert _serves(trimmed, 0, b)

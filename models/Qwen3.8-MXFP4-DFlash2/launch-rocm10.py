@@ -160,7 +160,12 @@ DFLASH_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261123-r5',)
 # vLLM 0.32 and later have this switch upstream: the speculative config's disable_eagle_block_drop, read by the scheduler,
 # the KV-group setup, the Mamba prefill checkpoints and the offload connectors. Images on that base get it instead of the
 # overlay's variable, which their scheduler no longer reads.
-UPSTREAM_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm102-vllm032-20261123-c1', 'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6')
+UPSTREAM_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm102-vllm032-20261123-c1', 'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7')
+# Images that also skip the drop with the host tier (--host-cache-gib, --extend-cache) and in --mode long-512k: their
+# offload overlay trims the drafter's chunks without the drop, so the tier holds as many tokens as with it. With the
+# drop, vLLM 0.32 keeps a re-ask's state one 1,600-token block lower (c6: 1.2-1.7 s more at 300K-500K, one prefill step
+# more on some restores). Text only (vision unmeasured).
+ALL_TEXT_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm102-vllm032-20261123-c7',)
 # --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the allocator capped as
 # without --vision, 740 pool blocks (496,129 KV tokens with prefix caching), images up to VISION_MAX_PIXELS and a
 # VISION_MM_CACHE_GIB processor cache. Measured on the 5 October image, 6 Oct (vision suite: cold and cached images,
@@ -289,14 +294,14 @@ LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-
                             'qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
                             'qwen38-rocm10-vllm029-20261123-r5',
                             'qwen38-rocm102-vllm032-20261123-c1',
-                            'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer, r5 = r4 + one layer
+                            'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer, r5 = r4 + one layer
 # Block verification of the drafted tokens (rejection_sample_method block): the same output distribution as token-wise
 # verification, more accepted draft tokens per step for sampled requests (T > 0). Gate on r2, 19 Nov 2026 (drafter
 # round 3): task scores and first-token distributions unchanged, greedy ids identical; T 1.0 +3.8 % accepted tokens and
 # +2.6 % tok/s at one request. Only the images below get it; earlier images keep token-wise verification.
 SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
                              'qwen38-rocm10-vllm029-20261123-r5', 'qwen38-rocm102-vllm032-20261123-c1',
-                             'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6')
+                             'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7')
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -362,6 +367,7 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm102-vllm032-20261123-c4': (24576, 19000),
     'qwen38-rocm102-vllm032-20261123-c5': (24576, 19000),
     'qwen38-rocm102-vllm032-20261123-c6': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c7': (24576, 19000),
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
@@ -1676,7 +1682,8 @@ def docker_command(args, environment):
             command += ['-e', 'PAITON_PC_SPARSE_ALIGN=1']
         no_drop_image = _image_parts(args)[0]
         if (no_drop_image.endswith(DFLASH_NO_DROP_IMAGE_SUFFIXES + UPSTREAM_NO_DROP_IMAGE_SUFFIXES) and not args.vision
-                and not getattr(args, 'host_cache_gib', None) and args.context <= LONG_CONTEXT):
+                and (no_drop_image.endswith(ALL_TEXT_NO_DROP_IMAGE_SUFFIXES)
+                     or (not getattr(args, 'host_cache_gib', None) and args.context <= LONG_CONTEXT))):
             if no_drop_image.endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
                 index = engine.index('--speculative-config') + 1
                 engine[index] = json.dumps({**json.loads(engine[index]), 'disable_eagle_block_drop': True})
