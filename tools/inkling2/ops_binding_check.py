@@ -91,6 +91,22 @@ class TorchOps:
                 return t, (p.value - base) // (2 * k)
         raise KeyError("unknown weight pointer")
 
+    @property
+    def lib(self):   # check.py asks the library which later entry points it has
+        return native_ops._library()
+
+    def linear_bf16(self, x, w, n):
+        t, row = self.weight(w, x.shape[-1])
+        return self.down(native_ops.linear_wide(self.up(x), t.view(-1, x.shape[-1])[row:row + n]))
+
+    def mix_rms_norm(self, x, alpha, weight, eps, repeat=1):
+        return self.down(native_ops.mix_rms_norm(self.up(x.reshape(x.shape[0], -1)), self.up(alpha), self.up(weight), eps))
+
+    def add_rms_norm(self, x, residual, weight, eps, repeat=1):
+        res = self.up(residual)
+        out = native_ops.add_rms_norm(self.up(x), res, self.up(weight), eps)
+        return self.down(out), self.down(res)
+
     def rms_norm(self, x, weight, eps, repeat=1):
         xt, wt = self.up(x), self.up(weight)
         if weight.shape[0] == 1:  # the port's call: one weight row, 2-D result, bf16 asked for
