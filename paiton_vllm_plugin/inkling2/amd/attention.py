@@ -36,6 +36,7 @@ from vllm.v1.kv_cache_interface import (
 )
 
 from ..configs import Inkling2ModelConfig
+from . import ops_dump
 from .ops.attention import (
     gated_rel_attention,
     plan_decode_attention,
@@ -326,7 +327,13 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
             output,
             pass_idx,
         )
-        return nn.functional.linear(output, self.wo_ud.weight)
+        weight = self.wo_ud.weight
+        return ops_dump.record(
+            "o_linear",
+            # 14 MB per layer: once, with the prefill forward's calls.
+            {"x": output, "weight": weight if ops_dump.forward == ops_dump.FIRST else None},
+            lambda: nn.functional.linear(output, weight),
+        )
 
     @eager_break_during_capture
     def _attention(
