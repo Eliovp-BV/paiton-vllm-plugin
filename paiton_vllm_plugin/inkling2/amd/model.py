@@ -64,6 +64,12 @@ from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
 if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
     raise ValueError("PAITON_INK2_OPS must be unset or native")
+# PAITON_INK2_LMHEAD=fp8 or int8 (native operators only, library ABI 3): the LM
+# head reads 8-bit rows with one scale per row (e4m3 or int8 codes), converted
+# from the bf16 rows on first use. Default: the bf16 rows.
+LMHEAD = os.environ.get("PAITON_INK2_LMHEAD", "bf16")
+if LMHEAD not in ("bf16", "fp8", "int8") or (LMHEAD != "bf16" and not NATIVE_OPS):
+    raise ValueError("PAITON_INK2_LMHEAD must be bf16, fp8 or int8; 8-bit rows need PAITON_INK2_OPS=native")
 if NATIVE_OPS:
     from . import native_ops
     from .native_ops import attn_res, rms_norm
@@ -453,6 +459,7 @@ class Inkling2ForConditionalGeneration(
             org_vocab_size=text_config.vocab_size,
             soft_cap=text_config.final_logit_softcapping,
         )
+        self._lm_head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
 
     def get_language_model(self) -> nn.Module:
         return self
@@ -652,6 +659,17 @@ class Inkling2ForConditionalGeneration(
         return out
 
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
+        if LMHEAD != "bf16":
+            if self._lm_head_rows is None:
+                self._lm_head_rows = native_ops.head_rows(
+                    self.lm_head.weight[: self.text_config.vocab_size], LMHEAD
+                )
+            return native_ops.lm_head_rows(
+                hidden_states,
+                *self._lm_head_rows,
+                self.text_config.final_logit_softcapping,
+                LMHEAD,
+            )
         if NATIVE_OPS:
             return native_ops.lm_head(
                 hidden_states,
