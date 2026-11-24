@@ -39,7 +39,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.record = self.root / 'docker-argv.json'
         # launcher module constants replaced in run_launcher's process; the command-building tests below keep using
         # the released images, so the pre-c4 refusal is off unless a test turns it on
-        self.overrides = {'REFUSE_PRE_PAITON_NAME_IMAGES': False}
+        # the pre-c4 refusal is off unless a test turns it on; so is the MXFP4 refusal on the vLLM 0.32 images, so the
+        # MXFP4 paths stay covered for the r5 launcher line
+        self.overrides = {'REFUSE_PRE_PAITON_NAME_IMAGES': False, 'REFUSE_MXFP4_ON_VLLM032': False}
+        patcher = patch.object(launcher, 'REFUSE_MXFP4_ON_VLLM032', False)   # the same for in-process calls
+        patcher.start()
+        self.addCleanup(patcher.stop)
         binary = self.root / 'bin'
         binary.mkdir()
         # A real exec into a harmless Docker stand-in catches quoting, argument
@@ -113,6 +118,22 @@ class Rocm10LauncherTests(unittest.TestCase):
             self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', result.stderr)
         self.command('--image', C4_IMAGE)
         self.command()   # the default r6 image carries the Paiton names
+
+    def test_vllm032_images_serve_the_3bit_weights_only(self):
+        self.overrides['REFUSE_MXFP4_ON_VLLM032'] = True
+        w3rot = self.root / 'w3rot'
+        w3rot.mkdir()
+        for args, w3 in (((), False), (('--weights', 'mxfp4'), True), (('--image', C4_IMAGE), False)):
+            with self.subTest(args=args):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+                stderr = self.refused(*args)
+                self.assertIn('serves the 3-bit W3A4 weights only', stderr)
+                self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', stderr)
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.assertIn(str(w3rot), ' '.join(self.dry_run()))   # the 3-bit weights start
+        self.dry_run('--image', launcher.PREVIOUS_IMAGES['20261123-r5'], '--weights', 'mxfp4')   # r5 is not refused here
 
     def test_default_exec_preserves_release_limits_and_runs_on_the_first_r9700(self):
         command = self.command()
@@ -2133,8 +2154,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(command, self.dry_run(*flags))
                 self.assertEqual(value(command, '--max-model-len'), context)
                 self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], int(context))
-        for name, preset, flags in (('run-mxfp4.sh', ('--mode', 'long'), ('--context', '200000')),
-                                    ('run-3bit.sh', ('--mode', 'long', '--vision'), ('--context', '245000', '--vision'))):
+        # (run-mxfp4.sh is refused on the vLLM 0.32 images: test_wrappers_dry_run_from_a_clean_environment)
+        for name, preset, flags in (('run-3bit.sh', ('--mode', 'long', '--vision'), ('--context', '245000', '--vision')),):
             with self.subTest(script=name):
                 command, stderr = script(name, *preset)
                 self.assertEqual(command, script(name, *flags)[0])
@@ -2371,7 +2392,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 env = {'HOME': self.environment.get('HOME', str(self.root)),
                        'PATH': os.pathsep.join([str(self.root / 'bin'), '/usr/bin', '/bin']), **folders,
                        'DOCKER_ARGV_RECORD': str(self.record)}
-                if wrapper == 'run-3bit.sh':
+                if wrapper == 'run-3bit.sh' or options is None:
                     env['PAITON_W3ROT_DIR'] = str(w3rot)
                 result = subprocess.run(['env', '-i', *[f'{k}={v}' for k, v in env.items()],
                                          'bash', str(rel / wrapper), '--dry-run',
@@ -2380,6 +2401,11 @@ class Rocm10LauncherTests(unittest.TestCase):
                 if options is None:   # the released default (r6) serves; earlier images need the older launcher tag
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertIn(launcher.IMAGES['65k'], json.loads(result.stdout))
+                    continue
+                if wrapper != 'run-3bit.sh':   # the MXFP4 weights: refused on the vLLM 0.32 images, served by r5
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn('serves the 3-bit W3A4 weights only', result.stderr)
+                    self.assertFalse(self.record.exists())
                     continue
                 self.assertEqual(result.returncode, 0, result.stderr)
                 argv = json.loads(result.stdout)

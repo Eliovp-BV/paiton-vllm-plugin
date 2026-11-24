@@ -199,6 +199,9 @@ REFUSE_PRE_PAITON_NAME_IMAGES = True
 PRE_PAITON_NAME_TAG_PREFIXES = ('qwen38-rocm10-vllm029-',)
 PRE_PAITON_NAME_IMAGE_SUFFIXES = tuple(f'qwen38-rocm102-vllm032-20261123-{c}' for c in ('c1', 'c2', 'c3', 'c3b'))
 OLDER_IMAGES_LAUNCHER_TAG = 'qwen38-rocm10-vllm029-20261123-r5'
+# The vLLM 0.32 images were gated with the 3-bit weights only (user direction, 23 Nov 2026): MXFP4 runs on r5 with
+# the launcher at OLDER_IMAGES_LAUNCHER_TAG.
+REFUSE_MXFP4_ON_VLLM032 = True
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
     '20261123-r5': 'sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
@@ -1523,10 +1526,16 @@ def weights_mode(args, environment):
     if args.release not in W3_RELEASES:
         if args.weights == 'w3a4':
             raise ValueError(f'--weights w3a4 is not available for the {args.release} release')
-        return 'mxfp4'
-    if args.weights == 'auto':
-        return 'w3a4' if environment.get('PAITON_W3ROT_DIR') else 'mxfp4'
-    return args.weights
+        weights = 'mxfp4'
+    elif args.weights == 'auto':
+        weights = 'w3a4' if environment.get('PAITON_W3ROT_DIR') else 'mxfp4'
+    else:
+        weights = args.weights
+    if REFUSE_MXFP4_ON_VLLM032 and weights == 'mxfp4' and _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+        raise ValueError('this image serves the 3-bit W3A4 weights only: set PAITON_W3ROT_DIR to them or use '
+                         f'run-3bit.sh; the MXFP4 weights run on image r5 with the launcher at tag '
+                         f'{OLDER_IMAGES_LAUNCHER_TAG}')
+    return weights
 
 
 def disk_cache_fingerprint(args, environment, weights, kv_mode, image):
