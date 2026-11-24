@@ -70,6 +70,12 @@ if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
 LMHEAD = os.environ.get("PAITON_INK2_LMHEAD", "bf16")
 if LMHEAD not in ("bf16", "fp8", "int8") or (LMHEAD != "bf16" and not NATIVE_OPS):
     raise ValueError("PAITON_INK2_LMHEAD must be bf16, fp8 or int8; 8-bit rows need PAITON_INK2_OPS=native")
+# PAITON_INK2_STEP=native (native operators only): a text forward is one call of the
+# native forward sequencer (`native_step.py`) instead of the Python loop over the
+# layer visits. Same libraries in the same order, so the same bits.
+STEP = os.environ.get("PAITON_INK2_STEP", "")
+if STEP not in ("", "native") or (STEP and not NATIVE_OPS):
+    raise ValueError("PAITON_INK2_STEP must be unset or native, and needs PAITON_INK2_OPS=native")
 if NATIVE_OPS:
     from . import native_ops
     from .native_ops import attn_res, rms_norm
@@ -633,6 +639,12 @@ class Inkling2ForConditionalGeneration(
         inputs_embeds: torch.Tensor | None = None,
         **kwargs: object,
     ) -> torch.Tensor | tuple[torch.Tensor, list[torch.Tensor]]:
+        if STEP:
+            from . import native_step
+
+            out = native_step.forward(self.model, input_ids, positions, inputs_embeds)
+            if out is not None:
+                return out
         if inputs_embeds is None:
             assert input_ids is not None
             inputs_embeds = self.model.embed_input_ids(input_ids)
@@ -766,3 +778,29 @@ if os.environ.get("PAITON_INK2_TIME"):
         return out
 
     Inkling2ForConditionalGeneration.forward = _timed_forward
+
+
+if os.environ.get("PAITON_INK2_HASH"):
+    # Bring-up check: one line per forward and per logits call with a hash of the result's bytes, appended to
+    # <PAITON_INK2_HASH>.<pid>. Two runs made the same forwards with the same bits when their files are equal.
+    # Each line synchronizes, so not for serving.
+    import hashlib
+
+    _hash_path = f"{os.environ['PAITON_INK2_HASH']}.{os.getpid()}"
+
+    def _hashed(name, fn):
+        def wrapper(self, *args, **kwargs):
+            out = fn(self, *args, **kwargs)
+            tensors = [out] if isinstance(out, torch.Tensor) else [out[0], *out[1]]
+            with open(_hash_path, "a") as f:
+                for t in tensors:
+                    data = t.contiguous().view(torch.uint8).cpu().numpy()
+                    print(name, tuple(t.shape), hashlib.sha256(data.tobytes()).hexdigest(), file=f)
+            return out
+
+        return wrapper
+
+    Inkling2ForConditionalGeneration.forward = _hashed("forward", Inkling2ForConditionalGeneration.forward)
+    Inkling2ForConditionalGeneration.compute_logits = _hashed(
+        "logits", Inkling2ForConditionalGeneration.compute_logits
+    )
