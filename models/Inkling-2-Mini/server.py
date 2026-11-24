@@ -81,6 +81,9 @@ def main():
                              'decode, a small measurable change of the output distribution (KL +0.003)')
     parser.add_argument('--no-drafter', action='store_true',
                         help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
+    parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
+                        help='opt-in: verify only the drafts whose running probability stays above P (0.4 measured '
+                             '6 %% faster for one request); the server then runs without async scheduling')
     args, extra = parser.parse_known_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
@@ -88,11 +91,14 @@ def main():
     if args.download_only:
         return
     os.environ['HF_HUB_OFFLINE'] = '1'
+    if args.draft_cut is not None:
+        os.environ['PAITON_INK2_DRAFT_CUT'] = str(args.draft_cut)
+        extra = ['--no-async-scheduling', *extra]
     if args.int8_attention:
         os.environ['PAITON_INK2_PROJ'] = 'int8'
     # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
-                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='3', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8').items():
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8').items():
         os.environ.setdefault(name, value)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
