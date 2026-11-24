@@ -48,7 +48,9 @@ def main() -> None:
             t0 = time.time()
             reply = post("/v1/chat/completions", {**common, "temperature": 0, "max_tokens": len(fixture["greedy"]),
                                                   "skip_special_tokens": False, "logprobs": True,
-                                                  "return_tokens_as_token_ids": True})
+                                                  "return_tokens_as_token_ids": True,
+                                                  # No tool parser yet: the tools go into the prompt only.
+                                                  **({"tool_choice": "none"} if "tools" in prompt else {})})
             choice = reply["choices"][0]
             ids = [int(entry["token"].split(":")[1]) for entry in choice["logprobs"]["content"]]
             greedy = fixture["greedy"].tolist()

@@ -756,7 +756,8 @@ def combine(
     """Sum each token's rows of `down` (rows -1 count 0)."""
     tokens = src2dst.numel() // topk
     hidden = down.shape[1]
-    block = 512
+    # Inkling 2 Mini: hidden 2304 is a multiple of 256 only.
+    block = 512 if hidden % 512 == 0 else 256
     assert hidden % block == 0
     out = torch.empty((tokens, hidden), dtype=out_dtype, device=down.device)
     _combine_kernel[(tokens, hidden // block)](

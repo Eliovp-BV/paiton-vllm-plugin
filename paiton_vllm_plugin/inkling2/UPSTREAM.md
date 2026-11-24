@@ -14,7 +14,7 @@ Target: vLLM 0.32.0, which has the first Inkling generation only.
 |---|---|
 | `configs.py`, `processing.py` | main, same path |
 | `amd/__init__.py`, `amd/dspark.py`, `amd/moe.py`, `amd/vision.py` | PR, same path |
-| `amd/ops/{__init__,activation,attention,dspark,linear,moe,mxfp8,norm,triton_bmm,vision}.py` | PR, same path |
+| `amd/ops/{__init__,attention,dspark,linear,mxfp8,norm,triton_bmm,vision}.py` | PR, same path |
 
 ## Changed files
 
@@ -22,6 +22,8 @@ Target: vLLM 0.32.0, which has the first Inkling generation only.
 |---|---|---|---|
 | `quant_config.py` | main | `from .configs import` instead of `from vllm.models.inkling2.configs import` | the package lives in the plugin |
 | `amd/ops/sconv.py` | PR | `from .norm import` instead of `from vllm.models.inkling2.amd.ops.norm import` | same |
+| `amd/ops/moe.py` | PR | `combine` sums in blocks of 256 columns when the hidden size is not a multiple of 512 | Mini's hidden size is 2304; the PR was written for Small |
+| `amd/ops/activation.py` | PR | `swiglu_quantize` uses a program per 128 columns when the intermediate size is not a multiple of 256 | Mini's intermediate size is 1152 |
 | `amd/ops/loop.py` | main `nvidia/ops/loop.py` | `tl.rsqrt` instead of the CUDA inline-assembly `rsqrt` of `nvidia/ops/norm.py` | the two controller kernels are plain Triton apart from that |
 | `amd/ops/attn_res.py` | PR | `APPLY_NORM` option: fp32 mixes when no norm weight is given | the loop blends messages into unnormalized mixes; this is the option of main's `nvidia/ops/attn_res.py`, which the PR left out |
 | `amd/attention.py` | PR | `get_kv_cache_spec` returning `SlidingWindowSpec` / `FullAttentionSpec` instead of `get_kv_cache_config` / `KVCacheLayerConfig` | vLLM 0.32 API |

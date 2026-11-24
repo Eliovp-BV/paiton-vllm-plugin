@@ -1,8 +1,9 @@
 """Check the bring-up experts against an expert-layer fixture (keys L<layer>_c<call>_{x,idx,w,yA,yB}).
 
-Usage: python3 expert_fixture_check.py <model dir> <fixture.npz>
+Usage: python3 expert_fixture_check.py <model dir> <fixture.npz> [noise]
 yA: bf16 expert inputs; yB: the trained input quantization. Weights are dequantized from the checkpoint and rounded
-to bf16, as the PyTorch reference that made the fixture does.
+to bf16, as the PyTorch reference that made the fixture does. `noise` (for example 0.005) multiplies each input by
+1 + noise * N(0, 1) first: how far the outputs move for input differences of that size.
 """
 import json
 import sys
@@ -15,6 +16,8 @@ from safetensors import safe_open
 from paiton_vllm_plugin.inkling2.amd.experts_bringup import Inkling2BringupExperts
 
 model_dir, fixture_path = sys.argv[1:3]
+noise = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
+torch.manual_seed(0)
 cfg = types.SimpleNamespace(**json.load(open(f"{model_dir}/config.json"))["text_config"])
 fixture = np.load(fixture_path)
 worst = 0.0
@@ -30,6 +33,8 @@ with safe_open(f"{model_dir}/model-00001-of-00001.safetensors", "pt", device="cu
             for call in sorted({k.split("_")[1] for k in fixture.files if k.startswith(f"L{layer}_")}):
                 x, idx, w, ref = (torch.from_numpy(fixture[f"L{layer}_{call}_{n}"]).to("cuda:0")
                                   for n in ("x", "idx", "w", key))
+                if noise:
+                    x = x.float() * (1 + noise * torch.randn_like(x.float()))
                 y = experts(x.to(torch.bfloat16), idx, w).float()
                 rel = ((y - ref).norm() / ref.norm()).item()
                 worst = max(worst, rel)
