@@ -8,8 +8,14 @@ default, and that prompt and the tool prompt once more as streams. Bring-up tool
 For parsed replies (reasoning apart from content, tool calls as `tool_calls`) pass these extra args:
     --reasoning-parser inkling2 --enable-auto-tool-choice --tool-call-parser inkling2
 Without them the tool prompt gets HTTP 400 (vLLM 0.32 refuses tools with tool_choice auto and no tool parser).
+
+INK2_VISION_FIXTURE=<fixtures/vision/vision_fixture.npz> adds that fixture's image prompt (the image as a PNG data
+URL): prompt token count and greedy ids against the fixture. The server must then run without an image limit of 0.
 """
+import base64
+import io
 import json
+import os
 import subprocess
 import sys
 import time
@@ -94,6 +100,29 @@ def main() -> None:
                 result["prompt_ids"], result["fixture_ids"] = tokens, want
             results.append(result)
             print(json.dumps({k: v for k, v in result.items() if k not in ("prompt_ids", "fixture_ids")})[:1500], flush=True)
+        if vision := os.environ.get("INK2_VISION_FIXTURE"):
+            from PIL import Image
+
+            fixture, png = np.load(vision), io.BytesIO()
+            Image.fromarray(fixture["img1_image_rgb_uint8"]).save(png, "PNG")
+            greedy, t0 = fixture["prompt_greedy"].tolist(), time.time()
+            reply = post("/v1/chat/completions", {
+                "model": "inkling2", "temperature": 0, "max_tokens": len(greedy), "skip_special_tokens": False,
+                "logprobs": True, "return_tokens_as_token_ids": True, "chat_template_kwargs": {"reasoning_effort": "low"},
+                "messages": [{"role": "user", "content": [
+                    {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(png.getvalue()).decode()}},
+                    # the fixture's question (quality/prompts_short.json, img_chart)
+                    {"type": "text", "text": "Which quarter has the highest value in this chart, and by how much does it beat the lowest one?"}]}]})
+            choice = reply["choices"][0]
+            ids = [int(entry["token"].split(":")[1]) for entry in choice["logprobs"]["content"]]
+            same = [a == b for a, b in zip(ids, greedy)]
+            result = {"name": "image_prompt", "prompt_tokens": reply["usage"]["prompt_tokens"],
+                      "fixture_prompt_tokens": len(fixture["prompt_input_ids"]), "generated": len(ids),
+                      "greedy_prefix_equal_fixture": same.index(False) if False in same else len(same),
+                      "fixture_generated": len(greedy), "finish_reason": choice["finish_reason"],
+                      "seconds": round(time.time() - t0, 1), **parsed(choice["message"]), "message": choice["message"]}
+            results.append(result)
+            print(json.dumps(result)[:2500], flush=True)
         # One chat prompt at three reasoning efforts: no fixture, only what comes back and how it is split.
         chat = next(p for p in prompts if "tools" not in p and "reasoning_effort" not in p)
         for effort in ("none", "low", None):

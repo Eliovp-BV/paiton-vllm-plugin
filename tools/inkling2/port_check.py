@@ -1,6 +1,6 @@
 """Check the Inkling 2 port against reference fixtures (bring-up tool, eager mode, greedy).
 
-Usage: python3 port_check.py <model dir> <fixture dir> <out dir> [teacher | gen] [key=value ...]
+Usage: python3 port_check.py <model dir> <fixture dir> <out dir> [teacher | gen | image] [key=value ...]
 For every `<fixture dir>/<name>.npz` (keys input_ids, greedy):
   (no mode)  feeds the fixture's token ids, generates as many greedy tokens as the fixture holds and writes
              `<out dir>/<name>.npz` in the fixture layout (input_ids, last_logits, argmax, greedy, hidden) from the
@@ -11,6 +11,10 @@ For every `<fixture dir>/<name>.npz` (keys input_ids, greedy):
              `<fixture dir>` may be several directories joined by commas.
   gen        generates all prompts in one call (no tap) and writes input_ids and greedy only: the decode path
              under the serving options below, to be checked afterwards with `teacher`.
+  image      `<fixture dir>` is the vision fixture file (`fixtures/vision/vision_fixture.npz`): its image prompt
+             runs with the image through the vision encoder (images are switched on for this mode only). Prints
+             the last prompt position's logits against the fixture's (top-1, KL) and the greedy reply. Needs the
+             tap directory; with PAITON_INK2_OPS=native also PAITON_INK2_VISION_SO.
 Options: seqs=N (max_num_seqs), batched=N (max_num_batched_tokens: prompts longer than N are prefilled in chunks),
 prefix=1 (prefix caching on; `gen` then generates everything a second time and prints whether the tokens repeat),
 maxlen=N (max_model_len), kvbytes=N (kv_cache_memory_bytes), tokens=N (`gen`: exactly N tokens per prompt, the end
@@ -29,15 +33,46 @@ def main() -> None:
     model_dir, fixture_dirs, out_dir = sys.argv[1:4]
     mode = next((a for a in sys.argv[4:] if "=" not in a), "")
     opt = {k: int(v) for k, v in (a.split("=") for a in sys.argv[4:] if "=" in a)}
-    assert mode in ("", "teacher", "gen") and not set(opt) - {"seqs", "batched", "prefix", "maxlen", "kvbytes", "tokens"}
+    assert mode in ("", "teacher", "gen", "image") and not set(opt) - {"seqs", "batched", "prefix", "maxlen", "kvbytes", "tokens"}
     tap_dir = os.environ.get("PAITON_INK2_TAP_DIR")
     assert (tap_dir is None) == (mode == "gen"), "the tap is for one sequence per forward: unset it for gen only"
     extra = {"max_num_batched_tokens": opt["batched"]} if "batched" in opt else {}
     if "kvbytes" in opt:
         extra["kv_cache_memory_bytes"] = opt["kvbytes"]
     llm = LLM(model=model_dir, quantization="inkling2", enforce_eager=True, max_model_len=opt.get("maxlen", 8192),
-              max_num_seqs=opt.get("seqs", 1), limit_mm_per_prompt={"image": 0},
+              max_num_seqs=opt.get("seqs", 1), limit_mm_per_prompt={"image": int(mode == "image")},
               enable_prefix_caching=bool(opt.get("prefix")), seed=0, **extra)
+    if mode == "image":
+        from PIL import Image
+
+        fixture = np.load(fixture_dirs)
+        ids, greedy = fixture["prompt_input_ids"].tolist(), fixture["prompt_greedy"]
+        first, pads = ids.index(200054), ids.count(200054)
+        # The processor expands the image marker (the token before the pad run) to the pads itself.
+        prompt = {"prompt_token_ids": ids[:first] + ids[first + pads :],
+                  "multi_modal_data": {"image": Image.fromarray(fixture["img1_image_rgb_uint8"])}}
+        params = SamplingParams(temperature=0.0, max_tokens=len(greedy), skip_special_tokens=False)
+        out = llm.generate([prompt], params)[0].outputs[0]
+        prefill = None
+        for tap in sorted(os.listdir(tap_dir)):
+            data = torch.load(f"{tap_dir}/{tap}")
+            if prefill is None and data["positions"].tolist() == list(range(len(ids))):
+                prefill = data
+            os.remove(f"{tap_dir}/{tap}")
+        assert prefill is not None, f"no tap of a {len(ids)}-token forward (image slots differ from the fixture?)"
+        port, ref = prefill["last_logits"].double(), torch.from_numpy(fixture["prompt_last_logits"]).double()
+        size = min(len(port), len(ref))
+        port, ref = port[:size], ref[:size]
+        kl = float((ref.log_softmax(-1).exp() * (ref.log_softmax(-1) - port.log_softmax(-1))).sum())
+        same = np.array(out.token_ids)[: len(greedy)] == greedy[: len(out.token_ids)]
+        print("image prompt tokens", len(ids), "image slots", pads, "last logits: top-1", int(port.argmax()), "fixture",
+              int(ref.argmax()), "top-5 shared", len(set(port.topk(5).indices.tolist()) & set(ref.topk(5).indices.tolist())),
+              f"KL(fixture || port) {kl:.3e} max |difference| {float((port - ref).abs().max()):.4f}", flush=True)
+        print("generated", len(out.token_ids), "finish", out.finish_reason, "greedy prefix equal to fixture",
+              len(same) if same.all() else int(same.argmin()), "of", len(greedy), repr(out.text), flush=True)
+        np.savez_compressed(f"{out_dir}/image_prompt.npz", greedy=np.array(out.token_ids), last_logits=port.numpy())
+        print("PORT CHECK DONE")
+        return
     paths = [p for d in fixture_dirs.split(",") for p in sorted(glob.glob(f"{d}/*.npz"))]
     if mode == "gen":
         fixtures = [np.load(p) for p in paths]

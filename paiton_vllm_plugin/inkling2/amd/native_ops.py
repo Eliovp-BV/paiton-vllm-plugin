@@ -67,7 +67,9 @@ def _library():
             fn = getattr(lib, "PaitonInkling2Ops" + name)
             fn.restype, fn.argtypes = C.c_int, args
         for name, args in (("Int8Rows", [p, p, p, i, i, p]), ("LmHeadInt8", [p, p, p, p, i, i, i, f, p]),
-                           ("LinearFp8", [p, p, p, p, i, i, i, i, p]), ("LinearInt8", [p, p, p, p, i, i, i, i, p])):
+                           ("LinearFp8", [p, p, p, p, i, i, i, i, p]), ("LinearInt8", [p, p, p, p, i, i, i, i, p]),
+                           ("LinearBf16", [p, p, p, i, i, i, i, p]), ("MixRmsNorm", [p, C.c_size_t, p, p, p, i, i, f, p]),
+                           ("AddRmsNorm", [p, p, p, p, i, f, p])):
             if hasattr(lib, "PaitonInkling2Ops" + name):   # in later builds of ABI 3 only
                 fn = getattr(lib, "PaitonInkling2Ops" + name)
                 fn.restype, fn.argtypes = C.c_int, args
@@ -129,6 +131,54 @@ def rms_norm(x: torch.Tensor, weight: torch.Tensor, eps: float,
     if x.shape[0]:
         _call("RmsNorm", x.device, _ptr(x, (BF16, F32), "rms_norm x"), x.dtype == F32,
               _ptr(weight, BF16, "rms_norm weight"), out.data_ptr(), x.shape[0], rows, eps)
+    return out
+
+
+def has(name: str) -> bool:
+    """Whether the loaded library has the entry point `name` (later builds
+    of ABI 3 added some, e.g. "MixRmsNorm", "AddRmsNorm", "LinearBf16")."""
+    return hasattr(_library(), "PaitonInkling2Ops" + name)
+
+
+def mix_rms_norm(features: torch.Tensor, alpha: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
+    """Draft model: the bf16 RMS norm of the `alpha`-weighted sum of the taps
+    of every row, bf16 `(T, 2304)`. `features` bf16 `(T, taps * 2304)` (the
+    rows may be strided), `alpha` fp32 `(taps,)`, `weight` bf16 `(2304,)`.
+    The mix is fp32 in tap order (product, then sum), rounded once."""
+    taps = alpha.shape[0]
+    if not (features.is_cuda and features.dtype == BF16 and features.dim() == 2 and features.stride(1) == 1
+            and features.shape[1] == taps * HIDDEN and 1 <= taps <= 8):
+        raise ValueError(f"mix_rms_norm: need bf16 (T, {taps} * {HIDDEN}) rows on the card, got {features.dtype} "
+                         f"{tuple(features.shape)} strides {features.stride()}")
+    out = torch.empty((features.shape[0], HIDDEN), dtype=BF16, device=features.device)
+    if features.shape[0]:
+        _call("MixRmsNorm", features.device, features.data_ptr(), features.stride(0) * 2,
+              _ptr(alpha, F32, "mix_rms_norm alpha"), _ptr(weight, BF16, "mix_rms_norm weight"), out.data_ptr(),
+              features.shape[0], taps, eps)
+    return out
+
+
+def add_rms_norm(x: torch.Tensor, residual: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
+    """Draft model: `residual += x` in place (fp32 sum, rounded to bf16) and
+    the bf16 RMS norm of the unrounded sum, `(T, 2304)`. `x`, `residual`
+    bf16 `(T, 2304)`, `weight` bf16 `(2304,)`."""
+    assert x.shape == residual.shape and x.dim() == 2 and x.shape[1] == HIDDEN == weight.shape[-1]
+    out = torch.empty_like(x)
+    if x.shape[0]:
+        _call("AddRmsNorm", x.device, _ptr(x, BF16, "add_rms_norm x"), _ptr(residual, BF16, "add_rms_norm residual"),
+              _ptr(weight, BF16, "add_rms_norm weight"), out.data_ptr(), x.shape[0], eps)
+    return out
+
+
+def linear_wide(x: torch.Tensor, weight: torch.Tensor, out_dtype: torch.dtype = BF16) -> torch.Tensor:
+    """`x @ weight.T` for bf16 `x` `(T, K)` and a wide bf16 `weight` `(N, K)`
+    in the LM head's kernel form (K a multiple of 128): the value of `linear`
+    up to the fp32 summation order, at about twice its weight bytes per second."""
+    assert out_dtype in (BF16, F32) and x.dim() == weight.dim() == 2 and x.shape[1] == weight.shape[1]
+    out = torch.empty((x.shape[0], weight.shape[0]), dtype=out_dtype, device=x.device)
+    if x.shape[0]:
+        _call("LinearBf16", x.device, _ptr(x, BF16, "linear_wide x"), _ptr(weight, BF16, "linear_wide weight"),
+              out.data_ptr(), x.shape[0], weight.shape[0], x.shape[1], out_dtype == F32)
     return out
 
 
