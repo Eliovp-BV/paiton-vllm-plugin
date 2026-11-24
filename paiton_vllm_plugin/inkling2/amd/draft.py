@@ -190,8 +190,8 @@ class Inkling2DSparkDecoder(nn.Module):
         assert slots.dtype == positions.dtype == torch.int64 and slots.is_contiguous() and positions.is_contiguous()
         batch = _Batch(block_table.data_ptr(), seq_lens.data_ptr(), query_start.data_ptr(), block_table.shape[1],
                        reqs, tokens, block)
-        splits = max(1, 8 // reqs)
-        need = lib.PaitonInkling2AttnWorkspaceBytes(tokens, splits, None)
+        splits = 0  # the library's default: a request's rows do not depend on the other requests of the call
+        need = lib.PaitonInkling2AttnWorkspaceBytes(tokens, 8, None)
         if self.workspace.numel() < need:
             self.workspace = torch.empty(need, dtype=torch.uint8, device=qkv.device)
         q, k, v = qkv[:tokens].split([layer.q_size, layer.kv_size, layer.kv_size], dim=1)
