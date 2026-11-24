@@ -54,8 +54,6 @@ def command(snapshot, host='0.0.0.0', extra=()):
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'inkling-2-mini'),
         '--host', host, '--port', '8042', '--enforce-eager',
         '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4', '--max-num-batched-tokens', '512',
-        # shortcut: text only, the native vision tower is not in the model path yet; remove this pair when it is.
-        '--limit-mm-per-prompt', '{"image": 0}',
         '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2', *extra]
 
 
@@ -86,7 +84,7 @@ def main():
         os.environ['PAITON_INK2_PROJ'] = 'int8'
     # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
-                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='2', PAITON_INK2_LMHEAD='int8').items():
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='3', PAITON_INK2_LMHEAD='int8').items():
         os.environ.setdefault(name, value)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
