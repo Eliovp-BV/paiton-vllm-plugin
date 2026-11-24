@@ -7,17 +7,18 @@ MXFP8 weights stay in the checkpoint layout on the card, and the library
 applies the trained input quantization itself. The library has no framework
 dependency; this module only hands it device pointers.
 
-shortcut: the router stays in PyTorch fp32 (`Inkling2BringupMoE.forward`),
-replace it with a native router kernel once a profile shows its cost.
+No Triton and no upstream operator module is imported here.
+
+shortcut: the router is PyTorch fp32 until the library's native router entry
+point exists (expert piece, `native/inkling2_moe`); then it is called here.
 """
 
 import ctypes as C
 import os
 
 import torch
+import torch.nn.functional as F
 from torch import nn
-
-from .experts_bringup import Inkling2BringupMoE
 
 
 class _Weights(C.Structure):  # PaitonInkling2MoeWeights, ABI version 1
@@ -122,14 +123,26 @@ class Inkling2NativeExperts(nn.Module):
 
 
 class Inkling2NativeMoE(nn.Module):
-    """Drop-in for `Inkling2MoE` (same checkpoint names under `.mlp`)."""
+    """Drop-in for the port's MoE module (same checkpoint names under `.mlp`)."""
 
     def __init__(self, config, expert_format: str) -> None:
         super().__init__()
-        from .moe import Inkling2Gate  # imports vLLM and Triton
-
-        assert config.n_shared_experts == 0
-        self.gate = Inkling2Gate(config)
+        assert config.n_shared_experts == 0 and config.use_gate_bias
+        self.topk, self.route_scale = config.num_experts_per_tok, config.route_scale
+        self.gate = nn.Module()
+        self.gate.weight = nn.Parameter(
+            torch.empty(config.n_routed_experts, config.hidden_size, dtype=torch.bfloat16),
+            requires_grad=False,
+        )
+        self.gate.bias = nn.Parameter(
+            torch.empty(config.n_routed_experts, dtype=torch.float32), requires_grad=False
+        )
         self.experts = Inkling2NativeExperts(config, expert_format)
 
-    forward = Inkling2BringupMoE.forward
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Top-k of sigmoid + bias; weights are the renormalized sigmoids times route_scale.
+        scores = torch.sigmoid(F.linear(x.float(), self.gate.weight.float()))
+        idx = torch.topk(scores + self.gate.bias, self.topk, dim=-1, sorted=False).indices
+        weights = scores.gather(1, idx)
+        weights = weights / (weights.sum(-1, keepdim=True) + 1e-20) * self.route_scale
+        return self.experts(x, idx, weights)
