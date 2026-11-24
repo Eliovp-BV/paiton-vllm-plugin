@@ -1592,6 +1592,10 @@ def docker_command(args, environment):
         # image default (off) applies otherwise.
         if variable in environment:
             command += ['-e', variable + '=' + environment[variable]]
+    if _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):   # the vLLM 0.32 images
+        # xgrammar imports tvm_ffi, which tries to build a torch DLPack addon at every start on a GPU: about 7 s, and the
+        # build always fails against this torch. Skipping it changes nothing (torch already has the stream attribute).
+        command += ['-e', 'TVM_FFI_DISABLE_TORCH_C_DLPACK=1']
     pinned_weights = 0
     if (getattr(args, 'system_memory_weights', False) or getattr(args, 'host_cache_gib', None)) and \
             image_predates_prefix_fix(args):
