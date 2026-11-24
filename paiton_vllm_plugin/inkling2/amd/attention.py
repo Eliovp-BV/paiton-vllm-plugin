@@ -21,7 +21,6 @@ from vllm.model_executor.layers.linear import (
     RowParallelLinear,
 )
 from vllm.model_executor.utils import set_weight_attrs
-from vllm.models.inkling.amd.sconv_swa_attn import InklingConvState
 from vllm.utils.torch_utils import canonicalize_singleton_dim_strides
 from vllm.v1.attention.backend import AttentionBackend
 from vllm.v1.attention.backends.flash_attn import (
@@ -37,13 +36,24 @@ from vllm.v1.kv_cache_interface import (
 
 from ..configs import Inkling2ModelConfig
 from . import ops_dump
-from .ops.attention import (
-    gated_rel_attention,
-    plan_decode_attention,
-    rel_decode_attention,
-)
-from .ops.sconv import attention_prologue, shift_rel_proj
-from .sconv import K_STREAM, V_STREAM, Inkling2ShortConv, conv_metadata
+from .sconv import NATIVE_OPS, K_STREAM, V_STREAM, Inkling2ShortConv, conv_metadata
+
+# PAITON_INK2_OPS=native: projections and short convolutions run on Paiton's
+# operator library and the attention on Paiton's attention library
+# (`native_ops`, `native_attention`); no Triton module is imported.
+if NATIVE_OPS:
+    from . import native_ops
+    from .conv_state import InklingConvState
+    from .native_attention import NativeAttention
+else:
+    from vllm.models.inkling.amd.sconv_swa_attn import InklingConvState
+
+    from .ops.attention import (
+        gated_rel_attention,
+        plan_decode_attention,
+        rel_decode_attention,
+    )
+    from .ops.sconv import attention_prologue, shift_rel_proj
 
 
 class Inkling2AttentionMetadataBuilder(FlashAttentionMetadataBuilder):
@@ -158,6 +168,9 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
         self.qk_clip = config.qk_l2_clip_threshold
         self.rel_clip = config.rel_l2_clip_threshold
         self.eps = config.rms_norm_eps
+        # Log scaling of q and r applies to the full layers only.
+        self.log_alpha = 0.0 if config.log_scaling_n_floor is None else config.log_scaling_alpha
+        self.log_floor = float(config.log_scaling_n_floor or 0)
         assert config.use_value_norm_no_gamma
 
         q_size = self.num_heads * self.head_dim
@@ -247,6 +260,15 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
 
     def process_weights_after_loading(self, act_dtype: object = None) -> None:
         # vLLM 0.32 passes the model dtype to attention layers' hooks.
+        if NATIVE_OPS:
+            self.native = NativeAttention(
+                self.is_local, self.sliding_window, self.log_alpha, self.log_floor
+            )
+            bf16 = lambda p: p.data.to(torch.bfloat16).contiguous()
+            rel_proj = bf16(self.rel_logits_proj)
+            self.native.prepare(rel_proj, bf16(self.q_scale), bf16(self.r_scale))
+            torch.cuda.synchronize(rel_proj.device)  # the table is written before rel_proj goes away
+            return
         self.rel_proj_shifted = shift_rel_proj(self.rel_logits_proj, self.is_local)
 
     def get_attn_backend(self) -> type[AttentionBackend]:
@@ -271,6 +293,8 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
         self, x_q: torch.Tensor, x_k: torch.Tensor, x_v: torch.Tensor
     ) -> list[torch.Tensor]:
         weight = self.qkvr.weight
+        if NATIVE_OPS:
+            return native_ops.qkvr_project(x_q, x_k, x_v, weight, self.split_sizes)
         if x_k is x_q and x_v is x_q:
             projected = nn.functional.linear(x_q, weight)
             return list(projected.split(self.split_sizes, dim=-1)[:6])
@@ -332,7 +356,9 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
             "o_linear",
             # 14 MB per layer: once, with the prefill forward's calls.
             {"x": output, "weight": weight if ops_dump.forward == ops_dump.FIRST else None},
-            lambda: nn.functional.linear(output, weight),
+            lambda: native_ops.linear(output, weight)
+            if NATIVE_OPS
+            else nn.functional.linear(output, weight),
         )
 
     @eager_break_during_capture
@@ -367,6 +393,24 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
         md = cast(FlashAttentionMetadata, attn_metadata[layer_name])
         conv_md = conv_metadata(conv_state)
         assert conv_md is not None
+        if NATIVE_OPS:
+            tokens = md.num_actual_tokens
+            convolved = []
+            for sconv, x, dynamic in ((self.k_sconv, k, k_dynamic), (self.v_sconv, v, v_dynamic)):
+                offset, width = conv_state.stream_ranges[sconv.stream]
+                paging = (conv_state.kv_cache, positions[:tokens], conv_md.block_table, conv_md.seq_idx,
+                          conv_md.slot_mapping, conv_md.query_start, offset, width)
+                if dynamic is None:
+                    convolved.append(native_ops.short_conv(x[:tokens], sconv.conv_weight, *paging))
+                else:
+                    convolved.append(native_ops.short_conv_dynamic(
+                        x[:tokens], sconv.conv_weight, dynamic[:tokens], *paging))
+            # Clip K, norm V and store both; then scale and clip q and r, relative
+            # logits, attention with sink, output gate (two library calls).
+            self.native.write(kv_cache, *convolved, md.slot_mapping, tokens)
+            self.native.forward(kv_cache, md.block_table, md.seq_lens, md.query_start_loc,
+                                md.max_query_len, tokens, q, r, gate, sinks, output)
+            return
         num_tokens = q.shape[0]
         q = q.view(num_tokens, self.num_heads, self.head_dim)
         key_cache, value_cache = self._split_kv_cache(kv_cache)
