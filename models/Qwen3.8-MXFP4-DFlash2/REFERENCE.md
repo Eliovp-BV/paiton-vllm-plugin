@@ -38,8 +38,8 @@ launcher that selects r6; `--dry-run` prints the full Docker command.
   library is new: the 19 bookkeeping kernels that vLLM's model runner calls on every step (input preparation, block
   tables, slot mapping, sampler bookkeeping) run as native HIP instead of Triton. They give the same results as the
   Triton kernels: 0 mismatches in 14,361 launches compared side by side.
-- r6 serves the 3-bit weights only. The MXFP4 path was not checked again on the new base, so the launcher refuses
-  `run-mxfp4.sh`, and `run-rocm10.sh` without `PAITON_W3ROT_DIR`, and names the r5 tag. MXFP4 runs on image r5 with
+- r6 serves the 3-bit weights only; its release checks ran with them. The launcher refuses `run-mxfp4.sh`,
+  `--weights mxfp4` and `run-rocm10.sh` without `PAITON_W3ROT_DIR`, and names the r5 tag. MXFP4 runs on image r5 with
   the launcher of that tag ([how](README.md#mxfp4-on-r5)). This launcher also refuses r5 and the earlier images; they
   run the same way ([run an earlier release](HISTORY.md#run-an-earlier-release)).
 - A prefix-cache hit reuses more of the cached prompt in more modes. vLLM drops the last block from every prefix-cache
@@ -53,6 +53,12 @@ launcher that selects r6; `--dry-run` prints the full Docker command.
 - vLLM 0.32 refuses a request with HTTP 400 when its `cache_salt` contains `/`, `@`, `\` or NUL or is longer than 128
   characters; r5 accepted those. At start the server log warns "no KV cache group could be identified as the draft
   model's". That warning is expected and harmless.
+- The server log also has the line `[paiton] install_attn_config_hook failed: AttributeError(...)`. That hook sets
+  attention tile sizes for the AITER version of r5; the AITER of the new base does not have the function it replaces,
+  so the server runs AITER's own settings. Every r6 number on this page was measured that way.
+- [N-gram co-drafting](#faster-agentic-coding-decode-n-gram-co-drafting-opt-in) (`PAITON_NGRAM_CODRAFT=1`) is not
+  available on r6 yet: the mode only starts on the vLLM files it was reviewed against, and those are vLLM 0.29's. The
+  launcher prints a note and does not pass the variable on. The mode runs on r5 with the launcher of the r5 tag.
 
 Measured against r5 with each server on one R9700 at 300 W and a fresh server for every run, mirrored over two cards:
 on the first card r5 ran first, on the second card r6 ran first. A cell with two numbers gives the first card,
@@ -102,7 +108,10 @@ Limits: one card type (R9700) and one conversation at a time in the agent replay
 candidates with r6's runtime files on an earlier build of the same AMD base image (the same ROCm, vLLM and PyTorch
 versions; r6's base is built from the released ROCm 10.2 packages). The first candidate gave the decode, prompt,
 replay, vision and default start rows, the second, which adds r6's launcher and cache tier change, the cache tier and
-512K rows. The MXFP4 path was not measured on r6.
+512K rows. r6 itself, the second candidate's runtime files on the final base, then ran against that candidate on one
+card in the order candidate, r6, r6, candidate: 32 greedy prompts, 16 agent prompts and 16 vision prompts gave the same
+tokens, and decode per draft step, prompt reading and the 200K agent replay stayed within 0.3 % of the candidate in
+both directions.
 
 <a id="release-notes-23-november-2026"></a>
 
@@ -890,8 +899,10 @@ loss against MXFP4 either (facts kept 89.0 vs 89.4%, answers from the summary
 
 ## Faster agentic coding decode: n-gram co-drafting (opt-in)
 
-The switch below works from the 19 November image (r4) on. In the images of 5 October (r1), 7 November (r2) and
-18 November (r3) it has no effect: the server logs `armed: false` for the mode and decodes as with the mode off.
+The switch below works on the 19 November image (r4) and on r5. In the images of 5 October (r1), 7 November (r2) and
+18 November (r3) it has no effect: the server logs `armed: false` for the mode and decodes as with the mode off. Image
+r6 (vLLM 0.32) does not have it yet: the launcher prints a note and does not pass the variable on. To use it, run r5
+with the launcher of tag `qwen38-rocm10-vllm029-20261123-r5` ([how](README.md#mxfp4-on-r5)).
 
 The 24 September image introduced an optional second drafter in front of DFlash2.
 When the last few generated tokens already occurred earlier in the prompt or the

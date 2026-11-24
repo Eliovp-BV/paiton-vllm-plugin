@@ -139,8 +139,10 @@ downloads most of it again even if you have r5. Earlier releases run with the la
 
 <a id="mxfp4-on-r5"></a>
 
-The MXFP4 weights run on image r5. The MXFP4 path was not checked again on r6's new base, so this launcher refuses
-`run-mxfp4.sh` (and `run-rocm10.sh` without `PAITON_W3ROT_DIR`) with a message. After the
+The MXFP4 weights run on image r5: r6 serves the 3-bit weights only, so this launcher refuses `run-mxfp4.sh` (and
+`run-rocm10.sh` without `PAITON_W3ROT_DIR`) with a message. The same r5 tag also runs the opt-in
+[n-gram co-drafting](REFERENCE.md#faster-agentic-coding-decode-n-gram-co-drafting-opt-in), which r6 does not have yet.
+After the
 [download](#download-the-weights), check out the r5 tag and start the MXFP4 row there; `git checkout main` returns to
 r6:
 
