@@ -50,8 +50,7 @@ def ask(name, path, body, rows, i):
         print(name, "skipped: HTTP", error.code, flush=True)
         return
     choice = reply["choices"][0]
-    tokens = [e["token"] for e in choice["logprobs"]["content"]] if "message" in choice else choice["logprobs"]["tokens"]
-    rows[i] = {"prompt_tokens": reply["usage"]["prompt_tokens"], "tokens": [int(t.split(":")[1]) for t in tokens],
+    rows[i] = {"prompt_tokens": reply["usage"]["prompt_tokens"], "tokens": choice["token_ids"],
                "finish_reason": choice["finish_reason"], "seconds": round(time.time() - t0, 2)}
 
 
@@ -74,8 +73,8 @@ def run(model_dir, out_json, prompt_files, extra):
             if prompt["name"].startswith("img_"):
                 continue
             body = {"model": "inkling2", "messages": prompt["messages"], "temperature": 0,
-                    "max_tokens": prompt.get("max_new_tokens", 64), "skip_special_tokens": False, "logprobs": True,
-                    "return_tokens_as_token_ids": True}
+                    "max_tokens": prompt.get("max_new_tokens", 64), "skip_special_tokens": False,
+                    "return_token_ids": True}  # not logprobs: they cost about 2 ms per step
             if "tools" in prompt:
                 body["tools"] = prompt["tools"]
             if "reasoning_effort" in prompt:
@@ -88,7 +87,7 @@ def run(model_dir, out_json, prompt_files, extra):
         if long_ids:
             requests.append(("long", "/v1/completions", {
                 "model": "inkling2", "prompt": long_ids, "temperature": 0, "max_tokens": 64,
-                "skip_special_tokens": False, "logprobs": 1, "return_tokens_as_token_ids": True}))
+                "skip_special_tokens": False, "return_token_ids": True}))
         drafts = accepted = wall = wall_tokens = 0.0
         first = counters()
         for start in range(0, len(requests), USERS):  # USERS requests at once
