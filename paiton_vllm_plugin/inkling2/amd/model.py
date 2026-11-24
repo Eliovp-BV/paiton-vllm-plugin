@@ -672,12 +672,13 @@ class Inkling2ForConditionalGeneration(
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor | None:
         if LMHEAD != "bf16":
             if self._lm_head_rows is None:
-                self._lm_head_rows = native_ops.head_rows(
-                    self.lm_head.weight[: self.text_config.vocab_size], LMHEAD
-                )
+                # every padded row of the matrix: the draft model reads the same rows for its base logits
+                self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
+            vocab = self.text_config.vocab_size
             return native_ops.lm_head_rows(
                 hidden_states,
-                *self._lm_head_rows,
+                self._lm_head_rows[0][:vocab],
+                self._lm_head_rows[1][:vocab],
                 self.text_config.final_logit_softcapping,
                 LMHEAD,
             )
