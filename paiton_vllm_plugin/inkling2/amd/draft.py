@@ -303,8 +303,8 @@ class Inkling2DSparkModel(nn.Module):
             head.data_ptr(), model.hidden_out.data_ptr(), model.hidden_out_bias.data_ptr(),
             self.fold_weight.data_ptr(), self.fold_bias.data_ptr(), head.shape[0], _stream(device)),
             "PaitonInkling2DsparkFold")
-        # shortcut: an own int8 copy of all padded rows (463 MB); share the target's rows once it keeps the padded ones
-        self.head_rows = native_ops.head_rows(head, "int8") if DRAFT_LOGITS == "int8" else None
+        self.head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
+        self.__dict__["target"] = target_model  # not a submodule: only its int8 head rows are read
 
     def get_draft_kv_cache_layer_names(self) -> list[str]:
         return [layer.cache.prefix for layer in self.model.layers]
@@ -347,10 +347,24 @@ class Inkling2DSparkModel(nn.Module):
                 inputs_embeds: torch.Tensor | None = None) -> torch.Tensor:
         return self.model(input_ids, positions)
 
+    def _int8_rows(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """int8 rows of every padded row of the unembedding: the target's when its LM head is int8, else a copy."""
+        if self.head_rows is None:
+            from . import model as target_module
+
+            target, head = self.__dict__["target"], self.lm_head.weight
+            if target_module.LMHEAD == "int8" and hasattr(target, "_lm_head_rows"):
+                if target._lm_head_rows is None:  # the target makes them at its first logits call: the same call
+                    target._lm_head_rows = native_ops.head_rows(head, "int8")
+                self.head_rows = target._lm_head_rows
+            if self.head_rows is None or self.head_rows[0].shape[0] != head.shape[0]:
+                self.head_rows = native_ops.head_rows(head, "int8")  # an own copy, 463 MB
+        return self.head_rows
+
     def compute_logits(self, hidden_states: torch.Tensor) -> torch.Tensor:
         """bf16 base logits over all rows of the unembedding (a bf16 product, as the reference)."""
-        if self.head_rows is not None:
-            return native_ops.linear_rows(hidden_states, *self.head_rows, "int8")
+        if DRAFT_LOGITS == "int8":
+            return native_ops.linear_rows(hidden_states, *self._int8_rows(), "int8")
         if DRAFT_LOGITS == "wide":
             return native_ops.linear_wide(hidden_states, self.lm_head.weight)
         return native_ops.linear(hidden_states, self.lm_head.weight)
