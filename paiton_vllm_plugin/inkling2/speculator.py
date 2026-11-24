@@ -19,12 +19,25 @@ from vllm.v1.worker.gpu.spec_decode.dspark.speculator import DSparkSpeculator
 from vllm.v1.worker.gpu.spec_decode.dspark.utils import load_dspark_model
 
 
-# PAITON_INK2_DRAFT_CUT=<p> (experiment, needs --no-async-scheduling): verify only the drafts whose chance that the
-# target accepts them all (the product of the draft probabilities up to there) is at least p, and at least one.
-# The scheduler must know the count before it sizes the verify step, so the count is read back from the card
-# after every draft step.
+# PAITON_INK2_DRAFT_CUT=<p> (needs --no-async-scheduling and a DSpark library of ABI 2): verify only the drafts
+# whose chance that the target accepts them all (the product of the draft probabilities up to there) is at least p,
+# and at least one. The scheduler must know the count before it sizes the verify step, so the probabilities are
+# read back from the card after every draft step; the product is taken on the host.
 CUT = float(os.environ.get("PAITON_INK2_DRAFT_CUT", "0"))
 _kept: list[int] | None = None  # drafts to verify per request of the last draft step, in batch order
+
+
+def _kept_of(probabilities: list[float], cut: float) -> int:
+    product, kept = 1.0, 0
+    for p in probabilities:
+        product *= p
+        if product < cut:
+            break
+        kept += 1
+    return max(kept, 1)
+
+
+assert [_kept_of(row, 0.3) for row in ([0.9, 0.8, 0.1, 0.9], [0.05, 0.9], [0.9] * 7, [0.6, 0.6, 0.6])] == [2, 1, 7, 2]
 
 
 def _cut_draft_lists() -> None:
@@ -112,7 +125,7 @@ class Inkling2DSparkSpeculator(DSparkSpeculator):
         # PAITON_INK2_DRAFT_CONF=<file.json>: per verified block, the draft probabilities of its 7 tokens and how
         # many the target accepted (an experiment: it reads back from the card every step).
         self._conf_path = os.environ.get("PAITON_INK2_DRAFT_CONF")
-        self._conf = torch.zeros(self.max_num_reqs, self.num_speculative_steps, dtype=torch.float32, device=device)
+        self._conf: dict[int, list[float]] = {}  # request slot -> probabilities of its last drafts
         self._conf_log: list = []
         self._slots: torch.Tensor | None = None
         if CUT:
@@ -158,21 +171,25 @@ class Inkling2DSparkSpeculator(DSparkSpeculator):
     def _sample_sequential(self, num_reqs: int, head_hidden: torch.Tensor) -> None:
         hidden = head_hidden[self.sample_indices[: num_reqs * self.num_speculative_steps]]
         anchors = self.input_buffers.input_ids[self._anchor_idx[:num_reqs]]
-        confidence = torch.empty_like(self._conf[:num_reqs]) if self._conf_path or CUT else None
-        tokens = self.model.markov_tokens(hidden, self.f_rnn[:num_reqs], anchors, confidence)
+        if not (self._conf_path or CUT):
+            self.draft_tokens[:num_reqs] = self.model.markov_tokens(hidden, self.f_rnn[:num_reqs], anchors).T
+            return
+        tokens, probabilities = self.model.markov_tokens(hidden, self.f_rnn[:num_reqs], anchors, True)
         self.draft_tokens[:num_reqs] = tokens.T
-        if confidence is not None:
-            self._conf[self._slots.long()] = confidence  # per request slot, for observe_verification
+        rows = probabilities.T.tolist()  # per request, on the host
         if CUT:
             global _kept
-            _kept = (confidence.cumprod(dim=1) >= CUT).sum(dim=1).clamp_min(1).tolist()
+            _kept = [_kept_of(row, CUT) for row in rows]
+        if self._conf_path:
+            self._conf.update(zip(self._slots.tolist(), rows))
 
     def observe_verification(self, idx_mapping: torch.Tensor, num_sampled: torch.Tensor,
                              num_rejected: torch.Tensor) -> None:
         super().observe_verification(idx_mapping, num_sampled, num_rejected)
         if self._conf_path:
             n = idx_mapping.shape[0]
+            none = [0.0] * self.num_speculative_steps
             self._conf_log.append([num_sampled[:n].tolist(), num_rejected[:n].tolist(),
-                                   self._conf[idx_mapping.long()].tolist()])
+                                   [self._conf.get(slot, none) for slot in idx_mapping.tolist()]])
             if len(self._conf_log) % 50 == 0:
                 json.dump(self._conf_log, open(self._conf_path, "w"))
