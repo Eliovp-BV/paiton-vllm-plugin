@@ -60,7 +60,8 @@ from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 
 # PAITON_INK2_OPS=native: every small operator runs on Paiton's native operator
 # library (`native_ops.py`), and no module under `amd/ops/` (Triton) is imported
-# from here. The experts must be native too, vision is not ported.
+# from here. The experts must be native too; images need the native vision
+# library (`native_vision.py`, PAITON_INK2_VISION_SO).
 NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
 if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
     raise ValueError("PAITON_INK2_OPS must be unset or native")
@@ -442,10 +443,8 @@ class Inkling2ForConditionalGeneration(
             and vllm_config.model_config.multimodal_config.get_limit_per_prompt("image")
         )
         if wants_images and NATIVE_OPS:
-            raise NotImplementedError(
-                "vision is not ported to the native operators yet: serve with "
-                '--limit-mm-per-prompt \'{"image": 0}\''
-            )
+            # The native vision library (PAITON_INK2_VISION_SO), same interface.
+            from .native_vision import Inkling2NativeVision as Inkling2VisionEncoder
         self.visual = (
             Inkling2VisionEncoder(config.vision_config, text_config.hidden_size)
             if wants_images
