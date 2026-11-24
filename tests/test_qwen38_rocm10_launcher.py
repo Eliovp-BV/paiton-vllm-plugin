@@ -629,11 +629,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.command()
         self.assertFalse(any(item.startswith('PAITON_NGRAM_CODRAFT') for item in command))
         self.environment.update(PAITON_NGRAM_CODRAFT='1', PAITON_NGRAM_CODRAFT_HOT_MATCH='32')
-        command = self.command()
-        image_index = command.index(launcher.IMAGES['65k'])
+        r5 = launcher.PREVIOUS_IMAGES['20261123-r5']
+        command = self.command('--image', r5)
+        image_index = command.index(r5)
         self.assertIn('PAITON_NGRAM_CODRAFT=1', command[:image_index])
         self.assertIn('PAITON_NGRAM_CODRAFT_HOT_MATCH=32', command[:image_index])
         self.assertEqual(command[command.index('PAITON_NGRAM_CODRAFT=1') - 1], '-e')
+        # the vLLM 0.32 images (r6, the default) carry no ported adapter: not passed on, and the launcher says so
+        self.assertFalse(any(item.startswith('PAITON_NGRAM_CODRAFT') for item in self.command()))
+        result = self.run_launcher('--dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('n-gram co-drafting (PAITON_NGRAM_CODRAFT) is not available', result.stderr)
 
     def test_w3a4_65k_defaults_to_thinking_off(self):
         self.assertNotIn('--default-chat-template-kwargs', self.engine(self.command()))

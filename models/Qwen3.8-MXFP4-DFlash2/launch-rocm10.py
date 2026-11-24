@@ -1606,12 +1606,13 @@ def docker_command(args, environment):
     if getattr(args, 'compile_cache', False):
         # the image's compat layer keys the compile-cache folders on every PAITON_ setting and the installed runtime
         command += ['-e', 'PAITON_COMPILE_CACHE=1']
+    vllm032 = _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES)   # the vLLM 0.32 images
     for variable in ('PAITON_NGRAM_CODRAFT', 'PAITON_NGRAM_CODRAFT_HOT_MATCH'):
-        # Opt-in n-gram co-drafting. Forwarded only when set on the host, so the
-        # image default (off) applies otherwise.
-        if variable in environment:
+        # Opt-in n-gram co-drafting. Forwarded only when set on the host, so the image default (off) applies otherwise.
+        # Not on the vLLM 0.32 images: their adapter still pins the 0.29 sources and would not arm (main() says so).
+        if variable in environment and not vllm032:
             command += ['-e', variable + '=' + environment[variable]]
-    if _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):   # the vLLM 0.32 images
+    if vllm032:
         # xgrammar imports tvm_ffi, which tries to build a torch DLPack addon at every start on a GPU: about 7 s, and the
         # build always fails against this torch. Skipping it changes nothing (torch already has the stream attribute).
         command += ['-e', 'TVM_FFI_DISABLE_TORCH_C_DLPACK=1']
@@ -1790,6 +1791,9 @@ def main(argv=None):
                           KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
+    if 'PAITON_NGRAM_CODRAFT' in os.environ and _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+        print(f'Note: n-gram co-drafting (PAITON_NGRAM_CODRAFT) is not available on this vLLM 0.32 image and is not '
+              f'passed on; it runs on r5 with the launcher at tag {OLDER_IMAGES_LAUNCHER_TAG}.', file=sys.stderr)
     pools, gtt, pinned = host_pools(args)
     # a note only when GTT buffers are chosen or the GTT size is known to be too small for them (unknown size or an
     # explicit --host-pools userptr: ROCm's default, silently)
