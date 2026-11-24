@@ -55,6 +55,7 @@ from ..processing import (
 from ..quant_config import Inkling2QuantConfig
 from .attention import Inkling2Attention
 from .experts_bringup import Inkling2BringupMoE
+from .experts_native import Inkling2NativeMoE
 from .moe import Inkling2MoE
 from .ops.attention import compute_log_scaling_tau
 from . import ops_dump
@@ -173,10 +174,13 @@ class Inkling2DecoderLayer(nn.Module):
         self.mlp_norm = Inkling2RMSNorm(config.hidden_size, eps)
         mxfp8 = quant_config is not None and quant_config.is_mxfp8_layer(layer_id)
         mode = os.environ.get("PAITON_INK2_EXPERTS", "")
-        if mode not in ("", "ref-a", "ref-b"):
-            raise ValueError("PAITON_INK2_EXPERTS must be unset, ref-a or ref-b")
+        if mode not in ("", "ref-a", "ref-b", "native"):
+            raise ValueError("PAITON_INK2_EXPERTS must be unset, ref-a, ref-b or native")
         self.mlp: nn.Module
-        if mxfp8 and not mode:
+        if mode == "native":
+            # Paiton's native expert library (gfx1201), weights as stored.
+            self.mlp = Inkling2NativeMoE(config, "mxfp8" if mxfp8 else "nvfp4")
+        elif mxfp8 and not mode:
             self.mlp = Inkling2MoE(config)
         else:
             # NVFP4 experts have no ROCm kernel yet: PyTorch bring-up path on
@@ -384,7 +388,10 @@ class Inkling2ForConditionalGeneration(
         assert vllm_config.parallel_config.pipeline_parallel_size == 1
         from vllm.platforms.rocm import on_gfx950
 
-        if not on_gfx950():
+        # With the native experts no gfx950-only operator is left on the expert
+        # path; the Triton operators of the other layers are not validated on
+        # other architectures yet (bring-up on gfx1201).
+        if not on_gfx950() and os.environ.get("PAITON_INK2_EXPERTS") != "native":
             raise ValueError(
                 "Inkling2 on ROCm requires gfx950 (CDNA4, MI350 series): its "
                 "kernels are written and validated for that architecture only"
