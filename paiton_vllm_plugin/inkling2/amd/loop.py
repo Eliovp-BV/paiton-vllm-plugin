@@ -32,6 +32,7 @@ from .model import (
     Inkling2Model,
     Inkling2RMSNorm,
 )
+from . import ops_dump
 from .ops.attn_res import attn_res
 from .ops.loop import blend_rms_norm, pair_rms_norm
 
@@ -105,9 +106,15 @@ class Inkling2LoopDecoderLayer(Inkling2DecoderLayer):
         pair = pair_rms_norm(dest, message)
         down = self.controller_down[streams]
         up = self.controller_gain_forget[streams]
-        hidden = torch.bmm(pair, down.transpose(1, 2))
-        # bf16 operands, fp32 accumulation and result.
-        gain_forget = torch.bmm(hidden.float(), up.transpose(1, 2).float())
+
+        def gemms() -> torch.Tensor:
+            hidden = torch.bmm(pair, down.transpose(1, 2))
+            # bf16 operands, fp32 accumulation and result.
+            return torch.bmm(hidden.float(), up.transpose(1, 2).float())
+
+        gain_forget = ops_dump.record(
+            "controller_gemms", {"pair": pair, "down": down, "up": up}, gemms
+        )
         return blend_rms_norm(dest, message, gain_forget, norm_weight, norm_eps)
 
 
@@ -304,6 +311,7 @@ class Inkling2LoopModel(Inkling2Model):
         num_blocks = 0
         inputs = bank = prelude_blocks = prelude_partial = prelude_dests = None
         for visit, (i, pass_idx) in enumerate(visits):
+            ops_dump.where = f"{i}.{pass_idx}"
             looped = pass_idx > 0
             if i == core.start and not looped:
                 prelude_blocks = num_blocks
@@ -352,6 +360,7 @@ class Inkling2LoopModel(Inkling2Model):
             if self.tap is not None:
                 self.tap.append(stack[num_blocks].float().cpu())
         assert inputs is not None
+        ops_dump.where = "post"
         out = inputs[0]
         if self.aux_hidden_state_layers:
             return out, [*aux_hidden_states, out]
@@ -361,3 +370,7 @@ class Inkling2LoopModel(Inkling2Model):
 class Inkling2LoopForConditionalGeneration(Inkling2ForConditionalGeneration):
     """The `inkling2_loop` checkpoints' architecture name; the model is
     `Inkling2ForConditionalGeneration` with an `Inkling2LoopModel`."""
+
+
+if ops_dump.DIR is not None:  # per-operator fixtures, bring-up only
+    ops_dump.install()

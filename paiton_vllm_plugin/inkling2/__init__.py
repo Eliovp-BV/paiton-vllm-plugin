@@ -8,7 +8,9 @@ Inkling 2 code brought to 0.32: the shared files of vLLM main (`configs.py`,
 (`amd/loop.py`). `UPSTREAM.md` lists every upstream file and what changed.
 
 Switched on by PAITON_INKLING2=1 (see `paiton_vllm_plugin.register_paiton_models`);
-serve with `--quantization inkling2`.
+serve with `--quantization inkling2`, and for parsed replies with
+`--reasoning-parser inkling2 --enable-auto-tool-choice --tool-call-parser inkling2`
+(`parser.py`). Prompts come from the checkpoint's chat template.
 """
 
 from .configs import Inkling2LoopMMConfig, Inkling2MMConfig
@@ -53,3 +55,14 @@ def register() -> None:
     ):
         if arch not in ModelRegistry.get_supported_archs():
             ModelRegistry.register_model(arch, f"{__name__}.amd.{module}:{arch}")
+
+    # `--reasoning-parser inkling2` and `--tool-call-parser inkling2`
+    from vllm.reasoning import ReasoningParserManager
+    from vllm.tool_parsers import ToolParserManager
+
+    ReasoningParserManager.register_lazy_module(
+        "inkling2", f"{__name__}.parser", "Inkling2ParserReasoningAdapter"
+    )
+    ToolParserManager.register_lazy_module(
+        "inkling2", f"{__name__}.parser", "Inkling2EngineToolParser"
+    )
