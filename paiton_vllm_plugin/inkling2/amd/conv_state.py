@@ -100,6 +100,14 @@ class NativeSconvBackend(AttentionBackend):
     def get_builder_cls() -> type[NativeSconvMetadataBuilder]:
         return NativeSconvMetadataBuilder
 
+    @classmethod
+    def supported_kv_cache_layouts(cls):
+        # The native short convolution addresses a block as [head][slot][1024];
+        # vLLM's default preference puts the slots before the heads.
+        from vllm.v1.kv_cache_layout import KVCacheLayout
+
+        return (KVCacheLayout.LBHNC,)
+
 
 class InklingConvState(nn.Module, AttentionLayerBase):
     """Per-decoder-layer owner of one sliding-window conv-state cache (the
