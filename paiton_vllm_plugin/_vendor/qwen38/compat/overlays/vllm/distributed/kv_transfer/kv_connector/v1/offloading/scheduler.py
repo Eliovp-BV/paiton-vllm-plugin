@@ -1694,6 +1694,12 @@ class OffloadingConnectorScheduler:
                 reachable_boundaries = (req.num_prompt_tokens - 1,)
                 if req.shared_prefix_boundary:
                     reachable_boundaries += (req.shared_prefix_boundary,)
+                # PAITON: with the EAGLE tail-block drop a re-ask of this prompt hits the tail checkpoint, one Mamba
+                # block before the replay boundary (scheduler overlay). The GPU prefix cache keeps the drafter's window
+                # before it (single_type_kv_cache_manager overlay); without it here the host tier stored only the window
+                # before the replay boundary, so re-asks fell back to the last retention multiple (96,000 of 120,001).
+                if getattr(req, "paiton_eagle_ckpt", 0):
+                    reachable_boundaries += (req.paiton_eagle_ckpt,)
 
             for group_config, group_state in zip(
                 self.config.kv_group_configs, req_status.group_states
