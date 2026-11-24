@@ -589,13 +589,15 @@ class Inkling2ForConditionalGeneration(
         if tap:
             # Bring-up check (PAITON_INK2_TAP_DIR, eager runs): per-visit
             # states and logits of every forward, in the reference's layout.
-            logits = self.compute_logits(out[0] if isinstance(out, tuple) else out)
+            final = out[0] if isinstance(out, tuple) else out
+            logits = self.compute_logits(final)
             assert logits is not None
             path = f"{TAP_DIR}/fwd{next(_TAP_COUNT):05d}-{os.getpid()}.pt"
             torch.save(
                 {
                     "positions": positions.cpu(),
                     "hidden": torch.stack(tap),
+                    "final": final.float().cpu(),
                     "last_logits": logits[-1].float().cpu(),
                     "argmax": logits.argmax(-1).cpu(),
                 },
