@@ -2,7 +2,7 @@
 """Inkling 2 Mini small operators on Paiton's native operator library (gfx1201).
 
 Binding of `inkling2_ops_gfx1201.so` (path in `PAITON_INK2_OPS_SO`, ABI
-version 2): RMS norms, embedding with its norm, loop controller norms, AttnRes
+version 2 or 3; 3 adds the LM head kernel, its 8-bit rows and the int64 lookup): RMS norms, embedding with its norm, loop controller norms, AttnRes
 mix, short convolution over the paged conv state (static and dynamic taps),
 the conv metadata, and one bf16 linear layer for the attention projections,
 the controller products and the LM head. `PAITON_INK2_OPS=native` (read in
@@ -14,7 +14,8 @@ library device pointers on torch's current stream and return torch tensors.
 The library takes contiguous buffers only, has no workspace and does not
 synchronize. No Triton, no upstream operator module and no PyTorch operator
 is used here (tensors are allocated with `torch.empty`; an index tensor of
-another integer type is cast once).
+another integer type than the library reads is cast once, which the model's
+tensors need only with an ABI 2 library, for `input_ids`).
 """
 
 import ctypes as C
@@ -32,19 +33,27 @@ class _ConvState(C.Structure):  # PaitonInkling2OpsConvState
 
 
 _lib = None
+_abi = 0
 
 
 def _library():
-    global _lib
+    global _lib, _abi
     if _lib is None:
         path = os.environ.get("PAITON_INK2_OPS_SO")
         if not path:
             raise ValueError("PAITON_INK2_OPS=native needs PAITON_INK2_OPS_SO")
         lib = C.CDLL(path)
-        if lib.PaitonInkling2OpsAbiVersion() != 2:
-            raise RuntimeError(f"{path}: operator ABI {lib.PaitonInkling2OpsAbiVersion()}, need 2")
+        abi = lib.PaitonInkling2OpsAbiVersion()
+        if abi not in (2, 3):
+            raise RuntimeError(f"{path}: operator ABI {abi}, need 2 or 3")
         p, i, f = C.c_void_p, C.c_int, C.c_float
-        for name, args in (
+        newer = (
+            ("EmbedNormI64", [p, i, p, p, p, i, f, p]),
+            ("Fp8Rows", [p, p, p, i, i, p]),
+            ("LmHeadFp8", [p, p, p, p, i, i, i, f, p]),
+            ("LmHead", [p, p, p, i, i, i, f, p]),
+        )
+        for name, args in (*(newer if abi >= 3 else ()),
             ("RmsNorm", [p, i, p, p, i, i, f, p]),
             ("EmbedNorm", [p, i, p, p, p, i, f, p]),
             ("PairRmsNorm", [p, i, p, p, i, i, p]),
@@ -57,8 +66,18 @@ def _library():
         ):
             fn = getattr(lib, "PaitonInkling2Ops" + name)
             fn.restype, fn.argtypes = C.c_int, args
-        _lib = lib
+        for name, args in (("Int8Rows", [p, p, p, i, i, p]), ("LmHeadInt8", [p, p, p, p, i, i, i, f, p])):
+            if hasattr(lib, "PaitonInkling2Ops" + name):   # in ABI 3 libraries built after the int8 rows were added
+                fn = getattr(lib, "PaitonInkling2Ops" + name)
+                fn.restype, fn.argtypes = C.c_int, args
+        _lib, _abi = lib, abi
     return _lib
+
+
+def head_formats() -> tuple[str, ...]:
+    """The 8-bit LM head row formats the loaded library has."""
+    lib = _library()
+    return (*(("fp8",) if _abi >= 3 else ()), *(("int8",) if hasattr(lib, "PaitonInkling2OpsInt8Rows") else ()))
 
 
 def _call(name: str, device: torch.device, *args) -> None:
@@ -110,10 +129,15 @@ def rms_norm(x: torch.Tensor, weight: torch.Tensor, eps: float,
 def embed_norm(input_ids: torch.Tensor, table: torch.Tensor, weight: torch.Tensor, eps: float) -> torch.Tensor:
     """The normed embedding, bf16 `(T, 2304)`: rows `input_ids` of `table`
     (bf16 `(vocab, 2304)`) through the embed norm (`weight` bf16, 2304 values)."""
-    ids = _as(input_ids.reshape(-1), torch.int32)
+    _library()
+    ids = input_ids.reshape(-1)
+    wide = _abi >= 3 and ids.dtype == torch.int64 and ids.is_contiguous()   # vLLM's ids as they are
+    if not wide:
+        ids = _as(ids, torch.int32)
     out = torch.empty((ids.shape[0], HIDDEN), dtype=BF16, device=table.device)
     if ids.shape[0]:
-        _call("EmbedNorm", table.device, _ptr(table, BF16, "embedding table"), table.shape[0], ids.data_ptr(),
+        _call("EmbedNormI64" if wide else "EmbedNorm", table.device, _ptr(table, BF16, "embedding table"),
+              table.shape[0], ids.data_ptr(),
               _ptr(weight, BF16, "embed norm weight"), out.data_ptr(), ids.shape[0], eps)
     return out
 
@@ -290,5 +314,42 @@ def controller_products(pair: torch.Tensor, down: torch.Tensor, up: torch.Tensor
 
 def lm_head(hidden: torch.Tensor, weight: torch.Tensor, vocab_size: int, soft_cap: float | None) -> torch.Tensor:
     """fp32 logits `(T, vocab_size)` from the first `vocab_size` rows of the
-    unembed matrix, with the final soft cap."""
-    return linear(hidden, weight, F32, soft_cap or 0.0, rows=slice(0, vocab_size))
+    unembed matrix, with the final soft cap. An ABI 3 library runs the LM
+    head kernel (128-k chunks, about twice the weight bytes per second of
+    `linear`); the result differs from `linear` by fp32 summation order only."""
+    _library()
+    if _abi < 3:
+        return linear(hidden, weight, F32, soft_cap or 0.0, rows=slice(0, vocab_size))
+    out = torch.empty((hidden.shape[0], vocab_size), dtype=F32, device=hidden.device)
+    if hidden.shape[0]:
+        _call("LmHead", hidden.device, _ptr(hidden, BF16, "lm head hidden"), _ptr(weight, BF16, "lm head weight"),
+              out.data_ptr(), hidden.shape[0], vocab_size, hidden.shape[1], soft_cap or 0.0)
+    return out
+
+
+_HEAD = {"fp8": ("Fp8Rows", "LmHeadFp8"), "int8": ("Int8Rows", "LmHeadInt8")}
+
+
+def head_rows(weight: torch.Tensor, fmt: str) -> tuple[torch.Tensor, torch.Tensor]:
+    """LM head rows in 8 bits, once at load: codes `(N, K)` (bytes: e4m3 for
+    `fmt` "fp8", int8 for "int8") and one fp32 scale per row `(N,)` of the
+    bf16 rows `weight` (ABI 3)."""
+    if fmt not in head_formats():
+        raise ValueError(f"the operator library has no {fmt} LM head rows (has {head_formats()})")
+    n, k = weight.shape
+    codes = torch.empty((n, k), dtype=torch.uint8, device=weight.device)
+    scale = torch.empty(n, dtype=F32, device=weight.device)
+    _call(_HEAD[fmt][0], weight.device, _ptr(weight, BF16, "LM head weight"), codes.data_ptr(), scale.data_ptr(), n, k)
+    return codes, scale
+
+
+def lm_head_rows(hidden: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, soft_cap: float | None,
+                 fmt: str) -> torch.Tensor:
+    """fp32 logits `(T, N)` from the 8-bit rows of `head_rows`, with the final
+    soft cap. `hidden` stays bf16 (only the weights are quantized)."""
+    out = torch.empty((hidden.shape[0], codes.shape[0]), dtype=F32, device=hidden.device)
+    if hidden.shape[0]:
+        _call(_HEAD[fmt][1], hidden.device, _ptr(hidden, BF16, "lm head hidden"),
+              _ptr(codes, torch.uint8, "lm head codes"), _ptr(scale, F32, "lm head scale"), out.data_ptr(),
+              hidden.shape[0], codes.shape[0], codes.shape[1], soft_cap or 0.0)
+    return out
