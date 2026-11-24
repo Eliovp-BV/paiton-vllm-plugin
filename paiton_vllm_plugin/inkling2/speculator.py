@@ -77,6 +77,8 @@ class Inkling2DSparkSpeculator(DSparkSpeculator):
                 setattr(model, name, _timed(label, getattr(model, name), rows_of, rows))
             self.prepare_context_anchor = _timed("draft step: Markov features", self.prepare_context_anchor,
                                                  lambda *a, **k: 0, rows)
+            target_model.compute_logits = _timed("verify logits", target_model.compute_logits,
+                                                 lambda *a, **k: a[0].shape[0], rows)
         return model
 
     def prepare_context_anchor(self, input_batch: InputBatch, num_rejected: torch.Tensor) -> None:
