@@ -13,7 +13,8 @@ For every `<fixture dir>/<name>.npz` (keys input_ids, greedy):
              under the serving options below, to be checked afterwards with `teacher`.
 Options: seqs=N (max_num_seqs), batched=N (max_num_batched_tokens: prompts longer than N are prefilled in chunks),
 prefix=1 (prefix caching on; `gen` then generates everything a second time and prints whether the tokens repeat),
-maxlen=N (max_model_len), kvbytes=N (kv_cache_memory_bytes).
+maxlen=N (max_model_len), kvbytes=N (kv_cache_memory_bytes), tokens=N (`gen`: exactly N tokens per prompt, the end
+token ignored, whatever the fixture's `greedy` holds).
 """
 import glob
 import os
@@ -28,7 +29,7 @@ def main() -> None:
     model_dir, fixture_dirs, out_dir = sys.argv[1:4]
     mode = next((a for a in sys.argv[4:] if "=" not in a), "")
     opt = {k: int(v) for k, v in (a.split("=") for a in sys.argv[4:] if "=" in a)}
-    assert mode in ("", "teacher", "gen") and not set(opt) - {"seqs", "batched", "prefix", "maxlen", "kvbytes"}
+    assert mode in ("", "teacher", "gen") and not set(opt) - {"seqs", "batched", "prefix", "maxlen", "kvbytes", "tokens"}
     tap_dir = os.environ.get("PAITON_INK2_TAP_DIR")
     assert (tap_dir is None) == (mode == "gen"), "the tap is for one sequence per forward: unset it for gen only"
     extra = {"max_num_batched_tokens": opt["batched"]} if "batched" in opt else {}
@@ -41,8 +42,8 @@ def main() -> None:
     if mode == "gen":
         fixtures = [np.load(p) for p in paths]
         prompts = [{"prompt_token_ids": f["input_ids"].tolist()} for f in fixtures]
-        params = [SamplingParams(temperature=0.0, max_tokens=len(f["greedy"]), skip_special_tokens=False)
-                  for f in fixtures]
+        params = [SamplingParams(temperature=0.0, max_tokens=opt.get("tokens", len(f["greedy"])),
+                                 ignore_eos="tokens" in opt, skip_special_tokens=False) for f in fixtures]
         first = [o.outputs[0].token_ids for o in llm.generate(prompts, params)]
         for path, fixture, tokens in zip(paths, fixtures, first):
             np.savez(f"{out_dir}/{os.path.basename(path)}", input_ids=fixture["input_ids"], greedy=np.array(tokens))
