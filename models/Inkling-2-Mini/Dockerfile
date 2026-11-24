@@ -8,6 +8,7 @@ COPY LICENSES /opt/paiton/inkling2-release-source/LICENSES
 COPY paiton_vllm_plugin /opt/paiton/inkling2-release-source/paiton_vllm_plugin
 RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
+# The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
 # The base image keeps amdsmi on its PYTHONPATH and its own LD_LIBRARY_PATH: prepend, never replace.
 # GPU_MAX_HW_QUEUES=1: a fourth working hardware queue slows decode on RDNA4.
@@ -18,7 +19,8 @@ ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     PAITON_INK2_ATTN_SO=/opt/paiton/inkling2/lib/inkling2_attn_gfx1201.so \
     PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so \
     PAITON_INK2_STEP_SO=/opt/paiton/inkling2/lib/inkling2_step_gfx1201.so \
-    PAITON_INK2_VISION_SO=/opt/paiton/inkling2/lib/inkling2_vision_gfx1201.so
+    PAITON_INK2_VISION_SO=/opt/paiton/inkling2/lib/inkling2_vision_gfx1201.so \
+    PAITON_INK2_DSPARK_SO=/opt/paiton/inkling2/lib/inkling2_dspark_gfx1201.so
 ARG PLUGIN_REVISION=local
 LABEL org.opencontainers.image.revision="${PLUGIN_REVISION}" \
       org.opencontainers.image.title="Paiton Inkling 2 Mini R9700" \

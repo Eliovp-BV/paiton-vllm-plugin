@@ -48,13 +48,19 @@ def prepare(offline=False, verify=False):
     return snapshot
 
 
-def command(snapshot, host='0.0.0.0', extra=()):
+# The model's own drafter (DSpark, mtp.safetensors): 7 draft tokens while one request runs, 4 from two on.
+DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
+           'num_speculative_tokens_per_batch_size': [[1, 1, 7], [2, 4, 4]]}
+
+
+def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
     # Later arguments win in vLLM's parser, so `extra` (what the user adds after the image name) overrides these.
     return [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'inkling-2-mini'),
         '--host', host, '--port', '8042', '--enforce-eager',
         '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4', '--max-num-batched-tokens', '512',
-        '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2', *extra]
+        '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2',
+        *(['--speculative-config', json.dumps(DRAFTER)] if drafter else []), *extra]
 
 
 # auto: vLLM sizes the context to the cache memory the card has left (322,736 tokens on a 32 GB R9700).
@@ -73,6 +79,8 @@ def main():
     parser.add_argument('--int8-attention', action='store_true',
                         help='opt-in: attention projection weights as 8-bit rows instead of bf16; about 9 %% faster '
                              'decode, a small measurable change of the output distribution (KL +0.003)')
+    parser.add_argument('--no-drafter', action='store_true',
+                        help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
     args, extra = parser.parse_known_args()
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
@@ -84,11 +92,11 @@ def main():
         os.environ['PAITON_INK2_PROJ'] = 'int8'
     # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
-                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='3', PAITON_INK2_LMHEAD='int8').items():
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='3', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8').items():
         os.environ.setdefault(name, value)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
-    argv = command(snapshot, args.host, extra)
+    argv = command(snapshot, args.host, extra, not args.no_drafter)
     print(json.dumps({'command': argv}), flush=True)
     os.execv(sys.executable, argv)
 

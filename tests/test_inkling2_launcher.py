@@ -24,6 +24,12 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertEqual(argv[argv.index('--host') + 1], '127.0.0.1')
         self.assertIn('--enforce-eager', argv)
 
+    def test_drafter_is_on_unless_switched_off(self):
+        argv = server.command('/checkpoint')
+        config = json.loads(argv[argv.index('--speculative-config') + 1])
+        self.assertEqual((config['method'], config['num_speculative_tokens']), ('dspark', 7))
+        self.assertNotIn('--speculative-config', server.command('/checkpoint', drafter=False))
+
     def test_launcher_and_image_agree(self):
         script, docker = (FOLDER / 'serve-docker.sh').read_text(), (FOLDER / 'Dockerfile').read_text()
         port = server.command('/checkpoint')[server.command('/checkpoint').index('--port') + 1]
