@@ -57,7 +57,7 @@ def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
     # Later arguments win in vLLM's parser, so `extra` (what the user adds after the image name) overrides these.
     return [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'inkling-2-mini'),
-        '--host', host, '--port', '8042', '--enforce-eager',
+        '--host', host, '--port', '8042', '--quantization', 'inkling2', '--enforce-eager',
         '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4', '--max-num-batched-tokens', '512',
         '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2',
         *(['--speculative-config', json.dumps(DRAFTER)] if drafter else []), *extra]
