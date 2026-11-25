@@ -3,8 +3,8 @@
 Inkling 2 Mini is Thinking Machines' model for chat, coding, tool calls and image input. This guide serves it with
 vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's own drafter switched on.
 
-One request generates at **110 tok/s** with greedy decoding and at **96 tok/s** at the model's default temperature
-of 1.0; four requests at once reach 184 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
+One request generates at **111 tok/s** with greedy decoding and at **96 tok/s** at the model's default temperature
+of 1.0; four requests at once reach 186 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
 [benchmarks](BENCHMARKS.md)). vLLM has no path for this model on this card, so
 the comparison in the benchmarks is with Paiton's own first complete build, which ran at 26 tok/s for one request and 72 for four.
 
@@ -58,7 +58,7 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
-| `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 110 (greedy) or 96 (temperature 1.0). Frees 0.7 GiB. |
+| `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 111 (greedy) or 96 (temperature 1.0). Frees 0.7 GiB. |
 | `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens). Same task score, 34 of 35. Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one request at `P` = 0.3 in our test, no gain at four. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
