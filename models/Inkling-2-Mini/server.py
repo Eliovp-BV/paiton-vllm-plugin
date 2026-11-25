@@ -57,7 +57,9 @@ DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
            'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
 # --drafter dflash2: a DFlash2 draft checkpoint of its own (checkpoint.lock.json "drafters": a third-party repository,
 # fetched at its pinned revision into the same cache as the checkpoint; NOTICE.md). It always drafts a block of 7;
-# the table says how many of them the server checks. Served through the same vLLM method as the model's own drafter.
+# the table says how many of them the server checks (mirrored on image c10: checking 7 / 6 instead of 5 / 4 is equal
+# at temperature 0 and 5 % slower at the model's default 1.0). Served through the same vLLM method as the model's own
+# drafter.
 DFLASH2 = {'method': 'dspark', 'num_speculative_tokens': 7,
            'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
 DEFAULT_DRAFTER = 'dspark'
