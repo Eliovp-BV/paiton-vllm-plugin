@@ -83,8 +83,8 @@ port faults, not for quantization loss.
   | Default, `--no-drafter` | 68.4 / 68.3 | 134.1 / 134.0 |
   | `--int8-attention`, `--no-drafter` | 78.2 / 78.3 | 151.5 / 151.3 |
 
-  The context gets smaller with it: 186,496 tokens with the drafter (206,624 without the option) and 254,432
-  without the drafter (277,728). Prompt speed stays within 1.3 % at 4,285 to 143,840 tokens, and the drafter reply is
+  The context gets smaller with it: 235,600 tokens with the drafter (254,224 without the option) and 309,120
+  without the drafter (330,736). Prompt speed stays within 1.3 % at 4,285 to 143,840 tokens, and the drafter reply is
   the same text as the plain reply at those lengths. It is not run through the task set and not measured at
   temperature 1.0.
 

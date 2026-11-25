@@ -20,7 +20,8 @@ cd paiton-vllm-plugin
 The first start downloads the pinned weights (20.2 GB). The OpenAI-compatible API is on port 8042, model name
 `inkling-2-mini`.
 
-[Run](#run) · [Options](#options) · [Reasoning effort](#reasoning-effort) · [Images](#images) ·
+[Run](#run) · [Options](#options) · [Prompt cache in RAM or on an SSD](#prompt-cache-in-ram-or-on-an-ssd-opt-in) ·
+[Reasoning effort](#reasoning-effort) · [Images](#images) ·
 [16 GB cards](#16-gb-cards-rx-9070-xt-rx-9070-rx-9060-xt) · [What it does not do yet](#what-it-does-not-do-yet) ·
 [Weights](#model-weights-and-existing-downloads)
 
@@ -46,7 +47,7 @@ another port.
 What the default start gives you:
 
 - Up to four requests at once.
-- A context of 206,624 tokens per request. vLLM sizes it at start from the memory left on the card (8.3 GiB for
+- A context of 254,224 tokens per request. vLLM sizes it at start from the memory left on the card (9.9 GiB for
   the cache after the model, the drafter and the vision tower). The longest prompt we ran has 199,028 tokens.
 - Tool calls (`tool_choice: "auto"`) and reasoning in a separate `reasoning` field of the reply.
 - Prefix caching (vLLM's default): the start of a prompt that the server has seen before is not computed again.
@@ -60,13 +61,54 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
-| `--no-drafter` | Serves without the drafter: 68 tok/s for one request, greedy and at temperature 1.0, instead of 111 (greedy) or 96 (temperature 1.0) with it. The context grows to 277,728 tokens. |
-| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 186,496 tokens with the drafter, 254,432 without. Prompt speed stays within 1.3 %. Not measured at temperature 1.0 and not run through the task set. Off by default. |
+| `--no-drafter` | Serves without the drafter: 68 tok/s for one request, greedy and at temperature 1.0, instead of 111 (greedy) or 96 (temperature 1.0) with it. The context grows to 330,736 tokens. |
+| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 235,600 tokens with the drafter, 309,120 without. Prompt speed stays within 1.3 %. Not measured at temperature 1.0 and not run through the task set. Off by default. |
+| `--host-cache-gib GIB`, `--extend-cache [auto\|ram\|disk]` | Keep prompts the card's cache drops in system memory or on an SSD; see [Prompt cache in RAM or on an SSD](#prompt-cache-in-ram-or-on-an-ssd-opt-in). Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. Needs vLLM's synchronous scheduling, which the launcher then sets. Not measured on this build. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
 | `--host`, `--api-key` | Bind address and API key inside the container. |
 
 Anything else is passed on to `vllm serve`.
+
+## Prompt cache in RAM or on an SSD (opt-in)
+
+The card keeps the prompts it has read in its prefix cache, as far as the cache holds them (254,224 tokens with the
+drafter). Two options keep the prompts the card drops, so a long prompt sent again is loaded instead of read again:
+
+```bash
+./models/Inkling-2-Mini/serve-docker.sh --host-cache-gib 24      # 24 GiB of pinned system memory
+./models/Inkling-2-Mini/serve-docker.sh --extend-cache disk      # files on the SSD, kept across restarts
+```
+
+- `--host-cache-gib GIB` keeps them in GIB of pinned system memory. The launcher refuses a size the host cannot pin
+  at start.
+- `--extend-cache ram` pins all the memory the host can spare at start. `--extend-cache disk` writes them as files
+  under the cache folder (`~/.cache/paiton-inkling-2-mini/kv-disk`), behind a 12 GiB system-memory stage.
+  `--extend-cache` alone picks `ram` when the host can pin 15 GiB or more, otherwise `disk`.
+- The disk tier uses at most 64 GiB or a quarter of the free space, whichever is smaller. The launcher checks this at
+  each start and removes whole folders until the tier fits, other configurations' folders first. The files are
+  derived from your prompts, are not encrypted and stay until you delete the folder.
+- `serve-docker.sh` gives the container a private 13 GB `/dev/shm` for the disk stage. A `docker run` of your own
+  needs `--ipc=private --shm-size=13g`.
+
+First token on one R9700 (greedy, one request at a time; source code as the prompt):
+
+| Prompt | Cold read | Hit on the card | Hit from RAM | From the SSD after a restart |
+| --- | ---: | ---: | ---: | ---: |
+| 32K tokens | 8.9 s | 0.16 s | 0.21 s | 0.56 s |
+| 146K tokens | 51.2 s | 0.57 s | 0.81 s | 2.3 s |
+| Image + 32K tokens | 9.2 s | 0.17 s | 0.23 s | not measured |
+
+- A hit from RAM or from the SSD gives the same text as a hit on the card when both reuse the same tokens. That held
+  for every RAM hit (also after 318K tokens of other prompts pushed the first ones off the card) and for the 146K SSD
+  restore.
+- The SSD tier reuses a prompt in 256-token pieces, so it can recompute up to 255 more tokens than a hit on the card.
+  Its text can then differ from the card's hit for the reason in [What it does not do yet](#what-it-does-not-do-yet).
+- Decode speed with a tier on stayed within 0.5 % of the speed without one.
+- The SSD tier stores about 39 KB per prompt token (5.6 GB for the 146K prompt). Restores ran at about 2.6 GB/s from
+  an NVMe SSD; a slower drive gives slower restores.
+- Pinning system memory takes about 0.65 s per GiB at start, and while it runs the GPU driver briefly stops the GPU
+  queues of every process on the host, including a server on a second card.
 
 ## Reasoning effort
 
@@ -98,7 +140,9 @@ string, from which the model reads a label and a value. The vision tower loads w
   the R9700. One library call runs a whole forward pass. vLLM's step bookkeeping (input preparation, block tables,
   slot mapping, drafter bookkeeping) runs in native HIP too. Only vLLM's sampling kernels still use Triton; the image
   carries them compiled, so the first request after a start does not wait for them.
-- Memory on the card: vLLM reports 19.54 GiB for the model with the drafter and the vision tower; the rest is cache.
+- Memory on the card: vLLM reports 18.24 GiB for the model with the drafter and the vision tower; the rest is cache.
+  The input embedding table (0.86 GiB) stays in pinned system memory, which gives about 24K more context than on the
+  card and the same tokens.
 
 ## 16 GB cards: RX 9070 XT, RX 9070, RX 9060 XT
 
@@ -123,7 +167,10 @@ fit on the card stay in host memory and are copied to the card when a token need
 - More than four requests at once is not tested.
 - Equal tokens alone and next to other requests are checked on 11 requests only. A longer or different mix of
   requests is not checked.
-- There is no host-memory cache tier: cached prompts live on the card only.
+- A greedy answer from a cache hit can differ from a cold read of the same long prompt. At 146K tokens, and with an
+  image plus 32K tokens, the texts differ from character 240 and 149; at 32K they agree. The hit and the cold read
+  split the prompt into prefill chunks at different places, which changes the rounding. The card's own prefix cache
+  does this without any tier, and both texts are valid outputs of the model.
 - The drafter is the one the publisher ships. At four requests it adds less than at one (see the benchmarks).
 - Time to first token on a long prompt is the model's full prefill: 48 s for 143,840 tokens and 73 s for 199,028.
 - One card only. Two cards do not make one request faster.
