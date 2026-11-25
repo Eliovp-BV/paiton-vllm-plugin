@@ -53,7 +53,7 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from . import ops_dump
+from . import host_embed, ops_dump
 from .attention import Inkling2Attention
 from .experts_native import Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
@@ -493,6 +493,7 @@ class Inkling2ForConditionalGeneration(
             self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
             if not self._drafter:
                 self.release_bf16_head()
+        host_embed.offload(self.model.embed_tokens)  # opt-in (PAITON_INK2_HOST_EMBED=1); the drafter shares the module
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
