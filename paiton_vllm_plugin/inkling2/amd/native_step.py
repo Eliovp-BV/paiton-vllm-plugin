@@ -161,10 +161,9 @@ class NativeStep:
             conv = layer.conv_states[pass_id.value]
             fmt = layer.attn.native.format   # None, or a packed format of the full visits (PAITON_INK2_KV)
             cache = NativeAttention._cache(kv, fmt)   # checks the tensor's shape and strides
-            assert tuple(conv.kv_cache.shape[1:]) == (8, 4, 1024), tuple(conv.kv_cache.shape)
-            self.visits[v] = _Visit(cache.k, cache.stride_block, cache.stride_head, cache.stride_slot,
-                                    ptr(conv.kv_cache, BF16, "conv-state cache"), 0, 0,
-                                    {None: 0, 512: 2, 2048: 4}[fmt and fmt[1]], 0, cache.v - cache.k, 0)
+            conv_ptr, conv_values = native_ops.conv_block(conv.kv_cache)   # checks the tensor; padded blocks or not
+            self.visits[v] = _Visit(cache.k, cache.stride_block, cache.stride_head, cache.stride_slot, conv_ptr, 0, 0,
+                                    {None: 0, 512: 2, 2048: 4}[fmt and fmt[1]], 0, cache.v - cache.k, conv_values * 2)
             if fmt is not None:
                 self.packed[name] = (kv, fmt[0])
             self.pairs.append((name, conv.prefix))

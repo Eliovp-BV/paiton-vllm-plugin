@@ -29,7 +29,7 @@ HIDDEN = 2304  # the library's row width
 
 class _ConvState(C.Structure):  # PaitonInkling2OpsConvState
     _fields_ = [(n, C.c_void_p) for n in ("cache", "positions", "seq_idx", "slot_mapping", "query_start",
-                                           "block_table")] + [("max_blocks", C.c_int)]
+                                           "block_table")] + [("max_blocks", C.c_int), ("block_values", C.c_int)]
 
 
 _lib = None
@@ -251,16 +251,35 @@ def attn_res(stack: torch.Tensor, last: torch.Tensor, addend: torch.Tensor | Non
     return out
 
 
+def conv_padded() -> bool:
+    """The operator library takes a conv-state cache whose blocks vLLM padded (`block_values`)."""
+    return hasattr(_library(), "PaitonInkling2OpsConvPadded")
+
+
+def conv_block(cache: torch.Tensor) -> tuple[int, int]:
+    """Device pointer of vLLM's conv-state cache tensor (bf16 `(blocks, 8, 4, 1024)`) and the bf16 values from one
+    block to the next: 32,768, or more when vLLM pads the conv page (67,584 bytes next to the 4-bit cache; the state
+    is the first 32,768 values of a block)."""
+    if not (cache.is_cuda and cache.dtype == BF16 and tuple(cache.shape[1:]) == (8, 4, 1024)
+            and tuple(cache.stride()[1:]) == (4096, 1024, 1)):
+        raise ValueError(f"conv-state cache: need bf16 (blocks, 8, 4, 1024) on the card, got {cache.dtype} "
+                         f"{tuple(cache.shape)} strides {cache.stride()}")
+    values = cache.stride(0) if cache.shape[0] > 1 else 32768
+    if values != 32768 and not conv_padded():
+        raise RuntimeError(f"conv-state blocks of {values} values need an operator library with "
+                           "PaitonInkling2OpsConvPadded")
+    return cache.data_ptr(), values
+
+
 def _conv_state(cache: torch.Tensor, positions: torch.Tensor, block_table: torch.Tensor, seq_idx: torch.Tensor,
                 slot_mapping: torch.Tensor, query_start: torch.Tensor) -> tuple[_ConvState, tuple]:
     """The library's view of vLLM's conv-state cache tensor (bf16
     `(blocks, 8, 4, 1024)`) and of the conv metadata of the forward. The
     second value keeps cast index tensors alive until the launch is queued."""
-    assert tuple(cache.shape[1:]) == (8, 4, 1024), tuple(cache.shape)
+    pointer, values = conv_block(cache)
     keep = (_as(positions, torch.int64), _as(seq_idx, torch.int32), _as(slot_mapping, torch.int64),
             _as(query_start, torch.int32), _as(block_table, torch.int32))
-    return _ConvState(_ptr(cache, BF16, "conv-state cache"), *(t.data_ptr() for t in keep),
-                      block_table.shape[1]), keep
+    return _ConvState(pointer, *(t.data_ptr() for t in keep), block_table.shape[1], values), keep
 
 
 def short_conv(x: torch.Tensor, weight: torch.Tensor, cache: torch.Tensor, positions: torch.Tensor,
