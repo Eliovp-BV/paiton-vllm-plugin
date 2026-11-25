@@ -17,6 +17,8 @@ import os
 import torch
 from torch import nn
 
+from . import expert_pool
+
 
 class _Weights(C.Structure):  # PaitonInkling2MoeWeights, ABI version 1
     _fields_ = [
@@ -46,6 +48,13 @@ def _library():
         _abi = lib.PaitonInkling2MoeGetAbiVersion()
         if _abi not in (1, 2):
             raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 or 2")
+        if _abi == 2:
+            lib.PaitonInkling2MoeRoute.restype = C.c_int
+            lib.PaitonInkling2MoeRoute.argtypes = [C.c_void_p] * 4 + [C.c_float] + [C.c_void_p] * 2 + [C.c_int, C.c_void_p]
+            lib.PaitonInkling2MoeFetch.restype = C.c_int
+            lib.PaitonInkling2MoeFetch.argtypes = (
+                [C.c_void_p, C.c_int] + [C.c_void_p] * 3 + [C.c_int, C.c_int, C.c_void_p, C.c_void_p]
+            )
         _lib = lib
         _lib.PaitonInkling2MoeWorkspaceBytes.restype = C.c_size_t
         _lib.PaitonInkling2MoeWorkspaceBytes.argtypes = [C.c_int, C.c_int]
@@ -62,10 +71,16 @@ def _library():
 
 
 class Inkling2NativeExperts(nn.Module):
-    def __init__(self, config, expert_format: str) -> None:
+    def __init__(self, config, expert_format: str, layer_id: int | None = None) -> None:
         super().__init__()
         assert expert_format in ("nvfp4", "mxfp8")
         self.nvfp4 = expert_format == "nvfp4"
+        # PAITON_INK2_EXPERT_POOL_GIB (16 GB cards): the four weight parts load into pinned host memory
+        # (`expert_pool.py`), a pool of them is on the card.
+        self.layer_id, self.pooled = layer_id, expert_pool.ENABLED
+        if self.pooled and layer_id is None:
+            raise ValueError("the expert pool needs the layer id of every expert module")
+        shapes = {}
         # The library's dimensions are fixed to Inkling 2 Mini.
         num, hidden, inter = config.n_routed_experts, config.hidden_size, config.intermediate_size
         assert (num, hidden, inter, config.num_experts_per_tok) == (128, 2304, 1152, 8)
@@ -74,25 +89,34 @@ class Inkling2NativeExperts(nn.Module):
         self._w: _Weights | None = None
         for name, (n, k) in (("w13", (2 * inter, hidden)), ("w2", (hidden, inter))):
             if self.nvfp4:
-                self._raw(f"{name}_weight", (num, n, k // 2), torch.uint8)
-                self._raw(f"{name}_weight_scale", (num, n, k // 16), torch.float8_e4m3fn)
+                shapes[f"{name}_weight"] = ((num, n, k // 2), torch.uint8)
+                shapes[f"{name}_weight_scale"] = ((num, n, k // 16), torch.float8_e4m3fn)
                 self._raw(f"{name}_weight_amax", (num,), torch.float32)
                 self._raw(f"{name}_weight_outer_scale_denominator", (1,), torch.float32)
             else:
-                self._raw(f"{name}_weight", (num, n, k), torch.float8_e4m3fn)
-                self._raw(f"{name}_weight_scale", (num, n, k // 32), torch.uint8)
+                shapes[f"{name}_weight"] = ((num, n, k), torch.float8_e4m3fn)
+                shapes[f"{name}_weight_scale"] = ((num, n, k // 32), torch.uint8)
+        host = expert_pool.host_params(layer_id, self.nvfp4, shapes) if self.pooled else {}
+        for name, (shape, dtype) in shapes.items():
+            self._raw(name, shape, dtype, host.get(name))
 
-    def _raw(self, name: str, shape: tuple[int, ...], dtype: torch.dtype) -> None:
+    def _raw(self, name: str, shape: tuple[int, ...], dtype: torch.dtype, data: torch.Tensor | None = None) -> None:
         self.register_parameter(
-            name, nn.Parameter(torch.empty(shape, dtype=dtype), requires_grad=False)
+            name, nn.Parameter(torch.empty(shape, dtype=dtype) if data is None else data, requires_grad=False)
         )
 
     def _weights(self) -> _Weights:
         # Built at the first call: the tensors are on the card by then.
         _library()
         w = (_WeightsTable if _abi == 2 else _Weights)(format=0 if self.nvfp4 else 1)
+        if self.pooled:  # the table replaces the four base addresses (not read then)
+            if _abi != 2:
+                raise RuntimeError(f"the expert pool needs an expert library of ABI 2, this one has {_abi}")
+            w.table = expert_pool.POOL.table(self.layer_id)
         for name in ("w13", "w2"):
             for field, suffix in ((name, "_weight"), (f"{name}_scale", "_weight_scale")):
+                if self.pooled:
+                    break
                 tensor = getattr(self, name + suffix)
                 assert tensor.is_cuda and tensor.is_contiguous()
                 setattr(w, field, tensor.data_ptr())
@@ -133,7 +157,22 @@ class Inkling2NativeExperts(nn.Module):
         x, workspace = x.contiguous(), self._workspace(x)
         tail = (out.data_ptr(), workspace.data_ptr(), workspace.numel(), tokens, self.flags,
                 torch.cuda.current_stream(x.device).cuda_stream)
-        if gate is not None:
+        stream = tail[-1]
+        if self.pooled:  # Route, Fetch (copies the misses, writes the table), Layer: the sequencer's order with a pool
+            pool = expert_pool.POOL
+            if gate is not None:
+                assert gate.weight.dtype == torch.bfloat16 and gate.bias.dtype == torch.float32
+                idx = torch.empty((tokens, 8), dtype=torch.int32, device=x.device)
+                weights = torch.empty((tokens, 8), dtype=torch.float32, device=x.device)
+                rc = lib.PaitonInkling2MoeRoute(x.data_ptr(), gate.weight.data_ptr(), gate.bias.data_ptr(), None,
+                                                route_scale, idx.data_ptr(), weights.data_ptr(), tokens, stream)
+            else:
+                idx, weights, rc = idx.int().contiguous(), weights.float().contiguous(), 0
+            rc = rc or lib.PaitonInkling2MoeFetch(pool.state, self.layer_id, pool.table(self.layer_id), pool.ring,
+                                                  idx.data_ptr(), tokens, int(tokens <= 8), pool.miss_logs, stream)
+            rc = rc or lib.PaitonInkling2MoeLayer(
+                C.byref(self._w), x.data_ptr(), idx.data_ptr(), weights.data_ptr(), *tail)
+        elif gate is not None:
             assert gate.weight.dtype == torch.bfloat16 and gate.bias.dtype == torch.float32
             idx = torch.empty((tokens, 8), dtype=torch.int32, device=x.device)
             weights = torch.empty((tokens, 8), dtype=torch.float32, device=x.device)
@@ -152,7 +191,7 @@ class Inkling2NativeExperts(nn.Module):
 class Inkling2NativeMoE(nn.Module):
     """Drop-in for the port's MoE module (same checkpoint names under `.mlp`)."""
 
-    def __init__(self, config, expert_format: str) -> None:
+    def __init__(self, config, expert_format: str, layer_id: int | None = None) -> None:
         super().__init__()
         assert config.n_shared_experts == 0 and config.use_gate_bias
         self.route_scale = config.route_scale
@@ -164,7 +203,7 @@ class Inkling2NativeMoE(nn.Module):
         self.gate.bias = nn.Parameter(
             torch.empty(config.n_routed_experts, dtype=torch.float32), requires_grad=False
         )
-        self.experts = Inkling2NativeExperts(config, expert_format)
+        self.experts = Inkling2NativeExperts(config, expert_format, layer_id)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.experts(x, gate=self.gate, route_scale=self.route_scale)
