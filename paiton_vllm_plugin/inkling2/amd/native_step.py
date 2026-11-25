@@ -2,7 +2,7 @@
 """Inkling 2 Mini text forward as one native call (gfx1201).
 
 Binding of `inkling2_step_gfx1201.so` (path in `PAITON_INK2_STEP_SO`, ABI
-version 2): the library runs the 48 layer visits of a looped forward by calling
+version 3): the library runs the 48 layer visits of a looped forward by calling
 the operator, expert and attention libraries in the order `loop.py` calls them,
 so Python makes one call per forward instead of about 1,200. `PAITON_INK2_STEP=native`
 (read in `amd/model.py`) turns it on; it needs `PAITON_INK2_OPS=native`.
@@ -19,7 +19,7 @@ import torch
 
 from . import native_ops
 from .experts_native import _Weights
-from .native_attention import KV, _int32, _Layer
+from .native_attention import KV, NativeAttention, _int32, _Layer
 
 BF16, F32 = torch.bfloat16, torch.float32
 # 1: one attention call per decode visit; 2: the operator library's fused launches; 4: in a forward of more than
@@ -55,7 +55,8 @@ class _ConvGroup(C.Structure):  # PaitonInkling2StepConvGroup
 
 class _Visit(C.Structure):  # PaitonInkling2StepVisit
     _fields_ = [("kv", _P)] + [(n, C.c_int64) for n in ("kv_stride_block", "kv_stride_head", "kv_stride_slot")] + [
-        ("conv", _P), ("attn_group", C.c_int), ("conv_group", C.c_int)]
+        ("conv", _P), ("attn_group", C.c_int), ("conv_group", C.c_int), ("kv_format", C.c_int), ("reserved", C.c_int),
+        ("kv_v_offset", C.c_int64), ("conv_stride_block", C.c_int64)]
 
 
 class _Call(C.Structure):  # PaitonInkling2StepCall
@@ -74,8 +75,8 @@ def _library():
         if not path:
             raise ValueError("PAITON_INK2_STEP=native needs PAITON_INK2_STEP_SO")
         lib = C.CDLL(path)
-        if lib.PaitonInkling2StepAbiVersion() != 2:
-            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 2")
+        if lib.PaitonInkling2StepAbiVersion() != 3:
+            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 3")
         sizes = (C.c_int * 6)()
         lib.PaitonInkling2StepSizes(sizes)
         ours = [C.sizeof(t) for t in (_Model, _StepLayer, _Visit, _AttnGroup, _ConvGroup, _Call)]
@@ -156,22 +157,26 @@ class NativeStep:
         self.attn_names: list[str] = []   # one layer name per attention group
         self.conv_names: list[str] = []
         self.pairs = []                   # per visit: (attention layer name, conv state name)
+        self.packed: dict[str, tuple] = {}  # attention layer name of a packed visit: (cache tensor, bytes per token)
         for v in range(count):
             lib.PaitonInkling2StepVisitOf(self.handle, v, C.byref(layer_id), C.byref(pass_id))
             layer = model.layers[layer_id.value]
             name, kv = layer.attn._pass_cache(pass_id.value)
             conv = layer.conv_states[pass_id.value]
-            assert kv.dtype == BF16 and tuple(kv.shape[1:]) == (8, 16, 256) and kv.stride(3) == 1, tuple(kv.shape)
-            assert tuple(conv.kv_cache.shape[1:]) == (8, 4, 1024), tuple(conv.kv_cache.shape)
-            self.visits[v] = _Visit(kv.data_ptr(), *(kv.stride(d) * 2 for d in range(3)),
-                                    ptr(conv.kv_cache, BF16, "conv-state cache"), 0, 0)
+            fmt = layer.attn.native.format   # None, or a packed format of the full visits (PAITON_INK2_KV)
+            cache = NativeAttention._cache(kv, fmt)   # checks the tensor's shape and strides
+            conv_ptr, conv_values = native_ops.conv_block(conv.kv_cache)   # checks the tensor; padded blocks or not
+            self.visits[v] = _Visit(cache.k, cache.stride_block, cache.stride_head, cache.stride_slot, conv_ptr, 0, 0,
+                                    {None: 0, 512: 2, 2048: 4}[fmt and fmt[1]], 0, cache.v - cache.k, conv_values * 2)
+            if fmt is not None:
+                self.packed[name] = (kv, fmt[0])
             self.pairs.append((name, conv.prefix))
         self.grouped = False
         self.workspace = torch.empty(0, dtype=torch.uint8)
         self.calls = (C.c_int64 * 4)()
         self.forwards, self.counted, self.padded = 0, [0, 0, 0, 0], 0
-        print(f"INK2 STEP: forward sequencer active, {count} visits, flags {FLAGS}, projections on {native_ops.PROJ} rows",
-              flush=True)
+        print(f"INK2 STEP: forward sequencer active, {count} visits, flags {FLAGS}, projections on {native_ops.PROJ} rows, "
+              f"full-visit cache {KV}", flush=True)
 
     def _group(self, attn_metadata: dict) -> None:
         """Visits to metadata records, by identity of the records of the first forward."""
@@ -183,6 +188,8 @@ class NativeStep:
                     seen[key] = len(names)
                     names.append(pair[slot])
                 setattr(self.visits[v], field, seen[key])
+                # A cache group holds visits of one format: its one record is handed over in that format's units.
+                assert slot or (pair[0] in self.packed) == (names[seen[key]] in self.packed), pair
         self.records = len({id(md) for md in attn_metadata.values()})
         self.grouped = True
 
@@ -205,6 +212,10 @@ class NativeStep:
                           "the Python loop (padded rows)", flush=True)
                 return None
             tensors = (_int32(md.block_table), _int32(md.seq_lens), _int32(md.query_start_loc), md.slot_mapping)
+            if name in self.packed:   # library pages and slots, as NativeAttention.forward and .write hand them over
+                kv, size = self.packed[name]
+                tensors = (NativeAttention._page_table(tensors[0], kv, size), *tensors[1:3],
+                           NativeAttention._slots(tensors[3], kv, size))
             assert tensors[3].dtype == torch.int64 and tensors[3].is_contiguous()
             assert tensors[0].shape[0] >= tensors[1].shape[0] < tensors[2].shape[0]
             keep.append(tensors)
@@ -266,13 +277,6 @@ def forward(model, input_ids, positions, inputs_embeds):
     attn_metadata = get_forward_context().attn_metadata
     if (not isinstance(attn_metadata, dict) or getattr(model, "tap", None) is not None or positions.shape[0] == 0
             or not hasattr(model, "loop_core")):
-        return None
-    if KV != "bf16":
-        # shortcut: the sequencer's visits take bf16 caches only (one attention flag word for all visits); until
-        # it takes a per-visit format, a packed full-visit cache runs the Python loop (same calls, slower).
-        if not getattr(model, "_native_step_off", False):
-            model._native_step_off = True
-            print(f"INK2 STEP: PAITON_INK2_KV={KV}: the forward sequencer is off, the Python loop runs", flush=True)
         return None
     step = getattr(model, "_native_step", None)
     if step is None:

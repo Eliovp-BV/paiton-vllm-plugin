@@ -53,7 +53,7 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from . import ops_dump
+from . import host_embed, ops_dump
 from .attention import Inkling2Attention
 from .experts_native import Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
@@ -497,6 +497,7 @@ class Inkling2ForConditionalGeneration(
             # The same for the attention projections: their 8-bit rows at load, the bf16 matrices given back.
             native_ops.release_projections(
                 weight for layer in self.model.layers for weight in (layer.attn.qkvr.weight, layer.attn.wo_ud.weight))
+        host_embed.offload(self.model.embed_tokens)  # opt-in (PAITON_INK2_HOST_EMBED=1); the drafter shares the module
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)

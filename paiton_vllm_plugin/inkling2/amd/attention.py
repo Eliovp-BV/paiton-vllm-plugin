@@ -83,11 +83,13 @@ def _kv_cache_spec(
     if sliding_window is not None:
         return SlidingWindowSpec(**spec, sliding_window=sliding_window)
     if packed and NATIVE_OPS and KV != "bf16":
-        # One uint8 head slot per token in the library's layout (native_attention.KV_FORMATS), as many library pages
-        # of 16 slots per block as fit the bf16 window page; vLLM pads the rest (format 4: 3 pages, 22.7 %).
+        # One uint8 head slot per token in the library's layout (native_attention.KV_FORMATS), in whole library pages
+        # of 16 slots per block. As many as cover the bf16 window page: format 4 then has 4 pages (67,584 bytes) and
+        # vLLM pads the window and conv pages (65,536) to it, 3 % of those small caches. An operator library that
+        # cannot read padded conv blocks gets the 3 pages that fit, and vLLM pads the 4-bit page instead (22.7 %).
         size, window_page = KV_FORMATS[KV][0], spec["block_size"] * num_kv_heads * head_dim * 2 * 2
-        spec.update(block_size=16 * max(1, window_page // (16 * size)), dtype=torch.uint8, num_head_slots=1,
-                    state_content_bytes=size)
+        pages = -(-window_page // (16 * size)) if native_ops.conv_padded() else max(1, window_page // (16 * size))
+        spec.update(block_size=16 * pages, dtype=torch.uint8, num_head_slots=1, state_content_bytes=size)
     return FullAttentionSpec(**spec)
 
 

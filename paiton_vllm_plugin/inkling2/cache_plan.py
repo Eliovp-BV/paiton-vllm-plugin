@@ -53,13 +53,14 @@ def plan(kv: str = "bf16", drafter: bool = False, draft_window: int | None = Non
     """(bytes per context token, fixed bytes per running request, number of cache groups). `concurrent_batches`
     is 2 with vLLM's async scheduling."""
     buckets = _buckets(kv, drafter, draft_window)
-    page = max(b[1] for b in buckets)
+    # The plugin declares whole 16-slot pages of the full visits that cover the largest page (format 4: 4 pages,
+    # 67,584 bytes); vLLM pads the smaller pages (window and conv, 65,536) to it.
+    page = _cdiv(max(b[1] for b in buckets), buckets[0][1]) * buckets[0][1]
     sizes = [b[0] for b in buckets]
     group = max(sizes) if max(sizes) < 1.5 * min(sizes) else min(sizes)
     flight = concurrent_batches * batched_tokens
     per_token, fixed_blocks, groups = 0.0, 0, 0
     for layers, own_page, block, window in buckets:
-        # The plugin declares as many 16-slot pages as fit the largest page (vLLM pads the rest, format 4: 3 pages).
         block = block * (page // own_page)
         n = _cdiv(layers, group)
         groups += n

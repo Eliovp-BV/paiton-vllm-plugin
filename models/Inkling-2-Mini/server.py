@@ -2,8 +2,10 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
+import shutil
 import sys
 import time
 
@@ -69,6 +71,105 @@ MAX_MODEL_LEN = 'auto'
 # The release's cache format of the 8 full-attention visits; --kv-cache or -e PAITON_INK2_KV picks another.
 KV_CACHE = 'bf16'
 
+# Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
+# system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
+# file tier), so a long conversation keeps its prefix after the card evicts it. Every cache group of this model is
+# attention-like (full visits, 1,024-token windows, 4-token conv states as a window), which the connector takes as it
+# is; it keeps window and conv chunks only before the semantic checkpoints (prompt end, shared prefix), as the card's own
+# cache does. The image carries the 27B release's offload worker: with PAITON_HOST_KV_PRIVATE=1 the RAM tier is one
+# exact-size hipHostMalloc allocation per tensor, and a tier that cannot be pinned stops the start instead of falling
+# back to pageable copies.
+SERVER_PEAK_GIB = 8.0      # the server's own unpinned host memory while it loads
+HOST_RESERVE_GIB = 7.0     # the system, a desktop and what must stay available (as the 27B launcher)
+GTT_MARGIN_GIB = 0.5
+CARD_POOL_GIB = 10.0       # the card's prefix-cache pool: a RAM tier is inclusive, so it must clearly exceed this
+STAGING_GIB = 11.0         # disk tier: the system-memory stage every restore passes; holds a document the size of the pool
+MIN_TIER_GIB = 4.0
+DISK_MAX_GIB, DISK_FREE_SHARE = 64.0, 0.25
+DISK_ROOT = Path(os.environ.get('XDG_CACHE_HOME', '/models/cache')) / 'kv-disk'
+
+
+def pin_limit_gib():
+    """GiB the tier may pin now (0.5 GiB steps): MemAvailable less the server's own peak and a reserve, at most the GTT
+    room the AMD GPUs have left. PAITON_HOST_PIN_LIMIT_GIB overrides it."""
+    if os.environ.get('PAITON_HOST_PIN_LIMIT_GIB'):
+        return float(os.environ['PAITON_HOST_PIN_LIMIT_GIB'])
+    meminfo = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+    room = int(meminfo['MemAvailable'].split()[0]) / 2 ** 20 - SERVER_PEAK_GIB - HOST_RESERVE_GIB
+    sizes, used = [], 0
+    for device in Path('/sys/class/drm').glob('renderD*/device'):
+        try:
+            if (device / 'vendor').read_text().strip() == '0x1002':
+                sizes.append(int((device / 'mem_info_gtt_total').read_text()))
+                used += int((device / 'mem_info_gtt_used').read_text())
+        except (OSError, ValueError):
+            continue
+    if sizes:  # one TTM limit for every GPU: the smallest GTT size less what all of them use
+        room = min(room, (min(sizes) - used) / 2 ** 30 - GTT_MARGIN_GIB)
+    return max(0.0, math.floor(2 * room) / 2)
+
+
+def disk_folder():
+    """The disk tier's folder for this configuration. vLLM's own folder key (model, dtype, cache groups) does not change
+    with the projection format (--int8-attention) or a new library build, which change the cached values."""
+    manifest = HERE / 'lib' / 'MANIFEST.json'
+    key = json.dumps([sorted((k, v) for k, v in os.environ.items() if k.startswith('PAITON_INK2')),
+                      manifest.read_text() if manifest.is_file() else None])
+    return DISK_ROOT / hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
+def folder_bytes(folder):
+    return sum(f.stat().st_size for f in folder.rglob('*') if f.is_file()) if folder.is_dir() else 0
+
+
+def tier_settings(host_cache_gib, extend_cache):
+    """(vLLM arguments, note) of the prompt-cache tiers; sets PAITON_HOST_KV_PRIVATE for the RAM tier."""
+    if host_cache_gib and extend_cache:
+        raise SystemExit('--extend-cache sizes the tier itself: drop --host-cache-gib or --extend-cache')
+    limit = pin_limit_gib()
+    choice = extend_cache
+    if host_cache_gib:
+        if host_cache_gib > limit:
+            raise SystemExit(f'--host-cache-gib {host_cache_gib:g}: this host can pin {limit:g} GiB now (MemAvailable '
+                             f'less {SERVER_PEAK_GIB + HOST_RESERVE_GIB:g} GiB, at most the free GTT less '
+                             f'{GTT_MARGIN_GIB:g} GiB; PAITON_HOST_PIN_LIMIT_GIB overrides it)')
+        choice = 'ram'
+    elif choice == 'auto':
+        choice = 'ram' if limit >= 1.25 * CARD_POOL_GIB else 'disk'
+    ram = host_cache_gib or (limit if choice == 'ram' else min(limit, STAGING_GIB))
+    if ram < MIN_TIER_GIB:
+        raise SystemExit(f'--extend-cache: this host can pin {limit:g} GiB now, under the {MIN_TIER_GIB:g} GiB a tier needs')
+    args = ['--kv-offloading-size', f'{ram:g}', '--kv-offloading-backend', 'native']
+    if choice == 'ram':
+        os.environ['PAITON_HOST_KV_PRIVATE'] = '1'
+        return args, (f'prompt-cache tier: {ram:g} GiB of system memory (--extend-cache {extend_cache}: largest this '
+                      'host can pin now)' if extend_cache else f'prompt-cache tier: {ram:g} GiB of system memory')
+    # Disk: the stage is a /dev/shm file (the tiering spec maps one), which a container needs room for.
+    shm = shutil.disk_usage('/dev/shm').total / 2 ** 30
+    if shm < ram + 0.5:
+        raise SystemExit(f'--extend-cache disk stages {ram:g} GiB in /dev/shm, which holds {shm:.1f} GiB here: run the '
+                         f'container with --ipc=private --shm-size={math.ceil(STAGING_GIB) + 1}g (serve-docker.sh does)')
+    folder = disk_folder()
+    DISK_ROOT.mkdir(parents=True, exist_ok=True)
+    cap = min(DISK_MAX_GIB, DISK_FREE_SHARE * (shutil.disk_usage(DISK_ROOT).free / 2 ** 30
+                                                + folder_bytes(DISK_ROOT) / 2 ** 30))
+    if cap < 1.25 * CARD_POOL_GIB:
+        raise SystemExit(f'--extend-cache disk: a quarter of the free space under {DISK_ROOT} is {cap:.0f} GiB, under '
+                         f'{1.25 * CARD_POOL_GIB:g} GiB: free some space')
+    # The file tier has no limit of its own while it runs: an over-full folder is removed here, the other
+    # configurations' folders (never hit by this one) first.
+    for other in sorted(DISK_ROOT.iterdir(), key=lambda p: p == folder):
+        if folder_bytes(DISK_ROOT) / 2 ** 30 <= cap:
+            break
+        shutil.rmtree(other)
+    # Files must match after a restart: a cryptographic block hash with vLLM's fixed seed.
+    args += ['--prefix-caching-hash-algo', 'sha256', '--kv-transfer-config', json.dumps({
+        'kv_connector': 'OffloadingConnector', 'kv_role': 'kv_both',
+        'kv_connector_extra_config': {'spec_name': 'TieringOffloadingSpec',
+                                      'secondary_tiers': [{'type': 'fs', 'root_dir': str(folder)}]}})]
+    return args, (f'prompt-cache tier: files under {folder} (up to {cap:.0f} GiB, checked at start) behind a {ram:g} GiB '
+                  'system-memory stage')
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, epilog='Other arguments go to vLLM unchanged.')
@@ -90,7 +191,16 @@ def main():
     parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
                         help='opt-in: verify only the drafts whose running probability stays above P (0.4 measured '
                              '6 %% faster for one request); the server then runs without async scheduling')
+    parser.add_argument('--host-cache-gib', type=float, metavar='GIB', default=None,
+                        help='opt-in: keep prompt-cache blocks the card evicts in GIB of pinned system memory, so a '
+                             'long prompt sent again loads instead of being computed again')
+    parser.add_argument('--extend-cache', nargs='?', const='auto', choices=('auto', 'ram', 'disk'), default=None,
+                        help='opt-in: size that tier from this host: ram = all the memory it can pin now, disk = files '
+                             'under the cache folder (NVMe/SSD; also across restarts) behind an 11 GiB stage; auto '
+                             '(the default) = ram when that holds 12.5 GiB or more')
     args, extra = parser.parse_known_args()
+    if args.host_cache_gib is not None and not 0 < args.host_cache_gib < math.inf:
+        parser.error('--host-cache-gib must be a number of GiB greater than 0')
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
     snapshot = prepare(args.offline, args.verify)
@@ -104,11 +214,18 @@ def main():
         os.environ['PAITON_INK2_PROJ'] = 'int8'
     if args.kv_cache:
         os.environ['PAITON_INK2_KV'] = args.kv_cache
-    # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
+    # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison. PAITON_INK2_HOST_EMBED=1: the
+    # input embedding in 0.86 GiB of pinned host memory (exact; about 24K more context); -e PAITON_INK2_HOST_EMBED=0
+    # keeps it on the card.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
                             PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8',
-                            PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE).items():
+                            PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE,
+                            PAITON_INK2_HOST_EMBED='1').items():
         os.environ.setdefault(name, value)
+    if args.host_cache_gib or args.extend_cache:
+        tier, note = tier_settings(args.host_cache_gib, args.extend_cache)  # after the PAITON_INK2 settings: disk key
+        print(json.dumps({'cache_tier': note}), flush=True)
+        extra = [*tier, *extra]
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
     argv = command(snapshot, args.host, extra, not args.no_drafter)

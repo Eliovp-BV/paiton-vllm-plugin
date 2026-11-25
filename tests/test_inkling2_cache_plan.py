@@ -22,9 +22,9 @@ def test_packed_formats():
     # image c6 with --kv-cache fp8 (job p2-kv2): "GPU KV cache size: 469,595 tokens", 13 groups
     assert abs(max_context_tokens(8.3 * GIB, 1, 512, kv="fp8", drafter=True, draft_window=1024) - 469_595) < 64
     assert plan("fp8", True, 1024)[2] == 13
-    # format 4: 3 pages of 16,896 bytes per 65,536-byte block (vLLM pads the rest)
+    # format 4: 4 pages of 16,896 bytes per block of 64 tokens (vLLM pads the window and conv pages to 67,584)
     per_token, _, groups = plan("kv4", True, 1024)
-    assert (round(per_token), groups) == (10923, 13)
+    assert (round(per_token), groups) == (8448, 13)
 
 
 def test_max_context_is_the_inverse():
