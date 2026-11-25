@@ -13,8 +13,8 @@ routing weight before the down projection), written from upstream's NVFP4 and
 MXFP8 quantizers.
 
 PAITON_INK2_EXPERTS picks what a layer uses (read in `amd/model.py`):
-  unset   NVFP4 layers: this module with `act_quant`; MXFP8 layers: the
-          PR's Triton kernels (which quantize the inputs themselves).
+  native  every layer: Paiton's expert library (`experts_native.py`), the
+          only mode that PAITON_INK2_OPS=native accepts.
   ref-b   every layer: this module with `act_quant` (trained arithmetic).
   ref-a   every layer: this module without it (bf16 expert inputs).
 `ref-a` / `ref-b` also round the dequantized weights to bf16, and the NVFP4
