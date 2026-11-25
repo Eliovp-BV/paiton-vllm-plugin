@@ -46,15 +46,15 @@ def _library():
         lib = C.CDLL(path)
         lib.PaitonInkling2MoeGetAbiVersion.restype = C.c_uint
         _abi = lib.PaitonInkling2MoeGetAbiVersion()
-        if _abi not in (1, 2):
-            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 or 2")
-        if _abi == 2:
+        if _abi not in (1, 2, 3):
+            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1, 2 or 3")
+        if _abi >= 2:
             lib.PaitonInkling2MoeRoute.restype = C.c_int
             lib.PaitonInkling2MoeRoute.argtypes = [C.c_void_p] * 4 + [C.c_float] + [C.c_void_p] * 2 + [C.c_int, C.c_void_p]
             lib.PaitonInkling2MoeFetch.restype = C.c_int
             lib.PaitonInkling2MoeFetch.argtypes = (
-                [C.c_void_p, C.c_int] + [C.c_void_p] * 3 + [C.c_int, C.c_int, C.c_void_p, C.c_void_p]
-            )
+                [C.c_void_p, C.c_int] + [C.c_void_p] * (3 if _abi == 2 else 4) + [C.c_int, C.c_int, C.c_void_p, C.c_void_p]
+            )  # ABI 3: the routing weights after idx (the opt-in expert skip rewrites both)
         _lib = lib
         _lib.PaitonInkling2MoeWorkspaceBytes.restype = C.c_size_t
         _lib.PaitonInkling2MoeWorkspaceBytes.argtypes = [C.c_int, C.c_int]
@@ -108,10 +108,11 @@ class Inkling2NativeExperts(nn.Module):
     def _weights(self) -> _Weights:
         # Built at the first call: the tensors are on the card by then.
         _library()
-        w = (_WeightsTable if _abi == 2 else _Weights)(format=0 if self.nvfp4 else 1)
+        w = (_WeightsTable if _abi >= 2 else _Weights)(format=0 if self.nvfp4 else 1)
         if self.pooled:  # the table replaces the four base addresses (not read then)
-            if _abi != 2:
-                raise RuntimeError(f"the expert pool needs an expert library of ABI 2, this one has {_abi}")
+            if _abi < 2 or (expert_pool.SKIP and _abi < 3):
+                raise RuntimeError(f"the expert pool needs an expert library of ABI {3 if expert_pool.SKIP else 2} "
+                                   f"(3 for PAITON_INK2_EXPERT_SKIP), this one has {_abi}")
             w.table = expert_pool.POOL.table(self.layer_id)
         for name in ("w13", "w2"):
             for field, suffix in ((name, "_weight"), (f"{name}_scale", "_weight_scale")):
@@ -166,10 +167,11 @@ class Inkling2NativeExperts(nn.Module):
                 weights = torch.empty((tokens, 8), dtype=torch.float32, device=x.device)
                 rc = lib.PaitonInkling2MoeRoute(x.data_ptr(), gate.weight.data_ptr(), gate.bias.data_ptr(), None,
                                                 route_scale, idx.data_ptr(), weights.data_ptr(), tokens, stream)
-            else:
-                idx, weights, rc = idx.int().contiguous(), weights.float().contiguous(), 0
+            else:  # the skip rewrites idx and weights: never the caller's tensors
+                idx, weights, rc = idx.int().clone(), weights.float().clone(), 0
             rc = rc or lib.PaitonInkling2MoeFetch(pool.state, self.layer_id, pool.table(self.layer_id), pool.ring,
-                                                  idx.data_ptr(), tokens, int(tokens <= 8), pool.miss_logs, stream)
+                                                  idx.data_ptr(), *((weights.data_ptr(),) if _abi >= 3 else ()),
+                                                  tokens, int(tokens <= 8), pool.miss_logs, stream)
             rc = rc or lib.PaitonInkling2MoeLayer(
                 C.byref(self._w), x.data_ptr(), idx.data_ptr(), weights.data_ptr(), *tail)
             if expert_pool.STATS and not rc:
