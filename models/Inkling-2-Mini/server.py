@@ -350,8 +350,10 @@ def main():
         os.environ['VLLM_API_KEY'] = args.api_key
     argv = command(snapshot, args.host, extra, not args.no_drafter)
     print(json.dumps({'command': argv}), flush=True)
+    # the serve log shows the variant a run used (cache format, host embedding, ...)
+    print(json.dumps({'environment': {k: v for k, v in sorted(os.environ.items()) if k.startswith(('PAITON_', 'HSA_'))}}),
+          flush=True)
     if args.dry_run is not None:
-        print(json.dumps({'environment': {k: v for k, v in sorted(os.environ.items()) if k.startswith(('PAITON_', 'HSA_'))}}))
         return
     os.execv(sys.executable, argv)
 
