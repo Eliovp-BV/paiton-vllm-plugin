@@ -79,10 +79,14 @@ def amd_cards():
             continue
 
 
-def card_free_gib():
-    """Free VRAM of the smallest AMD card this process can open (a container has only its own render nodes)."""
-    free = [int((dev / 'mem_info_vram_total').read_text()) - int((dev / 'mem_info_vram_used').read_text())
-            for dev in amd_cards() if (Path('/dev/dri') / dev.parent.name).exists()]
+def card_free_gib(dri=Path('/dev/dri')):
+    """Free VRAM of the smallest AMD card this process can open (a container has only its own render nodes).
+    Integrated GPUs (under 8 GiB of VRAM, such as the one in Ryzen 7000/9000 desktop CPUs) do not count."""
+    free = []
+    for dev in amd_cards():
+        total = int((dev / 'mem_info_vram_total').read_text())
+        if (dri / dev.parent.name).exists() and total >= 8 * 2 ** 30:
+            free.append(total - int((dev / 'mem_info_vram_used').read_text()))
     return min(free) / 2 ** 30 if free else None
 
 

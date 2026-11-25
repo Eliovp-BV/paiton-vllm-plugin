@@ -28,6 +28,22 @@ class Inkling2SmallCard(unittest.TestCase):
             self.addCleanup(p.stop)
         return server.small_card(*args)
 
+    def test_free_vram_skips_integrated_gpus(self):
+        sysfs, dri = Path(tempfile.mkdtemp()), Path(tempfile.mkdtemp())
+        cards = []
+        for node, total, used in (('renderD128', 0.5, 0.2), ('renderD129', 31.86, 0.06), ('renderD130', 15.9, 0.3)):
+            dev = sysfs / node / 'device'
+            dev.mkdir(parents=True)
+            (dev / 'mem_info_vram_total').write_text(str(int(total * GIB)))
+            (dev / 'mem_info_vram_used').write_text(str(int(used * GIB)))
+            cards.append(dev)
+        (dri / 'renderD128').touch()
+        (dri / 'renderD129').touch()
+        with mock.patch.object(server, 'amd_cards', lambda: cards):
+            self.assertAlmostEqual(server.card_free_gib(dri), 31.8, places=2)  # the iGPU and the unmapped card ignored
+            (dri / 'renderD130').touch()
+            self.assertAlmostEqual(server.card_free_gib(dri), 15.6, places=2)
+
     def test_without_the_pool_it_stops_with_the_plan(self):
         with self.assertRaises(SystemExit) as stop:
             server.small_card(15.9, 32768, True, False, 'bf16')
