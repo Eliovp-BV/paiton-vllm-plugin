@@ -21,6 +21,7 @@ import urllib.request
 
 URL = "http://127.0.0.1:18971"
 USERS = int(os.environ.get("INK2_USERS", "1"))  # requests sent at once
+TEMP = float(os.environ.get("INK2_TEMP", "0"))  # 0 = greedy (the token comparisons need it); 1.0 = the model default
 
 
 def post(path, body):
@@ -72,7 +73,7 @@ def run(model_dir, out_json, prompt_files, extra):
         for prompt in (p for f in prompt_files.split(",") for p in json.load(open(f))):
             if prompt["name"].startswith("img_"):
                 continue
-            body = {"model": "inkling2", "messages": prompt["messages"], "temperature": 0,
+            body = {"model": "inkling2", "messages": prompt["messages"], "temperature": TEMP, "seed": 1,
                     "max_tokens": prompt.get("max_new_tokens", 64), "skip_special_tokens": False,
                     "return_token_ids": True}  # not logprobs: they cost about 2 ms per step
             if "tools" in prompt:
@@ -86,7 +87,7 @@ def run(model_dir, out_json, prompt_files, extra):
                                               "chat_template_kwargs": body["chat_template_kwargs"]})["tokens"] * 50
         if long_ids:
             requests.append(("long", "/v1/completions", {
-                "model": "inkling2", "prompt": long_ids, "temperature": 0, "max_tokens": 64,
+                "model": "inkling2", "prompt": long_ids, "temperature": TEMP, "seed": 1, "max_tokens": 64,
                 "skip_special_tokens": False, "return_token_ids": True}))
         drafts = accepted = wall = wall_tokens = 0.0
         first = counters()

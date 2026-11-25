@@ -29,6 +29,7 @@ class Inkling2Launcher(unittest.TestCase):
         argv = server.command('/checkpoint')
         config = json.loads(argv[argv.index('--speculative-config') + 1])
         self.assertEqual((config['method'], config['num_speculative_tokens']), ('dspark', 7))
+        self.assertEqual(config['num_speculative_tokens_per_batch_size'], [[1, 1, 5], [2, 4, 4]])
         self.assertNotIn('--speculative-config', server.command('/checkpoint', drafter=False))
 
     def test_launcher_and_image_agree(self):

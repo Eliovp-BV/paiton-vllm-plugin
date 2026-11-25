@@ -3,8 +3,9 @@
 Inkling 2 Mini is Thinking Machines' model for chat, coding, tool calls and image input. This guide serves it with
 vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's own drafter switched on.
 
-One request generates at **106 tok/s** and four requests at once at **184 tok/s** in total (real text,
-25 November 2026, 300 W power cap, [benchmarks](BENCHMARKS.md)). vLLM has no path for this model on this card, so
+One request generates at **106 tok/s** with greedy decoding and at **90 tok/s** at the model's default temperature
+of 1.0; four requests at once reach 184 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
+[benchmarks](BENCHMARKS.md)). vLLM has no path for this model on this card, so
 the comparison in the benchmarks is with Paiton's own first complete build, which ran at 26 tok/s for one request and 72 for four.
 
 Start it:
@@ -47,7 +48,8 @@ What the default start gives you:
   the cache after the model, the drafter and the vision tower). The longest prompts we checked have 130,000 tokens.
 - Tool calls (`tool_choice: "auto"`) and reasoning in a separate `reasoning` field of the reply.
 - Prefix caching (vLLM's default): the start of a prompt that the server has seen before is not computed again.
-- The drafter: the model's own draft head proposes up to seven tokens and the model checks them in one step. On our
+- The drafter: the model's own draft head proposes five tokens (four when requests run side by side) and the model checks
+  them in one step. On our
   11 check requests the replies are the same tokens with and without the drafter, alone and four at once.
 
 ## Options
@@ -56,7 +58,7 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
-| `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 106. Frees 0.7 GiB. |
+| `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 106 (greedy) or 90 (temperature 1.0). Frees 0.7 GiB. |
 | `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens). Same task score, 34 of 35. Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one request at `P` = 0.3 in our test, no gain at four. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
