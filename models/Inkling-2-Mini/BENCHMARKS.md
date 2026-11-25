@@ -27,32 +27,30 @@ without the drafter.
 
 | Arm | 1 request, tok/s | 4 at once, tok/s |
 | --- | --- | --- |
-| First build | 25.8 / 26.0 | 71.6 / 71.7 |
-| Release image, `--no-drafter` | 68.4 / 68.5 | 134.4 / 134.4 |
-| Release image (drafter on) | 110.4 / 110.4 | 184.4 / 185.2 |
+| First build | 25.9 / 26.3 | 72.0 / 70.9 |
+| Release image, `--no-drafter` | 68.4 / 68.4 | 134.5 / 134.4 |
+| Release image (drafter on) | 111.5 / 111.6 | 186.7 / 186.6 |
 
 The drafter row comes from its own mirrored run against `--no-drafter`:
 
 | Arm | 1 request, tok/s | 4 at once, tok/s | Tokens per check step |
 | --- | --- | --- | --- |
-| `--no-drafter` | 68.4 / 68.5 | 134.6 / 134.1 | 1 |
-| Drafter on | 110.4 / 110.4 | 184.4 / 185.2 | 3.14 at one request, 2.97 at four |
+| `--no-drafter` | 68.5 / 68.4 | 134.3 / 134.4 | 1 |
+| Drafter on | 111.5 / 111.6 | 186.7 / 186.6 | 3.14 at one request, 2.97 at four |
 
 The same mirror at temperature 1.0, where the model accepts fewer draft tokens:
 
 | Arm | 1 request, tok/s | 4 at once, tok/s | Tokens per check step |
 | --- | --- | --- | --- |
-| `--no-drafter` | 68.7 / 68.7 | 141.8 / 141.5 | 1 |
-| Drafter on | 95.6 / 95.6 | 168.8 / 168.8 | 2.64 at one request, 2.59 at four |
-
-The `--no-drafter` row at temperature 1.0 comes from the build before the release image, which has the same
-libraries and differs only in the draft length.
+| `--no-drafter` | 68.7 / 68.7 | 141.5 / 141.5 | 1 |
+| Drafter on | 96.7 / 96.7 | 169.4 / 170.0 | 2.64 at one request, 2.59 at four |
 
 In the greedy runs the token ids of all 11 requests are the same in the four cases: without the drafter alone and four at once, and
 with the drafter alone and four at once. 
 
 The launcher drafts five tokens for one request and four when requests run side by side. Five against seven for one
-request, mirrored (7, 5, 5, 7):
+request, mirrored (7, 5, 5, 7), measured one build before the release image (its drafter library was about 1 %
+slower, which is why the 5-token row is below the tables above):
 
 | Draft tokens for one request | Greedy, tok/s | Temperature 1.0, tok/s |
 | --- | --- | --- |
@@ -85,8 +83,8 @@ Time to the first token, no drafter, prompt not in the prefix cache:
 | --- | --- | --- |
 | 2,000 tokens | 0.59 s | 0.46 s |
 | 6,000 tokens, the first 2,000 in the prefix cache | 1.20 / 1.21 s | 0.93 s |
-| 31,000 tokens, answer included | | 10.3 to 11.3 s |
-| 130,000 tokens, answer included | | 46.4 to 48.1 s |
+| 31,000 tokens, answer included | | 10.3 to 11.2 s |
+| 130,000 tokens, answer included | | 46.3 to 48.0 s |
 
 The first two rows are from the mirrored bench-text run (both runs of each arm gave the same figure to two digits
 where one number is shown). The two long rows are the needle tasks below, with the drafter on.

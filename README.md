@@ -41,7 +41,7 @@ its numbers.
 | One R9700 | Fast chat and coding | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | about 180 tok/s, 65K tokens per request |
 | One R9700 | Coding agents, long documents | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit, `--mode long-kv4` | 262K tokens per request, prefix caching, images with `--vision` |
 | One R9700 | The most accurate answers | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), MXFP4 | about 156 tok/s, 65K tokens per request |
-| One R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 96 to 110 tok/s, 206K tokens per request, published weights unchanged |
+| One R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 96 to 111 tok/s, 206K tokens per request, published weights unchanged |
 | Two R9700s | A larger model, fastest | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 3-bit | about 259 tok/s, 98K-token window; 128 GB+ of RAM |
 | Two R9700s | A larger model, most accurate | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | the 16-bit model's task scores, about 245 tok/s; 196 GB+ of RAM |
 | Two R9700s | Coding agents | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit, `--prefix-caching` | 262K-token window; a repeated 200K-token prompt starts in under 1 s |
