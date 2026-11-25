@@ -13,7 +13,8 @@ without the drafter.
 
 - Every arm is a fresh container and a fresh server. Comparisons run in mirrored order (old, new, new, old) and the
   tables show both runs of each arm.
-- Each table says whether its requests are greedy (temperature 0) or at temperature 1.0, the model's default.
+- Each table says whether its requests are greedy (temperature 0) or at temperature 1.0, the model's default
+  (its `generation_config.json`: temperature 1.0, no top-p or top-k, which the server uses when a request sets none).
   Sampled runs use seed 1, and their replies differ from the greedy ones in length.
 - "Real text" is 11 requests: chat, code and tool-call prompts with 64 to 160 new tokens each, and one 2,400-token
   prompt with 64 new tokens. The first request or group warms the server up and is not counted. Tokens per second

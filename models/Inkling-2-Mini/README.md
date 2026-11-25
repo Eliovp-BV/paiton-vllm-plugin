@@ -5,7 +5,7 @@ vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's 
 image and launcher also serve 16 GB cards; see [16 GB cards](#16-gb-cards-rx-9070-xt-rx-9070-rx-9060-xt).
 
 One request generates at **111 tok/s** with greedy decoding and at **96 tok/s** at the model's default temperature
-of 1.0; four requests at once reach 186 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
+of 1.0 (the model's own sampling settings: no top-p or top-k); four requests at once reach 186 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
 [benchmarks](BENCHMARKS.md)). vLLM has no path for this model on this card, so the comparison in the benchmarks is
 with Paiton's own first complete build, which ran at 25 to 26 tok/s for one request and 67 to 72 for four (greedy).
 
@@ -113,7 +113,8 @@ First token on one R9700 (greedy, one request at a time; source code as the prom
 ## Reasoning effort
 
 The model reasons before it answers, and the chat template takes an effort level: `none`, `minimal`, `low`,
-`medium`, `high` (the default), `xhigh` or `max`.
+`medium`, `high` (the default), `xhigh` or `max`, or a number from 0.0 to 0.99 (the names stand for 0.0, 0.1, 0.2,
+0.7, 0.9, 0.99 and 0.99). A lower effort asks the model for shorter reasoning before the answer.
 
 ```bash
 curl http://localhost:8042/v1/chat/completions \
