@@ -26,7 +26,7 @@ The first start downloads the pinned weights (20.2 GB). The OpenAI-compatible AP
 ```bash
 ./models/Inkling-2-Mini/serve-docker.sh --download-only   # download and verify ahead of time
 ./models/Inkling-2-Mini/serve-docker.sh --offline         # start without network access
-./models/Inkling-2-Mini/serve-docker.sh --verify          # check the downloaded files against the lock file
+./models/Inkling-2-Mini/serve-docker.sh --verify          # hash every file again before the start
 ```
 
 ```bash
@@ -59,7 +59,7 @@ Options go after the script name.
 | `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 106. Frees 0.7 GiB. |
 | `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens). Same task score, 34 of 35. Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one request at `P` = 0.3 in our test, no gain at four. Off by default. |
-| `--download-only`, `--offline`, `--verify` | Prepare the weights, start without network, check the files. |
+| `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
 | `--host`, `--api-key` | Bind address and API key inside the container. |
 
 Anything else is passed on to `vllm serve`.
