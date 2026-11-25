@@ -191,16 +191,20 @@ def folder_bytes(folder):
     return sum(f.stat().st_size for f in folder.rglob('*') if f.is_file()) if folder.is_dir() else 0
 
 
-def tier_settings(host_cache_gib, extend_cache):
-    """(vLLM arguments, note) of the prompt-cache tiers; sets PAITON_HOST_KV_PRIVATE for the RAM tier."""
+def tier_settings(host_cache_gib, extend_cache, pinned_gib=0.0):
+    """(vLLM arguments, note) of the prompt-cache tiers; sets PAITON_HOST_KV_PRIVATE for the RAM tier. `pinned_gib`: what
+    the server pins itself (embedding, the 16 GB profile's expert copies), taken off the limit unless it is overridden."""
     if host_cache_gib and extend_cache:
         raise SystemExit('--extend-cache sizes the tier itself: drop --host-cache-gib or --extend-cache')
     limit = pin_limit_gib()
+    if not os.environ.get('PAITON_HOST_PIN_LIMIT_GIB'):
+        limit = max(0.0, math.floor(2 * (limit - pinned_gib)) / 2)
     choice = extend_cache
     if host_cache_gib:
         if host_cache_gib > limit:
             raise SystemExit(f'--host-cache-gib {host_cache_gib:g}: this host can pin {limit:g} GiB now (MemAvailable '
-                             f'less {SERVER_PEAK_GIB + HOST_RESERVE_GIB:g} GiB, at most the free GTT less '
+                             f'less {SERVER_PEAK_GIB + HOST_RESERVE_GIB:g} GiB and the {pinned_gib:.2f} GiB the server '
+                             f'pins itself, at most the free GTT less '
                              f'{GTT_MARGIN_GIB:g} GiB; PAITON_HOST_PIN_LIMIT_GIB overrides it)')
         choice = 'ram'
     elif choice == 'auto':
@@ -309,7 +313,9 @@ def main():
                             PAITON_INK2_HOST_EMBED='1').items():
         os.environ.setdefault(name, value)
     if args.host_cache_gib or args.extend_cache:
-        tier, note = tier_settings(args.host_cache_gib, args.extend_cache)  # after the PAITON_INK2 settings: disk key
+        pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
+                  + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
+        tier, note = tier_settings(args.host_cache_gib, args.extend_cache, pinned)  # after the PAITON_INK2 settings: disk key
         print(json.dumps({'cache_tier': note}), flush=True)
         extra = [*tier, *extra]
     if args.api_key:

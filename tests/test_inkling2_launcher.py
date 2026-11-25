@@ -66,6 +66,14 @@ class Inkling2CacheTier(unittest.TestCase):
         self.assertEqual(os.environ['PAITON_HOST_KV_PRIVATE'], '1')
         self.assertEqual(server.tier_settings(None, 'auto')[0][1], '64')   # auto: all the host can pin
 
+    def test_server_pins_come_off_the_limit(self):
+        with mock.patch.dict(os.environ, {'PAITON_HOST_PIN_LIMIT_GIB': ''}), \
+                mock.patch.object(server, 'pin_limit_gib', lambda: 40.0):
+            self.assertEqual(server.tier_settings(None, 'auto', 15.45)[0][1], '24.5')   # floor to 0.5 GiB
+            with self.assertRaises(SystemExit):
+                server.tier_settings(30.0, None, 15.45)
+        self.assertEqual(server.tier_settings(None, 'auto', 15.45)[0][1], '64')   # an explicit limit stays as given
+
     def test_refusals(self):
         for host, extend in ((65.0, None), (8.0, 'ram'), (2.0, None)):
             with self.subTest(host=host, extend=extend), self.assertRaises(SystemExit):
