@@ -10,6 +10,7 @@ and no upstream operator module is imported here.
 """
 
 import ctypes as C
+import math
 import os
 
 import torch
@@ -42,6 +43,43 @@ _workspace: dict[torch.device, torch.Tensor] = {}
 DECODE_ROWS = 16  # the library splits a full-layer read only for calls of at most 16 rows per request
 SPLITS = 8
 
+# Cache format of the 8 full-attention visits (`PAITON_INK2_KV`, launcher option --kv-cache); the window visits and
+# the drafter stay bf16. A packed format is one vLLM head slot of `bytes` per token (uint8). The library addresses
+# pages of 16 slots x 8 key heads (`16 * bytes`), V `v` bytes after K in a head's part of the page, as
+# `page index * stride_block`. A vLLM block of N slots holds N / 16 library pages back to back, and vLLM may pad
+# the block (format 4: 3 pages of 16,896 bytes in a 65,536-byte block), so the plugin hands the library a
+# stride_block of U = gcd(vLLM block bytes, page bytes) and page indices in units of U: page j of vLLM block b is
+# b * (block bytes / U) + j * (page bytes / U). When U is not the page, slots are handed over the same way.
+#   name: (bytes per token and visit, forward flag, write entry, V offset in a head's page, K bytes per slot)
+KV_FORMATS = {"fp8": (2048, 512, "PaitonInkling2AttnWriteFp8", 2048, 128),
+              "kv4": (1056, 2048, "PaitonInkling2AttnWriteKv4", 1024, 64)}  # notes/KV-LAYOUT.md, format 4
+KV = os.environ.get("PAITON_INK2_KV", "bf16")
+if KV != "bf16" and KV not in KV_FORMATS:
+    raise ValueError(f"PAITON_INK2_KV must be bf16 or one of {sorted(KV_FORMATS)}")
+PAGE = 16  # slots per library page
+_tables: list = [None, {}]  # [forward context, {id(tensor): (tensor, same in library units)}]
+
+
+def _per_forward(key: torch.Tensor, make):
+    """`make()` once per forward and tensor (for the 8 visits): vLLM refills the same metadata tensors every step,
+    so the forward context is part of the key."""
+    from vllm.forward_context import get_forward_context
+
+    now = get_forward_context()
+    if _tables[0] is not now:
+        _tables[0], _tables[1] = now, {}
+    hit = _tables[1].get(id(key))
+    if hit is None or hit[0] is not key:
+        hit = _tables[1][id(key)] = (key, make())
+    return hit[1]
+
+
+def _units(kv_cache: torch.Tensor, size: int) -> tuple[int, int, int]:
+    """(U, vLLM block in units of U, library page in units of U) of a packed cache tensor."""
+    block, page = kv_cache.stride(0) if kv_cache.shape[0] > 1 else kv_cache.shape[2] * size, PAGE * size
+    unit = math.gcd(block, page)
+    return unit, block // unit, page // unit
+
 
 def _library():
     global _lib
@@ -56,9 +94,13 @@ def _library():
         lib.PaitonInkling2AttnWorkspaceBytes.restype = C.c_size_t
         lib.PaitonInkling2AttnWorkspaceBytes.argtypes = [C.c_int, C.c_int, C.c_void_p]
         lib.PaitonInkling2AttnPrepare.argtypes = [C.c_void_p] * 3
-        lib.PaitonInkling2AttnWrite.argtypes = (
-            [C.POINTER(_Cache), C.c_void_p, C.c_int64, C.c_void_p, C.c_int64, C.c_void_p, C.c_int, C.c_void_p]
-        )
+        writes = ["PaitonInkling2AttnWrite"] + ([KV_FORMATS[KV][2]] if KV in KV_FORMATS else [])
+        if not hasattr(lib, writes[-1]):
+            raise RuntimeError(f"{path}: no {writes[-1]}, needed for PAITON_INK2_KV={KV}")
+        for entry in writes:  # the format's write entry takes the same arguments
+            getattr(lib, entry).argtypes = (
+                [C.POINTER(_Cache), C.c_void_p, C.c_int64, C.c_void_p, C.c_int64, C.c_void_p, C.c_int, C.c_void_p]
+            )
         lib.PaitonInkling2AttnForward.argtypes = (
             [C.POINTER(_Layer), C.POINTER(_Batch), C.POINTER(_Cache), C.POINTER(_Inputs)]
             + [C.c_void_p, C.c_void_p, C.c_size_t, C.c_int, C.c_int, C.c_void_p]
@@ -96,6 +138,9 @@ class NativeAttention:
         self.log_alpha = 0.0 if is_local else log_alpha
         self.log_floor = log_floor
         self.flags = int(os.environ.get("PAITON_INK2_ATTN_FLAGS", "0"))
+        self.format = KV_FORMATS.get(KV) if not is_local else None
+        if self.format is not None:
+            self.flags |= self.format[1]
         self.layer: _Layer | None = None
 
     def prepare(self, rel_proj: torch.Tensor, q_scale: torch.Tensor, r_scale: torch.Tensor) -> None:
@@ -113,13 +158,50 @@ class NativeAttention:
                             self.window, self.log_alpha, self.log_floor)
 
     @staticmethod
-    def _cache(kv_cache: torch.Tensor) -> _Cache:
+    def _cache(kv_cache: torch.Tensor, fmt: tuple | None = None) -> _Cache:
         """vLLM's cache tensor of one visit: bf16 `(blocks, 8, 16, 256)`, K
-        in the first 128 values of a slot and V in the last 128."""
-        assert kv_cache.dtype == torch.bfloat16 and tuple(kv_cache.shape[1:]) == (8, 16, 256)
-        assert kv_cache.stride(3) == 1
+        in the first 128 values of a slot and V in the last 128; or, for a
+        packed format, uint8 `(blocks, 1, N, bytes)` holding N / 16 library pages."""
+        if fmt is None:
+            assert kv_cache.dtype == torch.bfloat16 and tuple(kv_cache.shape[1:]) == (8, 16, 256)
+            assert kv_cache.stride(3) == 1
+            k = kv_cache.data_ptr()
+            return _Cache(k, k + 256, *(kv_cache.stride(i) * 2 for i in range(3)), 16)
+        size, _, _, v, slot = fmt
+        blocks, slots, n, width = kv_cache.shape
+        assert kv_cache.dtype == torch.uint8 and slots == 1 and width == size and n % PAGE == 0, tuple(kv_cache.shape)
+        assert kv_cache.stride(2) == size and kv_cache.stride(3) == 1, kv_cache.stride()
+        unit = _units(kv_cache, size)[0]
+        assert unit % 64 == 0 or unit == PAGE * size, unit  # the library's stride_block rule
         k = kv_cache.data_ptr()
-        return _Cache(k, k + 256, *(kv_cache.stride(i) * 2 for i in range(3)), 16)
+        return _Cache(k, k + v, unit, PAGE * size // 8, slot, PAGE)
+
+    @staticmethod
+    def _page_table(block_table: torch.Tensor, kv_cache: torch.Tensor, size: int) -> torch.Tensor:
+        """The block table in library pages, as page indices in units of U (see KV_FORMATS)."""
+        _, block, page = _units(kv_cache, size)
+        r = kv_cache.shape[2] // PAGE
+        if block == 1 and r == 1:
+            return block_table
+
+        def make():
+            offsets = torch.arange(r, dtype=block_table.dtype, device=block_table.device) * page
+            return (block_table.unsqueeze(-1) * block + offsets).flatten(1).contiguous()
+        return _per_forward(block_table, make)
+
+    @staticmethod
+    def _slots(slot_mapping: torch.Tensor, kv_cache: torch.Tensor, size: int) -> torch.Tensor:
+        """vLLM slots as the library's slots (`page index * 16 + slot in the page`); the same when U is the page."""
+        _, block, page = _units(kv_cache, size)
+        if page == 1:
+            return slot_mapping
+        n = kv_cache.shape[2]
+
+        def make():
+            b, t = slot_mapping.div(n, rounding_mode="floor"), slot_mapping.remainder(n)
+            mapped = (b * block + t.div(PAGE, rounding_mode="floor") * page) * PAGE + t.remainder(PAGE)
+            return torch.where(slot_mapping < 0, slot_mapping, mapped)
+        return _per_forward(slot_mapping, make)
 
     def write(self, kv_cache: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
               slot_mapping: torch.Tensor, tokens: int) -> None:
@@ -128,10 +210,13 @@ class NativeAttention:
         if tokens == 0:
             return
         assert slot_mapping.dtype == torch.int64 and slot_mapping.is_contiguous()
-        cache = self._cache(kv_cache)
-        _ok(_library().PaitonInkling2AttnWrite(
+        cache = self._cache(kv_cache, self.format)
+        entry = self.format[2] if self.format else "PaitonInkling2AttnWrite"
+        if self.format is not None:
+            slot_mapping = self._slots(slot_mapping, kv_cache, self.format[0])
+        _ok(getattr(_library(), entry)(
             C.byref(cache), *_rows(k, 1024), *_rows(v, 1024), slot_mapping.data_ptr(), tokens,
-            _stream(k.device)), "PaitonInkling2AttnWrite")
+            _stream(k.device)), entry)
 
     def forward(self, kv_cache: torch.Tensor, block_table: torch.Tensor, seq_lens: torch.Tensor,
                 query_start: torch.Tensor, max_query_len: int, tokens: int, q: torch.Tensor,
@@ -147,12 +232,14 @@ class NativeAttention:
             return
         lib = _library()
         block_table, seq_lens, query_start = _int32(block_table), _int32(seq_lens), _int32(query_start)
+        if self.format is not None:
+            block_table = self._page_table(block_table, kv_cache, self.format[0])
         requests = seq_lens.shape[0]
         assert block_table.shape[0] >= requests and query_start.shape[0] >= requests + 1
         batch = _Batch(block_table.data_ptr(), seq_lens.data_ptr(), query_start.data_ptr(),
                        block_table.shape[1], requests, tokens, max_query_len)
         inputs = _Inputs(*_rows(q, 3072), *_rows(r, 384), *_rows(gate, 3072), *_rows(sinks, 24))
-        cache = self._cache(kv_cache)
+        cache = self._cache(kv_cache, self.format)
         need = lib.PaitonInkling2AttnWorkspaceBytes(tokens, SPLITS if max_query_len <= DECODE_ROWS else 1, None)
         # One workspace per card for all layers: the calls of one stream run in order.
         workspace = _workspace.get(out.device)
