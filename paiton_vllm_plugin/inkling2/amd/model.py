@@ -58,9 +58,9 @@ from .attention import Inkling2Attention
 from .experts_native import Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 
-# PAITON_INK2_OPS=native: every small operator runs on Paiton's native operator
-# library (`native_ops.py`), and no module under `amd/ops/` (Triton) is imported
-# from here. The experts must be native too; images need the native vision
+# PAITON_INK2_OPS=native (required): every small operator runs on Paiton's native
+# operator library (`native_ops.py`), and no Triton module is imported from
+# here. The experts must be native too; images need the native vision
 # library (`native_vision.py`, PAITON_INK2_VISION_SO).
 NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
 if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
@@ -420,13 +420,12 @@ class Inkling2ForConditionalGeneration(
         assert vllm_config.parallel_config.pipeline_parallel_size == 1
         from vllm.platforms.rocm import on_gfx950
 
-        # With the native experts no gfx950-only operator is left on the expert
-        # path; the Triton operators of the other layers are not validated on
-        # other architectures yet (bring-up on gfx1201).
+        # Every layer runs on Paiton's native libraries, built and validated for
+        # gfx1201 (R9700); the experts have no other path in this package.
         if not on_gfx950() and os.environ.get("PAITON_INK2_EXPERTS") != "native":
             raise ValueError(
-                "Inkling2 on ROCm requires gfx950 (CDNA4, MI350 series): its "
-                "kernels are written and validated for that architecture only"
+                "Inkling2 on ROCm runs on Paiton's native libraries only: "
+                "set PAITON_INK2_EXPERTS=native"
             )
         if vllm_config.model_config.enable_prompt_embeds:
             # The reference applies embed_norm to raw input embeddings, which

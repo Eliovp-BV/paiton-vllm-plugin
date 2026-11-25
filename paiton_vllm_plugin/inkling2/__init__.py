@@ -4,8 +4,9 @@
 vLLM 0.32 has the first Inkling generation only. This package is vLLM's
 Inkling 2 code brought to 0.32: the shared files of vLLM main (`configs.py`,
 `processing.py`, `quant_config.py`), the AMD path of the draft pull request
-67685 (`amd/`, gfx950 only), and a port of the looped model to that path
-(`amd/loop.py`). `UPSTREAM.md` lists every upstream file and what changed.
+67685 (`amd/`, with its operators replaced by Paiton's native libraries for
+gfx1201), and a port of the looped model to that path (`amd/loop.py`).
+`UPSTREAM.md` lists every upstream file and what changed.
 
 Switched on by PAITON_INKLING2=1 (see `paiton_vllm_plugin.register_paiton_models`);
 serve with `--quantization inkling2`, and for parsed replies with

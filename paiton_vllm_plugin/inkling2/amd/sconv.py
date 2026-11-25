@@ -22,8 +22,8 @@ from vllm.forward_context import get_forward_context
 from vllm.model_executor.utils import set_weight_attrs
 
 # PAITON_INK2_OPS=native: the conv state, its metadata and the convolution come
-# from Paiton's native operator library; vLLM's `sconv_swa_attn` module and
-# `amd/ops/` (both Triton) are not imported.
+# from Paiton's native operator library; vLLM's `sconv_swa_attn` module (Triton)
+# is not imported.
 NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
 if NATIVE_OPS:
     from . import native_ops

@@ -4,8 +4,12 @@
 #   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> .
 FROM rocm/vllm@sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/inkling2-release-source/
-COPY paiton_vllm_plugin /opt/paiton/inkling2-release-source/paiton_vllm_plugin
-RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source
+# Only the parts of the plugin that Inkling 2 loads (import trace of the launcher in every mode, 25 Nov 2026): the entry
+# point, its two helpers and the inkling2 package. The console scripts are removed: they point at modules left out here.
+COPY paiton_vllm_plugin/__init__.py paiton_vllm_plugin/activation.py paiton_vllm_plugin/artifact_manifest.py /opt/paiton/inkling2-release-source/paiton_vllm_plugin/
+COPY paiton_vllm_plugin/inkling2 /opt/paiton/inkling2-release-source/paiton_vllm_plugin/inkling2
+RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source \
+    && rm -rf /opt/paiton/inkling2-plugin/bin
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
 # The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
