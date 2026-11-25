@@ -48,9 +48,10 @@ def prepare(offline=False, verify=False):
     return snapshot
 
 
-# The model's own drafter (DSpark, mtp.safetensors): 7 draft tokens while one request runs, 4 from two on.
+# The model's own drafter (DSpark, mtp.safetensors): 5 draft tokens while one request runs, 4 from two on
+# (measured on image c4: 5 beats 7 at temperature 0 and at the model's default 1.0; 7 stays the upper bound).
 DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
-           'num_speculative_tokens_per_batch_size': [[1, 1, 7], [2, 4, 4]]}
+           'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
 
 
 def command(snapshot, host='0.0.0.0', extra=(), drafter=True):

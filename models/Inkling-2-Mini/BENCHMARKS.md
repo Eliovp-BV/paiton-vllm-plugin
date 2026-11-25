@@ -13,7 +13,8 @@ without the drafter.
 
 - Every arm is a fresh container and a fresh server. Comparisons run in mirrored order (old, new, new, old) and the
   tables show both runs of each arm.
-- Requests are greedy (temperature 0).
+- Requests are greedy (temperature 0) unless a table says temperature 1.0, which is the model's default. Sampled
+  runs use a fixed seed, and their replies differ from the greedy ones in length.
 - "Real text" is 11 requests: chat, code and tool-call prompts with 64 to 160 new tokens each, and one 2,400-token
   prompt with 64 new tokens. The first request or group warms the server up and is not counted. Tokens per second
   is the number of generated tokens divided by the wall time of the requests, prompt processing included.
@@ -37,7 +38,14 @@ The drafter row comes from its own mirrored run against `--no-drafter`:
 | `--no-drafter` | 68.4 / 68.4 | 134.3 / 134.1 | 1 |
 | Drafter on | 106.4 / 106.4 | 184.1 / 184.2 | 3.31 at one request, 2.98 at four |
 
-The token ids of all 11 requests are the same in the four cases: without the drafter alone and four at once, and
+The same mirror at temperature 1.0, where the model accepts fewer draft tokens:
+
+| Arm | 1 request, tok/s | 4 at once, tok/s | Tokens per check step |
+| --- | --- | --- | --- |
+| `--no-drafter` | 68.7 / 68.7 | 141.8 / 141.5 | 1 |
+| Drafter on | 90.4 / 90.3 | 168.6 / 169.3 | 2.72 at one request, 2.61 at four |
+
+In the greedy runs the token ids of all 11 requests are the same in the four cases: without the drafter alone and four at once, and
 with the drafter alone and four at once. The drafter
 adds less at four requests because the launcher then checks four draft tokens a step where it checks seven for one
 request: more drafts cost more than they return once four requests share a step.
