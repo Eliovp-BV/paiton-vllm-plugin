@@ -167,10 +167,10 @@ fit on the card stay in host memory and are copied to the card when a token need
 - More than four requests at once is not tested.
 - Equal tokens alone and next to other requests are checked on 11 requests only. A longer or different mix of
   requests is not checked.
-- A greedy answer from a cache hit can differ from a cold read of the same long prompt. At 146K tokens, and with an
-  image plus 32K tokens, the texts differ from character 240 and 149; at 32K they agree. The hit and the cold read
-  split the prompt into prefill chunks at different places, which changes the rounding. The card's own prefix cache
-  does this without any tier, and both texts are valid outputs of the model.
+- A greedy answer from a cache hit can differ from a cold read of the same prompt. We saw it at 16K and 146K tokens
+  and with an image plus 32K tokens; one 32K prompt gave the same text. The hit and the cold read split the prompt
+  into prefill chunks at different places, which changes the rounding. The card's own prefix cache does this without
+  any tier, and both texts are valid outputs of the model.
 - The drafter is the one the publisher ships. At four requests it adds less than at one (see the benchmarks).
 - Time to first token on a long prompt is the model's full prefill: 48 s for 143,840 tokens and 73 s for 199,028.
 - One card only. Two cards do not make one request faster.
