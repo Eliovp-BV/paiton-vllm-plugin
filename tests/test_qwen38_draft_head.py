@@ -12,8 +12,8 @@ from unittest.mock import patch
 
 import torch
 
-SRC = Path(__file__).parents[1] / 'paiton_vllm_plugin/_vendor/qwen38/radiance_drafthead.py'
-spec = importlib.util.spec_from_file_location('radiance_drafthead_under_test', SRC)
+SRC = Path(__file__).parents[1] / 'paiton_vllm_plugin/_vendor/qwen38/paiton_drafthead.py'
+spec = importlib.util.spec_from_file_location('paiton_drafthead_under_test', SRC)
 dh = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dh)
 
@@ -41,7 +41,7 @@ class DraftHeadDeferTests(unittest.TestCase):
                 self.assertIn('first use', status)
                 lp = mtp.candidate_logits_processor
                 self.assertIs(lp._apply_head.__func__, dh._apply_head_lazy)
-                self.assertTrue(lp._radiance_topk_only)
+                self.assertTrue(lp._paiton_topk_only)
 
     def test_first_use_quantises_the_head_actually_passed_in(self):
         mtp = drafter(3.0)

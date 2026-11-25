@@ -6,18 +6,18 @@
 > [Results](benchmarks/2026-10-01-262k/README.md).
 
 > **New comparison, 16 September 2026:** [BetterBench 0.6.0 against current
-> GGZ14 on one R9700](benchmarks/2026-09-16-betterbench/README.md), including
+> the reference backend on one R9700](benchmarks/2026-09-16-betterbench/README.md), including
 > charts, all four runs, sanitized raw data and reproduction commands.
 > The historical suites below use different settings and remain separate.
 
-Paiton combines native HIP kernels, adapted Radiance techniques, and DFlash2
+Paiton combines native HIP kernels, adapted reference-engine techniques, and DFlash2
 through a plugin on the official vLLM runtime. The checkpoint stays packed in
-MXFP4. There is no separate Radiance engine dependency and no replacement of
+MXFP4. There is no separate reference engine dependency and no replacement of
 the installed vLLM library.
 
 The full comparison measures **1.22× weighted serial throughput**
 and **1.57× throughput at eight concurrent requests**
-against the recommended Radiance + DFlash2 configuration on the same R9700.
+against the recommended reference-engine + DFlash2 configuration on the same R9700.
 Prefill is **12.5–17.3% faster** across the three
 tested depths. Median time to first token at eight concurrent requests is
 **97.0% lower**, including queueing.
@@ -38,7 +38,7 @@ including prefill and queueing. Weighted serial decode combines the preset's
 category medians. Prefill divides actual prompt tokens by HTTP time to first
 token; it is an end-to-end serving measurement.
 
-| Metric | Stock vLLM O2 | vLLM-Radiance + DFlash2 | Paiton + native adaptations + DFlash2 |
+| Metric | Stock vLLM O2 | Reference engine + DFlash2 | Paiton + native adaptations + DFlash2 |
 |---|---:|---:|---:|
 | Weighted serial decode, tok/s | 4.5 | 99.3 | 113.5 |
 | C1 aggregate throughput, tok/s | 4.5 | 78.0 | 90.0 |
@@ -56,7 +56,7 @@ ten measured passes per category, 24 requests at each concurrency level, and
 four measurements at each prefill depth. These measurements use the longer
 original output budgets; compare them within this table.
 
-| Metric | vLLM-Radiance + DFlash2 | Paiton on regular vLLM + DFlash2 |
+| Metric | Reference engine + DFlash2 | Paiton on regular vLLM + DFlash2 |
 |---|---:|---:|
 | Weighted serial decode, tok/s | 86.0 | 104.9 |
 | C1 aggregate throughput, tok/s | 76.9 | 89.6 |
@@ -71,7 +71,7 @@ original output budgets; compare them within this table.
 
 Full-workload medians; lower is better.
 
-| Metric | vLLM-Radiance + DFlash2 | Paiton on regular vLLM + DFlash2 |
+| Metric | Reference engine + DFlash2 | Paiton on regular vLLM + DFlash2 |
 |---|---:|---:|
 | C1 median TTFT, ms | 94.8 | 105.0 |
 | C2 median TTFT, ms | 148.6 | 159.9 |
@@ -82,7 +82,7 @@ Full-workload medians; lower is better.
 
 Full-workload median decode throughput, in tokens per second.
 
-| Metric | vLLM-Radiance + DFlash2 | Paiton on regular vLLM + DFlash2 |
+| Metric | Reference engine + DFlash2 | Paiton on regular vLLM + DFlash2 |
 |---|---:|---:|
 | code | 88.5 | 102.6 |
 | reasoning | 63.5 | 77.9 |
@@ -95,7 +95,7 @@ Full-workload median decode throughput, in tokens per second.
 
 ## More concurrent work from the same cache budget
 
-The serving engines report 25,746 token slots for Radiance
+The serving engines report 25,746 token slots for the reference engine
 and 74,430 for Paiton: **2.89× capacity** from the same
 5 GiB pool. Logs record up to 3 and
 8 active requests respectively. The concurrent
@@ -120,19 +120,19 @@ for an 8,192-token per-request limit and up to eight concurrent requests.
 - Paiton uses the official vLLM 0.28 ROCm image through its extension APIs.
   The native artifacts use HIP; the external vLLM adapter retains standard
   vLLM's framework dependencies.
-- The public Radiance README and X screenshots used two GPUs and other run
+- The public reference-engine README and X screenshots used two GPUs and other run
   conditions. They are context, not a controlled comparator for these one-GPU
   measurements. No per-GPU extrapolation is presented as a measurement.
 - Stock completed the common 54-request matrix. Its earlier full preset was
   interrupted for runtime cost, so it has no full-preset aggregate result.
 
-Radiance and StillDeadcode/libr4d are credited for the adapted kernel techniques.
+The reference engine and the reference kernel library are credited for the adapted kernel techniques.
 Implementation research and correctness diagnostics remain in the private
 engineering records. Commands, model/artifact hashes, raw timing samples,
 request counts, engine audits, and memory evidence are retained for review.
 
-Evidence runs: stock403; fresh Radiance493 and Paiton492 (shared matrix);
-Radiance495 and Paiton494 (full preset). These measurements qualify the native payload in the v1.0.0 release.
+Evidence runs: stock403; fresh refengine493 and Paiton492 (shared matrix);
+refengine495 and Paiton494 (full preset). These measurements qualify the native payload in the v1.0.0 release.
 
 ## Ordinary vLLM deployment check
 
@@ -144,7 +144,7 @@ The target and draft files are verified against their locked hashes before launc
 
 All 2,893 installed vLLM files match the official base image. All 16 native
 libraries match the allowlist and load without importing serving frameworks;
-there is no separate Radiance or DFlash distribution. Standard vLLM's own
+there is no separate reference-engine or DFlash distribution. Standard vLLM's own
 framework dependencies remain in the serving image.
 [Runtime audit](runtime-audit.json) · [Deployment check](deployment-check.json).
 

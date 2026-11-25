@@ -8,6 +8,6 @@
   "native_independent_load": true,
   "external_plugin_matches_allowlist": true,
   "native_files_match_allowlist": true,
-  "separate_radiance_or_dflash_packages": [],
+  "separate_reference_engine_or_dflash_packages": [],
   "gpu_access": false
 }

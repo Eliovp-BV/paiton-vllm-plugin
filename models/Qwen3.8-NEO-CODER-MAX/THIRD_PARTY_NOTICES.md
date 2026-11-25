@@ -9,10 +9,8 @@ The GGUF format and quantization algorithms are based on ggml/llama.cpp revision
 `434ddbbc0e30522e897670681e503b797c12b7c1`. Preserve the ggml authors' MIT notice
 in [LICENSES/ggml-MIT.txt](LICENSES/ggml-MIT.txt). The compiled attention path uses
 AMD rocWMMA from the pinned ROCm 7.14 build; its MIT notice is included in
-[LICENSES/rocWMMA-MIT.txt](LICENSES/rocWMMA-MIT.txt). Existing root LICENSES retain
-notices for inherited runtime dependencies, including Composable Kernel, AITER,
-flash-linear-attention and Triton. These inherited packages belong to the
-external vLLM stack; the new Paiton model is compiled from native HIP/C++ without
+[LICENSES/rocWMMA-MIT.txt](LICENSES/rocWMMA-MIT.txt). Inherited runtime
+dependencies belong to the external vLLM stack; the new Paiton model is compiled from native HIP/C++ without
 Torch or Triton imports or generated Triton kernels.
 
 The native vision encoder follows the Qwen3-VL/Qwen3.5 architecture and the

@@ -9,7 +9,7 @@ class Policy:
     def from_environment(cls,env):
         value=env.get(FLAG,'0')
         if value not in ('0','1'):raise ValueError(FLAG+' must be0or1')
-        if value=='1' and env.get('R4D_ATTN_FP8')!='3':
+        if value=='1' and env.get('PDK_ATTN_FP8')!='3':
             raise ValueError('Require the qualified deployed FP8QK/PV mode3')
         return cls(value=='1')
     def eligible(self,v):

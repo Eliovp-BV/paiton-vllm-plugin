@@ -33,8 +33,8 @@ class FakeHip:
         return self.rc
 
 
-class R4DAttentionImpl:
-    """Like the R4D backend: writes the rows of the scheduled requests only."""
+class PDKAttentionImpl:
+    """Like the PDK backend: writes the rows of the scheduled requests only."""
 
     def forward(self, layer, query, key, value, kv_cache, attn_metadata, output=None,
                 output_scale=None, output_block_scale=None):
@@ -56,14 +56,14 @@ class Attention(torch.nn.Module):
         self.impl = impl
 
 
-def radiance_module(cls=R4DAttentionImpl):
-    module = ModuleType('radiance_r4d_attn')
-    module.R4DAttentionImpl = cls
+def paiton_module(cls=PDKAttentionImpl):
+    module = ModuleType('paiton_pdk_attn')
+    module.PDKAttentionImpl = cls
     return module
 
 
-def target_model(r4d=3, triton=1):
-    layers = [Attention(R4DAttentionImpl()) for _ in range(r4d)]
+def target_model(pdk=3, triton=1):
+    layers = [Attention(PDKAttentionImpl()) for _ in range(pdk)]
     layers += [Attention(TritonAttentionImpl()) for _ in range(triton)]
     return torch.nn.Sequential(*layers)
 
@@ -85,7 +85,7 @@ class HookCase(unittest.TestCase):
         self.stream = 0x5151
         patches = [patch.object(attn_pad_rows, '_MEMSET', self.hip),
                    patch.object(attn_pad_rows, 'current_stream', lambda: self.stream),
-                   patch.dict(sys.modules, {'radiance_r4d_attn': radiance_module()}),
+                   patch.dict(sys.modules, {'paiton_pdk_attn': paiton_module()}),
                    patch.dict(os.environ, {ENV: '1'})]
         for p in patches:
             p.start()
@@ -166,8 +166,8 @@ class ZeroingTests(HookCase):
 
 
 class InstallTests(HookCase):
-    def test_wraps_only_the_targets_r4d_layers(self):
-        model = target_model(r4d=3, triton=2)
+    def test_wraps_only_the_targets_pdk_layers(self):
+        model = target_model(pdk=3, triton=2)
         triton_forward = [m.impl.forward for m in model[3:]]
         self.assertEqual(attn_pad_rows.install(model), 3)
         for m in model[3:]:
@@ -194,7 +194,7 @@ class InstallTests(HookCase):
             output[:attn_metadata.num_actual_tokens] = REAL
             return output
 
-        with patch.object(R4DAttentionImpl, 'forward', kv4_forward):
+        with patch.object(PDKAttentionImpl, 'forward', kv4_forward):
             layer = self.installed()[0]
             output = stale(32, 4)
             result = call(layer, SimpleNamespace(num_actual_tokens=30), output)
@@ -222,8 +222,8 @@ class InstallTests(HookCase):
             with self.assertRaisesRegex(RuntimeError, ENV):
                 attn_pad_rows.install(target_model())
 
-    def test_without_r4d_backend_nothing_is_wrapped(self):
-        with patch.dict(sys.modules, {'radiance_r4d_attn': None}):
+    def test_without_pdk_backend_nothing_is_wrapped(self):
+        with patch.dict(sys.modules, {'paiton_pdk_attn': None}):
             model = target_model()
             self.assertEqual(attn_pad_rows.install(model), 0)
         self.assertNotIn('forward', vars(model[0].impl))

@@ -14,6 +14,8 @@ from unittest.mock import patch
 
 MODEL_DIR = Path(__file__).resolve().parents[1] / 'models/Qwen3.8-MXFP4-DFlash2'
 SCRIPT = MODEL_DIR / 'launch-rocm10.py'
+# the quickstart scripts run the launcher as shipped, which refuses the released images before c4
+C4_IMAGE = 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c4'
 SPEC = importlib.util.spec_from_file_location('rocm10_launcher', SCRIPT)
 launcher = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(launcher)
@@ -35,7 +37,14 @@ class Rocm10LauncherTests(unittest.TestCase):
         (self.root / 'meminfo').write_text('MemTotal:       16257024 kB\nMemAvailable:   12000000 kB\n')
         (self.root / 'ttm_pages_limit').write_text('2034369\n')
         self.record = self.root / 'docker-argv.json'
-        self.overrides = {}           # launcher module constants replaced in run_launcher's process
+        # launcher module constants replaced in run_launcher's process; the command-building tests below keep using
+        # the released images, so the pre-c4 refusal is off unless a test turns it on
+        # the pre-c4 refusal is off unless a test turns it on; so is the MXFP4 refusal on the vLLM 0.32 images, so the
+        # MXFP4 paths stay covered for the r5 launcher line
+        self.overrides = {'REFUSE_PRE_PAITON_NAME_IMAGES': False, 'REFUSE_MXFP4_ON_VLLM032': False}
+        patcher = patch.object(launcher, 'REFUSE_MXFP4_ON_VLLM032', False)   # the same for in-process calls
+        patcher.start()
+        self.addCleanup(patcher.stop)
         binary = self.root / 'bin'
         binary.mkdir()
         # A real exec into a harmless Docker stand-in catches quoting, argument
@@ -94,6 +103,37 @@ class Rocm10LauncherTests(unittest.TestCase):
     def engine(self, command):
         index = next(i for i, item in enumerate(command) if item.startswith('ghcr.io/'))
         return command[index + 1:]
+
+    def test_images_before_c4_are_refused_with_the_older_launcher_tag(self):
+        self.overrides['REFUSE_PRE_PAITON_NAME_IMAGES'] = True
+        old = [('--image', launcher.PREVIOUS_IMAGES['20261123-r5']), ('--release', '200k'),
+               ('--image', 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c3b'),
+               ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261119-r4']),
+               ('--image', 'ghcr.io/eliovp/paiton-vllm-plugin@' + launcher.IMAGES_BY_RELEASE_DIGEST['20261123-r5']),
+               ('--image', launcher.PREVIOUS_IMAGES['20261005-r1'].partition('@')[0])]
+        for args in old:
+            result = self.run_launcher('--dry-run', *args)
+            self.assertNotEqual(result.returncode, 0, args)
+            self.assertIn('predates the Paiton runtime names', result.stderr)
+            self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', result.stderr)
+        self.command('--image', C4_IMAGE)
+        self.command()   # the default r6 image carries the Paiton names
+
+    def test_vllm032_images_serve_the_3bit_weights_only(self):
+        self.overrides['REFUSE_MXFP4_ON_VLLM032'] = True
+        w3rot = self.root / 'w3rot'
+        w3rot.mkdir()
+        for args, w3 in (((), False), (('--weights', 'mxfp4'), True), (('--image', C4_IMAGE), False)):
+            with self.subTest(args=args):
+                self.environment.pop('PAITON_W3ROT_DIR', None)
+                if w3:
+                    self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+                stderr = self.refused(*args)
+                self.assertIn('serves the 3-bit W3A4 weights only', stderr)
+                self.assertIn('launcher at tag qwen38-rocm10-vllm029-20261123-r5', stderr)
+        self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
+        self.assertIn(str(w3rot), ' '.join(self.dry_run()))   # the 3-bit weights start
+        self.dry_run('--image', launcher.PREVIOUS_IMAGES['20261123-r5'], '--weights', 'mxfp4')   # r5 is not refused here
 
     def test_default_exec_preserves_release_limits_and_runs_on_the_first_r9700(self):
         command = self.command()
@@ -185,7 +225,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 environment = [command[i + 1] for i in range(image_index) if command[i] == '-e']
                 self.assertCountEqual(environment, ['ROCR_VISIBLE_DEVICES=0', 'HIP_VISIBLE_DEVICES=0',
                                                    'CUDA_VISIBLE_DEVICES=0',
-                                                   'RADIANCE_GDN_LAZY=0',
+                                                   'PAITON_RT_GDN_LAZY=0',
                                                    'PYTORCH_ALLOC_CONF=max_split_size_mb:64'])
                 engine = self.engine(command)
                 self.assertEqual(value(engine, '--max-model-len'), str(context))
@@ -237,7 +277,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertEqual(value(engine, '--gpu-memory-utilization'), '0.95')
         self.assertIn('--no-enable-prefix-caching', engine)
         self.assertNotIn('--enable-prefix-caching', engine)
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertEqual(json.loads(value(engine, '--default-chat-template-kwargs')), {'enable_thinking': True})
         self.assertEqual(engine.count('--default-chat-template-kwargs'), 1)
 
@@ -256,7 +296,7 @@ class Rocm10LauncherTests(unittest.TestCase):
     def test_prefix_caching_materializes_recurrent_state_before_vllm_entrypoint(self):
         command = self.command('--release', '200k', '--prefix-caching', 'on')
         image_index = command.index(launcher.IMAGES['200k'])
-        self.assertIn('RADIANCE_GDN_LAZY=0', command[:image_index])
+        self.assertIn('PAITON_RT_GDN_LAZY=0', command[:image_index])
         engine = self.engine(command)
         self.assertIn('--enable-prefix-caching', engine)
         self.assertNotIn('--no-enable-prefix-caching', engine)
@@ -524,7 +564,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                 with self.subTest(weights=weights, context=context):
                     command = self.command('--context', context)
                     self.assertIn(image, command)
-                    self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                    self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                     # prefix caching is not qualified with the 4-bit cache: FP8 cache, the chat profile's budget
                     self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                     engine = self.engine(command)
@@ -557,7 +597,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 command = self.command(*options)
                 self.assertIn(image, command)
-                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                 self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.94', command)
                 self.assertEqual(self.kv4_flags(command, image), ['PAITON_KV4=0', 'PAITON_KV4_CAPACITY=0'])
                 engine = self.engine(command)
@@ -610,11 +650,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         command = self.command()
         self.assertFalse(any(item.startswith('PAITON_NGRAM_CODRAFT') for item in command))
         self.environment.update(PAITON_NGRAM_CODRAFT='1', PAITON_NGRAM_CODRAFT_HOT_MATCH='32')
-        command = self.command()
-        image_index = command.index(launcher.IMAGES['65k'])
+        r5 = launcher.PREVIOUS_IMAGES['20261123-r5']
+        command = self.command('--image', r5)
+        image_index = command.index(r5)
         self.assertIn('PAITON_NGRAM_CODRAFT=1', command[:image_index])
         self.assertIn('PAITON_NGRAM_CODRAFT_HOT_MATCH=32', command[:image_index])
         self.assertEqual(command[command.index('PAITON_NGRAM_CODRAFT=1') - 1], '-e')
+        # the vLLM 0.32 images (r6, the default) carry no ported adapter: not passed on, and the launcher says so
+        self.assertFalse(any(item.startswith('PAITON_NGRAM_CODRAFT') for item in self.command()))
+        result = self.run_launcher('--dry-run')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('n-gram co-drafting (PAITON_NGRAM_CODRAFT) is not available', result.stderr)
 
     def test_w3a4_65k_defaults_to_thinking_off(self):
         self.assertNotIn('--default-chat-template-kwargs', self.engine(self.command()))
@@ -776,7 +822,7 @@ class Rocm10LauncherTests(unittest.TestCase):
             with self.subTest(options=options):
                 command = self.command('--image', image, '--kv-cache', 'kv4', *options)
                 self.assertEqual(self.kv4_flags(command, image), on)
-                self.assertIn('RADIANCE_GDN_LAZY=0', command)
+                self.assertIn('PAITON_RT_GDN_LAZY=0', command)
                 self.assertIn('PYTORCH_ALLOC_CONF=max_split_size_mb:64,per_process_memory_fraction:0.95', command)
                 engine = command[command.index(image) + 1:]
                 # 3 Oct: a prefix-cache hit on a shared-prefix (junction) checkpoint of the 4-bit long mode ended in a
@@ -1038,7 +1084,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot = self.root / 'w3rot directory'
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
-        self.assertTrue(launcher.IMAGES['65k'].startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-'))
+        self.assertTrue(launcher.IMAGES['65k'].startswith('ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-'))
         self.assertEqual(launcher.MODES, {
             '65k': 'no flags', 'long': '--context 262144',
             'long-kv4': '--context 262144 --kv-cache kv4 --prefix-caching on --system-memory-weights',
@@ -1140,17 +1186,17 @@ class Rocm10LauncherTests(unittest.TestCase):
         w3rot.mkdir()
         self.environment['PAITON_W3ROT_DIR'] = str(w3rot)
         # default: the presets keep their GDN path (lazy from the image in 65k, eager in the long modes)
-        self.assertNotIn('RADIANCE_GDN_LAZY=1', self.dry_run('--mode', 'long-kv4'))
-        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', 'long-kv4'))
+        self.assertNotIn('PAITON_RT_GDN_LAZY=1', self.dry_run('--mode', 'long-kv4'))
+        self.assertIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', 'long-kv4'))
         self.assertEqual(self.dry_run('--mode', 'long-kv4', '--gdn-state', 'auto'), self.dry_run('--mode', 'long-kv4'))
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k'))
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', '65k'))
         # lazy in the 4-bit long mode: one stash block per request, no eager override
         command = self.dry_run('--mode', 'long-kv4', '--prefix-caching', 'off', '--gdn-state', 'lazy')
-        self.assertIn('RADIANCE_GDN_LAZY=1', command)
-        self.assertNotIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('PAITON_RT_GDN_LAZY=1', command)
+        self.assertNotIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertIn('--no-enable-prefix-caching', command)
         # eager can be forced in the 65k mode
-        self.assertIn('RADIANCE_GDN_LAZY=0', self.dry_run('--mode', '65k', '--gdn-state', 'eager'))
+        self.assertIn('PAITON_RT_GDN_LAZY=0', self.dry_run('--mode', '65k', '--gdn-state', 'eager'))
         # lazy is refused wherever prefix caching is on
         for options in (('--mode', 'long', '--gdn-state', 'lazy'), ('--mode', 'long-kv4', '--gdn-state', 'lazy'),
                         ('--context', '262144', '--prefix-caching', 'on', '--gdn-state', 'lazy')):
@@ -1326,7 +1372,7 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertIn('--enable-prefix-caching', command)
         self.assertNotIn('--no-enable-prefix-caching', command)
         self.assertEqual(value(command, '--mamba-cache-mode'), 'align')
-        self.assertIn('RADIANCE_GDN_LAZY=0', command)
+        self.assertIn('PAITON_RT_GDN_LAZY=0', command)
         self.assertIn('PAITON_KV4=1', command)
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(launcher.W3_LONG_KV4_CACHE_BYTES))
         self.assertNotIn('without prefix caching', result.stderr)
@@ -1351,12 +1397,16 @@ class Rocm10LauncherTests(unittest.TestCase):
                                                '--system-memory-weights'))
         self.assertEqual(value(command, '--max-model-len'), '524288')
         self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], 524288)
+        # vLLM 0.32 images (r6, the default) also get the scaled length, which 0.32 no longer derives from the YaRN factor
         self.assertEqual(json.loads(value(command, '--hf-overrides')),
-                         {'text_config': {'rope_parameters': {'rope_type': 'yarn', 'factor': 2.0,
-                                                              'original_max_position_embeddings': 262144}}})
+                         {'text_config': {'rope_parameters': launcher.YARN_FACTOR_2, 'max_position_embeddings': 524288}})
         self.assertEqual(value(command, '--kv-cache-memory-bytes'), str(815 * 14336000))
         self.assertIn('--enable-prefix-caching', command)
         self.assertEqual(value(command, '--prefix-cache-retention-interval'), '32000')
+        older = self.dry_run('--mode', 'long-512k', '--image', launcher.PREVIOUS_IMAGES['20261123-r5'])
+        self.assertEqual(json.loads(value(older, '--hf-overrides')),
+                         {'text_config': {'rope_parameters': {'rope_type': 'yarn', 'factor': 2.0,
+                                                              'original_max_position_embeddings': 262144}}})
         self.assertIn('PAITON_HOST_EMBED=1', command)
         mount = next(item for item in command if item.endswith(':/models/draft/config.json:ro'))
         self.assertFalse(Path(mount.split(':')[0]).exists())          # written only when the launcher runs
@@ -1780,11 +1830,12 @@ class Rocm10LauncherTests(unittest.TestCase):
         self.assertNotIn('Warning:', self.run_launcher('--dry-run', '--mode', 'long-kv4').stderr)
 
     def test_previous_release_images_keep_their_behaviour(self):
-        image = launcher.IMAGES['65k']
+        # against r5, the last vLLM 0.29 release (r6, the default, adds the vLLM 0.32 settings)
+        image = launcher.PREVIOUS_IMAGES['20261123-r5']
 
         def on(old, options):
-            # the current image adds block verification to the speculative config; the older images keep token-wise
-            command = self.dry_run(*options)
+            # r5 adds block verification to the speculative config; the older images keep token-wise
+            command = self.dry_run(*options, '--image', image)
             index = command.index('--speculative-config') + 1
             spec = json.loads(command[index])
             self.assertEqual(spec.pop('rejection_sample_method'), 'block')
@@ -1988,19 +2039,47 @@ class Rocm10LauncherTests(unittest.TestCase):
         import types
         self._w3rot()
         flag = 'PAITON_PC_DFLASH_NO_DROP=1'
-        self.assertTrue(launcher._image_parts(types.SimpleNamespace(image=None, release='65k'))[0]
+        r5 = ('--image', launcher.PREVIOUS_IMAGES['20261123-r5'])   # r6 (the default) uses the vLLM 0.32 switch instead
+        self.assertTrue(launcher._image_parts(types.SimpleNamespace(image=r5[1], release='65k'))[0]
                         .endswith(launcher.DFLASH_NO_DROP_IMAGE_SUFFIXES))
-        command = self.dry_run('--mode', 'long-kv4')
+        command = self.dry_run('--mode', 'long-kv4', *r5)
         self.assertIn(flag, command[:command.index('serve')])
-        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights'))
+        self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--no-system-memory-weights', *r5))
         self.assertIn(flag, self.dry_run('--mode', 'long-kv4', '--image',
                                          'paiton-qwen38-local:qwen38-rocm10-vllm029-20261123-r5'))
-        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--host-cache-gib', '4'),
-                        ('--mode', 'long-512k'), ('--mode', 'long'), ('--mode', '65k'),
-                        ('--mode', 'long-kv4', '--prefix-caching', 'off'),
-                        ('--mode', 'long-kv4', '--image', launcher.PREVIOUS_IMAGES['20261119-r4'])):
+        for options in (('--mode', 'long-kv4', '--vision', *r5), ('--mode', 'long-kv4', '--host-cache-gib', '4', *r5),
+                        ('--mode', 'long-512k', *r5), ('--mode', 'long', *r5), ('--mode', '65k', *r5),
+                        ('--mode', 'long-kv4', '--prefix-caching', 'off', *r5),
+                        ('--mode', 'long-kv4', '--image', launcher.PREVIOUS_IMAGES['20261119-r4']),
+                        ('--mode', 'long-kv4')):
             with self.subTest(options=options):
                 self.assertNotIn(flag, self.dry_run(*options))
+
+    def test_dflash_no_drop_through_the_speculative_config_on_vllm_032(self):
+        """vLLM 0.32 images get the upstream switch (disable_eagle_block_drop) instead of the overlay's variable, in
+        the same cases as r5."""
+        self._w3rot()
+        image = 'paiton-rocm102-cand:' + launcher.UPSTREAM_NO_DROP_IMAGE_SUFFIXES[-1]
+
+        def spec(*options):
+            command = self.dry_run(*options, '--image', image)
+            self.assertNotIn('PAITON_PC_DFLASH_NO_DROP=1', command)
+            return json.loads(value(command, '--speculative-config'))
+
+        self.assertIs(spec('--mode', 'long-kv4').get('disable_eagle_block_drop'), True)
+        all_text = ('--mode', 'long-kv4', '--host-cache-gib', '4'), ('--mode', 'long-512k')
+        for options in (('--mode', 'long-kv4', '--vision'), ('--mode', 'long-kv4', '--prefix-caching', 'off')):
+            with self.subTest(options=options):
+                self.assertNotIn('disable_eagle_block_drop', spec(*options))
+        # images with the drafter trim without the drop skip it also with the host tier and at 524,288 tokens
+        self.assertTrue(image.endswith(launcher.ALL_TEXT_NO_DROP_IMAGE_SUFFIXES))
+        for options in all_text:
+            with self.subTest(options=options):
+                self.assertIs(spec(*options).get('disable_eagle_block_drop'), True)
+        image = 'paiton-rocm102-cand:qwen38-rocm102-vllm032-20261123-c6'
+        for options in all_text:
+            with self.subTest(image=image, options=options):
+                self.assertNotIn('disable_eagle_block_drop', spec(*options))
 
     def test_mode_with_the_mxfp4_weights(self):
         image = launcher.IMAGES['65k']
@@ -2038,10 +2117,10 @@ class Rocm10LauncherTests(unittest.TestCase):
         for mode in ('long-512k', 'long-kv4'):
             for script, code in (('run-mxfp4.sh', 2), ('run-3bit.sh', 0)):
                 with self.subTest(script=script, mode=mode):
-                    result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', mode, '--dry-run'],
-                                            env=self.environment, capture_output=True, text=True)
+                    result = subprocess.run(['bash', str(MODEL_DIR / script), '--mode', mode, '--dry-run', '--image',
+                                             C4_IMAGE], env=self.environment, capture_output=True, text=True)
                     self.assertEqual(result.returncode, code, result.stderr)
-        self.assertEqual(self.kv4_flags(json.loads(result.stdout), image), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
+        self.assertEqual(self.kv4_flags(json.loads(result.stdout), C4_IMAGE), ['PAITON_KV4=1', 'PAITON_KV4_CAPACITY=1'])
 
     def test_mode_long_picks_the_context_of_its_configuration(self):
         # --mode long needs no --context: MXFP4 weights 200,000 (one request), 3-bit weights with --vision 245,000; each
@@ -2052,7 +2131,7 @@ class Rocm10LauncherTests(unittest.TestCase):
                           launcher.W3_LONG_VISION_MAX_CONTEXT), (200000, 220000, 245000))
 
         def script(name, *options):
-            result = subprocess.run(['bash', str(MODEL_DIR / name), *options, '--dry-run'],
+            result = subprocess.run(['bash', str(MODEL_DIR / name), *options, '--dry-run', '--image', C4_IMAGE],
                                     env=self.environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             return json.loads(result.stdout), result.stderr
@@ -2075,8 +2154,8 @@ class Rocm10LauncherTests(unittest.TestCase):
                 self.assertEqual(command, self.dry_run(*flags))
                 self.assertEqual(value(command, '--max-model-len'), context)
                 self.assertEqual(json.loads(value(command, '--speculative-config'))['max_model_len'], int(context))
-        for name, preset, flags in (('run-mxfp4.sh', ('--mode', 'long'), ('--context', '200000')),
-                                    ('run-3bit.sh', ('--mode', 'long', '--vision'), ('--context', '245000', '--vision'))):
+        # (run-mxfp4.sh is refused on the vLLM 0.32 images: test_wrappers_dry_run_from_a_clean_environment)
+        for name, preset, flags in (('run-3bit.sh', ('--mode', 'long', '--vision'), ('--context', '245000', '--vision')),):
             with self.subTest(script=name):
                 command, stderr = script(name, *preset)
                 self.assertEqual(command, script(name, *flags)[0])
@@ -2307,17 +2386,27 @@ class Rocm10LauncherTests(unittest.TestCase):
         cases = (('run-3bit.sh', ()), ('run-3bit.sh', ('--mode', 'long')), ('run-3bit.sh', ('--mode', 'long-kv4')),
                  ('run-3bit.sh', ('--kv-cache', 'fp8')), ('run-mxfp4.sh', ()), ('run-mxfp4.sh', ('--mode', 'long')),
                  ('run-rocm10.sh', ()), ('run-rocm10-65k.sh', ()), ('run-rocm10-200k.sh', ()))
-        for wrapper, options in cases:
+        for wrapper, options in (*cases, ('run-rocm10.sh', None)):
             with self.subTest(wrapper=wrapper, options=options):
                 self.record.unlink(missing_ok=True)
                 env = {'HOME': self.environment.get('HOME', str(self.root)),
                        'PATH': os.pathsep.join([str(self.root / 'bin'), '/usr/bin', '/bin']), **folders,
                        'DOCKER_ARGV_RECORD': str(self.record)}
-                if wrapper == 'run-3bit.sh':
+                if wrapper == 'run-3bit.sh' or options is None:
                     env['PAITON_W3ROT_DIR'] = str(w3rot)
                 result = subprocess.run(['env', '-i', *[f'{k}={v}' for k, v in env.items()],
-                                         'bash', str(rel / wrapper), '--dry-run', *options],
+                                         'bash', str(rel / wrapper), '--dry-run',
+                                         *(('--image', C4_IMAGE, *options) if options is not None else ())],
                                         cwd=repo, capture_output=True, text=True)
+                if options is None:   # the released default (r6) serves; earlier images need the older launcher tag
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn(launcher.IMAGES['65k'], json.loads(result.stdout))
+                    continue
+                if wrapper != 'run-3bit.sh':   # the MXFP4 weights: refused on the vLLM 0.32 images, served by r5
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn('serves the 3-bit W3A4 weights only', result.stderr)
+                    self.assertFalse(self.record.exists())
+                    continue
                 self.assertEqual(result.returncode, 0, result.stderr)
                 argv = json.loads(result.stdout)
                 self.assertEqual(argv[:2], ['docker', 'run'])

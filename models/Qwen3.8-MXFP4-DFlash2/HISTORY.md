@@ -455,7 +455,7 @@ other serving settings are unchanged. Update this repository to get the launcher
   never showed it; a user on Unraid did, and reported it with the diagnosis. The draft head is
   now always built on first use from the real head. The 20, 24, 26 and 28 September (r1)
   images all carry the affected file; on them, run the container with
-  `-e RADIANCE_FAST_DRAFT=0` (the stock bf16 draft head, about 10% slower decode than the int2
+  `-e PAITON_RT_FAST_DRAFT=0` (the stock bf16 draft head, about 10% slower decode than the int2
   head) or update.
 - **New: one image for both modes.** `run-rocm10.sh` starts the 65K mode. A `--context` above 65,536, for
   example `--context 200000`, starts the long-context mode on the same image: one request, prefix caching
@@ -472,7 +472,7 @@ other serving settings are unchanged. Update this repository to get the launcher
   Unused padding rows in some GPU steps held uninitialized memory, and a safety check in the
   recurrent-layer norm stopped the engine on them. The image now zeroes these rows: a soak test of 10,002
   such steps ran without errors, and outputs are unchanged.
-- **If you stay on the 26 September image,** run its container with `-e RADIANCE_DYNAMIC_WIDTH=0`. In our
+- **If you stay on the 26 September image,** run its container with `-e PAITON_RT_DYNAMIC_WIDTH=0`. In our
   runs this avoided more than 99% of these steps. The launcher does not pass it; `--dry-run` prints the full
   Docker command.
 - **Unchanged:** prefill and single-request decode speed.
@@ -488,15 +488,29 @@ Moved from the quickstart on 7 October 2026; the quickstart keeps only current r
 
 ### Run an earlier release
 
-Add `--image` with the exact reference below to the command of your row. The weights stay the same; give each image
-its own runtime cache folder. With an earlier reference, the launcher builds the Docker command of that release;
-`--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
-Docker runs exactly that image. The launcher recognises an earlier image by its tag (`…-20261119-r4`, `…-20261118-r3`, `…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
-`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
-and by its digest alone; an image under any other tag or an image ID counts as the current image.
+The launcher of the current release runs image r6 and refuses r5 and every earlier image. Those run with the launcher
+of the r5 release: check out its tag first.
 
 ```bash
-# 19 November r4, the previous release: every row
+git fetch origin tag qwen38-rocm10-vllm029-20261123-r5
+git checkout qwen38-rocm10-vllm029-20261123-r5
+```
+
+Then add `--image` with the exact reference below to the command of your row. The weights stay the same; give each
+image its own runtime cache folder. With an earlier reference, the r5 launcher builds the Docker command of that
+release; `--dry-run` prints it without starting anything. Copy the reference exactly, including `@sha256:`, so that
+Docker runs exactly that image. The r5 launcher recognises an earlier image by its tag (`…-20261119-r4`, `…-20261118-r3`, `…-20261107-r2`, `…-20261005-r1`, `…-20261004-r1`, `…-20261003-r1`,
+`…-20261002-r1s`, `…-20260929-r2`), with or without the digest and also under a local re-tag that keeps the tag,
+and by its digest alone; an image under any other tag or an image ID counts as r5.
+
+```bash
+# 23 November r5, the previous release: every row, MXFP4 included (the r5 launcher pins it, so --image is optional)
+export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261123"
+mkdir -p "$PAITON_CACHE_DIR"
+bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
+  --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121
+
+# 19 November r4: every row
 export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261119"
 mkdir -p "$PAITON_CACHE_DIR"
 bash models/Qwen3.8-MXFP4-DFlash2/run-3bit.sh --mode long-kv4 \
@@ -545,8 +559,8 @@ bash models/Qwen3.8-MXFP4-DFlash2/run-mxfp4.sh \
   --image ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20260929-r2@sha256:1195f31329966b3dc4e8e2d17327d339827b3d2b09165f9969b053a6fc2db045
 ```
 
-To return to the current release, run `export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"` again
-and drop `--image`.
+To return to the current release, run `git checkout main` and
+`export PAITON_CACHE_DIR="$PWD/runtime-cache/qwen38-rocm10-20261118"` again, and drop `--image`.
 
 The 3 October image runs every row as it was released. With the 4-bit cache it refuses the RAM and SSD cache tiers
 (`--extend-cache`, and `--host-cache-gib` with `--mode long-kv4`): there a cache hit could resume from the wrong
@@ -681,7 +695,7 @@ its opt-in n-gram co-drafting mode is described [above](REFERENCE.md#faster-agen
 The 20 September 65K image (`ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2`)
 measured 154.42 tok/s weighted decode, 218.1 tok/s median JSON decode and 421.20 tok/s
 aggregate at concurrency eight: +5.16% weighted decode and +4.37–5.61% large-prefill
-throughput over the 18 September image. Its full tables, including the GGZ reference
+throughput over the 18 September image. Its full tables, including the reference-backend
 columns, are in [benchmarks/2026-09-20-combined](benchmarks/2026-09-20-combined/README.md).
 
 ## Long coding conversations: prefix caching can remove most repeat-turn waiting
@@ -736,31 +750,31 @@ The comparison sections below retain the measurements from the earlier 8K releas
 ## Earlier release benchmark suites
 
 Paiton delivers **22% higher weighted decode throughput**, **57% more throughput
-at eight concurrent requests**, and **12.5–17.3% faster prefill** than Radiance +
+at eight concurrent requests**, and **12.5–17.3% faster prefill** than the reference engine +
 DFlash2 on the same Radeon AI PRO R9700. Paiton leads all eight task categories
 and all four concurrency throughput levels in the full 188-request comparison.
 
 At eight concurrent requests, median time to first token falls from **6.59
 seconds to 195 ms**, including queueing. The same 5 GiB cache pool provides
 **2.89× the estimated token capacity**, with logs recording eight active requests
-for Paiton versus three for Radiance.
+for Paiton versus three for the reference engine.
 
-Paiton combines native HIP kernels, adapted Radiance techniques, and vLLM's
+Paiton combines native HIP kernels, adapted reference-engine techniques, and vLLM's
 DFlash2 support. The official vLLM installation stays in place: a model-specific
-plugin supplies the native implementation. There is no separate Radiance engine
+plugin supplies the native implementation. There is no separate reference engine
 or DFlash package to install.
 
-![Stock vLLM O2, Radiance + DFlash2, and Paiton + DFlash2 throughput and prefill](three-engine-throughput.png)
+![Stock vLLM O2, reference engine + DFlash2, and Paiton + DFlash2 throughput and prefill](three-engine-throughput.png)
 
 The common 54-request matrix includes stock vLLM O2: C8 throughput is
-**33.7 / 175.6 / 328.5 tok/s** for stock / Radiance / Paiton respectively. Its
+**33.7 / 175.6 / 328.5 tok/s** for stock / the reference engine / Paiton respectively. Its
 128-token generation cap differs from the longer full preset, reported
 separately below.
 
-![Full-workload comparison against Radiance + DFlash2](full-confirmation.png)
+![Full-workload comparison against the reference engine + DFlash2](full-confirmation.png)
 
 [Complete three-engine tables, latency, and measurement scope](BENCHMARKS.md).
-Radiance retains an approximately 10–11 ms TTFT advantage at one and two
+The reference engine retains an approximately 10–11 ms TTFT advantage at one and two
 concurrent requests; Paiton's latency advantage appears under concurrent load.
 
 ## Run the v1.0.0 benchmark release
@@ -869,13 +883,13 @@ the installed vLLM library. The main repository's general installation has a
 different historical vLLM pin; use this model's qualified image and profile.
 
 Paiton's native artifacts use HIP and load independently of PyTorch, Triton,
-and Radiance. The serving adapter retains vLLM's existing framework dependencies
+and the reference engine. The serving adapter retains vLLM's existing framework dependencies
 and upstream DFlash2 scheduling. The compiler and implementation source stay
 private; the runtime package contains only the external adapter, allowlisted
 native libraries, and runtime metadata.
 
-[Radiance](https://github.com/magiccodingman/vllm-radiance) and
-[StillDeadcode/libr4d](https://codeberg.org/StillDeadcode/libr4d) are credited for
+The reference engine and
+the reference kernel library are credited for
 the adapted kernel techniques. [Third-party attribution and terms](THIRD_PARTY_NOTICES.md).
 
 The ordinary CLI deployment check passes streaming, eight concurrent requests,

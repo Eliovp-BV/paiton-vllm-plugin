@@ -8,7 +8,7 @@ from pathlib import Path
 def configure(root, manifest):
     root = Path(root)
     provider = os.environ.get('PAITON_RUNTIME_COMPAT_NATIVE_PROVIDER', 'off')
-    selected = {k: v for k, v in os.environ.items() if k.startswith('RADIANCE_')}
+    selected = {k: v for k, v in os.environ.items() if k.startswith('PAITON_RT_')}
     value = dict(compatibility=manifest, provider=provider, environment=selected,
                  build=os.environ.get('PAITON_RUNTIME_COMPAT_BUILD_ID', 'development'),
                  bootstrap=hashlib.sha256((root/'bootstrap.py').read_bytes()).hexdigest())

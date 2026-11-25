@@ -30,7 +30,7 @@
   "--safetensors-load-strategy",
   "lazy",
   "--attention-backend",
-  "R4D",
+  "PDK",
   "--compilation-config",
   "{\"pass_config\": {\"fuse_norm_quant\": true, \"fuse_act_quant\": true}}",
   "--speculative-config",

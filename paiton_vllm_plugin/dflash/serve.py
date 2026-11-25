@@ -50,6 +50,30 @@ def _spawn_warmup_sidecar(args):
         print('[paiton.warmup] self-warm-up sidecar not started: %r' % (exc,), file=sys.stderr, flush=True)
 
 
+def _text_only_without_mm_embeds():
+    """vLLM 0.32 accepts pre-computed embedding inputs on every KV consumer (VllmConfig._resolve_mm_embedding_inputs),
+    and the host and disk KV tiers run the OffloadingConnector as a kv_both consumer. With --language-model-only that
+    builds the image and video processor and runs a dummy-input warm-up (about 15 s) in a text-only server; vLLM 0.29
+    did neither. Skip the resolver there. The engine core gets the resolved config, so patching this process is enough."""
+    try:
+        from vllm.config.vllm import VllmConfig
+    except Exception:  # noqa: BLE001
+        return
+    resolve = getattr(VllmConfig, '_resolve_mm_embedding_inputs', None)
+    if resolve is None or getattr(resolve, '_paiton_text_only', False):
+        return
+
+    def guarded(self):
+        model = self.model_config
+        mm = model.multimodal_config if model is not None else None
+        if mm is not None and mm.language_model_only:
+            return None
+        return resolve(self)
+
+    guarded._paiton_text_only = True
+    VllmConfig._resolve_mm_embedding_inputs = guarded
+
+
 def main():
     from ..activation import activate
     activate('dflash', os.environ)
@@ -60,6 +84,7 @@ def main():
     install()
     if os.environ.get('PAITON_START_WARMUP', '0') == '1':
         _spawn_warmup_sidecar(args)
+    _text_only_without_mm_embeds()
     sys.argv = ['vllm.entrypoints.openai.api_server', *args]
     runpy.run_module('vllm.entrypoints.openai.api_server', run_name='__main__')
 

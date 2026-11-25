@@ -100,6 +100,7 @@ def qwen3_config(
     return ParserEngineConfig(
         name=name,
         initial_state=ParserState.REASONING if thinking else ParserState.CONTENT,
+        wait_for_reasoning=thinking,
         turn_boundary_tokens=turn_boundary_tokens,
         terminals={
             # Reasoning terminals
@@ -205,8 +206,8 @@ class Qwen3Parser(ParserEngine):
     """Qwen3 parser: ``<think>``/``</think>`` reasoning +
     ``<tool_call>`` XML tool calls in a single engine.
 
-    - ``<tool_call>`` as implicit reasoning end
-    - Unpaired ``<tool_call>`` token ID detection for ``is_reasoning_end``
+    - ``<tool_call>`` as implicit reasoning end (a grammar transition, so it
+      also feeds ``is_reasoning_end`` and the structured-output gate)
 
     Subclasses that share the grammar but differ only in the four wrapper
     token strings (reasoning + tool-call) override the class attributes
@@ -227,7 +228,7 @@ class Qwen3Parser(ParserEngine):
         **kwargs,
     ) -> None:
         chat_kwargs = kwargs.get("chat_template_kwargs", {}) or {}
-        # [radiance] agree with the template about thinking, not just enable_thinking.
+        # [paiton] agree with the template about thinking, not just enable_thinking.
         # The froggeric template also pre-closes </think> in the PROMPT for
         # reasoning_effort in {none, off} and for auto_disable_thinking_with_tools when
         # tools are present. This parser only sees the OUTPUT, so a pre-closed block
@@ -235,14 +236,14 @@ class Qwen3Parser(ParserEngine):
         # comes back null and the answer hides in `reasoning`. Decide from the same
         # kwargs the template read; sniffing the output cannot tell "thinking was off"
         # from "truncated mid-thought", and the latter must stay reasoning.
-        _radiance_effort = chat_kwargs.get("reasoning_effort")
-        _radiance_effort = (
-            str(_radiance_effort).strip().lower()
-            if _radiance_effort is not None
+        _paiton_effort = chat_kwargs.get("reasoning_effort")
+        _paiton_effort = (
+            str(_paiton_effort).strip().lower()
+            if _paiton_effort is not None
             else "medium"
         )
         self.thinking_enabled = bool(chat_kwargs.get("enable_thinking", True))
-        if _radiance_effort in ("none", "off"):
+        if _paiton_effort in ("none", "off"):
             self.thinking_enabled = False
         if chat_kwargs.get("auto_disable_thinking_with_tools") and tools:
             self.thinking_enabled = False
@@ -263,9 +264,6 @@ class Qwen3Parser(ParserEngine):
             tools,
             **kwargs,
         )
-        vocab = self.vocab
-        self._tool_call_token_id: int | None = vocab.get(self.TOOL_START)
-        self._tool_call_end_token_id: int | None = vocab.get(self.TOOL_END)
 
     def extract_reasoning(
         self,
@@ -275,28 +273,3 @@ class Qwen3Parser(ParserEngine):
         if not self.thinking_enabled:
             return None, model_output
         return super().extract_reasoning(model_output, request)
-
-    def is_reasoning_end(self, input_ids: list[int]) -> bool:
-        if super().is_reasoning_end(input_ids):
-            return True
-        tool_call_id = self._tool_call_token_id
-        tool_call_end_id = self._tool_call_end_token_id
-        reasoning_start_id = self._reasoning_start_token_id
-        boundary_ids = self._turn_boundary_token_ids
-        if tool_call_id is not None:
-            for i in range(len(input_ids) - 1, -1, -1):
-                if (
-                    reasoning_start_id is not None
-                    and input_ids[i] == reasoning_start_id
-                ):
-                    return False
-                if input_ids[i] in boundary_ids:
-                    return False
-                if input_ids[i] == tool_call_id:
-                    if tool_call_end_id is not None and any(
-                        input_ids[j] == tool_call_end_id
-                        for j in range(i + 1, len(input_ids))
-                    ):
-                        continue
-                    return True
-        return False

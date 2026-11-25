@@ -28,7 +28,7 @@ def _install_output_error_guard(error):
 
     expected = ('self', 'model_runner_output', 'sampler_output',
                 'num_sampled_tokens', 'main_stream', 'copy_stream',
-                'check_ep_fault', 'routed_experts')
+                'check_ep_fault', 'pending_aux_output')
     original_init = AsyncOutput.__init__
     original_get = AsyncOutput.get_output
     if tuple(inspect.signature(original_init).parameters) != expected:
@@ -39,7 +39,7 @@ def _install_output_error_guard(error):
     @functools.wraps(original_init)
     def guarded_init(self, model_runner_output, sampler_output,
                      num_sampled_tokens, main_stream, copy_stream,
-                     check_ep_fault=False, routed_experts=None):
+                     check_ep_fault, pending_aux_output):
         if torch.cuda.is_current_stream_capturing():
             raise RuntimeError('GDN output validation must run outside graph capture')
         self._paiton_gdn_status = torch.empty(1, dtype=torch.int32,
@@ -52,7 +52,7 @@ def _install_output_error_guard(error):
         main_stream.wait_stream(copy_stream)
         original_init(self, model_runner_output, sampler_output,
                       num_sampled_tokens, main_stream, copy_stream,
-                      check_ep_fault, routed_experts)
+                      check_ep_fault, pending_aux_output)
 
     @functools.wraps(original_get)
     def guarded_get(self):
@@ -72,7 +72,7 @@ def install():
     if _installed:
         return
     import torch
-    import radiance_arnq as reference
+    import paiton_arnq as reference
 
     path = Path(os.environ['PAITON_RUNTIME_COMPAT_GDN_NORM_MANIFEST']).resolve(strict=True)
     manifest = json.loads(path.read_text())
@@ -117,7 +117,7 @@ def install():
                 selected.add(m)
                 print(f'[paiton.runtime_gdn_norm] native rows={m}; threads=768', flush=True)
         else:
-            q, scale = torch.ops.radiance.gdn_norm_quant(x, z, w, epsilon)
+            q, scale = torch.ops.paiton.gdn_norm_quant(x, z, w, epsilon)
         return q, scale
 
     @produce.register_fake

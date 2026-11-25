@@ -66,3 +66,8 @@ def register() -> None:
     ToolParserManager.register_lazy_module(
         "inkling2", f"{__name__}.parser", "Inkling2EngineToolParser"
     )
+
+    # The model's own drafter: `--speculative-config` with method dspark
+    from .drafter import install
+
+    install()

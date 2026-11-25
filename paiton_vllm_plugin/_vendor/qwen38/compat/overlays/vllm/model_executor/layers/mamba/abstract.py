@@ -15,12 +15,12 @@ from vllm.v1.attention.selector import get_mamba_attn_backend
 from vllm.v1.kv_cache_interface import KVCacheSpec, MambaSpec
 
 
-def _radiance_lazy_spec_blocks(layer, vllm_config):
-    """radiance lazy gdn: a lazy cache keeps one stash block per request instead of one block per
-    draft token (radiance_gdn_lazy.py). GDN layers only; everything else keeps the stock count."""
+def _paiton_lazy_spec_blocks(layer, vllm_config):
+    """paiton lazy gdn: a lazy cache keeps one stash block per request instead of one block per
+    draft token (paiton_gdn_lazy.py). GDN layers only; everything else keeps the stock count."""
     import os as _os
     n = vllm_config.num_speculative_tokens
-    if n > 0 and _os.environ.get("RADIANCE_GDN_LAZY", "0") == "1" \
+    if n > 0 and _os.environ.get("PAITON_RT_GDN_LAZY", "0") == "1" \
             and "GDN" in str(getattr(layer.mamba_type, "name", layer.mamba_type)).upper():
         if vllm_config.cache_config.mamba_cache_mode != "none":
             raise RuntimeError("ROCm10 external runtime lazy port supports only for historical APC-off/mamba-none; use eager for other cache modes")
@@ -29,8 +29,7 @@ def _radiance_lazy_spec_blocks(layer, vllm_config):
 
 
 class MambaBase(AttentionLayerBase):
-    """
-    Base class for Mamba-like layers which support the v1 engine.
+    """Base class for Mamba-like layers which support the v1 engine.
     Inherit from this class if you implement a custom layer.
     """
 
@@ -57,8 +56,7 @@ class MambaBase(AttentionLayerBase):
 
     @abstractmethod
     def get_state_shape(self) -> Iterable[tuple[int, ...]]:
-        """
-        Defines the shape of the state.
+        """Defines the shape of the state.
         For mamba layers this is usually a (conv_state, ssm_state) tuple.
         In this case, returns (conv_state_shape, ssm_state_shape).
         """
@@ -89,12 +87,13 @@ class MambaBase(AttentionLayerBase):
             mamba_type=self.mamba_type,
             tp_replicated=self.is_kv_cache_tp_replicated,
             mamba_cache_mode=vllm_config.cache_config.mamba_cache_mode,
-            # RecoverSSM verifies the whole window off one checkpoint, so it
+            # ReplaySSM verifies the whole window off one checkpoint, so it
             # never writes the baseline's per-draft-token state slots.
             num_speculative_blocks=(
-                0 if vllm_config.cache_config.use_kda_recoverssm
-                else _radiance_lazy_spec_blocks(self, vllm_config)
-            ),  # radiance lazy gdn
+                0
+                if vllm_config.cache_config.use_replayssm
+                else _paiton_lazy_spec_blocks(self, vllm_config)
+            ),  # paiton lazy gdn
         )
 
     def get_attn_backend(self) -> type[AttentionBackend]:

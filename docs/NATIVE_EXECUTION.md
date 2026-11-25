@@ -118,7 +118,7 @@ modality or serving choices. The legacy model launchers keep their own contracts
 **Qwen:** text only; no vision or draft model; no speculative decoding or prefix
 caching. The profile explicitly permits lossy NVFP4→MXFP4 requantization during
 model loading, entirely in GPU memory. It retains the released FP8/BF16 layer
-exceptions, FP8 KV, FP16 recurrent state, BF16 convolution state, R4D attention,
+exceptions, FP8 KV, FP16 recurrent state, BF16 convolution state, PDK attention,
 synchronous scheduling and fixed graph/fusion configuration. It defaults to
 65,536 total tokens, eight sequences, 4,096 batched tokens and 6,535,819,798 KV
 cache bytes. The native command does not change the checkpoint's chat template,
