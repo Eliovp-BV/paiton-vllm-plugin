@@ -89,6 +89,8 @@ class Pool:
     """Device state of the pool. `state`, `ring` and `miss_logs` are the addresses the sequencer (ABI 4) takes."""
 
     def __init__(self, nvfp4_of: dict[int, bool]) -> None:
+        if not 0 <= SKIP <= 0.12:  # the library refuses a larger gate in Fetch (a row could lose all 8 pairs), failing the forward
+            raise ValueError(f"PAITON_INK2_EXPERT_SKIP={SKIP}: use 0 (exact) or a gate up to 0.12")
         if sorted(nvfp4_of) != list(range(LAYERS)) or sorted(_HOST) != list(range(LAYERS)):
             raise RuntimeError("expert pool: every layer's experts must be pooled")
         if any(nvfp4_of[layer] != (layer < 20) for layer in range(LAYERS)):
