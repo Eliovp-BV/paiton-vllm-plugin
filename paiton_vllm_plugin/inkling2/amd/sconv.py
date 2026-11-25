@@ -30,13 +30,9 @@ if NATIVE_OPS:
     from .conv_state import InklingConvState, InklingSconvMetadata
     from .native_ops import short_conv
 else:
-    from vllm.models.inkling.amd.sconv_swa_attn import (
-        InklingConvState,
-        InklingSconvMetadata,
-    )
-
-    from .ops.linear import linear_k_groups
-    from .ops.sconv import short_conv
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 K_STREAM, V_STREAM, ATTN_STREAM, MLP_STREAM = range(4)
 

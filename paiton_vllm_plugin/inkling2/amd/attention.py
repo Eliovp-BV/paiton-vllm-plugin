@@ -46,15 +46,9 @@ if NATIVE_OPS:
     from .conv_state import InklingConvState
     from .native_attention import KV, KV_FORMATS, NativeAttention
 else:
-    KV = "bf16"
-    from vllm.models.inkling.amd.sconv_swa_attn import InklingConvState
-
-    from .ops.attention import (
-        gated_rel_attention,
-        plan_decode_attention,
-        rel_decode_attention,
-    )
-    from .ops.sconv import attention_prologue, shift_rel_proj
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 
 class Inkling2AttentionMetadataBuilder(FlashAttentionMetadataBuilder):
