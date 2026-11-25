@@ -157,6 +157,7 @@ CARD_POOL_GIB = 12.0       # the card's prefix-cache pool: a RAM tier is inclusi
 # window and conv chunks at the boundary; ~10.8 GiB without the drafter.
 STAGING_GIB = 12.0         # disk tier: the system-memory stage every restore passes; holds a document the size of the pool
 MIN_TIER_GIB = 4.0
+HINT_PIN_GIB, HINT_TIER_GIB = 30.0, 20.0  # the start line suggests a tier from this pin limit (MemAvailable ~46 GiB)
 DISK_MAX_GIB, DISK_FREE_SHARE = 64.0, 0.25
 # vLLM's file tier writes one file per chunk. 16 blocks (256 tokens, 9 MiB files) restore 146K tokens after a restart in
 # 2.2 s instead of 9.1 s with one block (576 KiB files), same disk use per token; a hit then ends up to 255 tokens
@@ -251,6 +252,22 @@ def tier_settings(host_cache_gib, extend_cache, pinned_gib=0.0):
                   'system-memory stage')
 
 
+def tier_hint(pinned):
+    """The RAM tier is opt-in (format 4 keeps about 1.1M tokens on the card; a tier costs about 13 s at every start).
+    For a host that could hold one (one AMD GPU, so no other card's server stalls while it pins; the pin limit at
+    HINT_PIN_GIB or more), one line on how to turn it on; None otherwise."""
+    try:
+        gpus = sum(int((dev / 'mem_info_vram_total').read_text()) >= 8 * 2 ** 30 for dev in amd_cards())
+    except (OSError, ValueError):
+        return None
+    limit = pin_limit_gib() - (0.0 if os.environ.get('PAITON_HOST_PIN_LIMIT_GIB') else pinned)
+    if gpus != 1 or limit < HINT_PIN_GIB:
+        return None
+    return (f'off (opt-in); this host can pin {limit:g} GiB: --host-cache-gib {HINT_TIER_GIB:g} keeps prompts the card '
+            'drops in system memory for several sessions or agents (about 13 s more at start; a RAM hit is 0.06 to 0.25 s '
+            'slower than a hit on the card)')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, epilog='Other arguments go to vLLM unchanged.')
     parser.add_argument('--offline', action='store_true')
@@ -321,12 +338,14 @@ def main():
                             PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE,
                             PAITON_INK2_HOST_EMBED='1').items():
         os.environ.setdefault(name, value)
+    pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
+              + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
     if args.host_cache_gib or args.extend_cache:
-        pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
-                  + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
         tier, note = tier_settings(args.host_cache_gib, args.extend_cache, pinned)  # after the PAITON_INK2 settings: disk key
         print(json.dumps({'cache_tier': note}), flush=True)
         extra = [*tier, *extra]
+    elif not os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') and (hint := tier_hint(pinned)):
+        print(json.dumps({'cache_tier': hint}), flush=True)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
     argv = command(snapshot, args.host, extra, not args.no_drafter)

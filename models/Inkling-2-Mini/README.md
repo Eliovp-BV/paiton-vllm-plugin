@@ -82,6 +82,9 @@ drafter). Two options keep the prompts the card drops, so a long prompt sent aga
 
 - `--host-cache-gib GIB` keeps them in GIB of pinned system memory. The launcher refuses a size the host cannot pin
   at start.
+- For a host that serves several sessions or agents, with 64 GB of RAM or more and one GPU, we suggest
+  `--host-cache-gib 20`. It adds about 13 s to every start, and a hit from RAM takes 0.06 to 0.25 s longer than a hit
+  on the card. When you start without a tier and the host has room for one, the launcher prints this suggestion.
 - `--extend-cache ram` pins all the memory the host can spare at start. `--extend-cache disk` writes them as files
   under the cache folder (`~/.cache/paiton-inkling-2-mini/kv-disk`), behind a 12 GiB system-memory stage.
   `--extend-cache` alone picks `ram` when the host can pin 15 GiB or more, otherwise `disk`.

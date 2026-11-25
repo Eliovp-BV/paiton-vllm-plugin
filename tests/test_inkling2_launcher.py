@@ -133,6 +133,15 @@ class Inkling2CacheTier(unittest.TestCase):
         self.assertTrue(mine.is_dir())
         self.assertFalse(other.exists())
 
+    def test_start_line_suggests_a_tier_on_a_host_with_room(self):
+        card = Path(self.tmp.name) / 'card'
+        card.mkdir()
+        (card / 'mem_info_vram_total').write_text(str(32 * 2 ** 30))
+        for limit, cards, want in (('40', [card], True), ('9', [card], False), ('40', [card, card], False)):
+            with self.subTest(limit=limit, cards=len(cards)), mock.patch.object(server, 'amd_cards', lambda: cards), \
+                    mock.patch.dict(os.environ, {'PAITON_HOST_PIN_LIMIT_GIB': limit}):
+                self.assertEqual('--host-cache-gib 20' in (server.tier_hint(0.86) or ''), want)
+
     def test_image_and_script_carry_what_the_disk_tier_needs(self):
         docker, script = (FOLDER / 'Dockerfile').read_text(), (FOLDER / 'serve-docker.sh').read_text()
         site = '/usr/local/lib/python3.14/dist-packages/'
