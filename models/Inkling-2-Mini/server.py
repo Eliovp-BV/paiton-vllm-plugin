@@ -119,7 +119,8 @@ def small_card(free, context, drafter, vision, kv, need_pool=True):
             '--kv-cache-memory-bytes', str(int(cache * 2 ** 30))]
     if not vision:
         args += ['--limit-mm-per-prompt', json.dumps({'image': 0})]
-    env = dict(HSA_USERPTR_FOR_PAGED_MEM='0', PAITON_INK2_HOST_EMBED='1', PAITON_INK2_EXPERT_POOL_GIB=f'{pool:.2f}')
+    env = dict(HSA_USERPTR_FOR_PAGED_MEM='0', PAITON_INK2_HOST_EMBED='1', PAITON_INK2_EXPERT_POOL_GIB=f'{pool:.2f}',
+               PAITON_INK2_KV=kv)  # the format the plan sized the cache for, not the 32 GB default
     return args, env, note
 
 
@@ -135,8 +136,9 @@ def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
 
 # auto: vLLM sizes the context to the cache memory the card has left (322,736 tokens on a 32 GB R9700).
 MAX_MODEL_LEN = 'auto'
-# The release's cache format of the 8 full-attention visits; --kv-cache or -e PAITON_INK2_KV picks another.
-KV_CACHE = 'bf16'
+# The release's cache format of the 8 full-attention visits on 32 GB cards; --kv-cache or -e PAITON_INK2_KV picks another
+# (bf16 is the exact choice). Format 4 (25 Nov 2026): the full 1,048,576-token context, long-prompt speed like bf16.
+KV_CACHE = 'kv4'
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
 # system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
@@ -292,7 +294,8 @@ def main():
     free = None if args.download_only else args.dry_run if planned else card_free_gib()
     if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
         small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, not args.no_drafter, args.vision,
-                                      args.kv_cache or 'bf16', need_pool=args.dry_run is None)
+                                      args.kv_cache or os.environ.get('PAITON_INK2_KV', 'bf16'),
+                                      need_pool=args.dry_run is None)
         print(json.dumps({'card_profile': note}), flush=True)
         for name, value in env.items():
             os.environ.setdefault(name, value)  # `docker run -e` wins

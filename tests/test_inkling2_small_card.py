@@ -55,6 +55,7 @@ class Inkling2SmallCard(unittest.TestCase):
         for context, pool in ((32768, 9.39), (65536, 8.26)):
             args, env, note = self.run_small(self.host(28, 15.6), 15.9, context, True, False, 'bf16')
             self.assertAlmostEqual(float(env['PAITON_INK2_EXPERT_POOL_GIB']), pool, delta=0.02)
+            self.assertEqual(env['PAITON_INK2_KV'], 'bf16')  # its own format, not the 32 GB default
             self.assertEqual(args[args.index('--max-model-len') + 1], str(context))
         self.assertIn('hit rate 0.9', self.run_small(self.host(28, 15.6), 15.9, 32768, True, False, 'bf16')[2])
 
