@@ -66,6 +66,8 @@ def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
 
 # auto: vLLM sizes the context to the cache memory the card has left (322,736 tokens on a 32 GB R9700).
 MAX_MODEL_LEN = 'auto'
+# The release's cache format of the 8 full-attention visits; --kv-cache or -e PAITON_INK2_KV picks another.
+KV_CACHE = 'bf16'
 
 
 def main():
@@ -81,8 +83,8 @@ def main():
                         help='opt-in: attention projection weights as 8-bit rows instead of bf16; about 9 %% faster '
                              'decode, a small measurable change of the output distribution (KL +0.003)')
     parser.add_argument('--kv-cache', choices=('bf16', 'fp8', 'kv4'), default=None,
-                        help='cache format of the 8 full-attention visits (default bf16, 32,768 bytes per context '
-                             'token; fp8 half, kv4 a quarter); the window visits stay bf16')
+                        help='cache format of the 8 full-attention visits: bf16 32,768 bytes per context token, fp8 '
+                             f'half, kv4 about a quarter (default {KV_CACHE}); the window visits stay bf16')
     parser.add_argument('--no-drafter', action='store_true',
                         help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
     parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
@@ -104,7 +106,8 @@ def main():
         os.environ['PAITON_INK2_KV'] = args.kv_cache
     # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
-                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8').items():
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8',
+                            PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE).items():
         os.environ.setdefault(name, value)
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key

@@ -1,7 +1,9 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDER = ROOT / 'models/Inkling-2-Mini'
@@ -39,6 +41,33 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertIn(f'EXPOSE {port}', docker)
         self.assertIn('GPU_MAX_HW_QUEUES=1', script)
         self.assertIn(json.loads((FOLDER / 'checkpoint.lock.json').read_text())['revision'], docker)
+
+    def environment(self, *arguments, **preset):
+        """The environment the launcher hands to vLLM for `arguments`, with `preset` already set by the user."""
+        with mock.patch.dict(os.environ, preset), mock.patch.object(server, 'prepare', return_value='/checkpoint'), \
+                mock.patch.object(server.os, 'execv') as execv, \
+                mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
+            if 'PAITON_INK2_KV' not in preset:
+                os.environ.pop('PAITON_INK2_KV', None)
+            server.main()
+            execv.assert_called_once()
+            return dict(os.environ)
+
+    def test_one_constant_sets_the_cache_format(self):
+        self.assertIn(server.KV_CACHE, ('bf16', 'fp8', 'kv4'))
+        self.assertEqual(self.environment()['PAITON_INK2_KV'], server.KV_CACHE)
+        for other in ('bf16', 'fp8', 'kv4'):
+            with mock.patch.object(server, 'KV_CACHE', other):
+                self.assertEqual(self.environment()['PAITON_INK2_KV'], other)
+
+    def test_every_cache_format_can_be_asked_for(self):
+        for name in ('bf16', 'fp8', 'kv4'):
+            self.assertEqual(self.environment('--kv-cache', name)['PAITON_INK2_KV'], name)
+            self.assertEqual(self.environment(PAITON_INK2_KV=name)['PAITON_INK2_KV'], name)
+            # the option wins over the environment
+            self.assertEqual(self.environment('--kv-cache', name, PAITON_INK2_KV='bf16')['PAITON_INK2_KV'], name)
+        with self.assertRaises(SystemExit), mock.patch.object(server.sys, 'stderr'):
+            self.environment('--kv-cache', 'int4')
 
 
 if __name__ == '__main__':
