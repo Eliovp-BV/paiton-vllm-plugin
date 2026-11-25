@@ -207,17 +207,25 @@ class Inkling2DFlash2Speculator(DSparkSpeculator):
         config = self.draft_model_config.hf_config
         assert not self.sample_from_anchor
         assert self._draft_topk is None and not self.enable_adaptive_verification
+        # draft_sample_method "probabilistic": the library draws the drafts of requests at a temperature above 0
+        # from the selector's 16 scores and writes them to vLLM's draft_logits, so the check accepts with p / q.
+        self._sample: tuple | None = None
         if self.draft_logits is not None:
-            # shortcut: the library returns the selector's first choice only; return its 16 scores per row and
-            # hand them to vLLM's rejection sampler for sampled drafts
-            raise ValueError("the DFlash2 drafter drafts greedily: leave draft_sample_method at its default")
+            self._sample = (self.sample_idx_mapping, self.temperature, self.seeds, self.sample_pos, self.draft_logits,
+                            torch.zeros(self.max_num_reqs, self.num_speculative_steps, 16, dtype=torch.int32,
+                                        device=device))
         # Target features of every row, as the target hands them over (combine_hidden_states is the identity).
         self.hidden_states = torch.zeros(
             self.max_num_tokens, len(config.target_layer_ids) * config.hidden_size, dtype=self.dtype, device=device)
 
+    def draft_logits_spec(self, vllm_config: VllmConfig) -> tuple[torch.dtype, float]:
+        return torch.float32, -float("inf")  # the library writes 16 scores per row, as vLLM's own DFlash2 path
+
     def load_draft_model(self, target_model: nn.Module, target_attn_layer_names: set[str]) -> nn.Module:
         model = load_dspark_model(target_model, self.vllm_config)
         model.attach_target(target_model.get_language_model())
+        if self._sample is not None and model.abi < 2:
+            raise ValueError("sampled DFlash2 drafts (draft_sample_method probabilistic) need a drafter library of ABI 2")
         time_mode = os.environ.get("PAITON_INK2_DRAFT_TIME")
         if time_mode == "3":
             _time_runner(0, False)
@@ -242,4 +250,5 @@ class Inkling2DFlash2Speculator(DSparkSpeculator):
             return
         tokens = num_reqs * self.num_query_per_req
         self.draft_tokens[:num_reqs] = self.model.draft(
-            self.input_buffers.input_ids[:tokens], self.input_buffers.positions[:tokens], num_reqs, attn_metadata)
+            self.input_buffers.input_ids[:tokens], self.input_buffers.positions[:tokens], num_reqs, attn_metadata,
+            self._sample)
