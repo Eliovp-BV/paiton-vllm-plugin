@@ -120,7 +120,7 @@ class Inkling2ShortConv(nn.Module):
         if not self.dynamic:
             return None
         if NATIVE_OPS:
-            return native_ops.linear(x, self.weight_proj)
+            return native_ops.tap_project(x, self.weight_proj)
         # Same dispatch as the reference ``linear``: fp32 1024-wide K groups.
         if self.weight_proj.shape[1] >= 2560 and self.weight_proj.shape[0] not in (
             1,
