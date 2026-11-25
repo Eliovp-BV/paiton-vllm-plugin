@@ -6,7 +6,8 @@ vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's 
 One request generates at **111 tok/s** with greedy decoding and at **96 tok/s** at the model's default temperature
 of 1.0; four requests at once reach 186 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
 [benchmarks](BENCHMARKS.md)). vLLM has no path for this model on this card, so
-the comparison in the benchmarks is with Paiton's own first complete build, which ran at 26 tok/s for one request and 72 for four.
+the comparison in the benchmarks is with Paiton's own first complete build, which ran at 26 tok/s for one request and
+72 for four (greedy).
 
 Start it:
 
@@ -48,9 +49,10 @@ What the default start gives you:
   the cache after the model, the drafter and the vision tower). The longest prompts we checked have 130,000 tokens.
 - Tool calls (`tool_choice: "auto"`) and reasoning in a separate `reasoning` field of the reply.
 - Prefix caching (vLLM's default): the start of a prompt that the server has seen before is not computed again.
-- The drafter: the model's own draft head proposes five tokens (four when requests run side by side) and the model checks
-  them in one step. On our
-  11 check requests the replies are the same tokens with and without the drafter, alone and four at once.
+- The drafter: the model's own draft head proposes five tokens (four when requests run side by side) and the model
+  checks them in one step. On our 11 check requests (greedy, prompts of up to 2,400 tokens) the replies are the same
+  tokens with and without the drafter, alone and four at once. Longer prompts are a
+  [known issue](#known-issue-long-prompts-with-the-drafter).
 
 ## Options
 
@@ -58,9 +60,9 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
-| `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 111 (greedy) or 96 (temperature 1.0). Frees 0.7 GiB. |
-| `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens). Same task score, 34 of 35. Off by default. |
-| `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one request at `P` = 0.3 in our test, no gain at four. Off by default. |
+| `--no-drafter` | Serves without the drafter: 68 tok/s for one request, greedy and at temperature 1.0, instead of 111 (greedy) or 96 (temperature 1.0) with it. Frees 0.7 GiB. |
+| `--int8-attention` | Stores the attention projections as 8-bit rows. Greedy decode without the drafter is about 9.5 % faster (one request, measured on an earlier build); the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens, greedy). Same task score (greedy), 34 of 35. Off by default. |
+| `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one greedy request at `P` = 0.3 in our test, no gain at four. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
 | `--host`, `--api-key` | Bind address and API key inside the container. |
 
@@ -103,8 +105,20 @@ string, from which the model reads a label and a value. The vision tower loads w
   requests is not checked.
 - There is no host-memory cache tier: cached prompts live on the card only.
 - The drafter is the one the publisher ships. At four requests it adds less than at one (see the benchmarks).
-- Time to first token on a long prompt is the model's full prefill: about 47 s for 130,000 tokens.
+- Time to first token on a long prompt is the model's full prefill: about 47 s for 130,000 tokens (greedy, answer
+  included).
 - One card only. Two cards do not make one request faster.
+
+### Known issue: long prompts with the drafter
+
+With the drafter on, a greedy reply to a long prompt can differ from the reply without the drafter. It differed at
+every length we checked from 4,285 to 199,028 prompt tokens. It needs more than 1,024 tokens of prompt and reply
+together; our 11 check requests (prompts of up to 2,400 tokens) gave the same tokens. The cause is in the attention of
+the window layers: in a check step that crosses a 64-key step of the 1,024-key window, some rows add up their partial
+sums in another order than a one-token step does, so the last bits differ and a greedy reply can take another path. The task scores in the [benchmarks](BENCHMARKS.md) include prompts of
+31,000 and 130,000 tokens with the drafter on. A fixed attention build gives the same text with and without the
+drafter at 43 to 199,028 prompt tokens in our check; it is not in this image yet. Start with `--no-drafter` if you
+need the exact tokens of plain decoding on long prompts.
 
 ## Model weights and existing downloads
 
