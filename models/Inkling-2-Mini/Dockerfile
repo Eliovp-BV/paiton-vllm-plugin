@@ -14,9 +14,17 @@ RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /o
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
 # vLLM's offload worker as in the 27B release image, used only by the prompt-cache tiers (--host-cache-gib,
 # --extend-cache): the RAM tier as one exact-size hipHostMalloc allocation per tensor (PAITON_HOST_KV_PRIVATE=1), and no
-# silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). The file it replaces is checked.
-RUN echo "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff  /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py" | sha256sum -c
-COPY paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py
+# silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). With it, vLLM PR #52838 on the
+# offloading connector: a failed cache copy no longer stops the server (a failed store drops those blocks, a failed load
+# fails only its request). Same files as the 27B backport; the scheduler is vLLM 0.32's own plus the PR. The files they
+# replace are checked.
+RUN printf '%s\n' \
+    "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff  /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py" \
+    "fa748f6f40a76e83f7ece683e90d6cdede9a069c45438cfcdcdb70ff2dd901fe  /usr/local/lib/python3.14/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading_connector.py" \
+    "9b3f042c6fa1581d10e8f688d2d9bc927bb41b780a9ea01f514d57228e20c978  /usr/local/lib/python3.14/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/common.py" \
+    "f9e2f9ad8a637b54c88589ebc58353b236fafe6688def4b22b68f275decbbc6b  /usr/local/lib/python3.14/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/scheduler.py" \
+    "ca61db86f61b4b2638102ebb04d8a6cf20947203926a31a9f0cccf284ce2bcf8  /usr/local/lib/python3.14/dist-packages/vllm/distributed/kv_transfer/kv_connector/v1/offloading/worker.py" | sha256sum -c
+COPY models/Inkling-2-Mini/vllm-overlays/ /usr/local/lib/python3.14/dist-packages/
 # The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
 # vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
