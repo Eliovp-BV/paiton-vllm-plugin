@@ -13,26 +13,19 @@ Target: vLLM 0.32.0, which has the first Inkling generation only.
 | file here | upstream file |
 |---|---|
 | `configs.py`, `processing.py` | main, same path |
-| `amd/__init__.py`, `amd/dspark.py`, `amd/moe.py`, `amd/vision.py` | PR, same path |
-| `amd/ops/{__init__,attention,dspark,linear,mxfp8,norm,triton_bmm,vision}.py` | PR, same path |
+| `amd/__init__.py` | PR, same path |
 
 ## Changed files
 
 | file here | upstream file | change | reason |
 |---|---|---|---|
 | `quant_config.py` | main | `from .configs import` instead of `from vllm.models.inkling2.configs import` | the package lives in the plugin |
-| `amd/ops/sconv.py` | PR | `from .norm import` instead of `from vllm.models.inkling2.amd.ops.norm import` | same |
-| `amd/ops/moe.py` | PR | `combine` sums in blocks of 256 columns when the hidden size is not a multiple of 512 | Mini's hidden size is 2304; the PR was written for Small |
-| `amd/ops/activation.py` | PR | `swiglu_quantize` uses a program per 128 columns when the intermediate size is not a multiple of 256 | Mini's intermediate size is 1152 |
-| `amd/ops/loop.py` | main `nvidia/ops/loop.py` | `tl.rsqrt` instead of the CUDA inline-assembly `rsqrt` of `nvidia/ops/norm.py` | the two controller kernels are plain Triton apart from that |
-| `amd/ops/attn_res.py` | PR | `APPLY_NORM` option: fp32 mixes when no norm weight is given | the loop blends messages into unnormalized mixes; this is the option of main's `nvidia/ops/attn_res.py`, which the PR left out |
 | `amd/attention.py` | PR | `get_kv_cache_spec` returning `SlidingWindowSpec` / `FullAttentionSpec` instead of `get_kv_cache_config` / `KVCacheLayerConfig` | vLLM 0.32 API |
 | | | `Inkling2AttentionPassCache`, `pass_conv_states`, `pass_idx`: one KV cache and conv state per loop pass | looped model (from main's `nvidia/attention.py`) |
 | | | local layers accept separate K and V inputs | loop passes after the first |
 | | | `process_weights_after_loading(self, act_dtype=None)` | 0.32 passes the model dtype to attention hooks |
 | `amd/sconv.py` | PR | `owner` argument of `Inkling2ShortConv.forward` | conv state per loop pass |
 | `amd/model.py` | PR | `num_passes` and per-pass conv states in `Inkling2DecoderLayer`; `_make_layer`; `_log_scaling_tau`; `Inkling2LoopModel` for looped checkpoints; the "not supported on ROCm" error for looped checkpoints is gone | looped model |
-| | | NVFP4 layers use `Inkling2BringupMoE` instead of raising; `PAITON_INK2_EXPERTS` | bring-up, see `amd/experts_bringup.py` |
 | | | model-level `process_weights_after_loading` that runs the package's other post-load hooks | 0.32 runs only this hook and the attention layers' (main runs every module's) |
 | | | `PAITON_INK2_TAP_DIR` tap in `forward` | bring-up check against the reference |
 | | | `ops_dump.record` around `embed_input_ids` and `compute_logits` | per-operator fixtures for the native operators (`amd/ops_dump.py`), off unless `PAITON_INK2_OPS_DUMP` is set |
@@ -40,8 +33,12 @@ Target: vLLM 0.32.0, which has the first Inkling generation only.
 | | | the adapters and `Inkling2EngineToolParser` are built as in main's `registered_adapters.py` and `tool_parsers/inkling_tool_parser.py` | registered as `inkling2` through `register_lazy_module` |
 | | | `adjust_request` is left out | it frames JSON response formats with xgrammar's `TokenFormat`, which no 0.32 code uses (0.32 pins xgrammar 0.2.8), and with `_parser_structured_outputs`, which 0.32's Responses request does not have |
 
-The gfx950 check of the PR (`Inkling2 on ROCm requires gfx950`) is unchanged: every Triton kernel in `amd/ops`
-was written for that architecture.
+## Removed files
+
+The pull request's Triton path is not in this package: `amd/ops/` (all its kernels), `amd/moe.py`, `amd/dspark.py`
+and `amd/vision.py`, and the bring-up layer `Inkling2BringupMoE` that used `amd/moe.py`. On the R9700 every operator
+runs in Paiton's native libraries (`amd/native_*.py`, `amd/experts_native.py`, `amd/draft.py`), and
+`PAITON_INK2_OPS=native` is required.
 
 ## New files (not from upstream)
 

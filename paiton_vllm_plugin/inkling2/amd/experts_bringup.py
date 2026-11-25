@@ -193,29 +193,3 @@ class Inkling2BringupExperts(nn.Module):
                 down = F.linear(h, self.w2[e].to(x.dtype)).float()
                 out.index_add_(0, tok, down * routed)
         return out.to(x.dtype)
-
-
-class Inkling2BringupMoE(nn.Module):
-    """Drop-in for `Inkling2MoE` (same checkpoint names under `.mlp`)."""
-
-    def __init__(
-        self, config, expert_format: str, act_quant: bool, round_bf16: bool
-    ) -> None:
-        super().__init__()
-        from .moe import Inkling2Gate  # imports vLLM and Triton
-
-        assert config.n_shared_experts == 0
-        self.gate = Inkling2Gate(config)
-        self.experts = Inkling2BringupExperts(
-            config, expert_format, act_quant, round_bf16
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        gate = self.gate
-        # Router in fp32: top-k of sigmoid + bias, weights renormalized
-        # sigmoids times route_scale.
-        scores = torch.sigmoid(F.linear(x.float(), gate.weight.float()))
-        idx = torch.topk(scores + gate.bias, gate.topk, dim=-1, sorted=False).indices
-        weights = scores.gather(1, idx)
-        weights = weights / (weights.sum(-1, keepdim=True) + 1e-20) * gate.route_scale
-        return self.experts(x, idx, weights)

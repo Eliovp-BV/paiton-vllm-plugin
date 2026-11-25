@@ -81,12 +81,9 @@ if NATIVE_OPS:
     from . import native_ops
     from .native_ops import attn_res, rms_norm
 else:
-    from .experts_bringup import Inkling2BringupMoE
-    from .moe import Inkling2MoE
-    from .ops.attention import compute_log_scaling_tau
-    from .ops.attn_res import attn_res
-    from .ops.norm import rms_norm
-    from .vision import Inkling2VisionEncoder, VisionMetadata
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 
 TAP_DIR = os.environ.get("PAITON_INK2_TAP_DIR")
