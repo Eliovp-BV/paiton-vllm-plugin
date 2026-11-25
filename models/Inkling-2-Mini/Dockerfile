@@ -2,7 +2,7 @@
 # Inkling 2 Mini on one R9700 (gfx1201): AMD's ROCm 10.2 / vLLM 0.32 image plus the plugin and Paiton's native
 # libraries. Build from the repository root with the libraries as a named context:
 #   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> .
-FROM rocm/vllm@sha256:73a6637cd69ecac529e6008a668fd03c686007997630039d18fb6d45f161cc42
+FROM rocm/vllm@sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/inkling2-release-source/
 COPY LICENSES /opt/paiton/inkling2-release-source/LICENSES
 COPY paiton_vllm_plugin /opt/paiton/inkling2-release-source/paiton_vllm_plugin
