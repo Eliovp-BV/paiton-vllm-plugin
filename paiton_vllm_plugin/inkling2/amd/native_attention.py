@@ -59,6 +59,10 @@ KV = os.environ.get("PAITON_INK2_KV", "bf16")
 if KV != "bf16" and KV not in KV_FORMATS:
     raise ValueError(f"PAITON_INK2_KV must be bf16 or one of {sorted(KV_FORMATS)}")
 PAGE = 16  # slots per library page
+# PAITON_INK2_KV_DENSE=1: a packed block holds one page more when whole pages do not fill the bf16 window page
+# (format 4: 4 pages, 67,584 bytes, instead of 3 in 65,536). That block is then the largest page and vLLM pads the
+# window and conv-state pages up to it, so every reader of those caches must take the block stride from the tensor.
+KV_DENSE = os.environ.get("PAITON_INK2_KV_DENSE", "0") == "1"
 _tables: list = [None, {}]  # [forward context, {id(tensor): (tensor, same in library units)}]
 
 

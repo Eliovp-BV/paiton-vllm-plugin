@@ -44,7 +44,7 @@ from .sconv import NATIVE_OPS, K_STREAM, V_STREAM, Inkling2ShortConv, conv_metad
 if NATIVE_OPS:
     from . import native_ops
     from .conv_state import InklingConvState
-    from .native_attention import KV, KV_FORMATS, NativeAttention
+    from .native_attention import KV, KV_DENSE, KV_FORMATS, NativeAttention
 else:
     # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
     # change to this file.
@@ -84,10 +84,11 @@ def _kv_cache_spec(
         return SlidingWindowSpec(**spec, sliding_window=sliding_window)
     if packed and NATIVE_OPS and KV != "bf16":
         # One uint8 head slot per token in the library's layout (native_attention.KV_FORMATS), as many library pages
-        # of 16 slots per block as fit the bf16 window page; vLLM pads the rest (format 4: 3 pages, 22.7 %).
+        # of 16 slots per block as fit the bf16 window page; vLLM pads the rest (format 4: 3 pages, 22.7 %). Dense:
+        # one page more, and vLLM pads the window and conv-state pages instead (3 %).
         size, window_page = KV_FORMATS[KV][0], spec["block_size"] * num_kv_heads * head_dim * 2 * 2
-        spec.update(block_size=16 * max(1, window_page // (16 * size)), dtype=torch.uint8, num_head_slots=1,
-                    state_content_bytes=size)
+        pages = -(-window_page // (16 * size)) if KV_DENSE else max(1, window_page // (16 * size))
+        spec.update(block_size=16 * pages, dtype=torch.uint8, num_head_slots=1, state_content_bytes=size)
     return FullAttentionSpec(**spec)
 
 

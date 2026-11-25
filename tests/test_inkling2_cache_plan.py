@@ -27,6 +27,20 @@ def test_packed_formats():
     assert (round(per_token), groups) == (10923, 13)
 
 
+def test_dense_format_4_pages():
+    # 4 pages of 16,896 bytes per block: the full visits cost their 8,448 bytes per token, the window and conv-state
+    # pages are padded from 65,536 to 67,584 bytes (3 % of 1.1 GiB)
+    per_token, fixed, groups = plan("kv4", True, 1024, dense=True)
+    assert (per_token, groups) == (8448, 13)
+    assert fixed == plan("kv4", True, 1024)[1] * 67584 // 65536
+    # 1,048,576 tokens with the drafter: 9.42 GiB at 512 batched tokens, 8.94 GiB at 256
+    assert round(cache_bytes(1 << 20, 1, 512, kv="kv4", drafter=True, draft_window=1024, dense=True) / GIB, 2) == 9.42
+    assert round(cache_bytes(1 << 20, 1, 256, kv="kv4", drafter=True, draft_window=1024, dense=True) / GIB, 2) == 8.94
+    # the formats whose pages fill the window page are the same either way
+    for kv in ("bf16", "fp8"):
+        assert plan(kv, True, 1024, dense=True) == plan(kv, True, 1024)
+
+
 def test_max_context_is_the_inverse():
     for budget, requests, batched in ((10 * GIB, 1, 256), (11 * GIB, 4, 256), (2 * GIB, 1, 1024)):
         tokens = max_context_tokens(budget, requests, batched)

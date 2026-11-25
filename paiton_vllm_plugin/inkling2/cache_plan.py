@@ -32,9 +32,13 @@ def _cdiv(a: int, b: int) -> int:
     return -(-a // b)
 
 
-def _buckets(kv: str, drafter: bool, draft_window: int | None):
+def _buckets(kv: str, drafter: bool, draft_window: int | None, dense: bool = False):
     """(layers, page bytes at the spec's own block size, block size, window or None) per bucket."""
-    full = [FULL_VISITS, FULL_BYTES[kv] * BLOCK, BLOCK, None]
+    # A packed full visit declares as many 16-slot pages per block as fit the bf16 window page (format 4: 3, vLLM
+    # pads the rest); dense = one page more when they do not fill it (format 4: 4 pages, 67,584 bytes), which makes
+    # this block the largest page, so vLLM pads the window and conv-state pages up to it instead.
+    pages = _cdiv(KV_BYTES, FULL_BYTES[kv]) if dense else KV_BYTES // FULL_BYTES[kv]
+    full = [FULL_VISITS, FULL_BYTES[kv] * BLOCK * pages, BLOCK * pages, None]
     window = [WINDOW_VISITS, KV_BYTES * BLOCK, BLOCK, WINDOW]
     out = [full, window, [CONV_STATES, CONV_BYTES * CONV_WINDOW, CONV_WINDOW, CONV_WINDOW]]
     if drafter:
@@ -49,18 +53,17 @@ def _buckets(kv: str, drafter: bool, draft_window: int | None):
 
 
 def plan(kv: str = "bf16", drafter: bool = False, draft_window: int | None = None, batched_tokens: int = 512,
-         concurrent_batches: int = 2) -> tuple[float, int, int]:
+         concurrent_batches: int = 2, dense: bool = False) -> tuple[float, int, int]:
     """(bytes per context token, fixed bytes per running request, number of cache groups). `concurrent_batches`
-    is 2 with vLLM's async scheduling."""
-    buckets = _buckets(kv, drafter, draft_window)
+    is 2 with vLLM's async scheduling. `dense`: PAITON_INK2_KV_DENSE=1."""
+    buckets = _buckets(kv, drafter, draft_window, dense)
     page = max(b[1] for b in buckets)
     sizes = [b[0] for b in buckets]
     group = max(sizes) if max(sizes) < 1.5 * min(sizes) else min(sizes)
     flight = concurrent_batches * batched_tokens
     per_token, fixed_blocks, groups = 0.0, 0, 0
     for layers, own_page, block, window in buckets:
-        # The plugin declares as many 16-slot pages as fit the largest page (vLLM pads the rest, format 4: 3 pages).
-        block = block * (page // own_page)
+        block = block * (page // own_page)  # vLLM raises a block whose page divides the largest, else pads the page
         n = _cdiv(layers, group)
         groups += n
         if window is None:
