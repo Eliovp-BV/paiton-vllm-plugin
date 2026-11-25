@@ -336,7 +336,10 @@ def main():
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
                             PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8',
                             PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE,
-                            PAITON_INK2_HOST_EMBED='1').items():
+                            PAITON_INK2_HOST_EMBED='1',
+                            # tvm_ffi's DLPack addon build fails on this image twice per start (about 7 s each on
+                            # the 27B 0.32 images, plugin 67ddb9f); without it nothing else changes
+                            TVM_FFI_DISABLE_TORCH_C_DLPACK='1').items():
         os.environ.setdefault(name, value)
     pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
               + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
@@ -351,7 +354,7 @@ def main():
     argv = command(snapshot, args.host, extra, not args.no_drafter)
     print(json.dumps({'command': argv}), flush=True)
     # the serve log shows the variant a run used (cache format, host embedding, ...)
-    print(json.dumps({'environment': {k: v for k, v in sorted(os.environ.items()) if k.startswith(('PAITON_', 'HSA_'))}}),
+    print(json.dumps({'environment': {k: v for k, v in sorted(os.environ.items()) if k.startswith(('PAITON_', 'HSA_', 'TVM_FFI_'))}}),
           flush=True)
     if args.dry_run is not None:
         return
