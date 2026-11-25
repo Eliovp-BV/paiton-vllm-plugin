@@ -6,6 +6,7 @@ import pytest
 
 pytest.importorskip("vllm.parser.inkling")
 from vllm.entrypoints.openai.chat_completion.protocol import ChatCompletionRequest
+from vllm.parser.engine.parser_engine import ParserEngine
 from vllm.parser.inkling import InklingParser
 from vllm.parser.parser_manager import ParserManager
 
@@ -125,3 +126,52 @@ def test_tool_reply_streaming(tokenizer, request_, chunk_size):
 def test_text_reply_streaming(tokenizer, request_, chunk_size):
     content, reasoning, names, _ = stream(served_parser(tokenizer), request_, TEXT_REPLY, chunk_size)
     assert (reasoning, content, names) == ("Brussels.", "Brussels", [])
+
+
+# Tool payloads for the incremental argument streaming: escapes (split mid-escape at 1 character per delta), unicode,
+# nested objects and arrays, whitespace, an `args` value that is not an object.
+TOOL_BODIES = [
+    '{"name":"write_file","args":{"path":"/a\\"b","content":"' + 'x\\\\y\\"z\\u00e9 \U0001F600 ' * 40 + '"}}',
+    '{"name":"configure","args":{"o":{"a":[1,{"b":"}]\\"{"}],"c":"\\\\"},"n":7,"content":"done"}}',
+    '{ "name" : "f" , "args" : { "k" : "v \\" w" , "n" : 7 } }',
+    '{"name":"f","args":"not an object"}',
+]
+
+
+def tool_text(body):
+    return f"<|message_model|><|content_thinking|>t<|end_message|><|message_model|><|content_invoke_tool_json|>{body}<|end_message|>"
+
+
+def deltas(parser, request, text, chunk_size):
+    """Every delta the served parser returns, tool call ids blanked (random per parser)."""
+    tokens, out = tokenize(text), []
+    for start in range(0, len(tokens), chunk_size):
+        batch = tokens[start:start + chunk_size]
+        delta = parser.parse_delta("".join(t for _, t in batch), [i for i, _ in batch], request,
+                                   prompt_token_ids=ids(PROMPT) if start == 0 else None,
+                                   finished=start + chunk_size >= len(tokens))
+        dump = delta and delta.model_dump(exclude_none=True)
+        for call in (dump or {}).get("tool_calls") or []:
+            call.pop("id", None)
+        out.append(dump)
+    return out
+
+
+@pytest.mark.parametrize("chunk_size", [1, 2, 5])
+@pytest.mark.parametrize("body", TOOL_BODIES)
+def test_tool_args_stream_as_vllm_does(tokenizer, request_, body, chunk_size, monkeypatch):
+    new = deltas(served_parser(tokenizer), request_, tool_text(body), chunk_size)
+    monkeypatch.setattr(Inkling2Parser, "_compute_arg_delta", ParserEngine._compute_arg_delta)
+    monkeypatch.setattr(Inkling2Parser, "_flush_arg_converter", ParserEngine._flush_arg_converter)
+    assert new == deltas(served_parser(tokenizer), request_, tool_text(body), chunk_size)
+
+
+def test_tool_args_are_not_rescanned(tokenizer, request_, monkeypatch):
+    # 0.32 rescans the whole argument text on every delta; the open object is only scanned once here.
+    calls = []
+    real = ParserEngine._safe_arg_prefix
+    monkeypatch.setattr(ParserEngine, "_safe_arg_prefix", staticmethod(lambda *a: calls.append(1) or real(*a)))
+    body = '{"name":"write_file","args":{"path":"/a","content":"' + "y" * 3000 + '"}}'
+    content, reasoning, names, args = stream(served_parser(tokenizer), request_, tool_text(body), 1)
+    assert json.loads(args[0]) == {"path": "/a", "content": "y" * 3000}
+    assert len(calls) <= 2  # only after the object closes, where 0.32's own method takes over

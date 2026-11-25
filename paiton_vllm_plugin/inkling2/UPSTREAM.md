@@ -31,6 +31,7 @@ Target: vLLM 0.32.0, which has the first Inkling generation only.
 | | | `ops_dump.record` around `embed_input_ids` and `compute_logits` | per-operator fixtures for the native operators (`amd/ops_dump.py`), off unless `PAITON_INK2_OPS_DUMP` is set |
 | `parser.py` | main `vllm/parser/inkling.py` | only `_inkling2_is_reasoning_end` is taken, unchanged, as `is_reasoning_end` of a subclass of 0.32's `InklingParser` | 0.32's parser has the same block grammar as main's (the config is identical), so the rest is reused. Its rule for "has reasoning ended" reads the text block of the last user message of an Inkling 2 prompt as the end of reasoning |
 | | | the adapters and `Inkling2EngineToolParser` are built as in main's `registered_adapters.py` and `tool_parsers/inkling_tool_parser.py` | registered as `inkling2` through `register_lazy_module` |
+| | | `_compute_arg_delta` and `_flush_arg_converter` overridden: the tool arguments stream incrementally (`_ArgStream`, `_Scan`) | 0.32's engine rescans the whole argument text on every delta (`extract_json_member_object`, `scan_json_object_end`, `_safe_arg_prefix`): a 48 KB tool call cost about 200 s of parser CPU. Same output, delta by delta; 0.32's own method takes over once the `args` object is closed. Not in vLLM main either (no extender for Inkling) |
 | | | `adjust_request` is left out | it frames JSON response formats with xgrammar's `TokenFormat`, which no 0.32 code uses (0.32 pins xgrammar 0.2.8), and with `_parser_structured_outputs`, which 0.32's Responses request does not have |
 
 ## Removed files
