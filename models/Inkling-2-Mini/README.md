@@ -92,9 +92,9 @@ string, from which the model reads a label and a value. The vision tower loads w
 - The weights are the publisher's files, unchanged: the experts in the 4-bit and 8-bit formats the model was trained
   in, everything else in bf16. Nothing is quantized again, with one exception: the output head is stored as 8-bit
   rows when the model loads (no measurable change in our checks, see the benchmarks).
-- Experts, attention, the small operators, the vision tower and the drafter run in Paiton's compiled libraries for
-  the R9700. One library call runs a whole forward pass. The Inkling code path and the plugin in the image use no
-  Triton.
+- Experts, attention, the small operators, the vision tower and the drafter run in Paiton's native HIP libraries for
+  the R9700. One library call runs a whole forward pass. vLLM's own per-step kernels (input preparation and sampling)
+  still use Triton.
 - Memory on the card: vLLM reports 19.54 GiB for the model with the drafter and the vision tower; the rest is cache.
 
 ## What it does not do yet
