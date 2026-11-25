@@ -59,7 +59,7 @@ Options go after the script name.
 | Option | What it does |
 | --- | --- |
 | `--no-drafter` | Serves without the drafter: 68 tok/s for one request, greedy and at temperature 1.0, instead of 111 (greedy) or 96 (temperature 1.0) with it. The context grows to 277,728 tokens. |
-| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 186,448 tokens with the drafter, 254,432 without. Prompt speed stays within 1.3 %. Not measured at temperature 1.0 and not run through the task set. Off by default. |
+| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 186,496 tokens with the drafter, 254,432 without. Prompt speed stays within 1.3 %. Not measured at temperature 1.0 and not run through the task set. Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. Needs vLLM's synchronous scheduling, which the launcher then sets. Not measured on this build. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
 | `--host`, `--api-key` | Bind address and API key inside the container. |
@@ -93,7 +93,8 @@ string, from which the model reads a label and a value. The vision tower loads w
   in, everything else in bf16. Nothing is quantized again, with one exception: the output head is stored as 8-bit
   rows when the model loads (no measurable change in our checks, see the benchmarks).
 - Experts, attention, the small operators, the vision tower and the drafter run in Paiton's compiled libraries for
-  the R9700. One library call runs a whole forward pass.
+  the R9700. One library call runs a whole forward pass. The Inkling code path and the plugin in the image use no
+  Triton.
 - Memory on the card: vLLM reports 19.54 GiB for the model with the drafter and the vision tower; the rest is cache.
 
 ## What it does not do yet
