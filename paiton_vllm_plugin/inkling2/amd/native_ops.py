@@ -67,7 +67,7 @@ def _library():
             fn = getattr(lib, "PaitonInkling2Ops" + name)
             fn.restype, fn.argtypes = C.c_int, args
         for name, args in (("Int8Rows", [p, p, p, i, i, p]), ("LmHeadInt8", [p, p, p, p, i, i, i, f, p]),
-                           ("LinearFp8", [p, p, p, p, i, i, i, i, p]), ("LinearInt8", [p, p, p, p, i, i, i, i, p]),
+                           ("LinearFp8", [p, p, p, p, i, i, i, i, p]), ("LinearW8", [p, p, p, p, i, i, i, i, p]),
                            ("LinearBf16", [p, p, p, i, i, i, i, p]), ("MixRmsNorm", [p, C.c_size_t, p, p, p, i, i, f, p]),
                            ("AddRmsNorm", [p, p, p, p, i, f, p])):
             if hasattr(lib, "PaitonInkling2Ops" + name):   # in later builds of ABI 3 only
@@ -84,8 +84,11 @@ def head_formats() -> tuple[str, ...]:
 
 
 def proj_formats() -> tuple[str, ...]:
-    """The 8-bit row formats the loaded library has a linear layer for."""
-    return head_formats() if hasattr(_library(), "PaitonInkling2OpsLinearInt8") else ()
+    """The 8-bit row formats the loaded library has a linear layer for (int8: `LinearW8`, the entry with a prefill
+    form)."""
+    lib = _library()
+    return (*(("fp8",) if hasattr(lib, "PaitonInkling2OpsLinearFp8") else ()),
+            *(("int8",) if hasattr(lib, "PaitonInkling2OpsLinearW8") else ()))
 
 
 def _call(name: str, device: torch.device, *args) -> None:
@@ -350,7 +353,7 @@ def linear_rows(x: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, fmt: 
         n = stop - start
     out = torch.empty((x.shape[0], n), dtype=out_dtype, device=x.device)
     if x.shape[0]:
-        _call("LinearFp8" if fmt == "fp8" else "LinearInt8", x.device, _ptr(x, BF16, "linear x"),
+        _call("LinearFp8" if fmt == "fp8" else "LinearW8", x.device, _ptr(x, BF16, "linear x"),
               _ptr(codes, torch.uint8, "linear codes") + start * k, _ptr(scale, F32, "linear scale") + start * 4,
               out.data_ptr(), x.shape[0], n, k, out_dtype == F32)
     return out
@@ -358,7 +361,8 @@ def linear_rows(x: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, fmt: 
 
 # PAITON_INK2_PROJ=fp8 or int8 (default bf16): the attention input and output
 # projections read 8-bit rows with one scale per row, converted on the card the
-# first time a weight is used (the bf16 weight stays where it is).
+# first time a weight is used (the bf16 weight stays where it is). int8 also
+# covers the tap projections of the full layers, and has a prefill kernel.
 PROJ = os.environ.get("PAITON_INK2_PROJ", "bf16")
 if PROJ not in ("bf16", "fp8", "int8"):
     raise ValueError("PAITON_INK2_PROJ must be bf16, fp8 or int8")
@@ -378,6 +382,12 @@ def o_project(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
     """The attention output projection (`wo_ud`): `linear(x, weight)`, or the
     same on 8-bit rows with `PAITON_INK2_PROJ`."""
     return linear(x, weight) if PROJ == "bf16" else linear_rows(x, *_rows_of(weight), PROJ)
+
+
+def tap_project(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+    """The tap projection of a full layer's K or V convolution (`weight_proj`,
+    `(32, 2304)`): `linear(x, weight)`, on int8 rows with `PAITON_INK2_PROJ=int8`."""
+    return linear_rows(x, *_rows_of(weight), PROJ) if PROJ == "int8" else linear(x, weight)
 
 
 def linear_k_groups(x: torch.Tensor, weight: torch.Tensor, out_dtype: torch.dtype = F32) -> torch.Tensor:

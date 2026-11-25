@@ -2,7 +2,7 @@
 """Inkling 2 Mini text forward as one native call (gfx1201).
 
 Binding of `inkling2_step_gfx1201.so` (path in `PAITON_INK2_STEP_SO`, ABI
-version 1): the library runs the 48 layer visits of a looped forward by calling
+version 2): the library runs the 48 layer visits of a looped forward by calling
 the operator, expert and attention libraries in the order `loop.py` calls them,
 so Python makes one call per forward instead of about 1,200. `PAITON_INK2_STEP=native`
 (read in `amd/model.py`) turns it on; it needs `PAITON_INK2_OPS=native`.
@@ -33,7 +33,7 @@ class _StepLayer(C.Structure):  # PaitonInkling2StepLayer
     _fields_ = [(n, _P) for n in (
         "qkvr", "wo", "attn_norm", "mlp_norm", "k_conv", "v_conv", "k_dyn", "v_dyn", "attn_conv", "mlp_conv",
         "attn_query", "mlp_query", "gate_weight", "gate_bias", "ctrl_down", "ctrl_up", "message_query",
-        "qkvr_codes", "qkvr_scale", "wo_codes", "wo_scale",
+        "qkvr_codes", "qkvr_scale", "wo_codes", "wo_scale", "kdyn_codes", "kdyn_scale", "vdyn_codes", "vdyn_scale",
     )] + [("attn", _Layer), ("moe", _Weights), ("route_scale", C.c_float), ("is_local", C.c_int)]
 
 
@@ -74,8 +74,8 @@ def _library():
         if not path:
             raise ValueError("PAITON_INK2_STEP=native needs PAITON_INK2_STEP_SO")
         lib = C.CDLL(path)
-        if lib.PaitonInkling2StepAbiVersion() != 1:
-            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 1")
+        if lib.PaitonInkling2StepAbiVersion() != 2:
+            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 2")
         sizes = (C.c_int * 6)()
         lib.PaitonInkling2StepSizes(sizes)
         ours = [C.sizeof(t) for t in (_Model, _StepLayer, _Visit, _AttnGroup, _ConvGroup, _Call)]
@@ -128,7 +128,10 @@ class NativeStep:
             for name, tensor in weights.items():
                 setattr(l, name, ptr(tensor, BF16, f"layer {i} {name}"))
             if m.proj_format:  # PAITON_INK2_PROJ: the 8-bit rows the Python path uses (made at first use, kept there)
-                for name, weight in (("qkvr", attn.qkvr.weight), ("wo", attn.wo_ud.weight)):
+                rows = [("qkvr", attn.qkvr.weight), ("wo", attn.wo_ud.weight)]
+                if m.proj_format == 2 and not layer.is_local:   # int8: the tap projections too
+                    rows += [("kdyn", attn.k_sconv.weight_proj), ("vdyn", attn.v_sconv.weight_proj)]
+                for name, weight in rows:
                     codes, scale = native_ops._rows_of(weight)
                     setattr(l, name + "_codes", codes.data_ptr())
                     setattr(l, name + "_scale", scale.data_ptr())
