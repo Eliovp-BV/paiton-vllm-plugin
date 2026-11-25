@@ -54,17 +54,19 @@ def _buckets(kv: str, drafter: bool, draft_window: int | None):
 
 
 def plan(kv: str = "bf16", drafter: bool | str = False, draft_window: int | None = None, batched_tokens: int = 512,
-         concurrent_batches: int = 2) -> tuple[float, int, int]:
-    """(bytes per context token, fixed bytes per running request, number of cache groups). `concurrent_batches`
-    is 2 with vLLM's async scheduling."""
+         concurrent_batches: int = 2) -> tuple[float, int, int, int]:
+    """(bytes per context token, fixed bytes per running request, number of cache groups, bytes of one pool block).
+    `concurrent_batches` is 2 with vLLM's async scheduling. vLLM 0.32 holds one pool block back (the block pool's null
+    block) from both its capacity check and its auto-fit."""
     buckets = _buckets(kv, drafter, draft_window)
-    page = max(b[1] for b in buckets)
+    # The plugin declares whole 16-slot pages of the full visits that cover the largest page (format 4: 4 pages,
+    # 67,584 bytes); vLLM pads the smaller pages (window and conv, 65,536) to it.
+    page = _cdiv(max(b[1] for b in buckets), buckets[0][1]) * buckets[0][1]
     sizes = [b[0] for b in buckets]
     group = max(sizes) if max(sizes) < 1.5 * min(sizes) else min(sizes)
     flight = concurrent_batches * batched_tokens
     per_token, fixed_blocks, groups = 0.0, 0, 0
     for layers, own_page, block, window in buckets:
-        # The plugin declares as many 16-slot pages as fit the largest page (vLLM pads the rest, format 4: 3 pages).
         block = block * (page // own_page)
         n = _cdiv(layers, group)
         groups += n
@@ -72,7 +74,7 @@ def plan(kv: str = "bf16", drafter: bool | str = False, draft_window: int | None
             per_token += n * group * page / block
         else:
             fixed_blocks += n * (_cdiv(window - 1 + flight, block) + 1)
-    return per_token, fixed_blocks * group * page, groups
+    return per_token, fixed_blocks * group * page, groups, group * page
 
 
 def fixed_bytes(batched_tokens: int, concurrent_batches: int = 2, **kw) -> int:
@@ -83,11 +85,11 @@ def fixed_bytes(batched_tokens: int, concurrent_batches: int = 2, **kw) -> int:
 
 def cache_bytes(context_tokens: int, requests: int, batched_tokens: int, **kw) -> int:
     """Cache bytes for `context_tokens` in total over `requests` running requests."""
-    per_token, fixed, _ = plan(batched_tokens=batched_tokens, **kw)
-    return int(per_token * context_tokens) + requests * fixed
+    per_token, fixed, _, null = plan(batched_tokens=batched_tokens, **kw)
+    return int(per_token * context_tokens) + requests * fixed + null
 
 
 def max_context_tokens(budget_bytes: int, requests: int, batched_tokens: int, **kw) -> int:
     """Context tokens (all requests together, whole blocks of 16) that fit `budget_bytes`."""
-    per_token, fixed, _ = plan(batched_tokens=batched_tokens, **kw)
-    return max(0, int((budget_bytes - requests * fixed) // per_token) // 16 * 16)
+    per_token, fixed, _, null = plan(batched_tokens=batched_tokens, **kw)
+    return max(0, int((budget_bytes - requests * fixed - null) // per_token) // 16 * 16)

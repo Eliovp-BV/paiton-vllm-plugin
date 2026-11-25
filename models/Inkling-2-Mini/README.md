@@ -1,7 +1,8 @@
 # Inkling 2 Mini on one R9700
 
 Inkling 2 Mini is Thinking Machines' model for chat, coding, tool calls and image input. This guide serves it with
-vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's own drafter switched on.
+vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB), with the model's own drafter switched on. The same
+image and launcher also serve 16 GB cards; see [16 GB cards](#16-gb-cards-rx-9070-xt-rx-9070-rx-9060-xt).
 
 One request generates at **111 tok/s** with greedy decoding and at **96 tok/s** at the model's default temperature
 of 1.0; four requests at once reach 186 and 169 tok/s in total (real text, 25 November 2026, 300 W power cap,
@@ -20,7 +21,8 @@ The first start downloads the pinned weights (20.2 GB). The OpenAI-compatible AP
 `inkling-2-mini`.
 
 [Run](#run) · [Options](#options) · [Reasoning effort](#reasoning-effort) · [Images](#images) ·
-[What it does not do yet](#what-it-does-not-do-yet) · [Weights](#model-weights-and-existing-downloads)
+[16 GB cards](#16-gb-cards-rx-9070-xt-rx-9070-rx-9060-xt) · [What it does not do yet](#what-it-does-not-do-yet) ·
+[Weights](#model-weights-and-existing-downloads)
 
 ## Run
 
@@ -93,9 +95,28 @@ string, from which the model reads a label and a value. The vision tower loads w
   in, everything else in bf16. Nothing is quantized again, with one exception: the output head is stored as 8-bit
   rows when the model loads (no measurable change in our checks, see the benchmarks).
 - Experts, attention, the small operators, the vision tower and the drafter run in Paiton's native HIP libraries for
-  the R9700. One library call runs a whole forward pass. vLLM's own per-step kernels (input preparation and sampling)
-  still use Triton.
+  the R9700. One library call runs a whole forward pass. vLLM's step bookkeeping (input preparation, block tables,
+  slot mapping, drafter bookkeeping) runs in native HIP too. Only vLLM's sampling kernels still use Triton; the image
+  carries them compiled, so the first request after a start does not wait for them.
 - Memory on the card: vLLM reports 19.54 GiB for the model with the drafter and the vision tower; the rest is cache.
+
+## 16 GB cards: RX 9070 XT, RX 9070, RX 9060 XT
+
+[16 GB RX 9070 / 9060 XT: numbers after its gate.]
+
+The launcher picks a 16 GB profile by itself when the card has less than 20 GiB free at start. The experts that do not
+fit on the card stay in host memory and are copied to the card when a token needs them; none is skipped.
+[Exactness against the 32 GB card: after its gate.]
+
+- Context: 32,768 tokens. `--max-model-len 65536` gives 64K, slower because more experts then come from host memory.
+- One request at a time.
+- Images are off; `--vision` turns them on and leaves less room for experts on the card.
+- The drafter is on, as on the 32 GB card; `--no-drafter` turns it off.
+- The host needs about 15.5 GiB of pinned memory for the expert copies and the embedding; the launcher refuses to
+  start when it cannot get it. [Host RAM requirement: after its gate.]
+- `--dry-run 15.9` prints the plan the launcher would use on a card with 15.9 GiB free, without downloading or
+  serving.
+- [RX 9060 XT (gfx1200): after its gate.]
 
 ## What it does not do yet
 
@@ -123,7 +144,8 @@ The cache must hold the exact revision above. [Cache paths and Docker mounts](..
 
 ## Requirements
 
-- One Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by this image.
+- One Radeon AI PRO R9700 (gfx1201, 32 GB), or a 16 GB card as in [16 GB cards](#16-gb-cards-rx-9070-xt-rx-9070-rx-9060-xt).
+  Other cards are not supported by this image.
 - Linux with a working AMD GPU driver, and Docker.
 - The image's vLLM (0.32.1.dev, ROCm 10.2 build). The plugin's Inkling code is built and tested for that vLLM only,
   not for a stock vLLM 0.32.0 install. vLLM versions after 0.32 bring their own Inkling 2 model classes under the same

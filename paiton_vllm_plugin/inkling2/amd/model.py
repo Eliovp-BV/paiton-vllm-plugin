@@ -53,9 +53,9 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from . import ops_dump
+from . import expert_pool, host_embed, ops_dump
 from .attention import Inkling2Attention
-from .experts_native import Inkling2NativeMoE
+from .experts_native import Inkling2NativeExperts, Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 
 # PAITON_INK2_OPS=native (required): every small operator runs on Paiton's native
@@ -202,7 +202,7 @@ class Inkling2DecoderLayer(nn.Module):
         self.mlp: nn.Module
         if mode == "native":
             # Paiton's native expert library (gfx1201), weights as stored.
-            self.mlp = Inkling2NativeMoE(config, "mxfp8" if mxfp8 else "nvfp4")
+            self.mlp = Inkling2NativeMoE(config, "mxfp8" if mxfp8 else "nvfp4", layer_id)
         elif mxfp8 and not mode:
             self.mlp = Inkling2MoE(config)
         else:
@@ -461,6 +461,15 @@ class Inkling2ForConditionalGeneration(
             soft_cap=text_config.final_logit_softcapping,
         )
         self._lm_head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
+        # With a drafter, the drafter frees the bf16 head after its fold (draft.attach_target); without one, we do.
+        self._drafter = vllm_config.speculative_config is not None
+
+    def release_bf16_head(self) -> None:
+        """Give back the bf16 unembedding (0.86 GiB) once only its 8-bit rows are read: same tokens, more cache."""
+        assert self._lm_head_rows is not None
+        weight = self.lm_head.weight
+        weight.data = weight.data.new_empty((0, weight.shape[1]))
+        torch.cuda.empty_cache()
 
     def get_language_model(self) -> nn.Module:
         return self
@@ -478,6 +487,27 @@ class Inkling2ForConditionalGeneration(
                 hook = getattr(module, "process_weights_after_loading", None)
                 if callable(hook):
                     hook()
+        if LMHEAD != "bf16":
+            # The 8-bit rows at load, not at the first logits call (same call, same rows), so the bf16 matrix can
+            # go before vLLM measures the memory left for the cache.
+            self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
+            if not self._drafter:
+                self.release_bf16_head()
+        if native_ops.PROJ != "bf16":
+            # The same for the attention projections: their 8-bit rows at load, the bf16 matrices given back.
+            native_ops.release_projections(
+                weight for layer in self.model.layers for weight in (layer.attn.qkvr.weight, layer.attn.wo_ud.weight))
+        host_embed.offload(self.model.embed_tokens)  # opt-in (PAITON_INK2_HOST_EMBED=1); the drafter shares the module
+        if expert_pool.ENABLED:  # 16 GB cards: the expert slots on the card, seeded from the shipped plan
+            if STEP:
+                from . import native_step
+
+                if "pool" not in dict(native_step._Model._fields_):
+                    raise ValueError("PAITON_INK2_EXPERT_POOL_GIB with PAITON_INK2_STEP=native needs the sequencer "
+                                     "binding of ABI 4; unset PAITON_INK2_STEP for the Python expert path")
+            # the sequencer (ABI 4) reads state, ring and miss_logs from here
+            self.model.expert_pool = expert_pool.build(
+                [m for m in self.modules() if isinstance(m, Inkling2NativeExperts) and m.pooled])
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
@@ -639,6 +669,8 @@ class Inkling2ForConditionalGeneration(
 
             out = native_step.forward(self.model, input_ids, positions, inputs_embeds)
             if out is not None:
+                if expert_pool.STATS and expert_pool.POOL is not None:
+                    expert_pool.POOL.account(positions.shape[0])
                 return out
         if inputs_embeds is None:
             assert input_ids is not None

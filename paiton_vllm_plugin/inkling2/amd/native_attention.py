@@ -50,9 +50,11 @@ SPLITS = 8
 # the block (format 4: 3 pages of 16,896 bytes in a 65,536-byte block), so the plugin hands the library a
 # stride_block of U = gcd(vLLM block bytes, page bytes) and page indices in units of U: page j of vLLM block b is
 # b * (block bytes / U) + j * (page bytes / U). When U is not the page, slots are handed over the same way.
-#   name: (bytes per token and visit, forward flag, write entry, V offset in a head's page, K bytes per slot)
-KV_FORMATS = {"fp8": (2048, 512, "PaitonInkling2AttnWriteFp8", 2048, 128),
-              "kv4": (1056, 2048, "PaitonInkling2AttnWriteKv4", 1024, 64)}  # notes/KV-LAYOUT.md, format 4
+#   name: (bytes per token and visit, forward flag, write entry, V offset in a head's page, K bytes per slot,
+#          the library's format id)
+KV_FORMATS = {"fp8": (2048, 512, "PaitonInkling2AttnWriteFp8", 2048, 128, 2),
+              "kv4": (1056, 2048, "PaitonInkling2AttnWriteKv4", 1024, 64, 4)}  # the library's layout file, format 4
+KV4_FLAG = 2048  # a format-4 layer sums every row in 8 parts, prefill rows too: its workspace is the 8-part one
 KV = os.environ.get("PAITON_INK2_KV", "bf16")
 if KV != "bf16" and KV not in KV_FORMATS:
     raise ValueError(f"PAITON_INK2_KV must be bf16 or one of {sorted(KV_FORMATS)}")
@@ -101,6 +103,17 @@ def _library():
             getattr(lib, entry).argtypes = (
                 [C.POINTER(_Cache), C.c_void_p, C.c_int64, C.c_void_p, C.c_int64, C.c_void_p, C.c_int, C.c_void_p]
             )
+        if KV in KV_FORMATS:
+            size, fmt = KV_FORMATS[KV][0], KV_FORMATS[KV][5]
+            # a library without the Formats entry reads bf16 and fp8 (formats 1 and 2)
+            formats = lib.PaitonInkling2AttnFormats() if hasattr(lib, "PaitonInkling2AttnFormats") else 3
+            if not formats & fmt:
+                raise RuntimeError(f"{path}: reads cache formats {formats}, PAITON_INK2_KV={KV} is format {fmt}")
+            if hasattr(lib, "PaitonInkling2AttnPageBytes"):
+                lib.PaitonInkling2AttnPageBytes.restype, lib.PaitonInkling2AttnPageBytes.argtypes = C.c_size_t, [C.c_int]
+                if lib.PaitonInkling2AttnPageBytes(fmt) != PAGE * size:
+                    raise RuntimeError(f"{path}: a page of format {fmt} is {lib.PaitonInkling2AttnPageBytes(fmt)} bytes, "
+                                       f"the plugin's layout has {PAGE * size}")
         lib.PaitonInkling2AttnForward.argtypes = (
             [C.POINTER(_Layer), C.POINTER(_Batch), C.POINTER(_Cache), C.POINTER(_Inputs)]
             + [C.c_void_p, C.c_void_p, C.c_size_t, C.c_int, C.c_int, C.c_void_p]
@@ -167,7 +180,7 @@ class NativeAttention:
             assert kv_cache.stride(3) == 1
             k = kv_cache.data_ptr()
             return _Cache(k, k + 256, *(kv_cache.stride(i) * 2 for i in range(3)), 16)
-        size, _, _, v, slot = fmt
+        size, _, _, v, slot, _ = fmt
         blocks, slots, n, width = kv_cache.shape
         assert kv_cache.dtype == torch.uint8 and slots == 1 and width == size and n % PAGE == 0, tuple(kv_cache.shape)
         assert kv_cache.stride(2) == size and kv_cache.stride(3) == 1, kv_cache.stride()
@@ -240,7 +253,8 @@ class NativeAttention:
                        block_table.shape[1], requests, tokens, max_query_len)
         inputs = _Inputs(*_rows(q, 3072), *_rows(r, 384), *_rows(gate, 3072), *_rows(sinks, 24))
         cache = self._cache(kv_cache, self.format)
-        need = lib.PaitonInkling2AttnWorkspaceBytes(tokens, SPLITS if max_query_len <= DECODE_ROWS else 1, None)
+        parts = SPLITS if max_query_len <= DECODE_ROWS or self.flags & KV4_FLAG else 1
+        need = lib.PaitonInkling2AttnWorkspaceBytes(tokens, parts, None)
         # One workspace per card for all layers: the calls of one stream run in order.
         workspace = _workspace.get(out.device)
         if workspace is None or workspace.numel() < need:

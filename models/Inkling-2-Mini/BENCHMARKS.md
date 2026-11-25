@@ -88,6 +88,11 @@ port faults, not for quantization loss.
   the same text as the plain reply at those lengths. It is not run through the task set and not measured at
   temperature 1.0.
 
+## 16 GB cards
+
+[16 GB RX 9070 / 9060 XT: numbers after its gate. Measured on an R9700 held to 16 GiB on a PCIe Gen4 host unless a
+16 GB card ran them, and named that way.]
+
 ## Limits of these numbers
 
 - One host, one card, one power cap. A card at a higher cap or a faster host will differ.

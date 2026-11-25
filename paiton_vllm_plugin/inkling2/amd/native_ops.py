@@ -29,7 +29,7 @@ HIDDEN = 2304  # the library's row width
 
 class _ConvState(C.Structure):  # PaitonInkling2OpsConvState
     _fields_ = [(n, C.c_void_p) for n in ("cache", "positions", "seq_idx", "slot_mapping", "query_start",
-                                           "block_table")] + [("max_blocks", C.c_int)]
+                                           "block_table")] + [("max_blocks", C.c_int), ("block_values", C.c_int)]
 
 
 _lib = None
@@ -251,16 +251,35 @@ def attn_res(stack: torch.Tensor, last: torch.Tensor, addend: torch.Tensor | Non
     return out
 
 
+def conv_padded() -> bool:
+    """The operator library takes a conv-state cache whose blocks vLLM padded (`block_values`)."""
+    return hasattr(_library(), "PaitonInkling2OpsConvPadded")
+
+
+def conv_block(cache: torch.Tensor) -> tuple[int, int]:
+    """Device pointer of vLLM's conv-state cache tensor (bf16 `(blocks, 8, 4, 1024)`) and the bf16 values from one
+    block to the next: 32,768, or more when vLLM pads the conv page (67,584 bytes next to the 4-bit cache; the state
+    is the first 32,768 values of a block)."""
+    if not (cache.is_cuda and cache.dtype == BF16 and tuple(cache.shape[1:]) == (8, 4, 1024)
+            and tuple(cache.stride()[1:]) == (4096, 1024, 1)):
+        raise ValueError(f"conv-state cache: need bf16 (blocks, 8, 4, 1024) on the card, got {cache.dtype} "
+                         f"{tuple(cache.shape)} strides {cache.stride()}")
+    values = cache.stride(0) if cache.shape[0] > 1 else 32768
+    if values != 32768 and not conv_padded():
+        raise RuntimeError(f"conv-state blocks of {values} values need an operator library with "
+                           "PaitonInkling2OpsConvPadded")
+    return cache.data_ptr(), values
+
+
 def _conv_state(cache: torch.Tensor, positions: torch.Tensor, block_table: torch.Tensor, seq_idx: torch.Tensor,
                 slot_mapping: torch.Tensor, query_start: torch.Tensor) -> tuple[_ConvState, tuple]:
     """The library's view of vLLM's conv-state cache tensor (bf16
     `(blocks, 8, 4, 1024)`) and of the conv metadata of the forward. The
     second value keeps cast index tensors alive until the launch is queued."""
-    assert tuple(cache.shape[1:]) == (8, 4, 1024), tuple(cache.shape)
+    pointer, values = conv_block(cache)
     keep = (_as(positions, torch.int64), _as(seq_idx, torch.int32), _as(slot_mapping, torch.int64),
             _as(query_start, torch.int32), _as(block_table, torch.int32))
-    return _ConvState(_ptr(cache, BF16, "conv-state cache"), *(t.data_ptr() for t in keep),
-                      block_table.shape[1]), keep
+    return _ConvState(pointer, *(t.data_ptr() for t in keep), block_table.shape[1], values), keep
 
 
 def short_conv(x: torch.Tensor, weight: torch.Tensor, cache: torch.Tensor, positions: torch.Tensor,
@@ -361,21 +380,34 @@ def linear_rows(x: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, fmt: 
 
 # PAITON_INK2_PROJ=fp8 or int8 (default bf16): the attention input and output
 # projections read 8-bit rows with one scale per row, converted on the card the
-# first time a weight is used (the bf16 weight stays where it is). int8 also
-# covers the tap projections of the full layers, and has a prefill kernel.
+# first time a weight is used. int8 also covers the tap projections of the full
+# layers, and has a prefill kernel. `release_projections` makes the rows of the
+# input and output projections at load and gives back their bf16 matrices.
 PROJ = os.environ.get("PAITON_INK2_PROJ", "bf16")
 if PROJ not in ("bf16", "fp8", "int8"):
     raise ValueError("PAITON_INK2_PROJ must be bf16, fp8 or int8")
-_proj_rows: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
+_proj_rows: dict[int, tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = {}  # id(weight): (weight, codes, scale)
 
 
 def _rows_of(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    key = weight.data_ptr()
-    if key not in _proj_rows:
+    """The 8-bit rows of a projection weight (the module's parameter itself: the key outlives its bf16 data)."""
+    hit = _proj_rows.get(id(weight))
+    if hit is None:
         if PROJ not in proj_formats():
             raise ValueError(f"the operator library has no linear layer on {PROJ} rows (has {proj_formats()})")
-        _proj_rows[key] = head_rows(weight, PROJ)
-    return _proj_rows[key]
+        hit = _proj_rows[id(weight)] = (weight, *head_rows(weight, PROJ))
+    return hit[1:]
+
+
+def release_projections(weights) -> None:
+    """Make the 8-bit rows of `weights` (parameters only ever read through `_rows_of`: the fused input projection
+    and the output projection of every layer) and free their bf16 data, which nothing reads again: same rows, same
+    tokens, 1.2 GiB more for the cache when called before vLLM measures the card."""
+    assert PROJ != "bf16"
+    for weight in weights:
+        _rows_of(weight)
+        weight.data = weight.data.new_empty((0, weight.shape[1]))
+    torch.cuda.empty_cache()
 
 
 def o_project(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:

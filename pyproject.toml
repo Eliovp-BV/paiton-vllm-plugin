@@ -32,4 +32,4 @@ where = ["."]
 include = ["paiton_vllm_plugin*"]
 
 [tool.setuptools.package-data]
-paiton_vllm_plugin = ["execution/data/*.json", "_vendor/qwen38/compat/*.json", "_vendor/qwen38/compat/overlays/**/*.py", "notices/*.md", "notices/*.txt"]
+paiton_vllm_plugin = ["execution/data/*.json", "inkling2/expert_plan.json", "_vendor/qwen38/compat/*.json", "_vendor/qwen38/compat/overlays/**/*.py", "notices/*.md", "notices/*.txt"]
