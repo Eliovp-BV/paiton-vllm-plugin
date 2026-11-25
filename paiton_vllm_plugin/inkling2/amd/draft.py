@@ -318,6 +318,12 @@ class Inkling2DSparkModel(nn.Module):
             "PaitonInkling2DsparkFold")
         self.head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
         self.__dict__["target"] = target_model  # not a submodule: only its int8 head rows are read
+        from . import model as target_module
+
+        if target_module.LMHEAD == "int8" and DRAFT_LOGITS == "int8" and target_model._lm_head_rows is not None:
+            # both heads read the target's int8 rows and the fold is made: the shared bf16 matrix is not read again
+            self.head_rows = target_model._lm_head_rows
+            target_model.release_bf16_head()
 
     def get_draft_kv_cache_layer_names(self) -> list[str]:
         return [layer.cache.prefix for layer in self.model.layers]
