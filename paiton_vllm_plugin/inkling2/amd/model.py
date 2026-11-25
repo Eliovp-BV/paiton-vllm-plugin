@@ -461,6 +461,15 @@ class Inkling2ForConditionalGeneration(
             soft_cap=text_config.final_logit_softcapping,
         )
         self._lm_head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
+        # With a drafter, the drafter frees the bf16 head after its fold (draft.attach_target); without one, we do.
+        self._drafter = vllm_config.speculative_config is not None
+
+    def release_bf16_head(self) -> None:
+        """Give back the bf16 unembedding (0.86 GiB) once only its 8-bit rows are read: same tokens, more cache."""
+        assert self._lm_head_rows is not None
+        weight = self.lm_head.weight
+        weight.data = weight.data.new_empty((0, weight.shape[1]))
+        torch.cuda.empty_cache()
 
     def get_language_model(self) -> nn.Module:
         return self
@@ -478,6 +487,12 @@ class Inkling2ForConditionalGeneration(
                 hook = getattr(module, "process_weights_after_loading", None)
                 if callable(hook):
                     hook()
+        if LMHEAD != "bf16":
+            # The 8-bit rows at load, not at the first logits call (same call, same rows), so the bf16 matrix can
+            # go before vLLM measures the memory left for the cache.
+            self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
+            if not self._drafter:
+                self.release_bf16_head()
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
