@@ -17,7 +17,7 @@ COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json 
 # silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). The file it replaces is checked.
 RUN echo "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff  /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py" | sha256sum -c
 COPY paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py
-# The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
+# The folder holds the seven libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
 # vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
 # native HIP: the runner glue of the Qwen3.8 27B r6 image, unchanged. The adapter checks the library's sha256 against
@@ -41,7 +41,8 @@ ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so \
     PAITON_INK2_STEP_SO=/opt/paiton/inkling2/lib/inkling2_step_gfx1201.so \
     PAITON_INK2_VISION_SO=/opt/paiton/inkling2/lib/inkling2_vision_gfx1201.so \
-    PAITON_INK2_DSPARK_SO=/opt/paiton/inkling2/lib/inkling2_dspark_gfx1201.so
+    PAITON_INK2_DSPARK_SO=/opt/paiton/inkling2/lib/inkling2_dspark_gfx1201.so \
+    PAITON_INK2_DFLASH2_SO=/opt/paiton/inkling2/lib/inkling2_dflash2_gfx1201.so
 ARG PLUGIN_REVISION=local
 LABEL org.opencontainers.image.revision="${PLUGIN_REVISION}" \
       org.opencontainers.image.title="Paiton Inkling 2 Mini R9700" \

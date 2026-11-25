@@ -13,21 +13,22 @@ HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'checkpoint.lock.json').read_text())
 
 
-def prepare(offline=False, verify=False):
+def prepare(offline=False, verify=False, lock=LOCK):
+    """Download (unless offline) and check the files of a lock entry: the checkpoint, or a drafter of its own."""
     from huggingface_hub import snapshot_download
     started = time.perf_counter()
     snapshot = Path(snapshot_download(
-        LOCK['model'], revision=LOCK['revision'],
-        allow_patterns=[item['name'] for item in LOCK['files']],
+        lock['model'], revision=lock['revision'],
+        allow_patterns=[item['name'] for item in lock['files']],
         max_workers=2, local_files_only=offline))
     downloaded = time.perf_counter()
-    receipt = Path(os.environ.get('XDG_CACHE_HOME', '/models/cache')) / 'verified' / (LOCK['revision'] + '.json')
+    receipt = Path(os.environ.get('XDG_CACHE_HOME', '/models/cache')) / 'verified' / (lock['revision'] + '.json')
     try:
         previous = json.loads(receipt.read_text())
     except (OSError, ValueError):
         previous = {}
     current = {}
-    for item in LOCK['files']:
+    for item in lock['files']:
         path = snapshot / item['name']
         stat = path.stat()
         if stat.st_size != item['bytes']:
@@ -44,7 +45,7 @@ def prepare(offline=False, verify=False):
     temporary = receipt.with_suffix(f'.{os.getpid()}.tmp')
     temporary.write_text(json.dumps(current))
     temporary.replace(receipt)
-    print(json.dumps(dict(model=LOCK['model'], revision=LOCK['revision'],
+    print(json.dumps(dict(model=lock['model'], revision=lock['revision'],
         preparation_seconds=downloaded-started,
         verification_seconds=time.perf_counter()-downloaded)), flush=True)
     return snapshot
@@ -54,13 +55,20 @@ def prepare(offline=False, verify=False):
 # (measured on image c4: 5 beats 7 at temperature 0 and at the model's default 1.0; 7 stays the upper bound).
 DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
            'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
+# --drafter dflash2: a DFlash2 draft checkpoint of its own (checkpoint.lock.json "drafters": a third-party repository,
+# fetched at its pinned revision into the same cache as the checkpoint; NOTICE.md). It always drafts a block of 7;
+# the table says how many of them the server checks. Served through the same vLLM method as the model's own drafter.
+DFLASH2 = {'method': 'dspark', 'num_speculative_tokens': 7,
+           'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
+DEFAULT_DRAFTER = 'dspark'
+DFLASH2_SO = 'PAITON_INK2_DFLASH2_SO'  # the image's DFlash2 drafter library
 
 # 16 GB cards (RX 9070 / 9070 XT, RX 9060 XT 16 GB). Model and drafter take about 20 GiB, so the routed experts the
 # card cannot hold stay in pinned host memory and a miss is fetched, never skipped: the output stays exact.
 SMALL_CARD_GIB = 20.0    # free VRAM below this at start selects the profile
 SMALL_CONTEXT = 32768    # its default context; --max-model-len 65536 for 64K (a smaller expert pool, more misses)
 SMALL_FIXED_GIB = 4.67   # resident besides experts and cache, drafter on: decoder, head rows, drafter, runtime, KFD headroom
-DRAFTER_GIB, VISION_GIB = 0.69, 0.59
+DRAFTER_GIB, DFLASH2_GIB, VISION_GIB = 0.69, 0.92, 0.59
 EXPERTS_GIB, EMBED_GIB = 14.59, 0.86  # every expert keeps a host copy for the pool to fetch from; the embedding moves too
 SERVER_HOST_GIB = 8.0    # the server's own unpinned host memory while it loads
 # Pool hit rate by GiB of experts in VRAM, drafter on and off (20 real-text requests of image c10 replayed through
@@ -94,10 +102,13 @@ def card_free_gib(dri=Path('/dev/dri')):
 def small_card(free, context, drafter, vision, kv, need_pool=True):
     """(vLLM arguments, environment, plan) of the 16 GB profile; stops with the reason when it cannot run here."""
     from paiton_vllm_plugin.inkling2.cache_plan import cache_bytes
-    cache = cache_bytes(context, 1, 256, kv=kv, drafter=drafter) / 2 ** 30
+    # drafter: False, True or 'dspark' (the model's own), or 'dflash2'
+    dflash2, drafter = drafter == 'dflash2', bool(drafter)
+    cache = cache_bytes(context, 1, 256, kv=kv, drafter='dflash2' if dflash2 else drafter) / 2 ** 30
     rope = context * 512 / 2 ** 30 if drafter else 0.0
-    pool = free - SMALL_FIXED_GIB + (0 if drafter else DRAFTER_GIB) - (VISION_GIB if vision else 0) - cache - rope
-    points = HIT[drafter]
+    pool = (free - SMALL_FIXED_GIB + (0 if drafter else DRAFTER_GIB) - (DFLASH2_GIB - DRAFTER_GIB if dflash2 else 0)
+            - (VISION_GIB if vision else 0) - cache - rope)
+    points = HIT[drafter]  # shortcut: the hit rates were replayed with the model's own drafter; replay with DFlash2 before the 16 GB build ships it
     hit = next((f'{a[1] + (b[1] - a[1]) * (pool - a[0]) / (b[0] - a[0]):.2f}' for a, b in zip(points, points[1:])
                 if a[0] <= pool <= b[0]), f'{points[-1][1]:.2f} or more' if pool > points[-1][0] else f'under {points[0][1]:.2f}')
     note = (f'16 GB profile: {free:.1f} GiB free VRAM; cache {cache:.2f} GiB for {context} tokens, one request; '
@@ -123,14 +134,16 @@ def small_card(free, context, drafter, vision, kv, need_pool=True):
     return args, env, note
 
 
-def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
+def command(snapshot, host='0.0.0.0', extra=(), drafter=True, draft_snapshot=None):
+    # drafter: False, True or 'dspark' (the model's own), or 'dflash2' with the folder of its checkpoint
+    config = {**DFLASH2, 'model': str(draft_snapshot)} if drafter == 'dflash2' else DRAFTER
     # Later arguments win in vLLM's parser, so `extra` (what the user adds after the image name) overrides these.
     return [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'inkling-2-mini'),
         '--host', host, '--port', '8042', '--quantization', 'inkling2', '--enforce-eager',
         '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4', '--max-num-batched-tokens', '512',
         '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2',
-        *(['--speculative-config', json.dumps(DRAFTER)] if drafter else []), *extra]
+        *(['--speculative-config', json.dumps(config)] if drafter else []), *extra]
 
 
 # auto: vLLM sizes the context to the cache memory the card has left (322,736 tokens on a 32 GB R9700).
@@ -271,6 +284,10 @@ def main():
     parser.add_argument('--kv-cache', choices=('bf16', 'fp8', 'kv4'), default=None,
                         help='cache format of the 8 full-attention visits: bf16 32,768 bytes per context token, fp8 '
                              f'half, kv4 about a quarter (default {KV_CACHE}); the window visits stay bf16')
+    parser.add_argument('--drafter', choices=('dspark', 'dflash2'), default=DEFAULT_DRAFTER,
+                        help='dspark: the drafter in the model checkpoint. dflash2: the DFlash2 drafter '
+                             f'{LOCK["drafters"]["dflash2"]["model"]} (Apache-2.0, a third-party checkpoint), '
+                             'downloaded at first start (1.0 GB) and checked like the model. Default: %(default)s')
     parser.add_argument('--no-drafter', action='store_true',
                         help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
     parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
@@ -288,10 +305,11 @@ def main():
         parser.error('--host-cache-gib must be a number of GiB greater than 0')
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
+    drafter = False if args.no_drafter else args.drafter
     planned = args.dry_run is not None and args.dry_run >= 0
     free = None if args.download_only else args.dry_run if planned else card_free_gib()
     if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
-        small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, not args.no_drafter, args.vision,
+        small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, drafter, args.vision,
                                       args.kv_cache or 'bf16', need_pool=args.dry_run is None)
         print(json.dumps({'card_profile': note}), flush=True)
         for name, value in env.items():
@@ -300,8 +318,14 @@ def main():
     elif args.max_model_len:
         extra = ['--max-model-len', str(args.max_model_len), *extra]
     snapshot = '<checkpoint>' if args.dry_run is not None else prepare(args.offline, args.verify)
+    draft_snapshot = None
+    if drafter == 'dflash2':
+        draft_snapshot = ('<DFlash2 drafter>' if args.dry_run is not None
+                          else prepare(args.offline, args.verify, LOCK['drafters']['dflash2']))
     if args.download_only:
         return
+    if drafter == 'dflash2' and args.dry_run is None and not os.path.exists(os.environ.get(DFLASH2_SO, '')):
+        raise SystemExit(f'--drafter dflash2: this image has no DFlash2 drafter library ({DFLASH2_SO})')
     os.environ['HF_HUB_OFFLINE'] = '1'
     if args.draft_cut is not None:
         os.environ['PAITON_INK2_DRAFT_CUT'] = str(args.draft_cut)
@@ -326,7 +350,7 @@ def main():
         extra = [*tier, *extra]
     if args.api_key:
         os.environ['VLLM_API_KEY'] = args.api_key
-    argv = command(snapshot, args.host, extra, not args.no_drafter)
+    argv = command(snapshot, args.host, extra, drafter, draft_snapshot)
     print(json.dumps({'command': argv}), flush=True)
     if args.dry_run is not None:
         print(json.dumps({'environment': {k: v for k, v in sorted(os.environ.items()) if k.startswith(('PAITON_', 'HSA_'))}}))

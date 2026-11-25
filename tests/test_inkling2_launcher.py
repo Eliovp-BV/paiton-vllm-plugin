@@ -47,6 +47,32 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertIn('GPU_MAX_HW_QUEUES=1', script)
         self.assertIn(json.loads((FOLDER / 'checkpoint.lock.json').read_text())['revision'], docker)
 
+    def test_dflash2_drafter_is_a_choice_with_its_own_pinned_checkpoint(self):
+        entry = json.loads((FOLDER / 'checkpoint.lock.json').read_text())['drafters']['dflash2']
+        self.assertEqual(len(entry['revision']), 40)
+        self.assertTrue(all(len(item['sha256']) == 64 and item['bytes'] > 0 for item in entry['files']))
+        argv = server.command('/checkpoint', drafter='dflash2', draft_snapshot='/draft')
+        config = json.loads(argv[argv.index('--speculative-config') + 1])
+        self.assertEqual((config['method'], config['model'], config['num_speculative_tokens']), ('dspark', '/draft', 7))
+        self.assertEqual(server.DEFAULT_DRAFTER, 'dspark')
+        # the launcher downloads and checks the drafter like the checkpoint (--offline and --verify reach it)
+        with tempfile.NamedTemporaryFile() as library, mock.patch.dict(os.environ, {server.DFLASH2_SO: library.name}), \
+                mock.patch.object(server, 'prepare', side_effect=['/checkpoint', '/draft']) as prepare, \
+                mock.patch.object(server, 'card_free_gib', return_value=None), \
+                mock.patch.object(server.os, 'execv') as execv, \
+                mock.patch.object(server.sys, 'argv', ['server.py', '--drafter', 'dflash2', '--offline', '--verify']):
+            server.main()
+        self.assertEqual(prepare.call_args_list[1].args, (True, True, entry))
+        served = execv.call_args.args[1]
+        self.assertEqual(json.loads(served[served.index('--speculative-config') + 1])['model'], '/draft')
+        # without the library in the image the start stops before vLLM does
+        with mock.patch.dict(os.environ), mock.patch.object(server, 'prepare', side_effect=['/checkpoint', '/draft']), \
+                mock.patch.object(server, 'card_free_gib', return_value=None), mock.patch.object(server.os, 'execv'), \
+                mock.patch.object(server.sys, 'argv', ['server.py', '--drafter', 'dflash2']):
+            os.environ.pop(server.DFLASH2_SO, None)
+            with self.assertRaises(SystemExit):
+                server.main()
+
     def environment(self, *arguments, **preset):
         """The environment the launcher hands to vLLM for `arguments`, with `preset` already set by the user."""
         # no card: the profile of the host that runs the tests (a busy card looks like a 16 GB one) stays out

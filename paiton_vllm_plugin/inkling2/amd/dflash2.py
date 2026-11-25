@@ -224,6 +224,7 @@ class Inkling2DFlash2Model(nn.Module):
                 if target._lm_head_rows is None:  # the target makes them at its first logits call: the same call
                     target._lm_head_rows = native_ops.head_rows(head, "int8")
                 self._head_rows = target._lm_head_rows
+                target.release_bf16_head()  # only the int8 rows are read from here on: 0.86 GiB back for the cache
             else:
                 self._head_rows = native_ops.head_rows(head, "int8")
             native.head_codes, native.head_scale = self._head_rows[0].data_ptr(), self._head_rows[1].data_ptr()

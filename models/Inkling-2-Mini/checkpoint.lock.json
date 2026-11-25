@@ -62,5 +62,24 @@
       "bytes": 13235,
       "sha256": "bf09342d285139fd37ce10c70878af1d52cb390e9901e10248654293a80ee636"
     }
-  ]
+  ],
+  "drafters": {
+    "dflash2": {
+      "model": "incoai/Inkling-2-Mini-DFlash2",
+      "revision": "4f9088ea66c21f2b99ed657d1941c306b03e84d2",
+      "license": "apache-2.0",
+      "files": [
+        {
+          "name": "config.json",
+          "bytes": 1311,
+          "sha256": "d094e435eb939e01fca6297f637c5af35e3da4b552f8e1ab0a181cd278a1cefa"
+        },
+        {
+          "name": "model.safetensors",
+          "bytes": 989975616,
+          "sha256": "217980ab00d116693fa5946df7bbfd967caf5fac1f529afd541fbd470ddb54ee"
+        }
+      ]
+    }
+  }
 }
