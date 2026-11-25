@@ -25,17 +25,28 @@ class _Weights(C.Structure):  # PaitonInkling2MoeWeights, ABI version 1
     ] + [("w13_denominator", C.c_float), ("w2_denominator", C.c_float), ("format", C.c_int)]
 
 
+class _WeightsTable(_Weights):  # ABI 2: the ABI 1 fields (padded to 64 bytes), then the expert table
+    _fields_ = [("table", C.c_void_p)]  # None: the c10 addressing, base + e * stride
+
+
+assert C.sizeof(_Weights) == 64 and _WeightsTable.table.offset == 64
 _lib = None
+_abi = 0
 _workspace: dict[torch.device, torch.Tensor] = {}
 
 
 def _library():
-    global _lib
+    global _lib, _abi
     if _lib is None:
         path = os.environ.get("PAITON_INK2_MOE_SO")
         if not path:
             raise ValueError("PAITON_INK2_EXPERTS=native needs PAITON_INK2_MOE_SO")
-        _lib = C.CDLL(path)
+        lib = C.CDLL(path)
+        lib.PaitonInkling2MoeGetAbiVersion.restype = C.c_uint
+        _abi = lib.PaitonInkling2MoeGetAbiVersion()
+        if _abi not in (1, 2):
+            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 or 2")
+        _lib = lib
         _lib.PaitonInkling2MoeWorkspaceBytes.restype = C.c_size_t
         _lib.PaitonInkling2MoeWorkspaceBytes.argtypes = [C.c_int, C.c_int]
         _lib.PaitonInkling2MoeLayer.restype = C.c_int
@@ -78,7 +89,8 @@ class Inkling2NativeExperts(nn.Module):
 
     def _weights(self) -> _Weights:
         # Built at the first call: the tensors are on the card by then.
-        w = _Weights(format=0 if self.nvfp4 else 1)
+        _library()
+        w = (_WeightsTable if _abi == 2 else _Weights)(format=0 if self.nvfp4 else 1)
         for name in ("w13", "w2"):
             for field, suffix in ((name, "_weight"), (f"{name}_scale", "_weight_scale")):
                 tensor = getattr(self, name + suffix)
