@@ -110,7 +110,7 @@ class Inkling2CacheTier(unittest.TestCase):
 
     def test_disk_tier_and_its_folder_key(self):
         args, _ = server.tier_settings(None, 'disk')
-        self.assertEqual(args[:4], ['--kv-offloading-size', '11', '--kv-offloading-backend', 'native'])
+        self.assertEqual(args[:4], ['--kv-offloading-size', f'{server.STAGING_GIB:g}', '--kv-offloading-backend', 'native'])
         self.assertEqual(args[args.index('--prefix-caching-hash-algo') + 1], 'sha256')
         config = json.loads(args[args.index('--kv-transfer-config') + 1])
         self.assertEqual(config['kv_connector_extra_config']['spec_name'], 'TieringOffloadingSpec')
