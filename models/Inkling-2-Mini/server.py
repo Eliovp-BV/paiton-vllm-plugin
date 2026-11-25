@@ -64,8 +64,8 @@ DRAFTER_GIB, VISION_GIB = 0.69, 0.59
 EXPERTS_GIB, EMBED_GIB = 14.59, 0.86  # every expert keeps a host copy for the pool to fetch from; the embedding moves too
 SERVER_HOST_GIB = 8.0    # the server's own unpinned host memory while it loads
 # Pool hit rate by GiB of experts in VRAM, drafter on and off (20 real-text requests of image c10 replayed through
-# the native pool, compiler native/inkling2_pool).
-HIT = {True: ((5.98, 0.863), (8.26, 0.939), (9.39, 0.965)), False: ((7.29, 0.930), (9.29, 0.969), (10.29, 0.981))}
+# the native pool, compiler native/inkling2_pool ABI 2, two pool groups by expert format, 20 % of the bytes MXFP8).
+HIT = {True: ((5.98, 0.888), (8.26, 0.952), (9.39, 0.970)), False: ((7.29, 0.948), (9.29, 0.975), (10.29, 0.983))}
 MEMINFO = Path('/proc/meminfo')
 EXPERT_POOL = False  # shortcut: this image has no expert pool yet (16 GB plan K1 to K3, N3); True once it ships
 
