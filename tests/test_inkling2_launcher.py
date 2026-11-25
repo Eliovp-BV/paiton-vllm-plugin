@@ -77,6 +77,7 @@ class Inkling2CacheTier(unittest.TestCase):
         self.assertEqual(args[args.index('--prefix-caching-hash-algo') + 1], 'sha256')
         config = json.loads(args[args.index('--kv-transfer-config') + 1])
         self.assertEqual(config['kv_connector_extra_config']['spec_name'], 'TieringOffloadingSpec')
+        self.assertEqual(config['kv_connector_extra_config']['blocks_per_chunk'], 16)   # 9 MiB files: 4x faster restores
         folder = config['kv_connector_extra_config']['secondary_tiers'][0]['root_dir']
         self.assertEqual(folder, str(server.disk_folder()))
         with mock.patch.dict(os.environ, {'PAITON_INK2_PROJ': 'int8'}):   # other cached values, other folder

@@ -84,6 +84,10 @@ CARD_POOL_GIB = 10.0       # the card's prefix-cache pool: a RAM tier is inclusi
 STAGING_GIB = 11.0         # disk tier: the system-memory stage every restore passes; holds a document the size of the pool
 MIN_TIER_GIB = 4.0
 DISK_MAX_GIB, DISK_FREE_SHARE = 64.0, 0.25
+# vLLM's file tier writes one file per chunk. 16 blocks (256 tokens, 9 MiB files) restore 146K tokens after a restart in
+# 2.2 s instead of 9.1 s with one block (576 KiB files), same disk use per token; a hit then ends up to 255 tokens
+# before the prompt end instead of 15 (25 Nov 2026, R9700).
+DISK_BLOCKS_PER_CHUNK = 16
 DISK_ROOT = Path(os.environ.get('XDG_CACHE_HOME', '/models/cache')) / 'kv-disk'
 
 
@@ -163,7 +167,7 @@ def tier_settings(host_cache_gib, extend_cache):
     # Files must match after a restart: a cryptographic block hash with vLLM's fixed seed.
     args += ['--prefix-caching-hash-algo', 'sha256', '--kv-transfer-config', json.dumps({
         'kv_connector': 'OffloadingConnector', 'kv_role': 'kv_both',
-        'kv_connector_extra_config': {'spec_name': 'TieringOffloadingSpec',
+        'kv_connector_extra_config': {'spec_name': 'TieringOffloadingSpec', 'blocks_per_chunk': DISK_BLOCKS_PER_CHUNK,
                                       'secondary_tiers': [{'type': 'fs', 'root_dir': str(folder)}]}})]
     return args, (f'prompt-cache tier: files under {folder} (up to {cap:.0f} GiB, checked at start) behind a {ram:g} GiB '
                   'system-memory stage')
