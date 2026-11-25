@@ -304,3 +304,48 @@ class Inkling2DSparkConfig(PreTrainedConfig):
             final_logit_softcapping=text.final_logit_softcapping,
             torch_dtype="bfloat16",
         )
+
+
+class Inkling2DFlash2Config(PreTrainedConfig):
+    """A DFlash2 draft for Inkling 2 Mini: a checkpoint of its own (`config.json` with a `dflash_config`), served
+    through vLLM's DSpark speculator like the model's own drafter."""
+
+    model_type = "inkling2_dflash2"
+
+    def __init__(self, *, block_size: int = 8, target_layer_ids: list[int] | None = None, **kwargs) -> None:
+        # As in Inkling2DSparkConfig: the block holds the bonus token plus block_size - 1 masks.
+        self.draft_block_size = block_size
+        self.dspark_block_size = block_size - 1
+        self.sample_from_anchor = False
+        self.is_causal = False
+        self.target_layer_ids = list(target_layer_ids or [])
+        self.eagle_aux_hidden_state_layer_ids = self.target_layer_ids
+        kwargs.setdefault("architectures", ["Inkling2DFlash2Model"])
+        super().__init__(tie_word_embeddings=False, **kwargs)
+
+    @staticmethod
+    def matches(config: PreTrainedConfig) -> bool:
+        """Whether `config` is the DFlash2 checkpoint's own config for Inkling 2 Mini."""
+        dflash = getattr(config, "dflash_config", None) or {}
+        return ("DFlash2DraftModel" in (getattr(config, "architectures", None) or [])
+                and getattr(config, "hidden_size", None) == 2304 and dflash.get("target_layer_ids") == [5, 23, 41, 48])
+
+    @classmethod
+    def from_draft(cls, config: PreTrainedConfig) -> Inkling2DFlash2Config:
+        dflash = config.dflash_config
+        rope = getattr(config, "rope_parameters", None) or {}
+        if (dflash.get("selector_softcap_mode") != "after_correction" or dflash["conv_kernel_size"] != 2
+                or dflash["conv_group_size"] != 16 or dflash["selector_top_k"] != 16 or dflash["selector_rank"] != 256
+                or (config.num_attention_heads, config.num_key_value_heads, config.head_dim) != (32, 8, 128)
+                or (config.num_hidden_layers, config.intermediate_size) != (5, 6912)):
+            raise ValueError("Unsupported DFlash2 draft config for Inkling 2 Mini")
+        return cls(
+            block_size=dflash["block_size"], target_layer_ids=dflash["target_layer_ids"],
+            mask_token_id=dflash["mask_token_id"], final_logit_softcapping=dflash["final_logit_softcapping"],
+            hidden_size=config.hidden_size, num_hidden_layers=config.num_hidden_layers,
+            num_attention_heads=config.num_attention_heads, num_key_value_heads=config.num_key_value_heads,
+            head_dim=config.head_dim, intermediate_size=config.intermediate_size, rms_norm_eps=config.rms_norm_eps,
+            sliding_window=config.sliding_window, rope_theta=rope.get("rope_theta", getattr(config, "rope_theta", 10000.0)),
+            vocab_size=config.vocab_size, max_position_embeddings=config.max_position_embeddings,
+            torch_dtype="bfloat16",
+        )

@@ -17,6 +17,12 @@ def test_matches_vllm_autofit_with_drafter():
     assert plan(drafter=True)[2] == 12
 
 
+def test_dflash2_draft_bucket_pads_no_group():
+    # image c10 with the DFlash2 drafter: "Available KV cache memory: 8.0 GiB" (7.99), "GPU KV cache size: 223,805 tokens"
+    assert plan(drafter="dflash2")[:1] + plan(drafter="dflash2")[2:3] == (32768.0, 13)
+    assert abs(max_context_tokens(7.99 * GIB, 1, 512, drafter="dflash2") - 223_805) < 256
+
+
 def test_packed_formats():
     # a lone bf16 full draft layer next to packed target visits: one group per layer
     assert plan("kv4", True, None)[2] == 99

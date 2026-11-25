@@ -5,7 +5,10 @@ Only the 8 full-attention visits (layers 5, 11, 17, 23; 11 and 17 run three
 times) keep keys and values for the whole context. The 40 window visits stop at
 1,024 tokens and the 48 conv states at 4 tokens, plus the tokens in flight.
 The drafter adds two window layers and one full layer (whole context, or a
-window with PAITON_INK2_DRAFT_WINDOW). vLLM's own "GPU KV cache size" line is
+window with PAITON_INK2_DRAFT_WINDOW). A DFlash2 draft (`drafter="dflash2"`)
+adds a bucket of its own: five layers with a 2,048-token window and three
+unused caches of the same spec, eight like the full visits, so that vLLM pads
+no group. vLLM's own "GPU KV cache size" line is
 concurrency times max_model_len and must not be read as a cost per token.
 
 This follows vLLM 0.32's hybrid allocator (`kv_cache_utils.
@@ -37,7 +40,9 @@ def _buckets(kv: str, drafter: bool, draft_window: int | None):
     full = [FULL_VISITS, FULL_BYTES[kv] * BLOCK, BLOCK, None]
     window = [WINDOW_VISITS, KV_BYTES * BLOCK, BLOCK, WINDOW]
     out = [full, window, [CONV_STATES, CONV_BYTES * CONV_WINDOW, CONV_WINDOW, CONV_WINDOW]]
-    if drafter:
+    if drafter == "dflash2":
+        out.append([FULL_VISITS, KV_BYTES * BLOCK, BLOCK, 2048])
+    elif drafter:
         window[0] += 2  # the draft's local layers 0 and 2
         if draft_window == WINDOW:
             window[0] += 1
@@ -48,7 +53,7 @@ def _buckets(kv: str, drafter: bool, draft_window: int | None):
     return out
 
 
-def plan(kv: str = "bf16", drafter: bool = False, draft_window: int | None = None, batched_tokens: int = 512,
+def plan(kv: str = "bf16", drafter: bool | str = False, draft_window: int | None = None, batched_tokens: int = 512,
          concurrent_batches: int = 2) -> tuple[float, int, int, int]:
     """(bytes per context token, fixed bytes per running request, number of cache groups, bytes of one pool block).
     `concurrent_batches` is 2 with vLLM's async scheduling. vLLM 0.32 holds one pool block back (the block pool's null

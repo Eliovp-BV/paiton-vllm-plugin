@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from unittest import mock
 
+from paiton_vllm_plugin.inkling2.cache_plan import cache_bytes
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('inkling2_server_small', ROOT / 'models/Inkling-2-Mini/server.py')
 server = importlib.util.module_from_spec(spec)
@@ -49,6 +51,13 @@ class Inkling2SmallCard(unittest.TestCase):
             server.small_card(15.9, 32768, True, False, 'bf16')
         self.assertIn('16 GB profile', str(stop.exception))
         self.assertIn('not released yet', str(stop.exception))
+
+    def test_dflash2_drafter_takes_its_size_and_its_cache_from_the_pool(self):
+        own = float(self.run_small(self.host(28, 15.6), 15.9, 32768, True, False, 'bf16')[1]['PAITON_INK2_EXPERT_POOL_GIB'])
+        other = float(self.run_small(self.host(28, 15.6), 15.9, 32768, 'dflash2', False, 'bf16')[1]['PAITON_INK2_EXPERT_POOL_GIB'])
+        self.assertAlmostEqual(own - other, server.DFLASH2_GIB - server.DRAFTER_GIB
+                               + (cache_bytes(32768, 1, 256, drafter='dflash2') - cache_bytes(32768, 1, 256, drafter=True)) / GIB,
+                               delta=0.011)
 
     def test_pool_matches_the_plan_table(self):
         # PLAN.md section 1: a 15.9 GiB card keeps 9.39 GiB of experts at 32K and 8.26 at 64K with the drafter.
