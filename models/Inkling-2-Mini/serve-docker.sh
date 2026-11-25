@@ -16,6 +16,6 @@ if [[ -n "${PAITON_API_KEY:-}" ]]; then
   export VLLM_API_KEY="$PAITON_API_KEY"
   extra+=(-e VLLM_API_KEY)
 fi
-# GPU_MAX_HW_QUEUES=1 keeps RDNA4 decode in its fast mode (decode is about 4x slower without it).
+# GPU_MAX_HW_QUEUES=1 is the setting of every RDNA4 launcher here (no measured difference for this model on ROCm 10.2).
 exec docker run --rm --name "$name" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
   --ipc=host -p "$bind:$port:8042" -v "$cache:/models/cache" "${extra[@]}" "$image" "$@"
