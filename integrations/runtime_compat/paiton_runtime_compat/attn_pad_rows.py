@@ -1,19 +1,19 @@
 """Zero the CUDA-graph pad rows of the target's full-attention output on padded steps.
 
 A PIECEWISE step whose token count is not a capture size replays the graph of the next
-capture size. The attention op between the graph pieces runs eagerly and the R4D backend
+capture size. The attention op between the graph pieces runs eagerly and the PDK backend
 writes only the rows of the scheduled requests, [0, num_actual_tokens). The rows behind
 them belong to an output buffer that vLLM allocates with torch.empty in the shared graph
 pool, so they carry whatever an earlier graph left there. Through o_proj that data reaches
 the pad rows of every later GDN layer, where paiton_vllm_plugin.runtime_native_gdn_norm
 checks all rows of its M 8/16/24/32 launches and stops the engine on a non-finite value.
 
-After each R4D attention call this hook clears rows [num_actual_tokens:] of the output
+After each PDK attention call this hook clears rows [num_actual_tokens:] of the output
 with hipMemsetAsync on the current stream, the stream the backend launched on. Real rows
 are not touched and every op on their path is row-independent, so served tokens do not
 change. Steps without pad rows (uniform FULL-graph replays, eager steps) are not affected.
 
-The hook wraps each R4D impl's forward as it is at the end of
+The hook wraps each PDK impl's forward as it is at the end of
 Worker.compile_or_warm_up_model: every load-time adapter (KV4, prefill attention) has
 patched the class by then and stays in the call chain, and the FULL graphs were captured
 without the wrapper. Warmup dummy rows are gdn_norm_warmup's concern. The file stays
@@ -119,24 +119,24 @@ def wrap(impl):
 
 
 def install(model):
-    """Wrap every R4D attention impl of the target model; returns the number newly wrapped."""
+    """Wrap every PDK attention impl of the target model; returns the number newly wrapped."""
     if not enabled():
         _log(f'off ({ENV}=0)')
         return 0
     try:
-        from radiance_r4d_attn import R4DAttentionImpl
+        from paiton_pdk_attn import PDKAttentionImpl
     except ImportError:
-        _log('no R4D attention backend; nothing wrapped')
+        _log('no PDK attention backend; nothing wrapped')
         return 0
     impls = {}
     for module in model.modules():
         impl = getattr(module, 'impl', None)
-        if isinstance(impl, R4DAttentionImpl):
+        if isinstance(impl, PDKAttentionImpl):
             impls.setdefault(id(impl), impl)
     if impls:
         memset_async()  # bind the runtime now, not on the first padded step
     wrapped = sum(wrap(impl) for impl in impls.values())
-    _log(f'wrapped={wrapped} r4d_layers={len(impls)}; rows [num_actual_tokens:] zeroed on padded steps')
+    _log(f'wrapped={wrapped} pdk_layers={len(impls)}; rows [num_actual_tokens:] zeroed on padded steps')
     return wrapped
 
 

@@ -1,4 +1,4 @@
-"""NVFP4 checkpoints on gfx1201: requantize to MXFP4 at load, serve on the radiance W4A8 kernel.
+"""NVFP4 checkpoints on gfx1201: requantize to MXFP4 at load, serve on the paiton W4A8 kernel.
 
 What the AMD ROCm blog "NVFP4 to MXFP4 online requantization" does for CDNA4 inside SGLang, done
 here for RDNA4 inside vLLM's compressed-tensors loader. An NVFP4 linear (e2m1 codes, e4m3 scale per
@@ -7,25 +7,25 @@ checkpoint stores it, then in process_weights_after_loading:
 
   1. dequantized to fp32, PER PARTITION of a merged linear (gate_up_proj carries two global scales
      and the stock scheme collapses them with .max(), which is a real accuracy loss);
-  2. requantized to e2m1 + e8m0 per 32 (RADIANCE_NVFP4_EXP picks the block exponent: ocp = the
+  2. requantized to e2m1 + e8m0 per 32 (PAITON_RT_NVFP4_EXP picks the block exponent: ocp = the
      OCP rule floor(log2(amax)) - 2, which clips the top of the block; noclip = ceil(log2(amax/6));
      mse = whichever of noclip / noclip-1 has the lower squared error per block, the default);
   3. handed to the MXFP4 kernel plugin exactly as a Quark/compressed-tensors MXFP4 layer would be:
      layer.weight [N, K/2] uint8 (low nibble = even k), layer.weight_scale [N, K/32] uint8 e8m0.
-     With RADIANCE_MXFP4_W4A8=1 that plugin is radiance_mxfp4's fp8-WMMA GEMM (fp8 activations,
+     With PAITON_RT_MXFP4_W4A8=1 that plugin is paiton_mxfp4's fp8-WMMA GEMM (fp8 activations,
      folded e8m0, fragment-order weights, decode band, fp8 stream) -- the same kernel that serves
      the AMD Quark MXFP4 checkpoint.
 
 The step is lossy in principle (32-wide power-of-two blocks are coarser than 16-wide e4m3 ones);
 the per-layer relative error is logged at load and the serving gate is GSM8K, as for every other
-kernel change here. RADIANCE_NVFP4_FP8_LAYERS=mxfp4 additionally requantizes the checkpoint's
+kernel change here. PAITON_RT_NVFP4_FP8_LAYERS=mxfp4 additionally requantizes the checkpoint's
 FP8 per-channel linears (attention, GDN projections, the last MLPs) to MXFP4 so the whole model
 runs on one kernel; lm_head always stays FP8. This is the DEFAULT: =fp8 keeps them on vLLM's FP8
 path (torch._scaled_mm -> hipBLASLt), which on gfx1201 wedged the GPU (driver reset) twice under
 sustained 8-way concurrency, 4-8 minutes into GSM8K, while the all-MXFP4 form ran the same gate
 clean and scored the same 97.40%. Measured 2026-09-15; treat =fp8 as diagnostic only.
 
-Nothing here runs unless patch_nvfp4_mxfp4.py is applied and RADIANCE_NVFP4_MXFP4=1.
+Nothing here runs unless patch_nvfp4_mxfp4.py is applied and PAITON_RT_NVFP4_MXFP4=1.
 """
 import os
 import sys
@@ -34,28 +34,28 @@ import time
 import torch
 from torch.nn import Parameter
 
-EXP_MODE = os.environ.get("RADIANCE_NVFP4_EXP", "mse")
-FP8_LAYERS = os.environ.get("RADIANCE_NVFP4_FP8_LAYERS", "mxfp4")   # mxfp4 | fp8
+EXP_MODE = os.environ.get("PAITON_RT_NVFP4_EXP", "mse")
+FP8_LAYERS = os.environ.get("PAITON_RT_NVFP4_FP8_LAYERS", "mxfp4")   # mxfp4 | fp8
 # Regex (re.search on the vLLM module prefix) of UNQUANTIZED bf16 linears to requantize to MXFP4 as
 # well. Default "in_proj_ba": the checkpoint leaves the GDN a/b gate projections in bf16, and the GDN
-# in_proj merge (radiance_gdnmerge) only fuses a layer whose qkvz AND ba sides are both on the
-# radiance kernel. With it all 48 GDN layers merge (96 launches/forward gone), the fp8 stream covers
+# in_proj merge (paiton_gdnmerge) only fuses a layer whose qkvz AND ba sides are both on the
+# paiton kernel. With it all 48 GDN layers merge (96 launches/forward gone), the fp8 stream covers
 # the whole model, decode 23.9 -> 22.2 ms/step, GSM8K 97.60 (2026-09-15). Empty = leave them bf16.
-BF16_LAYERS = os.environ.get("RADIANCE_NVFP4_BF16_LAYERS", "in_proj_ba").strip()
+BF16_LAYERS = os.environ.get("PAITON_RT_NVFP4_BF16_LAYERS", "in_proj_ba").strip()
 # lm_head: "bf16" (default) dequantizes the checkpoint's FP8 per-channel lm_head to bf16 at load so it
 # runs on the plain bf16 GEMM like every other unit here (and the int2 draft/verify heads take their
 # native path); "fp8" leaves it on vLLM's FP8 path (torch._scaled_mm -> hipBLASLt). With the FP8
 # linears requantized, that lm_head was the LAST hipBLASLt fp8 call left in the model, and the
 # serve still wedged the GPU at 8-way concurrency with it in place (2026-09-15, reset #4).
-LMHEAD = os.environ.get("RADIANCE_NVFP4_LMHEAD", "bf16")
-LOG_EVERY = os.environ.get("RADIANCE_NVFP4_LOG", "1") == "1"
+LMHEAD = os.environ.get("PAITON_RT_NVFP4_LMHEAD", "bf16")
+LOG_EVERY = os.environ.get("PAITON_RT_NVFP4_LOG", "1") == "1"
 ROW_CHUNK = 4096            # rows per requant pass: bounds the fp32 transient at ~1.3 GiB for K=17408
 
 _E2M1 = torch.tensor([0.0, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0], device="cpu")
 
 
 def _log(msg):
-    sys.stderr.write(f"[radiance.nvfp4] {msg}\n")
+    sys.stderr.write(f"[paiton.nvfp4] {msg}\n")
     sys.stderr.flush()
 
 
@@ -204,7 +204,7 @@ def _make_classes():
         PerTensorScaleParameter,
     )
 
-    class RadianceNvfp4ToMxfp4(CompressedTensorsScheme):
+    class PaitonNvfp4ToMxfp4(CompressedTensorsScheme):
         """nvfp4-pack-quantized weights -> MXFP4 at load -> the MXFP4 kernel plugin."""
 
         def __init__(self):
@@ -246,7 +246,7 @@ def _make_classes():
             gs = layer.weight_global_scale.data.float().tolist()
             widths = list(layer.logical_widths)
             if len(gs) != len(widths):
-                raise RuntimeError(f"[radiance.nvfp4] {len(gs)} global scales for {len(widths)} partitions")
+                raise RuntimeError(f"[paiton.nvfp4] {len(gs)} global scales for {len(widths)} partitions")
             packed, scales, errs, ssqs = [], [], [], []
             r0 = 0
             for width, g in zip(widths, gs):
@@ -267,9 +267,9 @@ def _make_classes():
         def apply_weights(self, layer, x, bias=None):
             return self.kernel.apply_weights(layer, x, bias)
 
-    class RadianceFp8ChannelToMxfp4(CompressedTensorsScheme):
+    class PaitonFp8ChannelToMxfp4(CompressedTensorsScheme):
         """float-quantized W8 per-channel (+ dynamic per-token A8) -> MXFP4 at load. Opt-in via
-        RADIANCE_NVFP4_FP8_LAYERS=mxfp4; the checkpoint author kept these at 8 bits on purpose,
+        PAITON_RT_NVFP4_FP8_LAYERS=mxfp4; the checkpoint author kept these at 8 bits on purpose,
         so this trades accuracy for the single-kernel fp8 stream. Gate it with GSM8K."""
 
         def __init__(self):
@@ -314,9 +314,9 @@ def _make_classes():
         def apply_weights(self, layer, x, bias=None):
             return self.kernel.apply_weights(layer, x, bias)
 
-    class RadianceBf16ToMxfp4(CompressedTensorsScheme):
+    class PaitonBf16ToMxfp4(CompressedTensorsScheme):
         """An unquantized bf16 linear (no compressed-tensors group matches it) -> MXFP4 at load.
-        Opt-in per regex via RADIANCE_NVFP4_BF16_LAYERS."""
+        Opt-in per regex via PAITON_RT_NVFP4_BF16_LAYERS."""
 
         def __init__(self):
             self.kernel = init_mxfp4_linear_kernel(activation_quant_key=kMxfp4Dynamic)
@@ -346,7 +346,7 @@ def _make_classes():
         def apply_weights(self, layer, x, bias=None):
             return self.kernel.apply_weights(layer, x, bias)
 
-    class RadianceFp8ChannelToBf16(CompressedTensorsScheme):
+    class PaitonFp8ChannelToBf16(CompressedTensorsScheme):
         """float-quantized W8 per-channel -> plain bf16 weight at load (lm_head)."""
 
         @classmethod
@@ -382,7 +382,7 @@ def _make_classes():
         def apply_weights(self, layer, x, bias=None):
             return torch.nn.functional.linear(x, layer.weight, bias)
 
-    return RadianceNvfp4ToMxfp4, RadianceFp8ChannelToMxfp4, RadianceBf16ToMxfp4, RadianceFp8ChannelToBf16
+    return PaitonNvfp4ToMxfp4, PaitonFp8ChannelToMxfp4, PaitonBf16ToMxfp4, PaitonFp8ChannelToBf16
 
 
 def scheme_class():
@@ -398,7 +398,7 @@ def scheme_class():
 
 def bf16_scheme_class(layer_name):
     """The bf16 -> MXFP4 scheme for an unquantized linear whose prefix matches
-    RADIANCE_NVFP4_BF16_LAYERS, else None."""
+    PAITON_RT_NVFP4_BF16_LAYERS, else None."""
     import re
     if not BF16_LAYERS or not layer_name or not re.search(BF16_LAYERS, layer_name):
         return None
@@ -407,7 +407,7 @@ def bf16_scheme_class(layer_name):
 
 
 def fp8_scheme_class(layer_name):
-    """The FP8-per-channel -> MXFP4 scheme when RADIANCE_NVFP4_FP8_LAYERS=mxfp4, else None.
+    """The FP8-per-channel -> MXFP4 scheme when PAITON_RT_NVFP4_FP8_LAYERS=mxfp4, else None.
     lm_head is never converted (its N exceeds the decode kernel's scratch and the draft/verify
     heads read it as an 8-bit matrix)."""
     if layer_name and layer_name.endswith("lm_head"):

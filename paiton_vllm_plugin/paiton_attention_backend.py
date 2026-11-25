@@ -22,7 +22,7 @@ from vllm.v1.attention.backends.triton_attn import TritonAttentionBackend
 
 class PaitonTritonAttentionBackend(TritonAttentionBackend):
     @staticmethod
-    def get_supported_kernel_block_sizes() -> list[int]:
+    def get_supported_kernel_block_sizes(kv_cache_spec=None) -> list[int]:
         # The compiled artifact has a fixed 16-token physical block ABI.
         # Returning an exact size (rather than inheriting Triton's
         # MultipleOf(16)) tells vLLM to split a larger hybrid-manager page into

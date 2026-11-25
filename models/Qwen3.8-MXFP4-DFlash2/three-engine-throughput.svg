@@ -688,7 +688,7 @@ z
 " style="fill: #7966ca"/>
    </g>
    <g id="text_55">
-    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start" x="225.253594" y="43.314281" transform="rotate(-0 225.253594 43.314281)">Radiance + DFlash2</text>
+    <text style="font-size: 11px; font-family: 'DejaVu Sans'; text-anchor: start" x="225.253594" y="43.314281" transform="rotate(-0 225.253594 43.314281)">Reference engine + DFlash2</text>
    </g>
    <g id="patch_31">
     <path d="M 358.467031 43.314281 

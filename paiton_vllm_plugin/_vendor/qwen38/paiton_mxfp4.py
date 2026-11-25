@@ -1,4 +1,4 @@
-"""RADIANCE gfx1201 MXFP4 dispatch: routes large-M (prefill) MXFP4 linears to the hand-written
+"""PAITON gfx1201 MXFP4 dispatch: routes large-M (prefill) MXFP4 linears to the hand-written
 W4A8 fp8-WMMA kernel, leaving decode on aiter's Triton W4A4 path.
 
 Why: Triton lowers tl.dot_scaled by upconverting e2m1 to bf16 and using the 16-bit WMMA. Measured
@@ -8,12 +8,12 @@ manages only 43.3 -- it will not emit the fp8 matrix instruction. The hand-writt
 
 This is a NUMERICS change, not just a speed one: the checkpoint declares W4A4 and this runs W4A8.
 fp8 activations are strictly more precise than the fp4 the model was calibrated against, but output
-is no longer bit-identical to emulation, so it is opt-in via RADIANCE_MXFP4_W4A8=1 and only above
-RADIANCE_MXFP4_W4A8_MIN_M (default 256, where the fp8 kernel starts winning).
+is no longer bit-identical to emulation, so it is opt-in via PAITON_RT_MXFP4_W4A8=1 and only above
+PAITON_RT_MXFP4_W4A8_MIN_M (default 256, where the fp8 kernel starts winning).
 
 Integration: vLLM 0.27 replaced QuarkOCP_MX's inline dispatch with a kernel plugin ABC --
 MxFp4LinearKernel, selected in priority order from _POSSIBLE_MXFP4_KERNELS[platform] by
-init_mxfp4_linear_kernel(). RadianceMxfp4W4A8LinearKernel below is that plugin;
+init_mxfp4_linear_kernel(). PaitonMxfp4W4A8LinearKernel below is that plugin;
 patch_quark_mxfp4.py does nothing but put it at the head of the ROCm list. Before 0.27 this took
 seven string hunks against a single 389-line file, all of which the rewrite invalidated.
 """
@@ -22,21 +22,21 @@ import sys
 
 import torch
 
-ENABLED = os.environ.get("RADIANCE_MXFP4_W4A8", "0") == "1"
-MIN_M = int(os.environ.get("RADIANCE_MXFP4_W4A8_MIN_M", "256"))
+ENABLED = os.environ.get("PAITON_RT_MXFP4_W4A8", "0") == "1"
+MIN_M = int(os.environ.get("PAITON_RT_MXFP4_W4A8_MIN_M", "256"))
 # Decode band for the small-M kernel. 0 = dark. Also gates the scratch preallocation.
-DECODE_MAX_M = int(os.environ.get("RADIANCE_MXFP4_DECODE_MAX_M", "0"))
-# Fragment-tiled activations for the prefill GEMM (radiance_mxfp4_fp8_gemm_atiled): the fp8-stream
-# producers (radiance_arnq) emit the tiled layout at M >= this and the consumer takes the A-direct
+DECODE_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_DECODE_MAX_M", "0"))
+# Fragment-tiled activations for the prefill GEMM (paiton_mxfp4_fp8_gemm_atiled): the fp8-stream
+# producers (paiton_arnq) emit the tiled layout at M >= this and the consumer takes the A-direct
 # kernel, measured 12-16% faster than the folded kernel at M >= 2048 on every shape (2026-09-01,
 # tier7/lf.hip). 0 = off. The layout is decided per TENSOR inside the opaque op bodies (eager ints,
 # no traced shape guard -- vLLM forbids recompiles) and handed producer -> consumer through
 # _A_TILED keyed by data_ptr, popped on consume; every other producer (traced quant, scaled_fp8_quant,
 # the exact_nq decode epilogue) stays row-major and never registers. Must stay above the decode band
 # (the decode kernel reads row-major A) and above 512 (the exact_nq epilogue writes row-major).
-A_TILED_MIN_M = int(os.environ.get("RADIANCE_MXFP4_A_TILED_MIN_M", "0"))
+A_TILED_MIN_M = int(os.environ.get("PAITON_RT_MXFP4_A_TILED_MIN_M", "0"))
 if A_TILED_MIN_M and A_TILED_MIN_M <= max(512, DECODE_MAX_M):
-    raise RuntimeError("RADIANCE_MXFP4_A_TILED_MIN_M must exceed 512 and RADIANCE_MXFP4_DECODE_MAX_M")
+    raise RuntimeError("PAITON_RT_MXFP4_A_TILED_MIN_M must exceed 512 and PAITON_RT_MXFP4_DECODE_MAX_M")
 _A_TILED: dict = {}
 _A_TILED_STATS = [0]
 
@@ -54,47 +54,47 @@ def a_tiled_take(q, M: int, K: int) -> bool:
     if ent is None:
         return False
     if ent != (M, K):
-        raise RuntimeError(f"radiance.mxfp4: tiled activation shape mismatch {ent} vs {(M, K)}")
+        raise RuntimeError(f"paiton.mxfp4: tiled activation shape mismatch {ent} vs {(M, K)}")
     return True
 # Store the weight in WMMA fragment order rather than the checkpoint's [N, K/2]. A B fragment maps
 # lane l onto N row l&15, so in checkpoint order a half-wave reads sixteen rows K/2 bytes apart --
 # fully strided, on the operand that dominates decode traffic. Reordering once here makes a wave's
 # weight read 128 contiguous bytes. Same total bytes; this is a permutation, not a re-quantisation,
-# so it cannot move numerics. It is what libr4d's r4d_gemm_mxfp4a8_nt_m64 reads, and the HIP
-# kernels take it via RADIANCE_MXFP4_WPERM, which must agree with this flag or the weight is read
+# so it cannot move numerics. It is what libpdk's pdk_gemm_mxfp4a8_nt_m64 reads, and the HIP
+# kernels take it via PAITON_RT_MXFP4_WPERM, which must agree with this flag or the weight is read
 # as garbage -- one env var drives both.
-CHECK_MAX_M = int(os.environ.get("RADIANCE_MXFP4_CHECK_MAX_M", "128"))
-WPERM = os.environ.get("RADIANCE_MXFP4_WPERM", "0") == "1"
+CHECK_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_CHECK_MAX_M", "128"))
+WPERM = os.environ.get("PAITON_RT_MXFP4_WPERM", "0") == "1"
 if WPERM:
     # Announce it: this launcher only forwards env vars it declares with -e, and a silently
     # unforwarded flag reads as "the change did nothing" rather than as a mistake. A whole
     # WPERM A/B was measured twice at 0 before this line existed.
-    sys.stderr.write("[radiance.mxfp4] weight layout: FRAGMENT ORDER (RADIANCE_MXFP4_WPERM=1)\n")
-# Route the decode band to libr4d's r4d_gemm_mxfp4a8_nt_m64 instead of our own decode kernel.
+    sys.stderr.write("[paiton.mxfp4] weight layout: FRAGMENT ORDER (PAITON_RT_MXFP4_WPERM=1)\n")
+# Route the decode band to libpdk's pdk_gemm_mxfp4a8_nt_m64 instead of our own decode kernel.
 # Requires WPERM: that kernel reads fragment order and has no LDS staging to hide a strided read
 # behind, which is exactly why it needs the permute and why it is faster once it has it.
-R4D_DECODE_MAX_M = int(os.environ.get("RADIANCE_MXFP4_R4D_DECODE_MAX_M", "0"))
-_r4d = None
-if R4D_DECODE_MAX_M > 0:
+PDK_DECODE_MAX_M = int(os.environ.get("PAITON_RT_MXFP4_PDK_DECODE_MAX_M", "0"))
+_pdk = None
+if PDK_DECODE_MAX_M > 0:
     if not WPERM:
-        raise RuntimeError("[radiance.mxfp4] RADIANCE_MXFP4_R4D_DECODE_MAX_M needs "
-                           "RADIANCE_MXFP4_WPERM=1: the r4d kernel only reads fragment order")
+        raise RuntimeError("[paiton.mxfp4] PAITON_RT_MXFP4_PDK_DECODE_MAX_M needs "
+                           "PAITON_RT_MXFP4_WPERM=1: the pdk kernel only reads fragment order")
     try:
-        import r4d as _r4d
-        if _r4d.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
-            sys.stderr.write("[radiance.mxfp4] r4d has no mxfp4a8 gemm_nt; decode stays on ours\n")
-            _r4d = None
+        import pdk as _pdk
+        if _pdk.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
+            sys.stderr.write("[paiton.mxfp4] pdk has no mxfp4a8 gemm_nt; decode stays on ours\n")
+            _pdk = None
         else:
-            sys.stderr.write(f"[radiance.mxfp4] r4d decode kernel ON (M<={R4D_DECODE_MAX_M})\n")
+            sys.stderr.write(f"[paiton.mxfp4] pdk decode kernel ON (M<={PDK_DECODE_MAX_M})\n")
     except Exception as _e:                     # noqa: BLE001
-        sys.stderr.write(f"[radiance.mxfp4] r4d import failed, decode stays on ours: {_e!r}\n")
-        _r4d = None
+        sys.stderr.write(f"[paiton.mxfp4] pdk import failed, decode stays on ours: {_e!r}\n")
+        _pdk = None
 
 
-def _r4d_cfg(M, K):
-    """(WV, SK, MB, NPW) for the r4d decode GEMM.
+def _pdk_cfg(M, K):
+    """(WV, SK, MB, NPW) for the pdk decode GEMM.
 
-    Close to the per-shape optima measured in libr4d's bench_mxfp4_gemm.py: deeper split-K pays at
+    Close to the per-shape optima measured in libpdk's bench_mxfp4_gemm.py: deeper split-K pays at
     small M where there is not enough N to fill the part, and less so once MB widens. SK is capped
     so K stays divisible by SK*32 and so WV*SK*32 threads and (WV*NPW)*SK*1024 bytes of LDS both
     stay in range.
@@ -139,14 +139,14 @@ def unpermute_w(packed: "torch.Tensor", N: int, K: int) -> "torch.Tensor":
                   .view(N, K // 2))
 # Hoist the activation quant into the traced graph so the rms+quant fusion can match it.
 # Needs MIN_M <= 0 (see apply_weights); refuses rather than producing wrong results.
-HOIST_QUANT = os.environ.get("RADIANCE_MXFP4_HOIST_QUANT", "0") == "1"
+HOIST_QUANT = os.environ.get("PAITON_RT_MXFP4_HOIST_QUANT", "0") == "1"
 if HOIST_QUANT and MIN_M > 0:
-    raise RuntimeError("RADIANCE_MXFP4_HOIST_QUANT=1 needs RADIANCE_MXFP4_W4A8_MIN_M=0: "
+    raise RuntimeError("PAITON_RT_MXFP4_HOIST_QUANT=1 needs PAITON_RT_MXFP4_W4A8_MIN_M=0: "
                        "the aiter fallback quantizes to mxfp4, not fp8.")
 
 # Quantize with TRACED TORCH MATH instead of the opaque vllm custom op. This is the piece that
 # actually removes the standalone quant launch: three pattern-matcher attempts (2026-08-28 pass
-# disabled; 2026-08-30 fuse_norm_quant+fuse_act_quant enabled, radiance FUSED_OP armed) all
+# disabled; 2026-08-30 fuse_norm_quant+fuse_act_quant enabled, paiton FUSED_OP armed) all
 # matched ZERO sites on this stack, while the census shows inductor ALREADY fuses the
 # functionalization clones of the quant into the neighbouring norm/silu kernels -- the graph
 # region is right, only the opaque op survives. Written as plain torch, the quant lowers into
@@ -155,7 +155,7 @@ if HOIST_QUANT and MIN_M > 0:
 # round-to-nearest cast (verified empirically against the kernel for the min-scale clamp).
 # Rounding may differ by 1 ulp of the fp8 code on scale-boundary values -> gate with GSM8K,
 # not byte-compare. Requires HOIST_QUANT=1.
-TRACED_QUANT = os.environ.get("RADIANCE_MXFP4_TRACED_QUANT", "0") == "1"
+TRACED_QUANT = os.environ.get("PAITON_RT_MXFP4_TRACED_QUANT", "0") == "1"
 _TQ_FP8_MAX = 448.0
 _TQ_MIN_SCALE = 1.0 / (448.0 * 512.0)
 
@@ -169,20 +169,20 @@ _decode_scratch_ready = [False]
 _decode_scratch = [None, None]   # [partials, block counter] — kept alive for the process
 
 try:
-    import radiance_mxfp4_fp8 as _ext
+    import paiton_mxfp4_fp8 as _ext
 except Exception as e:                      # ext missing: stay on the aiter Triton path
     _ext = None
     ENABLED = False
-    sys.stderr.write(f"[radiance.mxfp4] w4a8 ext import failed, disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.mxfp4] w4a8 ext import failed, disabled: {e!r}\n")
 
 if ENABLED and _ext is not None:
     # Print WHICH .so was loaded. A stale copy sitting in the bind-mounted repo shadows the one
     # compiled into site-packages (the working directory precedes it on sys.path), and a
     # mismatched kernel fails silently -- fluent-looking garbage, no error anywhere.
     sys.stderr.write(
-        f"[radiance.mxfp4] W4A8 fp8-WMMA GEMM ENABLED for M>{MIN_M} "
+        f"[paiton.mxfp4] W4A8 fp8-WMMA GEMM ENABLED for M>{MIN_M} "
         f"(NOTE: W4A8, not the checkpoint's W4A4 -- more precise activations, not bit-identical)\n"
-        f"[radiance.mxfp4] kernel: {getattr(_ext, '__file__', '?')}\n")
+        f"[paiton.mxfp4] kernel: {getattr(_ext, '__file__', '?')}\n")
 
 
 # The WHOLE W4A8 path -- activation quant included -- is one registered custom op. An earlier
@@ -191,31 +191,31 @@ if ENABLED and _ext is not None:
 # every one of ~450 linears, and cost 33% of DECODE throughput (61 -> 41 tok/s) even though decode
 # never reaches the kernel. A registered op is a single opaque graph node, and the gate in front of
 # it must be nothing but plain attribute/shape comparisons.
-DEBUG = os.environ.get("RADIANCE_MXFP4_DEBUG", "0") == "1"
-PURE_QUANT = os.environ.get("RADIANCE_MXFP4_PUREQUANT", "0") == "1"
+DEBUG = os.environ.get("PAITON_RT_MXFP4_DEBUG", "0") == "1"
+PURE_QUANT = os.environ.get("PAITON_RT_MXFP4_PUREQUANT", "0") == "1"
 # Diagnostic: synchronize after the raw kernel launch. Every layer verifies correct against an
 # exact fp32 reference -- but that check calls .item(), which synchronizes, and it only runs for
 # the first few calls. If forcing a sync makes the model coherent, the fault is ordering: the
 # kernel is being launched on a stream the consumer does not wait on.
-_fs = os.environ.get("RADIANCE_MXFP4_SYNC", "0")
+_fs = os.environ.get("PAITON_RT_MXFP4_SYNC", "0")
 FORCE_SYNC = _fs == "1"          # synchronize the stream we launched on
 FORCE_DEVSYNC = _fs == "2"       # synchronize the whole device -- if this differs from the above,
                                  # the kernel is not running on the stream we handed it
 # Diagnostic: return a copy of the kernel's output buffer instead of the buffer itself. `out` is
 # allocated by torch.empty INSIDE the custom op; if returning that buffer is what breaks (lifetime,
 # aliasing, or the allocator reusing it), a clone will be coherent where the original is not.
-CLONE_OUT = os.environ.get("RADIANCE_MXFP4_CLONE", "0") == "1"
+CLONE_OUT = os.environ.get("PAITON_RT_MXFP4_CLONE", "0") == "1"
 # Allocate `out` inside a padded slab so nothing live sits immediately before or after it. The one
 # thing that makes the N=5120 K=3072 layers coherent is perturbing the allocator, which points at
 # memory adjacency rather than at the arithmetic (the kernel verifies correct against exact fp32,
 # writes every element, and writes nothing out of bounds). If padding fixes it, that is both the
 # diagnosis and the fix. Value is in bf16 elements per side.
-PAD_OUT = int(os.environ.get("RADIANCE_MXFP4_PADOUT", "0"))
+PAD_OUT = int(os.environ.get("PAITON_RT_MXFP4_PADOUT", "0"))
 # Shadow check: for one N:K that is being served by AITER (so the model stays healthy and the
 # activations are CLEAN), also compute the layer with our kernel and compare both against exact
 # fp32. Every previous in-situ comparison was made on an activation that already held NaN, so it
 # could not distinguish "our kernel is wrong" from "our kernel faithfully computed on garbage".
-_sh = os.environ.get("RADIANCE_MXFP4_SHADOW", "").strip()
+_sh = os.environ.get("PAITON_RT_MXFP4_SHADOW", "").strip()
 SHADOW_NK = tuple(int(v) for v in _sh.split(":")) if _sh else None
 # Sanitize non-finite activations before quantizing. NOT optional -- this is the fix for the
 # N=5120 K=3072 layers (gdn out_proj / attention o_proj).
@@ -230,17 +230,17 @@ SHADOW_NK = tuple(int(v) for v in _sh.split(":")) if _sh else None
 # That is why the kernel always verified correct and the model was still garbage: the GEMM was
 # faithfully computing on a poisoned row. Zeroing non-finite inputs matches what the mxfp4 path
 # effectively does, and the model is coherent under aiter with the same NaN present.
-# Default OFF since the libr4d GDN overflows are fixed at source (see README). Kept as a safety
-# net for a stock r4d.so, where it is the difference between PPL 8.4004 and 653586 -- but with the
+# Default OFF since the libpdk GDN overflows are fixed at source (see README). Kept as a safety
+# net for a stock pdk.so, where it is the difference between PPL 8.4004 and 653586 -- but with the
 # patched library it is a pure elementwise cost, and measured quality is BETTER without it
 # (8.3706 fixed/no-sanitize vs 8.4004 stock/sanitize).
-SANITIZE_X = os.environ.get("RADIANCE_MXFP4_SANITIZE", "0") == "1"
+SANITIZE_X = os.environ.get("PAITON_RT_MXFP4_SANITIZE", "0") == "1"
 # Diagnostic: report the INPUT activation's health per layer. The exact-reference check derives its
 # reference from x itself, so it cannot tell a correct kernel on corrupt input from a correct one.
-CHECK_X = os.environ.get("RADIANCE_MXFP4_CHECKX", "0") == "1"
+CHECK_X = os.environ.get("PAITON_RT_MXFP4_CHECKX", "0") == "1"
 # Verify EVERY call at one N:K against exact fp32, with no dedup. The earlier check kept only the
 # first call per (N,K,M), so a shape that is right once and wrong later reads as "ok".
-_ca = os.environ.get("RADIANCE_MXFP4_CHECKALL", "").strip()
+_ca = os.environ.get("PAITON_RT_MXFP4_CHECKALL", "").strip()
 # Comma-separated list of N:K shapes to verify against exact fp32 on every call, e.g.
 # "17408:5120,5120:8704". A list rather than a single pair so one serve can gate every
 # production shape -- checking them one per serve costs a container restart each.
@@ -250,27 +250,27 @@ CHECK_ALL = ({tuple(int(v) for v in pair.split(":")) for pair in _ca.split(",") 
 # serve; every other layer is handed to aiter (which is known-coherent for the whole model).
 # Empty = no restriction. Gating projections (N=48, in_proj_ba) feed exponentials in the GDN core,
 # so a small numeric difference there can become Inf/NaN downstream where an MLP shape cannot.
-_only = os.environ.get("RADIANCE_MXFP4_KERNEL_N", "").strip()
+_only = os.environ.get("PAITON_RT_MXFP4_KERNEL_N", "").strip()
 KERNEL_N = {int(v) for v in _only.split(",") if v} if _only else None
 # Finer bisect: N alone is ambiguous. N=5120 is BOTH the MLP down_proj (K=8704) and the
 # gated-delta-net out_proj (K=3072), which are very different layers. "N:K,N:K" pairs separate them.
-_onlynk = os.environ.get("RADIANCE_MXFP4_KERNEL_NK", "").strip()
+_onlynk = os.environ.get("PAITON_RT_MXFP4_KERNEL_NK", "").strip()
 KERNEL_NK = {tuple(int(x) for x in pair.split(":")) for pair in _onlynk.split(",") if pair} \
     if _onlynk else None
 # Shapes forced onto the kernel's per-block-rescale path (wref=0) instead of the folded path.
 # The folded path pre-shifts the block exponent into the weight via kLUT2; the per-block path
 # applies the scale in the inner loop instead. Same kernel, different numerics path.
-_pb = os.environ.get("RADIANCE_MXFP4_PERBLOCK_NK", "").strip()
+_pb = os.environ.get("PAITON_RT_MXFP4_PERBLOCK_NK", "").strip()
 PERBLOCK_NK = {tuple(int(x) for x in pair.split(":")) for pair in _pb.split(",") if pair} \
     if _pb else None
 # Diagnostic: compute the layer exactly (dequantize the weight, bf16 F.linear) and return THAT,
 # while still doing all the surrounding work. Slow. It separates "our kernel's values are wrong in
 # situ" from "something outside this op is wrong": if the model is coherent with this on, the op's
 # wiring is fine and only the kernel output differs; if it is still garbage, the fault is elsewhere.
-REF_LINEAR = os.environ.get("RADIANCE_MXFP4_REFLINEAR", "0") == "1"
+REF_LINEAR = os.environ.get("PAITON_RT_MXFP4_REFLINEAR", "0") == "1"
 # Report every distinct (N, K, M) once, to see which M the production decode path actually
 # issues. Diagnostic only; off by default and free when off.
-MHIST = os.environ.get("RADIANCE_MXFP4_MHIST", "0") == "1"
+MHIST = os.environ.get("PAITON_RT_MXFP4_MHIST", "0") == "1"
 _E2M1 = None
 _dbg_seen = set()
 
@@ -314,13 +314,13 @@ def _debug_compare(x, weight, weight_scale, weight_ref, out, x_fp8, x_scale):
             return                      # reference is only affordable at small M
         ref = _exact_ref(x_fp8, x_scale, weight, weight_scale, N, K)
         rel = ((out.float() - ref.float()).norm() / ref.float().norm().clamp_min(1e-9)).item()
-        sys.stderr.write(f"[radiance.mxfp4.exact] N={N} K={K} M={M} rel_vs_fp32={rel:.5f} "
+        sys.stderr.write(f"[paiton.mxfp4.exact] N={N} K={K} M={M} rel_vs_fp32={rel:.5f} "
                          f"|ours|={out.float().abs().mean():.5f} |ref|={ref.abs().mean():.5f} "
                          f"{'**WRONG**' if rel > 0.02 else 'ok'}\n")
         sys.stderr.flush()
         return
         sys.stderr.write(
-            f"[radiance.mxfp4.debug] N={key[0]} K={key[1]} M={x.shape[0]} "
+            f"[paiton.mxfp4.debug] N={key[0]} K={key[1]} M={x.shape[0]} "
             f"x={tuple(x.shape)}/{x.dtype}/contig={x.is_contiguous()} "
             f"w={tuple(weight.shape)}/{weight.dtype} "
             f"ws={tuple(weight_scale.shape)}/{weight_scale.dtype}/contig={weight_scale.is_contiguous()} "
@@ -348,14 +348,14 @@ def _debug_compare(x, weight, weight_scale, weight_ref, out, x_fp8, x_scale):
                         "weight_ref": weight_ref.cpu(), "out": out.cpu(),
                         "out_rerun": out2.cpu(), "aiter": ref.cpu(), "x": x.cpu(),
                         "M": int(x.shape[0]), "N": int(weight.shape[0]), "K": int(x.shape[1])}, path)
-            sys.stderr.write(f"[radiance.mxfp4.debug] BAD CASE rel={rel:.4f} rerun_delta={rerun:.6f} "
+            sys.stderr.write(f"[paiton.mxfp4.debug] BAD CASE rel={rel:.4f} rerun_delta={rerun:.6f} "
                              f"rel_of_rerun={rel2:.4f} -> {path}\n")
         sys.stderr.flush()
     except Exception as e:
-        sys.stderr.write(f"[radiance.mxfp4.debug] compare failed: {e!r}\n")
+        sys.stderr.write(f"[paiton.mxfp4.debug] compare failed: {e!r}\n")
 
 
-@torch.library.custom_op("radiance::mxfp4_linear", mutates_args=())
+@torch.library.custom_op("paiton::mxfp4_linear", mutates_args=())
 def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tensor,
                  weight_ref: torch.Tensor) -> torch.Tensor:
     """Owns the ENTIRE dispatch, because the branch must not be visible to dynamo.
@@ -381,7 +381,7 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
     if not (w4a8_ok and x.shape[0] > MIN_M):
         STATS["aiter_calls"] = STATS.get("aiter_calls", 0) + 1
         if STATS["aiter_calls"] in (1, 100, 10000):
-            sys.stderr.write(f"[radiance.mxfp4] AITER BRANCH TAKEN "
+            sys.stderr.write(f"[paiton.mxfp4] AITER BRANCH TAKEN "
                              f"(call #{STATS['aiter_calls']}, M={x.shape[0]}, "
                              f"N={weight.shape[0]}, w4a8_ok={w4a8_ok})\n")
         # MIN_M <= 0 makes this unreachable: aiter's W4A4 path is measured WRONG on some shapes
@@ -415,14 +415,14 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
                     _ra = ((y_aiter.float() - _ref).norm() / _ref.norm().clamp_min(1e-9)).item()
                     _xf = x.float()
                     sys.stderr.write(
-                        f"[radiance.mxfp4.shadow] N={_N} K={_K} M={_M} "
+                        f"[paiton.mxfp4.shadow] N={_N} K={_K} M={_M} "
                         f"ours_vs_fp32={_ro:.5f} aiter_vs_fp32={_ra:.5f} "
                         f"x_nonfin={(~torch.isfinite(_xf)).sum().item()} "
                         f"|x|={_xf.abs().mean().item():.5f} "
                         f"{'**OURS WRONG**' if _ro > 0.02 else 'ours ok'}\n")
                     sys.stderr.flush()
                 except Exception as _e:
-                    sys.stderr.write(f"[radiance.mxfp4.shadow] failed: {_e!r}\n")
+                    sys.stderr.write(f"[paiton.mxfp4.shadow] failed: {_e!r}\n")
         return y_aiter
     M, K = x.shape
     N = weight.shape[0]
@@ -445,10 +445,10 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
         out = _slab[PAD_OUT:PAD_OUT + M * N].view(M, N)   # view keeps the slab alive
     else:
         out = torch.empty((M, N), device=x.device, dtype=torch.bfloat16)
-    if (_r4d is not None and folded and M <= R4D_DECODE_MAX_M
+    if (_pdk is not None and folded and M <= PDK_DECODE_MAX_M
             and N % 16 == 0 and K % 32 == 0):
-        _wv, _sk, _mb, _npw = _r4d_cfg(M, K)
-        _r4d.gemm_mxfp4a8_nt_m64(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
+        _wv, _sk, _mb, _npw = _pdk_cfg(M, K)
+        _pdk.gemm_mxfp4a8_nt_m64(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
                                  weight_scale.data_ptr(), weight_ref.data_ptr(), out.data_ptr(),
                                  M, K, N, _wv, _sk, _mb, _npw,
                                  torch.cuda.current_stream().cuda_stream)
@@ -466,7 +466,7 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
         _mk = ("m", N, K, M)
         if _mk not in _dbg_seen:
             _dbg_seen.add(_mk)
-            sys.stderr.write(f"[radiance.mxfp4.mhist] N={N} K={K} M={M} "
+            sys.stderr.write(f"[paiton.mxfp4.mhist] N={N} K={K} M={M} "
                              f"decode_kernel={'yes' if 0 < M <= DECODE_MAX_M else 'NO'}\n")
     # CHECK_MAX_M narrows the gate to a band. Without it the profile run's large-M calls use
     # up the per-shape reporting budget and the decode band is never checked at all, which
@@ -481,7 +481,7 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
             if STATS["wrong"] <= 8:
                 xf2 = x.float()
                 sys.stderr.write(
-                    f"[radiance.mxfp4.all] **WRONG** call#{STATS['checked']} N={N} K={K} "
+                    f"[paiton.mxfp4.all] **WRONG** call#{STATS['checked']} N={N} K={K} "
                     f"M={x.shape[0]} rel={_rel:.4f} |ours|={out.float().abs().mean():.5f} "
                     f"|ref|={_ref.abs().mean():.5f} x_nonfin={(~torch.isfinite(xf2)).sum().item()} "
                     f"x_contig={x.is_contiguous()} x_stride={tuple(x.stride())}\n")
@@ -489,7 +489,7 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
             _k = ("seen", N, K)
             STATS[_k] = STATS.get(_k, 0) + 1
             if STATS[_k] in (1, 64):
-                sys.stderr.write(f"[radiance.mxfp4.all] ok N={N} K={K} M={x.shape[0]} "
+                sys.stderr.write(f"[paiton.mxfp4.all] ok N={N} K={K} M={x.shape[0]} "
                                  f"call#{STATS[_k]} rel={_rel:.5f} "
                                  f"(wrong so far: {STATS.get('wrong', 0)})\n")
         sys.stderr.flush()
@@ -499,7 +499,7 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
             _dbg_seen.add(key)
             xf = x.float()
             of = out.float()
-            sys.stderr.write(f"[radiance.mxfp4.x] N={N} K={K} M={x.shape[0]} "
+            sys.stderr.write(f"[paiton.mxfp4.x] N={N} K={K} M={x.shape[0]} "
                              f"|x|={xf.abs().mean().item():.5f} xmax={xf.abs().max().item():.5f} "
                              f"x_nonfin={(~torch.isfinite(xf)).sum().item()} | "
                              f"|out|={of.abs().mean().item():.5f} "
@@ -531,8 +531,8 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
 # The point is VISIBILITY: a torch.library.custom_op is opaque to inductor by construction, so with
 # the quant inside, vLLM's rms_norm+quant fusion pattern matches zero times -- measured, the launch
 # count did not move. Hoisting is necessary but not sufficient; it pairs with
-# RADIANCE_RMS_QUANT_FUSION, which supplies a replacement op that works on RDNA4.
-@torch.library.custom_op("radiance::mxfp4_linear_pq", mutates_args=())
+# PAITON_RT_RMS_QUANT_FUSION, which supplies a replacement op that works on RDNA4.
+@torch.library.custom_op("paiton::mxfp4_linear_pq", mutates_args=())
 def mxfp4_linear_pq(x_fp8: torch.Tensor, x_scale: torch.Tensor, weight: torch.Tensor,
                     weight_scale: torch.Tensor, weight_ref: torch.Tensor) -> torch.Tensor:
     if not _stats_reported[0]:
@@ -549,7 +549,7 @@ def mxfp4_linear_pq(x_fp8: torch.Tensor, x_scale: torch.Tensor, weight: torch.Te
         # Which-path counter: a gated fast path must prove it ran (the verify-head lesson).
         _A_TILED_STATS[0] += 1
         if _A_TILED_STATS[0] in (1, 100, 1000, 10000):
-            sys.stderr.write(f"[radiance.mxfp4] A-tiled GEMM path: call #{_A_TILED_STATS[0]} "
+            sys.stderr.write(f"[paiton.mxfp4] A-tiled GEMM path: call #{_A_TILED_STATS[0]} "
                              f"(M={M} N={N} K={K})\n")
             sys.stderr.flush()
     launch(x_fp8.data_ptr(), weight.data_ptr(), weight_scale.data_ptr(),
@@ -558,7 +558,7 @@ def mxfp4_linear_pq(x_fp8: torch.Tensor, x_scale: torch.Tensor, weight: torch.Te
     return out
 
 
-@torch.library.custom_op("radiance::mxfp4_linear_pqp", mutates_args=())
+@torch.library.custom_op("paiton::mxfp4_linear_pqp", mutates_args=())
 def mxfp4_linear_pqp(a: torch.Tensor, x_scale: torch.Tensor, weight: torch.Tensor,
                      weight_scale: torch.Tensor, weight_ref: torch.Tensor, M: int, pb1: int,
                      pb2: int) -> torch.Tensor:
@@ -632,7 +632,7 @@ def report_stats():
     _stats_reported[0] = True
     n = STATS["fast"] + STATS["aiter"]
     sys.stderr.write(
-        f"[radiance.mxfp4] linear layers: {STATS['fast']}/{n} on our kernel, "
+        f"[paiton.mxfp4] linear layers: {STATS['fast']}/{n} on our kernel, "
         f"{STATS['aiter']} FORCED ONTO AITER (kernel cannot run them); "
         f"aiter below M={MIN_M} ({'DISABLED' if MIN_M <= 0 else 'ACTIVE'})\n")
     sys.stderr.flush()
@@ -692,15 +692,15 @@ def _make_kernel_class():
     )
     from vllm.model_executor.layers.quantization.utils.quant_utils import kMxfp4Dynamic
 
-    class RadianceMxfp4W4A8LinearKernel(MxFp4LinearKernel):
+    class PaitonMxfp4W4A8LinearKernel(MxFp4LinearKernel):
         """MXFP4 weights x fp8 activations on gfx1201, via the hand-written fp8-WMMA GEMM."""
 
         @classmethod
         def is_supported(cls, compute_capability=None):
             if not ENABLED or _ext is None:
-                return False, "RADIANCE_MXFP4_W4A8 is not enabled, or the HIP extension is missing"
+                return False, "PAITON_RT_MXFP4_W4A8 is not enabled, or the HIP extension is missing"
             if not _on_gfx12x():
-                return False, "the radiance W4A8 MXFP4 kernel is compiled for gfx12x only"
+                return False, "the paiton W4A8 MXFP4 kernel is compiled for gfx12x only"
             return True, None
 
         @classmethod
@@ -734,7 +734,7 @@ def _make_kernel_class():
                     # quark's TileLang exception translator into a bogus "libamdhip64.so not found".
                     # Rows must cover the decode band: DEC_KS x DECODE_MAX_M x max N. Sized
                     # from the env so the default (64) allocates exactly what it always has;
-                    # a 16-concurrent serve sets RADIANCE_MXFP4_DECODE_MAX_M=128 and pays the
+                    # a 16-concurrent serve sets PAITON_RT_MXFP4_DECODE_MAX_M=128 and pays the
                     # extra 32 MiB only then.
                     # Widest N the split-K partials must cover: 32768 at TP>=2 (unchanged),
                     # 36864 at TP=1 where gate_up is 34816 (the kernel's DEC_MAX_N). Keyed on
@@ -751,11 +751,11 @@ def _make_kernel_class():
                                             _decode_scratch[0].numel() * 4,
                                             _decode_scratch[1].data_ptr())
                     sys.stderr.write(
-                        f"[radiance.mxfp4] decode kernel ON (M<={DECODE_MAX_M}), "
+                        f"[paiton.mxfp4] decode kernel ON (M<={DECODE_MAX_M}), "
                         f"{_decode_scratch[0].numel() * 4 >> 20} MiB split-K scratch\n")
                 except Exception as _e:
                     import traceback
-                    sys.stderr.write(f"[radiance.mxfp4] decode scratch FAILED: {_e!r}\n"
+                    sys.stderr.write(f"[paiton.mxfp4] decode scratch FAILED: {_e!r}\n"
                                      + traceback.format_exc())
             # Same transpose AiterMxfp4LinearKernel's non-asm branch does: create_weights lays the
             # scale out as [N, K/32] and both the aiter GEMM and this kernel want [K/32, N].
@@ -776,7 +776,7 @@ def _make_kernel_class():
             else:
                 STATS["aiter"] += 1
                 sys.stderr.write(
-                    f"[radiance.mxfp4] FALLBACK TO AITER (not our kernel): "
+                    f"[paiton.mxfp4] FALLBACK TO AITER (not our kernel): "
                     f"N={tuple(layer.weight.shape)[0]} K={K} "
                     f"ws={tuple(layer.weight_scale.shape)}\n")
             perblock = ok and PERBLOCK_NK is not None and \
@@ -791,34 +791,34 @@ def _make_kernel_class():
                 ref = torch.zeros(2 if perblock else 1,
                                   dtype=layer.weight_scale.dtype,
                                   device=layer.weight_scale.device)
-            layer.radiance_wref = torch.nn.Parameter(ref, requires_grad=False)
+            layer.paiton_wref = torch.nn.Parameter(ref, requires_grad=False)
             # Fragment order, in place of the checkpoint layout. Only for layers our kernel
             # actually serves: an aiter fallback layer must keep the layout aiter expects.
             if WPERM and ok:
                 N_ = int(layer.weight.shape[0])
                 if N_ % 16 or K % 16:
                     raise RuntimeError(
-                        f"[radiance.mxfp4] RADIANCE_MXFP4_WPERM needs N and K divisible by 16, "
+                        f"[paiton.mxfp4] PAITON_RT_MXFP4_WPERM needs N and K divisible by 16, "
                         f"got N={N_} K={K}")
                 layer.weight = torch.nn.Parameter(
                     permute_w(layer.weight.data, N_, K), requires_grad=False)
-            layer.radiance_w4a8_ok = bool(ok)   # record only; never read in the forward
+            layer.paiton_w4a8_ok = bool(ok)   # record only; never read in the forward
 
         def apply_weights(self, layer: torch.nn.Module, x: torch.Tensor,
                           bias: torch.Tensor | None = None) -> torch.Tensor:
             if bias is None and getattr(layer, "_rad_ar_overlap", False):
                 # RowParallel layer whose all-reduce is pipelined against the GEMM inside the op
-                # (radiance_aroverlap.py). The layer's reduce_results was set False at install;
+                # (paiton_aroverlap.py). The layer's reduce_results was set False at install;
                 # the op owns the reduction on BOTH the sliced and the decode path. The M branch
                 # lives INSIDE the op -- in traced code here it would split the graph per linear.
-                return torch.ops.radiance.mxfp4_linear_ar(
-                    x, layer.weight, layer.weight_scale, layer.radiance_wref)
+                return torch.ops.paiton.mxfp4_linear_ar(
+                    x, layer.weight, layer.weight_scale, layer.paiton_wref)
             if isinstance(x, tuple):
-                # fp8-stream contract (radiance_arnq): the AR epilogue already produced
+                # fp8-stream contract (paiton_arnq): the AR epilogue already produced
                 # per-token-quantized (q, scale); straight onto the pq kernel.
                 x_fp8, x_scale = x
-                y = torch.ops.radiance.mxfp4_linear_pq(
-                    x_fp8, x_scale, layer.weight, layer.weight_scale, layer.radiance_wref)
+                y = torch.ops.paiton.mxfp4_linear_pq(
+                    x_fp8, x_scale, layer.weight, layer.weight_scale, layer.paiton_wref)
                 if bias is not None:
                     y = y + bias
                 return y
@@ -834,17 +834,17 @@ def _make_kernel_class():
                     from vllm import _custom_ops as _o
                     x_fp8, x_scale = _o.scaled_fp8_quant(x, scale=None,
                                                          use_per_token_if_dynamic=True)
-                y = torch.ops.radiance.mxfp4_linear_pq(
+                y = torch.ops.paiton.mxfp4_linear_pq(
                     x_fp8, x_scale.view(-1).float(), layer.weight, layer.weight_scale,
-                    layer.radiance_wref)
+                    layer.paiton_wref)
             else:
-                y = torch.ops.radiance.mxfp4_linear(
-                    x, layer.weight, layer.weight_scale, layer.radiance_wref)
+                y = torch.ops.paiton.mxfp4_linear(
+                    x, layer.weight, layer.weight_scale, layer.paiton_wref)
             if bias is not None:
                 y = y + bias
             return y
 
-    return RadianceMxfp4W4A8LinearKernel
+    return PaitonMxfp4W4A8LinearKernel
 
 
 _KERNEL_CLS = None
@@ -857,6 +857,6 @@ def kernel_class():
         try:
             _KERNEL_CLS = _make_kernel_class()
         except Exception as e:
-            sys.stderr.write(f"[radiance.mxfp4] kernel class unavailable, disabled: {e!r}\n")
+            sys.stderr.write(f"[paiton.mxfp4] kernel class unavailable, disabled: {e!r}\n")
             _KERNEL_CLS = False
     return _KERNEL_CLS or None

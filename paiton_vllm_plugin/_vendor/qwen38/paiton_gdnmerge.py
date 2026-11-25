@@ -17,31 +17,31 @@ concatenates cleanly along N:
     weight        [N, K/2] uint8    -> cat(dim=0)     (two e2m1 codes per byte, N-major)
     weight_scale  [K/32, N] e8m0    -> cat(dim=1)     (already transposed by the kernel's
                                                        process_weights_after_loading)
-    radiance_wref [N] folded ref    -> cat(dim=0)     (per-ROW max of the scale, so row-local)
+    paiton_wref [N] folded ref    -> cat(dim=0)     (per-ROW max of the scale, so row-local)
 
 All three are row-local in N, so the merged tensors are bit-identical to what a natively merged
 layer would have produced -- this changes which kernel launches happen, not what they compute. The
 per-row masking of a partial N tile is already exercised (in_proj_ba is the N=48 shape
 layer_is_supported's docstring calls out), and N1+N2 stays a multiple of 16.
 
-REQUIRES RADIANCE_MXFP4_WPERM=0 (the default). Under WPERM the stored layout is fragment order,
+REQUIRES PAITON_RT_MXFP4_WPERM=0 (the default). Under WPERM the stored layout is fragment order,
 whose outermost axis is the n-tile; concatenation is still valid there because both N are multiples
 of 16, but it has not been measured, so this refuses rather than guessing.
 
-Gated by RADIANCE_GDN_MERGE_INPROJ (default 0) so it A/Bs against the same binary.
+Gated by PAITON_RT_GDN_MERGE_INPROJ (default 0) so it A/Bs against the same binary.
 Called once from GPUModelRunner.load_model, right after the main model is loaded and its
 process_weights_after_loading has run (so weight_scale is already [K/32, N] and
-radiance_wref is folded) and before the drafter loads or any graph is captured.
+paiton_wref is folded) and before the drafter loads or any graph is captured.
 patch_gdn_merge_inproj.py installs that call site.
 """
 import os
 import sys
 
-ENABLED = os.environ.get("RADIANCE_GDN_MERGE_INPROJ", "0") == "1"
+ENABLED = os.environ.get("PAITON_RT_GDN_MERGE_INPROJ", "0") == "1"
 
 
 def _log(msg):
-    sys.stderr.write(f"[radiance.gdnmerge] {msg}\n")
+    sys.stderr.write(f"[paiton.gdnmerge] {msg}\n")
     sys.stderr.flush()
 
 
@@ -55,14 +55,14 @@ def _merged_forward_hip(self, hidden_states):
     import torch
 
     if isinstance(hidden_states, tuple):
-        # fp8-stream contract (radiance_arnq): pre-quantized (q, scale) from the AR epilogue.
+        # fp8-stream contract (paiton_arnq): pre-quantized (q, scale) from the AR epilogue.
         _q, _qs = hidden_states
         num_tokens = _q.size(0)
-        merged = torch.ops.radiance.mxfp4_linear_pq(
+        merged = torch.ops.paiton.mxfp4_linear_pq(
             _q, _qs, self._rad_w, self._rad_ws, self._rad_wref)
     elif self._rad_quant:
         num_tokens = hidden_states.size(0)
-        import radiance_mxfp4 as _rm
+        import paiton_mxfp4 as _rm
         if _rm.HOIST_QUANT and _rm.TRACED_QUANT:
             # Same traced-quant route as apply_weights: the plain-torch quant lowers into the
             # producing input_layernorm's inductor kernels. Calling the opaque mxfp4_linear here
@@ -71,10 +71,10 @@ def _merged_forward_hip(self, hidden_states):
             if _rm.SANITIZE_X:
                 hidden_states = torch.nan_to_num(hidden_states, nan=0.0, posinf=0.0, neginf=0.0)
             x_fp8, x_scale = _rm._traced_quant(hidden_states)
-            merged = torch.ops.radiance.mxfp4_linear_pq(
+            merged = torch.ops.paiton.mxfp4_linear_pq(
                 x_fp8, x_scale.view(-1).float(), self._rad_w, self._rad_ws, self._rad_wref)
         else:
-            merged = torch.ops.radiance.mxfp4_linear(
+            merged = torch.ops.paiton.mxfp4_linear(
                 hidden_states, self._rad_w, self._rad_ws, self._rad_wref)
     else:
         num_tokens = hidden_states.size(0)
@@ -103,19 +103,19 @@ def _merge_one(mod) -> bool:
     qkvz, ba = getattr(mod, "in_proj_qkvz", None), getattr(mod, "in_proj_ba", None)
     if qkvz is None or ba is None:
         return False
-    # Two servable cases. Quantized: BOTH sides on the radiance MXFP4 kernel (a layer that fell
+    # Two servable cases. Quantized: BOTH sides on the paiton MXFP4 kernel (a layer that fell
     # back to aiter reads a different weight layout, the trap layer_is_supported describes).
     # Unquantized: BOTH sides plain bf16 (the AutoRound checkpoint keeps every gdn in_proj at
     # bf16), merged by weight concat with an F.linear forward -- same launch saving, no quant
-    # tensors to carry. KNOWN BLOCKED under RADIANCE_PRESHUFFLE=1 (the AutoRound serve default):
+    # tensors to carry. KNOWN BLOCKED under PAITON_RT_PRESHUFFLE=1 (the AutoRound serve default):
     # the skinny-gemm preshuffle consumes .weight before this hook runs, the AttributeError is
     # caught below and the layer is left unmerged -- measured 2026-08-30, all 48 skipped cleanly.
     # Enabling it would mean forgoing the preshuffled skinny path for these GEMMs, which is worth
     # more than the launch saving; the branch stays for a serve that runs PRESHUFFLE=0.
-    rad = getattr(qkvz, "radiance_w4a8_ok", False) and getattr(ba, "radiance_w4a8_ok", False)
+    rad = getattr(qkvz, "paiton_w4a8_ok", False) and getattr(ba, "paiton_w4a8_ok", False)
     unq = (not rad
-           and getattr(qkvz, "radiance_wref", None) is None
-           and getattr(ba, "radiance_wref", None) is None
+           and getattr(qkvz, "paiton_wref", None) is None
+           and getattr(ba, "paiton_wref", None) is None
            and qkvz.weight.dtype == torch.bfloat16 and ba.weight.dtype == torch.bfloat16
            and qkvz.weight.dim() == 2 and ba.weight.dim() == 2)
     if not (rad or unq):
@@ -132,7 +132,7 @@ def _merge_one(mod) -> bool:
         mod._rad_ws = torch.nn.Parameter(
             torch.cat([qkvz.weight_scale.data, ba.weight_scale.data], dim=1), requires_grad=False)
         mod._rad_wref = torch.nn.Parameter(
-            torch.cat([qkvz.radiance_wref.data, ba.radiance_wref.data], dim=0), requires_grad=False)
+            torch.cat([qkvz.paiton_wref.data, ba.paiton_wref.data], dim=0), requires_grad=False)
     mod._rad_quant = rad
     mod._rad_n1 = n1
     # The stock forward re-encodes the layer name on every step; it is constant, so resolve once.
@@ -150,31 +150,31 @@ def _merge_one(mod) -> bool:
     import types
     mod.forward_hip = types.MethodType(_merged_forward_hip, mod)
     mod._forward_method = mod.forward_hip
-    mod._rad_merged = True         # radiance_arnq keys its consumer check on this
+    mod._rad_merged = True         # paiton_arnq keys its consumer check on this
     return True
 
 
 def merge_model(model) -> None:
     """Merge every GDN layer's two input projections. Best-effort: never blocks the serve.
 
-    Also the shared post-load hook: radiance_aroverlap piggybacks here (its own env gate inside)
+    Also the shared post-load hook: paiton_aroverlap piggybacks here (its own env gate inside)
     so there is exactly one injected call site in the model runner."""
     try:
-        import radiance_aroverlap
-        radiance_aroverlap.install(model)
+        import paiton_aroverlap
+        paiton_aroverlap.install(model)
     except Exception as e:                          # noqa: BLE001
         _log(f"aroverlap install failed, serving without it: {e!r}")
     try:
-        import radiance_gdn
-        radiance_gdn.init_fused_counter()           # before any CUDA-graph capture
+        import paiton_gdn
+        paiton_gdn.init_fused_counter()           # before any CUDA-graph capture
     except Exception as e:                          # noqa: BLE001
         _log(f"gdn fused counter init failed: {e!r}")
-    # ParoQuant rotation stream (radiance_paroquant.install_stream, env-gated inside); only
+    # ParoQuant rotation stream (paiton_paroquant.install_stream, env-gated inside); only
     # probed on a paroquant serve so the mxfp4 serve never imports the module.
-    if os.environ.get("RADIANCE_PAROQUANT", "0") == "1":
+    if os.environ.get("PAITON_RT_PAROQUANT", "0") == "1":
         try:
-            import radiance_paroquant
-            radiance_paroquant.install_stream(model)
+            import paiton_paroquant
+            paiton_paroquant.install_stream(model)
         except Exception as e:                      # noqa: BLE001
             _log(f"paroquant rot stream install failed, serving without it: {e!r}")
     # fp8-stream epilogue contract (env-gated inside). AFTER _merge_one has run on every GDN
@@ -182,7 +182,7 @@ def merge_model(model) -> None:
     # must run at the END of merge_model; see the deferred call below.
     if not ENABLED:
         return
-    # Fragment order (RADIANCE_MXFP4_WPERM=1) is fine to merge: permute_w is tile-local along N
+    # Fragment order (PAITON_RT_MXFP4_WPERM=1) is fine to merge: permute_w is tile-local along N
     # (16-row blocks, outermost axis is the n-tile), so cat(permute(A), permute(B)) is exactly
     # permute(cat(A, B)) whenever both N are multiples of 16 -- which _merge_one already gates.
     # This used to refuse as unmeasured; measured equivalent 2026-08-29 (tier7-era serving A/B).
@@ -207,11 +207,11 @@ def merge_model(model) -> None:
             skipped += 1
             _log(f"merge failed on {getattr(m, 'prefix', '?')}, left unmerged: {e!r}")
     _log(f"merged {n} GDN layers ({2 * n} launches/forward removed), {skipped} left unmerged")
-    # fp8-stream epilogue contract (radiance_arnq, env-gated inside). Runs only down here, after
+    # fp8-stream epilogue contract (paiton_arnq, env-gated inside). Runs only down here, after
     # every GDN module carries its _rad_merged marker: the installer's consumer check reads it.
-    # Consequence: RADIANCE_FP8_STREAM needs RADIANCE_GDN_MERGE_INPROJ=1, which is the default.
+    # Consequence: PAITON_RT_FP8_STREAM needs PAITON_RT_GDN_MERGE_INPROJ=1, which is the default.
     try:
-        import radiance_arnq
-        radiance_arnq.install(model)
+        import paiton_arnq
+        paiton_arnq.install(model)
     except Exception as e:                              # noqa: BLE001
         _log(f"fp8-stream install failed, serving without it: {e!r}")

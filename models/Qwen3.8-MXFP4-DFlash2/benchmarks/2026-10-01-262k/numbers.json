@@ -354,7 +354,7 @@
   }
  },
  "reference_screenshot": {
-  "source": "GGZ14/vllm-mxfp4 BetterBench screenshot posted on Discord, R9700, 262,144 context",
+  "source": "The reference backend's vLLM fork BetterBench screenshot posted on Discord, R9700, 262,144 context",
   "combined_decode": 118.8,
   "update_p99_ms": 38.9,
   "ttft_p50_ms": 92,

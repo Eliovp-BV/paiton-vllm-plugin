@@ -11,43 +11,43 @@ is preserved unchanged; only the per-segment dense attention is swapped. Only bf
 is handled. Anything else (GQA, other head sizes, fp16, batched >1) falls through to the original
 SDPA path, as does any build where the kernel library is absent or switched off.
 
-Active on gfx12x with RADIANCE_USE_R4D on.
+Active on gfx12x with PAITON_RT_USE_PDK on.
 """
 import os
 import sys
 
 import torch
 
-# RADIANCE_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_PDK is the master switch for the whole libpdk integration (patch_pdk.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-_USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
+_USE_PDK = os.environ.get("PAITON_RT_USE_PDK", "1") == "1"
 _HEAD_DIM = 72
 
-# RTLD_DEEPBIND for the same reason as radiance_r4d_attn: tilelang (through aiter) puts a
+# RTLD_DEEPBIND for the same reason as paiton_pdk_attn: tilelang (through aiter) puts a
 # libhip_stub.so into the global symbol scope whose hipLaunchKernel throws, and every HIP symbol
 # resolved globally afterwards hits the stub instead of the real runtime.
 _dlflags = sys.getdlopenflags()
 sys.setdlopenflags(os.RTLD_NOW | os.RTLD_DEEPBIND)
 try:
-    import r4d
+    import pdk
 except ImportError:
-    r4d = None
+    pdk = None
 finally:
     sys.setdlopenflags(_dlflags)
 
-# Which kernel, if any, this build of R4D has for the tower's geometry. Asking is the point: the
+# Which kernel, if any, this build of PDK has for the tower's geometry. Asking is the point: the
 # constraints live in the library's registry, so this file cannot hold a stale copy of them, and
 # None -- a build without the kernel, or a tower of another shape -- simply leaves the Triton
 # kernel below in place. The dtypes in the question are a correctness gate rather than a
 # preference: the kernel reads its operands as raw 16-bit words, so fp16 handed to it would be
 # read as bf16.
-_R4D_NAME = (
-    r4d.select("attn_vit", head_dim=_HEAD_DIM, gqa=1, causal=0, q_dtype="bf16", kv_dtype="bf16")
-    if (r4d is not None and _USE_R4D)
+_PDK_NAME = (
+    pdk.select("attn_vit", head_dim=_HEAD_DIM, gqa=1, causal=0, q_dtype="bf16", kv_dtype="bf16")
+    if (pdk is not None and _USE_PDK)
     else None
 )
-_R4D_ATTN = getattr(r4d, _R4D_NAME) if _R4D_NAME else None
-_HAS_R4D = _R4D_ATTN is not None
+_PDK_ATTN = getattr(pdk, _PDK_NAME) if _PDK_NAME else None
+_HAS_PDK = _PDK_ATTN is not None
 _cu_cache: dict = {}
 
 
@@ -61,14 +61,14 @@ def _cu_single(n: int, device) -> torch.Tensor:
     return t
 
 
-def _r4d_72(q, k, v, scale, cu=None, max_seqlen=None):
+def _pdk_72(q, k, v, scale, cu=None, max_seqlen=None):
     """q, k, v: [T, heads, 72] contiguous bf16, one or more segments named by cu. Returns [T, heads, 72]."""
     T, H, _ = q.shape
     o = torch.empty_like(q)
     if cu is None:
         cu = _cu_single(T, q.device)
         max_seqlen = T
-    _R4D_ATTN(q.data_ptr(), k.data_ptr(), v.data_ptr(), o.data_ptr(), cu.data_ptr(),
+    _PDK_ATTN(q.data_ptr(), k.data_ptr(), v.data_ptr(), o.data_ptr(), cu.data_ptr(),
               int(cu.numel()) - 1, int(max_seqlen), int(H), _HEAD_DIM, float(scale),
               torch.cuda.current_stream().cuda_stream)
     return o
@@ -91,9 +91,9 @@ def apply_flash(q, k, v, scale=None, enable_gqa=False):
         s = scale if scale is not None else _HEAD_DIM ** -0.5
         b = q.shape[0]
         if b == 1:
-            out = _r4d_72(q[0].contiguous(), k[0].contiguous(), v[0].contiguous(), s)
+            out = _pdk_72(q[0].contiguous(), k[0].contiguous(), v[0].contiguous(), s)
             return out.unsqueeze(0)
-        outs = [_r4d_72(q[i].contiguous(), k[i].contiguous(), v[i].contiguous(), s)
+        outs = [_pdk_72(q[i].contiguous(), k[i].contiguous(), v[i].contiguous(), s)
                 for i in range(b)]
         return torch.stack(outs, 0)
     return _orig_apply_sdpa(q, k, v, scale=scale, enable_gqa=enable_gqa)
@@ -108,12 +108,12 @@ def apply_flash(q, k, v, scale=None, enable_gqa=False):
 # and RoPE are left entirely to stock transformers; only the attention math is swapped.
 
 
-def _r4d_bhsd(q, k, v, scale):
+def _pdk_bhsd(q, k, v, scale):
     """q, k, v: [B, H, S, D] (transformers layout). Returns [B, S, H, D] (what the attn interface
     must hand back, i.e. eager's post-transpose layout)."""
     B = q.shape[0]
     outs = [
-        _r4d_72(q[b].transpose(0, 1).contiguous(),   # [H,S,D] -> [S,H,D]
+        _pdk_72(q[b].transpose(0, 1).contiguous(),   # [H,S,D] -> [S,H,D]
                 k[b].transpose(0, 1).contiguous(),
                 v[b].transpose(0, 1).contiguous(), scale)   # -> [S,H,D]
         for b in range(B)
@@ -121,7 +121,7 @@ def _r4d_bhsd(q, k, v, scale):
     return torch.stack(outs, 0)   # [B, S, H, D]
 
 
-def radiance_vit_flash_attn(module, query, key, value, attention_mask,
+def paiton_vit_flash_attn(module, query, key, value, attention_mask,
                             dropout=0.0, scaling=None, softcap=None, **kwargs):
     """A transformers ALL_ATTENTION_FUNCTIONS entry. Handles the dense, non-causal, head_dim-72 MHA
     case with the flash kernel; everything else (a real attention_mask for packed/windowed images,
@@ -136,7 +136,7 @@ def radiance_vit_flash_attn(module, query, key, value, attention_mask,
         and query.is_cuda
     ):
         s = scaling if scaling is not None else _HEAD_DIM ** -0.5
-        return _r4d_bhsd(query, key, value, s), None
+        return _pdk_bhsd(query, key, value, s), None
     from transformers.models.gemma4.modeling_gemma4 import eager_attention_forward
     return eager_attention_forward(module, query, key, value, attention_mask,
                                    dropout=dropout, scaling=scaling, softcap=softcap, **kwargs)
@@ -147,7 +147,7 @@ def install_gemma_vision():
     The tower is a transformers module (AutoModel.from_config), so it uses ALL_ATTENTION_FUNCTIONS
     keyed by config._attn_implementation. Registers the impl and flips the head_dim-72 tower to it
     on first forward. Projections/RoPE stay in stock transformers. gfx12x only."""
-    if not _HAS_R4D:
+    if not _HAS_PDK:
         return
     try:
         from vllm.platforms.rocm import on_gfx12x
@@ -159,24 +159,24 @@ def install_gemma_vision():
         from transformers.models.gemma4 import modeling_gemma4 as G
     except Exception:
         return
-    if getattr(G, "_radiance_vit_installed", False):
+    if getattr(G, "_paiton_vit_installed", False):
         return
     try:
-        G.ALL_ATTENTION_FUNCTIONS.register("radiance_vit_flash", radiance_vit_flash_attn)
+        G.ALL_ATTENTION_FUNCTIONS.register("paiton_vit_flash", paiton_vit_flash_attn)
     except Exception:
-        G.ALL_ATTENTION_FUNCTIONS["radiance_vit_flash"] = radiance_vit_flash_attn
+        G.ALL_ATTENTION_FUNCTIONS["paiton_vit_flash"] = paiton_vit_flash_attn
     _orig_forward = G.Gemma4VisionAttention.forward
 
     def _forward(self, *a, **k):
         # flip only the head-72 tower; leave any other head size on its stock implementation
         if getattr(self, "head_dim", None) == _HEAD_DIM \
-                and self.config._attn_implementation != "radiance_vit_flash":
-            self.config._attn_implementation = "radiance_vit_flash"
+                and self.config._attn_implementation != "paiton_vit_flash":
+            self.config._attn_implementation = "paiton_vit_flash"
         return _orig_forward(self, *a, **k)
 
     G.Gemma4VisionAttention.forward = _forward
-    G._radiance_vit_installed = True
-    sys.stderr.write("[radiance.vit] Gemma4 vision attention installed (head_dim 72)\n")
+    G._paiton_vit_installed = True
+    sys.stderr.write("[paiton.vit] Gemma4 vision attention installed (head_dim 72)\n")
     sys.stderr.flush()
 
 
@@ -185,7 +185,7 @@ def install():
     vLLM-native ViT wrappers and the transformers-native Gemma4 vision tower. Without the kernel
     library nothing installs and the stock SDPA path stays in place."""
     global _orig_apply_sdpa
-    if not _HAS_R4D:
+    if not _HAS_PDK:
         return
     try:
         from vllm.platforms.rocm import on_gfx12x
@@ -195,15 +195,15 @@ def install():
         return
     try:
         import vllm.v1.attention.ops.vit_attn_wrappers as W
-        if not getattr(W, "_radiance_vit_installed", False):
+        if not getattr(W, "_paiton_vit_installed", False):
             _orig_apply_sdpa = W.apply_sdpa
             W.apply_sdpa = apply_flash
-            W._radiance_vit_installed = True
-            sys.stderr.write("[radiance.vit] head_dim-72 attention installed\n")
+            W._paiton_vit_installed = True
+            sys.stderr.write("[paiton.vit] head_dim-72 attention installed\n")
             sys.stderr.flush()
     except Exception:
         pass
     try:
         install_gemma_vision()
     except Exception as e:
-        sys.stderr.write(f"[radiance.vit] Gemma vision install skipped: {e!r}\n")
+        sys.stderr.write(f"[paiton.vit] Gemma vision install skipped: {e!r}\n")

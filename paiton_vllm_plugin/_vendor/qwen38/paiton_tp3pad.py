@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""TP=3 for Qwen3.8-27B via zero-weight dummy heads (RADIANCE_TP_PAD=3).
+"""TP=3 for Qwen3.8-27B via zero-weight dummy heads (PAITON_RT_TP_PAD=3).
 
 The checkpoint's head counts (24 q / 4 kv / 16 GDN key / 48 GDN value heads, 17408 MLP width,
 248320 vocab) do not divide by 3, so vLLM refuses --tensor-parallel-size 3 in three separate
@@ -13,7 +13,7 @@ ranks 0 and 1 are all-real. Nothing is rewritten on disk.
 Geometry (TP3_PADDING_PLAN.md):
 
   target (text_config)      stock -> padded   per rank    why
-    num_attention_heads      24  -> 36        12          keeps GQA 6 (the R4D attention kernels
+    num_attention_heads      24  -> 36        12          keeps GQA 6 (the PDK attention kernels
     num_key_value_heads       4  ->  6         2          are compiled for head 256 / GQA 6)
     linear_num_key_heads     16  -> 18         6          16 does not divide by 3
     linear_num_value_heads   48  -> 54        18          V/K ratio 3 is baked into the GDN layout
@@ -43,19 +43,19 @@ attention gate is sigmoid(0) * 0 = 0; a zero GDN head keeps a zero state from a 
 (A_log = 0 is a finite decay). Every K-pad lands at the global end of the row and every e8m0
 group boundary is 32-aligned, so no scale group straddles real and dummy columns.
 
-Three hooks, all installed by patch_tp3_pad.py and ALL inert unless RADIANCE_TP_PAD is set
+Three hooks, all installed by patch_tp3_pad.py and ALL inert unless PAITON_RT_TP_PAD is set
 (TP 1/2 serves stay byte-identical; with the env off none of the functions below does any work):
   maybe_pad_config(hf_config, hf_text_config)   ModelConfig.__post_init__, after hf_text_config
   pad_weights(weights, model_config)            DefaultModelLoader.load_weights, around the iterator
   vocab_pad_multiple(padding_size)              VocabParallelEmbedding.__init__
 
 Knobs:
-  RADIANCE_TP_PAD=3               enable (the only supported value; the launcher sets it at TP=3)
-  RADIANCE_TP_PAD_INTERMEDIATE    padded MLP width (default 17472; 17408 = leave it stock, for the
+  PAITON_RT_TP_PAD=3               enable (the only supported value; the launcher sets it at TP=3)
+  PAITON_RT_TP_PAD_INTERMEDIATE    padded MLP width (default 17472; 17408 = leave it stock, for the
                                   TP=2 heads-only gate)
-  RADIANCE_TP_PAD_DRAFTER=0       leave the DFlash2 drafter unpadded (its padded 48/12 geometry
+  PAITON_RT_TP_PAD_DRAFTER=0       leave the DFlash2 drafter unpadded (its padded 48/12 geometry
                                   shards at TP 1, 2, 3, 4 and 6; the knob is an A/B lever)
-  RADIANCE_TP_PAD_STRICT=0        demote a coverage mismatch in the weight tally to a warning
+  PAITON_RT_TP_PAD_STRICT=0        demote a coverage mismatch in the weight tally to a warning
 
 The shape planning (plan_shape) is torch-free so tp3pad_selftest.py can check every tensor of
 both checkpoints against their safetensors headers on a host without torch or a GPU.
@@ -67,7 +67,7 @@ from collections import OrderedDict
 from fractions import Fraction
 from math import lcm
 
-TAG = "[radiance.tp3pad]"
+TAG = "[paiton.tp3pad]"
 PAD = 3                      # the tensor-parallel size the dummies make divisible
 VOCAB_PAD_BASE = 64          # vLLM's DEFAULT_VOCAB_PADDING_SIZE
 
@@ -78,29 +78,29 @@ def _log(msg):
 
 
 def enabled() -> int:
-    """0 when off; PAD when RADIANCE_TP_PAD=3. Any other value is a configuration error."""
-    v = os.environ.get("RADIANCE_TP_PAD", "").strip()
+    """0 when off; PAD when PAITON_RT_TP_PAD=3. Any other value is a configuration error."""
+    v = os.environ.get("PAITON_RT_TP_PAD", "").strip()
     if v in ("", "0"):
         return 0
     if v != str(PAD):
-        raise RuntimeError(f"{TAG} RADIANCE_TP_PAD={v!r}: only {PAD} is supported")
+        raise RuntimeError(f"{TAG} PAITON_RT_TP_PAD={v!r}: only {PAD} is supported")
     return PAD
 
 
 def padded_intermediate() -> int:
-    v = int(os.environ.get("RADIANCE_TP_PAD_INTERMEDIATE", "") or 17472)
+    v = int(os.environ.get("PAITON_RT_TP_PAD_INTERMEDIATE", "") or 17472)
     if v < 17408 or v % 64:
-        raise RuntimeError(f"{TAG} RADIANCE_TP_PAD_INTERMEDIATE={v}: must be >= 17408 and a multiple of 64")
+        raise RuntimeError(f"{TAG} PAITON_RT_TP_PAD_INTERMEDIATE={v}: must be >= 17408 and a multiple of 64")
     return v
 
 
 def pad_drafter() -> bool:
-    return os.environ.get("RADIANCE_TP_PAD_DRAFTER", "1") == "1"
+    return os.environ.get("PAITON_RT_TP_PAD_DRAFTER", "1") == "1"
 
 
 # ------------------------------------------------------------------ geometry
 # Exact stock values are a precondition: this module knows ONE model. A different checkpoint with
-# RADIANCE_TP_PAD set is an error, not something to guess at.
+# PAITON_RT_TP_PAD set is an error, not something to guess at.
 TARGET_STOCK = OrderedDict(
     hidden_size=5120, num_attention_heads=24, num_key_value_heads=4, head_dim=256,
     linear_num_key_heads=16, linear_num_value_heads=48, linear_key_head_dim=128,
@@ -210,7 +210,7 @@ def plan_shape(name, shape, spec, intermediate=None):
         if not rx.search(name):
             continue
         if old == new:
-            return None                           # RADIANCE_TP_PAD_INTERMEDIATE=17408: MLP left stock
+            return None                           # PAITON_RT_TP_PAD_INTERMEDIATE=17408: MLP left stock
         if kind == "rows":
             if shape[0] * new % old:
                 raise RuntimeError(f"{TAG} {name}: dim0 {shape[0]} is not {old} in any unit")
@@ -240,8 +240,8 @@ def fill_value(name, dtype_name, kind="rows"):
         # MXFP4 checkpoint: 'weight' is packed e2m1 pairs, 'weight_scale' is e8m0 exponents.
         # A padded ROW is a whole dummy output channel: its weights are zero, so its exponent is
         # free and 0x7F (2^0) keeps it an ordinary-looking row. A padded COLUMN group sits on a
-        # REAL row, and the radiance kernel folds that row's groups against the row's MAXIMUM
-        # exponent (radiance_mxfp4.make_row_ref): 2^0 there outranks every real group (typically
+        # REAL row, and the paiton kernel folds that row's groups against the row's MAXIMUM
+        # exponent (paiton_mxfp4.make_row_ref): 2^0 there outranks every real group (typically
         # 2^-4 .. 2^-12) and re-expresses the real weights as e4m3 relative to 2^0, flushing them to
         # subnormal or zero -- measured 2026-09-06 as a serve that emitted nothing but token 0.
         # 0x00 = 2^-127 never wins the max, and 0 x 2^-127 is still 0. (0xFF is NaN; never that.)
@@ -269,23 +269,23 @@ def _identify(hf_config, hf_text_config):
 
 def maybe_pad_config(hf_config, hf_text_config):
     """Widen the head counts / MLP width on hf_text_config in place. Returns the spec applied
-    ('target' / 'drafter') or None. No-op unless RADIANCE_TP_PAD is set; idempotent (a marker
+    ('target' / 'drafter') or None. No-op unless PAITON_RT_TP_PAD is set; idempotent (a marker
     attribute survives to_dict()/deepcopy, so a wrapped or copied config is not padded twice)."""
     if not enabled():
         return None
     for cfg in (hf_text_config, hf_config):
-        marker = getattr(cfg, "_radiance_tp_pad", None)
+        marker = getattr(cfg, "_paiton_tp_pad", None)
         if marker is not None:
             return marker if marker in ("target", "drafter") else None
     spec = _identify(hf_config, hf_text_config)
     if spec is None:
         _log(f"config {getattr(hf_config, 'model_type', '?')} {getattr(hf_config, 'architectures', '?')} "
              f"is not a model this pads; left unchanged")
-        setattr(hf_text_config, "_radiance_tp_pad", "none")
+        setattr(hf_text_config, "_paiton_tp_pad", "none")
         return None
     if spec == "drafter" and not pad_drafter():
-        _log("RADIANCE_TP_PAD_DRAFTER=0: drafter config left unpadded (serves at TP 1/2 only)")
-        setattr(hf_text_config, "_radiance_tp_pad", "none")
+        _log("PAITON_RT_TP_PAD_DRAFTER=0: drafter config left unpadded (serves at TP 1/2 only)")
+        setattr(hf_text_config, "_paiton_tp_pad", "none")
         return None
     stock = TARGET_STOCK if spec == "target" else DRAFTER_STOCK
     padded = target_padded() if spec == "target" else drafter_padded()
@@ -293,10 +293,10 @@ def maybe_pad_config(hf_config, hf_text_config):
         got = getattr(hf_text_config, k, None)
         if got != v:
             raise RuntimeError(f"{TAG} {spec} config {k}={got}, expected the stock {v}: this is not the "
-                               f"checkpoint the padding was derived for (unset RADIANCE_TP_PAD)")
+                               f"checkpoint the padding was derived for (unset PAITON_RT_TP_PAD)")
     for k, v in padded.items():
         setattr(hf_text_config, k, v)
-    setattr(hf_text_config, "_radiance_tp_pad", spec)
+    setattr(hf_text_config, "_paiton_tp_pad", spec)
     _log(f"{spec} config padded for TP={PAD}: " +
          ", ".join(f"{k} {stock[k]}->{v}" for k, v in padded.items()))
     return spec
@@ -314,7 +314,7 @@ def vocab_pad_multiple(padding_size):
 def _spec_of(model_config):
     for attr in ("hf_text_config", "hf_config"):
         cfg = getattr(model_config, attr, None)
-        m = getattr(cfg, "_radiance_tp_pad", None) if cfg is not None else None
+        m = getattr(cfg, "_paiton_tp_pad", None) if cfg is not None else None
         if m in ("target", "drafter"):
             return m, cfg
     return None, None
@@ -408,8 +408,8 @@ def pad_weights(weights, model_config):
         if bad or extra:
             msg = (f"{spec} coverage MISMATCH: {total} tensors padded of {seen}; "
                    f"got/expected {bad}" + (f"; unexpected labels {extra}" if extra else ""))
-            if os.environ.get("RADIANCE_TP_PAD_STRICT", "1") == "1":
-                raise RuntimeError(f"{TAG} {msg} (RADIANCE_TP_PAD_STRICT=0 to demote)")
+            if os.environ.get("PAITON_RT_TP_PAD_STRICT", "1") == "1":
+                raise RuntimeError(f"{TAG} {msg} (PAITON_RT_TP_PAD_STRICT=0 to demote)")
             _log("WARNING " + msg)
         else:
             _log(f"{spec} coverage OK: {total} tensors padded of {seen} "

@@ -1,9 +1,9 @@
-"""2-bit MTP draft head with an exact rerank, behind RADIANCE_FAST_DRAFT.
+"""2-bit MTP draft head with an exact rerank, behind PAITON_RT_FAST_DRAFT.
 
 Off by default, in which case the drafter uses the stock bf16 head that vLLM shares with the target
 model (_maybe_share_lm_head does this unconditionally for an MTP drafter, so it costs no extra
 memory). That head reads 1.18 GiB/rank on every draft slot and measures ~2002 us per call.
-RADIANCE_FAST_DRAFT=1 replaces it with a 2-bit head at ~473 us including the rerank, for 0.167
+PAITON_RT_FAST_DRAFT=1 replaces it with a 2-bit head at ~473 us including the rerank, for 0.167
 GiB/rank.
 
 The head is the largest bandwidth consumer in a decode step: per rank it is x[M,5120] @
@@ -60,13 +60,13 @@ try:
 except Exception:                       # pragma: no cover - triton always present in the image
     triton = None
 
-# RADIANCE_FAST_DRAFT gates draft-head quantisation entirely.
+# PAITON_RT_FAST_DRAFT gates draft-head quantisation entirely.
 #   0 (default): nothing here installs. The drafter uses the stock bf16 head -- which vLLM shares
 #                with the target model, so it costs no extra memory but reads 1.18 GiB/rank per draft
 #                slot and measures ~2002 us per call.
 #   1:           2-bit head, 0.167 GiB/rank, ~473 us per call including the rerank. The rerank makes
 #                it exact: on 8192 real draft-head inputs it matches the bf16 argmax on every row.
-FAST = os.environ.get("RADIANCE_FAST_DRAFT", "0") == "1"
+FAST = os.environ.get("PAITON_RT_FAST_DRAFT", "0") == "1"
 
 GROUP = 128        # weight-quantisation group along K; also the kernel's BLOCK_K
 BLOCK_N = 64       # do_bench optimum, and the width of one block-max entry
@@ -74,10 +74,10 @@ BITS = 2
 # Candidates scored exactly per row. For an ARGMAX caller (mtp) this only caps how many of the
 # coarse pass's candidates get rescored, and KCAND is the recall lever -- see the docstring. For a
 # TOP-K caller (DFlash2, which asks for selector_top_k=16 candidates per position) it is a HARD
-# CEILING instead: _radiance_topk_only blanks every entry the rerank did not touch, so a top-16
+# CEILING instead: _paiton_topk_only blanks every entry the rerank did not touch, so a top-16
 # request draws from exactly R tokens. Measured on Qwen3.8-27B + DFlash2-FP8 at ctx 0, R=32:
 # acc/draft 1.904 -> 1.804 against the bf16 head, i.e. 2R is too tight a pool for K=16.
-RERANK = int(os.environ.get("RADIANCE_DRAFT_RERANK", "32"))
+RERANK = int(os.environ.get("PAITON_RT_DRAFT_RERANK", "32"))
 # LogitsProcessors whose lm_head is only shared in from the target AFTER load_weights (DFlash2):
 # their head is never quantised at load time, whatever the allocated memory happens to hold.
 SHARED_HEAD_LP_ATTRS = ("candidate_logits_processor",)
@@ -238,16 +238,16 @@ def _apply_head_int2(self, lm_head, hidden_states, embedding_bias):
         x = torch.cat([x, x.new_zeros(M - m, k)])
     x = x.contiguous()
 
-    n = self._radiance_n
-    nblk = self._radiance_nblk
+    n = self._paiton_n
+    nblk = self._paiton_nblk
     ng = k // GROUP
     xs = x.reshape(M, ng, GROUP).float().sum(-1).contiguous()
     y = torch.empty(M, n, dtype=torch.bfloat16, device=x.device)
     bm = torch.empty(M, nblk * KCAND, dtype=torch.float32, device=x.device)
     bi = torch.empty(M, nblk * KCAND, dtype=torch.int32, device=x.device)
     _draft_head_int2[(nblk,)](
-        x, xs, self._radiance_wq, self._radiance_scale, self._radiance_zs, y, bm, bi,
-        k, n, self._radiance_wq.stride(0), self._radiance_scale.stride(0), xs.stride(0),
+        x, xs, self._paiton_wq, self._paiton_scale, self._paiton_zs, y, bm, bi,
+        k, n, self._paiton_wq.stride(0), self._paiton_scale.stride(0), xs.stride(0),
         nblk, KCAND, G=GROUP, BLOCK_M=M, BLOCK_N=BLOCK_N, **_cfg_for(M))
 
     w, wsc = _head_matrix(lm_head)
@@ -261,7 +261,7 @@ def _apply_head_int2(self, lm_head, hidden_states, embedding_bias):
         else:
             _rerank_exact[(M, RERANK)](x, w, x, idx, ex, k, w.stride(0), R=RERANK, BLOCK_K=512,
                                        FP8=False, num_warps=4)
-        if getattr(self, "_radiance_topk_only", False):
+        if getattr(self, "_paiton_topk_only", False):
             # A top-k caller ranks the whole row against itself, so the ~124k entries the rerank
             # did NOT touch are still coarse 2-bit values competing with exact ones -- and a
             # spuriously high coarse entry becomes a candidate. An argmax caller never noticed
@@ -270,11 +270,11 @@ def _apply_head_int2(self, lm_head, hidden_states, embedding_bias):
             # one, so recall is bounded by RERANK rather than by 2-bit noise.
             y.fill_(float("-inf"))
         y.scatter_(1, idx.long(), ex.to(torch.bfloat16))
-    elif not self._radiance_warned:
+    elif not self._paiton_warned:
         # Without the exact weight the coarse pass stands on its own; that is a ~5% top-1 change
         # against bf16, so say so rather than let it pass as the reranked path.
-        self._radiance_warned = True
-        sys.stderr.write(f"[radiance] INT{BITS}_DRAFT_HEAD: no bf16 lm_head to rerank against "
+        self._paiton_warned = True
+        sys.stderr.write(f"[paiton] INT{BITS}_DRAFT_HEAD: no bf16 lm_head to rerank against "
                          f"({None if w is None else (tuple(w.shape), w.dtype)}); "
                          "running the coarse 2-bit head unreranked\n")
         sys.stderr.flush()
@@ -300,7 +300,7 @@ def _apply_head_lazy(self, lm_head, hidden_states, embedding_bias):
         # catastrophic, so fall back to the stock GEMM rather than guess.
         return type(self)._apply_head(self, lm_head, hidden_states, embedding_bias)
     status = _quantize_head_now(self, lm_head)
-    sys.stderr.write(f"[radiance] INT{BITS}_DRAFT_HEAD (lazy): {status}\n")
+    sys.stderr.write(f"[paiton] INT{BITS}_DRAFT_HEAD (lazy): {status}\n")
     sys.stderr.flush()
     return self._apply_head(lm_head, hidden_states, embedding_bias)
 
@@ -323,7 +323,7 @@ def _quantize_draft_head(mtp, lp_attr="logits_processor"):
     if rows is None or w.dim() != 2 or \
             (rsc is None and w.dtype not in (torch.bfloat16, torch.float16, torch.float32)):
         return f"unsupported draft-head weight {tuple(w.shape)} {w.dtype}"
-    lp._radiance_topk_only = lp_attr == "candidate_logits_processor"
+    lp._paiton_topk_only = lp_attr == "candidate_logits_processor"
     # A drafter whose checkpoint carries no lm_head (DFlash2) gets the target's tensor shared in
     # AFTER load_weights returns, so at this point the parameter is allocated but uninitialised.
     # Quantising it is silent and total: the serve comes up, text stays coherent because the TARGET
@@ -357,9 +357,9 @@ def _quantize_head_now(lp, lm_head):
 
     cached = _HEAD_CACHE.get((w.data_ptr(), n, k))
     if cached is not None:
-        (lp._radiance_wq, lp._radiance_scale, lp._radiance_zs,
-         lp._radiance_n, lp._radiance_nblk) = cached
-        lp._radiance_warned = False
+        (lp._paiton_wq, lp._paiton_scale, lp._paiton_zs,
+         lp._paiton_n, lp._paiton_nblk) = cached
+        lp._paiton_warned = False
         lp._apply_head = types.MethodType(_apply_head_int2, lp)
         return (f"draft head ({n}, {k}) reusing the int{BITS} packing already built for this "
                 f"lm_head, {KCAND} cand/block, rerank top-{RERANK} exact")
@@ -401,18 +401,18 @@ def _quantize_head_now(lp, lm_head):
         scale[i:j] = (bias * sc).to(torch.bfloat16)
         zs[i:j] = (bias * sc + zp * sc).to(torch.bfloat16)
         del wg, lo, hi, sc, zp, q
-    lp._radiance_wq = packed
-    lp._radiance_scale = scale
-    lp._radiance_zs = zs
-    lp._radiance_n = n
-    lp._radiance_nblk = (n + BLOCK_N - 1) // BLOCK_N
-    lp._radiance_warned = False
+    lp._paiton_wq = packed
+    lp._paiton_scale = scale
+    lp._paiton_zs = zs
+    lp._paiton_n = n
+    lp._paiton_nblk = (n + BLOCK_N - 1) // BLOCK_N
+    lp._paiton_warned = False
     lp._apply_head = types.MethodType(_apply_head_int2, lp)
-    _HEAD_CACHE[(w.data_ptr(), n, k)] = (packed, scale, zs, n, lp._radiance_nblk)
+    _HEAD_CACHE[(w.data_ptr(), n, k)] = (packed, scale, zs, n, lp._paiton_nblk)
     torch.cuda.empty_cache()
 
-    stored = (lp._radiance_wq.numel()
-              + (lp._radiance_scale.numel() + lp._radiance_zs.numel()) * 2)
+    stored = (lp._paiton_wq.numel()
+              + (lp._paiton_scale.numel() + lp._paiton_zs.numel()) * 2)
     # The bf16 weight is deliberately left in place: the rerank scores against it, and leaving it
     # lets vLLM's _maybe_share_lm_head point the MTP at the target's copy instead of keeping a
     # second one. Blanking it here (as the fp8 head did) defeats that share.
@@ -425,7 +425,7 @@ def install():
         # stock bf16 head; nothing patched, nothing quantised
         return
     if triton is None:
-        sys.stderr.write("[radiance] quantised draft head off: no triton\n")
+        sys.stderr.write("[paiton] quantised draft head off: no triton\n")
         return
 
     # (module, class, which LogitsProcessor that drafter scores candidates with)
@@ -446,11 +446,11 @@ def install():
         except Exception:
             continue
     if not targets:
-        sys.stderr.write("[radiance] quantised draft head off: no drafter class found\n")
+        sys.stderr.write("[paiton] quantised draft head off: no drafter class found\n")
         return
 
     for cls, lp_attr in targets:
-        if getattr(cls, "_radiance_quant_head_wrapped", False):
+        if getattr(cls, "_paiton_quant_head_wrapped", False):
             continue
         orig = cls.load_weights
 
@@ -460,11 +460,11 @@ def install():
                 status = _quantize_draft_head(self, _lp)
             except Exception as e:
                 status = f"FAILED, bf16 head kept: {e!r}"
-            sys.stderr.write(f"[radiance] INT{BITS}_DRAFT_HEAD: {status}\n")
+            sys.stderr.write(f"[paiton] INT{BITS}_DRAFT_HEAD: {status}\n")
             sys.stderr.flush()
             return loaded
 
         cls.load_weights = wrapped
-        cls._radiance_quant_head_wrapped = True
-    sys.stderr.write(f"[radiance] int{BITS} draft head armed (RADIANCE_FAST_DRAFT)\n")
+        cls._paiton_quant_head_wrapped = True
+    sys.stderr.write(f"[paiton] int{BITS} draft head armed (PAITON_RT_FAST_DRAFT)\n")
     sys.stderr.flush()

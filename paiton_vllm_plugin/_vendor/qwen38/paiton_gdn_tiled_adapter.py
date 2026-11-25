@@ -10,9 +10,9 @@ import threading
 import time
 from paiton_gdn_tiled_policy import Policy, FLAG
 
-TARGET='radiance_arnq'
-SOURCE_SHA='f76b0fc5819926d609e8f9665aab09ff02ea4da327017d90a6cb8feca2aeb4a7'
-CONSUMER_SHA='461cc4096740897c2da6bb81b04e31020084bf5f6671c63152e67be8944f0610'
+TARGET='paiton_arnq'
+SOURCE_SHA='66e43fb01bc995f44e04d1aa1495a4d1612dbbe2b163c262fccc2ca89efd0613'
+CONSUMER_SHA='7cf4bbce6e0e73e5dcedd19ec3a0fe5136adb9506eb53d21407fb3d52dd15cd3'
 ROOT=Path('/opt/paiton/runtime/gdn-tiled')
 LIB=AUDIT=POLICY=None
 CALLS=FALLBACKS=0
@@ -29,7 +29,7 @@ def load():
     if torch.cuda.is_current_stream_capturing():raise RuntimeError('Initialize native GDN before capture')
     if torch.cuda.device_count()!=1 or torch.cuda.get_device_properties(0).gcnArchName.split(':')[0]!='gfx1201':
         raise RuntimeError('Native GDN requires one gfx1201 device')
-    import radiance_mxfp4 as consumer
+    import paiton_mxfp4 as consumer
     if hashlib.sha256(Path(consumer.__file__).read_bytes()).hexdigest()!=CONSUMER_SHA:
         raise ImportError('Unreviewed tiled consumer source')
     manifest=json.loads((ROOT/'manifest.json').read_text())
@@ -107,7 +107,7 @@ def wrap(module):
     def launch(x,z,weight,eps):
         global CALLS,FALLBACKS
         import torch  # Existing external allocator/view/stream boundary only.
-        import radiance_mxfp4 as consumer
+        import paiton_mxfp4 as consumer
         # Initialize diagnostics on the first real GPU call, even a fallback shape.
         # M4089 need not occur during startup; a zero-count startup audit is valid.
         if LIB is None:load()

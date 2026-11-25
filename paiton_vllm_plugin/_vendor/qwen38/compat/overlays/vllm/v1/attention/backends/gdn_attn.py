@@ -2,12 +2,17 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 """Backend for GatedDeltaNet attention."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 import torch
 
+from vllm._aiter_ops import rocm_aiter_ops
 from vllm.config import VllmConfig
+from vllm.model_executor.layers.mamba.checkpoint import (
+    MambaPrefillCheckpointBuilder,
+    MambaPrefillCheckpointMetadata,
+)
 from vllm.utils.torch_utils import async_tensor_h2d
 from vllm.v1.attention.backend import (
     AttentionBackend,
@@ -48,6 +53,7 @@ class GDNAttentionMetadata:
     num_spec_decode_tokens: int
     num_actual_tokens: int
 
+    checkpoint: MambaPrefillCheckpointMetadata | None = None
     has_initial_state: torch.Tensor | None = None
 
     spec_query_start_loc: torch.Tensor | None = None  # shape: [num_spec_decodes + 1,]
@@ -60,13 +66,15 @@ class GDNAttentionMetadata:
         None  # shape: [batch - num_spec_decodes,]
     )
     spec_sequence_masks: torch.Tensor | None = None  # shape: [batch,]
+    spec_sequence_masks_cpu: torch.Tensor | None = None  # shape: [batch,]
     spec_token_indx: torch.Tensor | None = None
     non_spec_token_indx: torch.Tensor | None = None
 
     num_accepted_tokens: torch.Tensor | None = None  # shape: [batch,]
-    # radiance lazy gdn: the stash block of every batch row (window column 1), for prefill
-    # invalidation. None unless RADIANCE_GDN_LAZY=1.
-    radiance_stash_indices: torch.Tensor | None = None
+    # paiton lazy gdn: the stash block of every batch row (window column 1), for prefill
+    # invalidation. None unless PAITON_RT_GDN_LAZY=1.
+    paiton_stash_indices: torch.Tensor | None = None
+    uniform_spec_sequence_length: int | None = None  # None for ragged batches
 
     # Pre-computed FLA chunk metadata (avoids GPU->CPU sync in prepare_chunk_indices)
     chunk_indices: torch.Tensor | None = None
@@ -75,6 +83,7 @@ class GDNAttentionMetadata:
     prefill_query_start_loc: torch.Tensor | None = None
     prefill_state_indices: torch.Tensor | None = None
     prefill_has_initial_state: torch.Tensor | None = None
+    aiter_prefill_metadata: object | None = None
 
     # The following attributes are for triton implementation of causal_conv1d
     nums_dict: dict | None = None
@@ -82,10 +91,10 @@ class GDNAttentionMetadata:
     token_chunk_offset_ptr: torch.Tensor | None = None
 
 
-_RADIANCE_GDN_META = __import__("os").environ.get("RADIANCE_GDN_META", "1") == "1"
+_PAITON_RT_GDN_META = __import__("os").environ.get("PAITON_RT_GDN_META", "1") == "1"
 
 
-def _radiance_arange(builder, n: int, device) -> torch.Tensor:
+def _paiton_arange(builder, n: int, device) -> torch.Tensor:
     """arange(n) as a slice of one cached buffer -- read-only downstream.
 
     Never populate the cache during a graph capture: an allocation made there comes from the
@@ -93,22 +102,22 @@ def _radiance_arange(builder, n: int, device) -> torch.Tensor:
     step would be reading reused memory. Capture falls back to the stock allocation, and the
     first ordinary build fills the cache.
     """
-    c = getattr(builder, "_radiance_arange_buf", None)
+    c = getattr(builder, "_paiton_arange_buf", None)
     if c is None or c.numel() < n or c.device != device:
         if torch.cuda.is_current_stream_capturing():
             return torch.arange(n, dtype=torch.int32, device=device)
         c = torch.arange(max(n, 4096), dtype=torch.int32, device=device)
-        builder._radiance_arange_buf = c
+        builder._paiton_arange_buf = c
     return c[:n]
 
 
-def _radiance_empty_idx(builder, device) -> torch.Tensor:
-    c = getattr(builder, "_radiance_empty_buf", None)
+def _paiton_empty_idx(builder, device) -> torch.Tensor:
+    c = getattr(builder, "_paiton_empty_buf", None)
     if c is None or c.device != device:
         if torch.cuda.is_current_stream_capturing():
             return torch.empty(0, dtype=torch.int32, device=device)
         c = torch.empty(0, dtype=torch.int32, device=device)
-        builder._radiance_empty_buf = c
+        builder._paiton_empty_buf = c
     return c
 
 
@@ -125,16 +134,21 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         vllm_config: VllmConfig,
         device: torch.device,
     ):
-        self.vllm_config = vllm_config
+        super().__init__(kv_cache_spec, layer_names, vllm_config, device)
         self.compilation_config = vllm_config.compilation_config
         self.speculative_config = vllm_config.speculative_config
-        self.kv_cache_spec = kv_cache_spec
+        self.checkpoint_builder = MambaPrefillCheckpointBuilder(
+            vllm_config, kv_cache_spec
+        )
         from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import (
             _resolve_gdn_prefill_backend,
         )
 
-        self.gdn_prefill_backend: Literal["triton", "flashinfer", "cutedsl"]
+        self.gdn_prefill_backend: Literal[
+            "triton", "flashinfer", "cutedsl", "aiter_flydsl"
+        ]
         _, self.gdn_prefill_backend = _resolve_gdn_prefill_backend(vllm_config)
+        self._check_chunk_metadata_override(type(self), self.gdn_prefill_backend)
 
         if self.speculative_config:
             assert self.speculative_config.num_speculative_tokens is not None
@@ -147,6 +161,18 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         self.use_full_cuda_graph: bool = (
             self.compilation_config.cudagraph_mode.has_full_cudagraphs()
         )
+        # update_block_table() keeps the source group's batch-level FULL graph
+        # buffers, so only MRV2, which also reuses metadata at capture, may use
+        # it.
+        self.supports_update_block_table = (
+            vllm_config.use_v2_model_runner
+            and device.type == "cuda"
+            # Not isinstance: KDA's RecoverSSM/checkpoint metadata is per group.
+            and type(self) is GDNAttentionMetadataBuilder
+        )
+        if self.supports_update_block_table:
+            # Opts into MRV2's CUDA-only aligned-index precompute.
+            self.mamba_aligned_state_indices: torch.Tensor | None = None
 
         self.decode_cudagraph_max_bs: int = (
             self.vllm_config.scheduler_config.max_num_seqs * (self.num_spec + 1)
@@ -157,8 +183,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                 self.compilation_config.max_cudagraph_capture_size,
             )
 
-        import os as _rl_os  # radiance lazy gdn: 2 state columns (running, stash)
-        self._rad_lazy = _rl_os.environ.get("RADIANCE_GDN_LAZY", "0") == "1"
+        import os as _rl_os  # paiton lazy gdn: 2 state columns (running, stash)
+        self._rad_lazy = _rl_os.environ.get("PAITON_RT_GDN_LAZY", "0") == "1"
         self.spec_state_indices_tensor: torch.Tensor = torch.empty(
             (self.decode_cudagraph_max_bs, 2 if self._rad_lazy else self.num_spec + 1),
             dtype=torch.int32,
@@ -198,6 +224,32 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             (self.decode_cudagraph_max_bs,),
             dtype=torch.int32,
             device=device,
+        )
+
+    @staticmethod
+    def _check_chunk_metadata_override(
+        builder_cls: type["GDNAttentionMetadataBuilder"], backend: str
+    ) -> None:
+        """Reject a subclass whose chunk metadata the AITER path would skip.
+
+        AITER brings its own varlen prefill metadata and never calls
+        ``_build_chunk_metadata``, so a builder that overrides it would lose
+        that override without a word. No in-tree subclass can get here --
+        ``_resolve_gdn_prefill_backend`` only selects this backend for models
+        with 128-dim GDN key and value heads, which the KDA builders are not --
+        but a future one should be told rather than quietly ignored.
+        """
+        if backend != "aiter_flydsl":
+            return
+        if (
+            builder_cls._build_chunk_metadata
+            is GDNAttentionMetadataBuilder._build_chunk_metadata
+        ):
+            return
+        raise RuntimeError(
+            f"{builder_cls.__name__} builds its own FLA chunk metadata, which "
+            "the 'aiter_flydsl' GDN prefill backend does not use. Select a "
+            "different gdn_prefill_backend for this model."
         )
 
     def _build_chunk_metadata(
@@ -242,8 +294,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             ),
         )
 
-    # radiance (patch_gdn_shared_build.py): the runner passes a per-step dict here.
-    _radiance_shared_build = True
+    # paiton (patch_gdn_shared_build.py): the runner passes a per-step dict here.
+    _paiton_shared_build = True
 
     def build(  # type: ignore[override]
         self,
@@ -252,16 +304,16 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         num_accepted_tokens: torch.Tensor | None = None,
         num_decode_draft_tokens_cpu: torch.Tensor | None = None,
         fast_build: bool = False,
-        _radiance_shared: dict | None = None,
+        _paiton_shared: dict | None = None,
     ) -> GDNAttentionMetadata:
         m = common_attn_metadata
 
-        # radiance (patch_gdn_shared_build.py): a previous GDN group already built this
+        # paiton (patch_gdn_shared_build.py): a previous GDN group already built this
         # step's metadata. Only the block-table-derived indices are per-group; everything
         # else is copied buffer-to-buffer from the first group's already-padded buffers
         # into THIS builder's buffers (each group's cudagraph captured its own addresses).
-        if _radiance_shared and _radiance_shared.get("kind") == "spec_fast":
-            sh = _radiance_shared
+        if _paiton_shared and _paiton_shared.get("kind") == "spec_fast":
+            sh = _paiton_shared
             import dataclasses as _dc
             bt = mamba_get_block_table_tensor(
                 m.block_table_tensor, m.seq_lens, self.kv_cache_spec,
@@ -284,7 +336,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             self.num_accepted_tokens[:bs].copy_(sh["acc_src"], non_blocking=True)
             return _dc.replace(
                 sh["md"],
-                radiance_stash_indices=(bt[:bs, 1] if self._rad_lazy else None),  # radiance lazy gdn
+                paiton_stash_indices=(bt[:bs, 1] if self._rad_lazy else None),  # paiton lazy gdn
                 spec_state_indices_tensor=sst,
                 spec_sequence_masks=self.spec_sequence_masks[:bs],
                 spec_token_indx=self.spec_token_indx[: sh["si_n"]],
@@ -298,17 +350,22 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         query_start_loc = m.query_start_loc
         query_start_loc_cpu = m.query_start_loc_cpu
         nums_dict, batch_ptr, token_chunk_offset_ptr = None, None, None
-        block_table_tensor = mamba_get_block_table_tensor(
-            m.block_table_tensor,
-            m.seq_lens,
-            self.kv_cache_spec,
-            self.vllm_config.cache_config.mamba_cache_mode,
-        )
+        aligned_state_indices = getattr(self, "mamba_aligned_state_indices", None)
+        if aligned_state_indices is not None:
+            block_table_tensor = aligned_state_indices[: m.num_reqs]
+        else:
+            block_table_tensor = mamba_get_block_table_tensor(
+                m.block_table_tensor,
+                m.seq_lens,
+                self.kv_cache_spec,
+                self.vllm_config.cache_config.mamba_cache_mode,
+            )
 
+        uniform_spec_sequence_length = None
         spec_sequence_masks_cpu: torch.Tensor | None = None
-        # --- RADIANCE (patch_gdn_metadata.py): one numpy pass over the same buffer
+        # --- PAITON (patch_gdn_metadata.py): one numpy pass over the same buffer
         # instead of mask / index / sum / item and then the mask a second time.
-        _r_np = _RADIANCE_GDN_META and num_decode_draft_tokens_cpu is not None
+        _r_np = _PAITON_RT_GDN_META and num_decode_draft_tokens_cpu is not None
         _ndt_np = num_decode_draft_tokens_cpu.numpy() if _r_np else None
         _mask_np = None if _ndt_np is None else _ndt_np >= 0
         if not self.use_spec_decode or num_decode_draft_tokens_cpu is None:
@@ -318,16 +375,14 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             if _r_np:
                 spec_sequence_masks_cpu = torch.from_numpy(_mask_np)
                 num_spec_decodes = int(_mask_np.sum())
-                _r_empty = num_spec_decodes == 0 or int(_ndt_np[_mask_np].sum()) == 0
             else:
                 spec_sequence_masks_cpu = num_decode_draft_tokens_cpu >= 0
                 num_spec_decodes = spec_sequence_masks_cpu.sum().item()
-                _r_empty = (
-                    num_spec_decodes == 0
-                    or num_decode_draft_tokens_cpu[spec_sequence_masks_cpu].sum().item()
-                    == 0
-                )
-            if _r_empty:
+            # A batch whose rows all drafted nothing still has to run the
+            # speculative path: that is the only path that applies each row's
+            # accepted-token offset to the recurrent state. (upstream 0.32; r4 also
+            # skipped the spec path when every row drafted zero tokens)
+            if num_spec_decodes == 0:
                 num_spec_decodes = 0
                 spec_sequence_masks = None
                 spec_sequence_masks_cpu = None
@@ -337,9 +392,34 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                 )
 
         if spec_sequence_masks is None:
-            num_decodes, num_prefills, num_decode_tokens, num_prefill_tokens = (
-                split_decodes_and_prefills(m, decode_threshold=1)
+            # V2 already excludes prefills from full decode graphs via
+            # has_prefill. Classify first chunks as prefills to mask recycled
+            # state; resumed one-token chunks can still use the decode kernels.
+            assert m.seq_lens_cpu_upper_bound is not None
+            query_lens_cpu = query_start_loc_cpu.diff()
+            no_prior_state = (query_lens_cpu > 0) & (
+                m.seq_lens_cpu_upper_bound <= query_lens_cpu
             )
+            # Capture batches also have seq_len == query_len, but are not
+            # prefills.
+            if m.is_prefilling is not None:
+                no_prior_state &= m.is_prefilling
+            else:
+                no_prior_state = torch.zeros_like(no_prior_state)
+            num_decodes, num_prefills, num_decode_tokens, num_prefill_tokens = (
+                split_decodes_and_prefills(
+                    m.replace(is_prefilling=no_prior_state),
+                    decode_threshold=1,
+                    treat_short_extends_as_decodes=False,
+                )
+            )
+            # Exclude trailing padding from both prefill counts.
+            if num_prefills:
+                num_prefills -= int((query_lens_cpu[num_decodes:] == 0).sum())
+                num_prefill_tokens = (
+                    int(query_start_loc_cpu[num_decodes + num_prefills])
+                    - num_decode_tokens
+                )
             num_spec_decode_tokens = 0
             spec_token_indx = None
             non_spec_token_indx = None
@@ -354,10 +434,17 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             assert spec_sequence_masks_cpu is not None
             non_spec_sequence_masks_cpu = ~spec_sequence_masks_cpu
             query_lens_cpu = query_start_loc_cpu[1:] - query_start_loc_cpu[:-1]
+            spec_query_lens_cpu = query_lens_cpu[spec_sequence_masks_cpu]
+            if spec_query_lens_cpu.numel() > 0:
+                first_spec_sequence_length = int(spec_query_lens_cpu[0])
+                if first_spec_sequence_length > 0 and bool(
+                    torch.all(spec_query_lens_cpu == first_spec_sequence_length)
+                ):
+                    uniform_spec_sequence_length = first_spec_sequence_length
 
             # Use CPU tensors to avoid CPU-GPU sync
             if _r_np:
-                # --- RADIANCE: same integers, one numpy pass. `size` is the numpy
+                # --- PAITON: same integers, one numpy pass. `size` is the numpy
                 # spelling of `size(0)` for these 1-D per-request vectors.
                 # non_spec_sequence_masks_cpu is left as a tensor above: unlike
                 # non_spec_query_lens_cpu it escapes this block and indexes torch
@@ -403,13 +490,13 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                     num_spec_decodes * (self.num_spec + 1),
                     query_start_loc_cpu[-1].item(),
                 )
-                if _RADIANCE_GDN_META:
-                    # --- RADIANCE: both of these depend only on their length and are
+                if _PAITON_RT_GDN_META:
+                    # --- PAITON: both of these depend only on their length and are
                     # read once, by the copy_ into the persistent buffers below.
-                    spec_token_indx = _radiance_arange(
+                    spec_token_indx = _paiton_arange(
                         self, spec_token_size, query_start_loc.device
                     )
-                    non_spec_token_indx = _radiance_empty_idx(
+                    non_spec_token_indx = _paiton_empty_idx(
                         self, query_start_loc.device
                     )
                 else:
@@ -421,27 +508,12 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                     non_spec_token_indx = torch.empty(
                         0, dtype=torch.int32, device=query_start_loc.device
                     )
-                # Filter by spec_sequence_masks to exclude padded sequences
-                # --- RADIANCE: when every sequence is a spec decode the mask selects
-                # every row, so a slice carries the same values without the gather.
-                # Only taken when the cudagraph branch below will consume it, since
-                # that consumer is a copy_ and a strided source is fine there.
-                if (
-                    _RADIANCE_GDN_META
-                    and _r_np
-                    and self.use_full_cuda_graph
-                    and num_spec_decodes <= self.decode_cudagraph_max_bs
-                    and num_spec_decode_tokens <= self.decode_cudagraph_max_bs
-                    and bool(_mask_np.all())
-                ):
-                    spec_state_indices_tensor = block_table_tensor[
-                        : _mask_np.size, : self.num_spec + 1
-                    ]
-                    _rad_mask_all = True
-                else:
-                    spec_state_indices_tensor = block_table_tensor[
-                        spec_sequence_masks_cpu, : self.num_spec + 1
-                    ]
+                # Padded sequences trail the spec decodes, so slice them off
+                # rather than gather with the host mask (an H2D copy + a kernel).
+                # (upstream 0.32; replaces r4's PAITON mask-all slice, so _rad_mask_all stays False)
+                spec_state_indices_tensor = block_table_tensor[
+                    :num_spec_decodes, : self.num_spec + 1
+                ]
                 non_spec_state_indices_tensor = None
                 # Padded sequences are always at the back, so the first
                 # num_spec_decodes + 1 entries of query_start_loc already
@@ -498,13 +570,17 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                 )
 
             assert num_accepted_tokens is not None
-            num_accepted_tokens = num_accepted_tokens[spec_sequence_masks_cpu]
+            if num_prefills == 0 and num_decodes == 0:
+                num_accepted_tokens = num_accepted_tokens[:num_spec_decodes]
+            else:
+                num_accepted_tokens = num_accepted_tokens[spec_sequence_masks_cpu]
 
         chunk_indices: torch.Tensor | None = None
         chunk_offsets: torch.Tensor | None = None
         prefill_query_start_loc: torch.Tensor | None = None
         prefill_state_indices: torch.Tensor | None = None
         prefill_has_initial_state: torch.Tensor | None = None
+        aiter_prefill_metadata: object | None = None
         if num_prefills > 0:
             # In a mixed non-spec batch, decodes are peeled off to the recurrent
             # kernel (decode-first front slice), so build chunk metadata from the
@@ -526,11 +602,23 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
                 prefill_query_start_loc_cpu = non_spec_query_start_loc_cpu
                 prefill_state_indices = non_spec_state_indices_tensor
 
-            chunk_indices, chunk_offsets = self._build_chunk_metadata(
-                prefill_query_start_loc,
-                prefill_query_start_loc_cpu,
-                query_start_loc.device,
-            )
+            if self.gdn_prefill_backend == "aiter_flydsl":
+                # AITER carries its own reusable varlen metadata and has no use
+                # for FLA's chunk indices, so it replaces them rather than
+                # extending what _build_chunk_metadata returns.
+                assert prefill_query_start_loc_cpu is not None
+                aiter_prefill_metadata = (
+                    rocm_aiter_ops.build_gdn_flydsl_prefill_metadata(
+                        torch.diff(prefill_query_start_loc_cpu).tolist(),
+                        cu_seqlens=prefill_query_start_loc,
+                    )
+                )
+            else:
+                chunk_indices, chunk_offsets = self._build_chunk_metadata(
+                    prefill_query_start_loc,
+                    prefill_query_start_loc_cpu,
+                    query_start_loc.device,
+                )
 
         if num_prefills > 0:
             context_lens_tensor = m.compute_num_computed_tokens()
@@ -551,6 +639,13 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         else:
             has_initial_state = None
 
+        checkpoint: MambaPrefillCheckpointMetadata | None = None
+        if num_prefills > 0:
+            request_rows = list(range(m.num_reqs))
+            if spec_sequence_masks_cpu is not None:
+                request_rows = (~spec_sequence_masks_cpu).nonzero().flatten().tolist()
+            checkpoint = self.checkpoint_builder.build(m, request_rows)
+
         # Function code counted on either presency non-spec decode or spec decode,
         # but not both.
         assert not (num_decodes > 0 and num_spec_decodes > 0), (
@@ -562,12 +657,8 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         # metadata below is indexed by request.
         batch_size = m.num_reqs
 
-        if (
-            self.use_full_cuda_graph
-            and num_prefills == 0
-            and num_decodes == 0
-            and num_spec_decodes <= self.decode_cudagraph_max_bs
-            and num_spec_decode_tokens <= self.decode_cudagraph_max_bs
+        if self._stage_spec_decode(
+            num_prefills, num_decodes, num_spec_decodes, num_spec_decode_tokens
         ):
             assert spec_sequence_masks is not None
             self.spec_state_indices_tensor[:num_spec_decodes].copy_(
@@ -609,12 +700,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             num_accepted_tokens[num_spec_decodes:].fill_(1)
             _rad_fastpath = True
 
-        if (
-            self.use_full_cuda_graph
-            and num_prefills == 0
-            and num_spec_decodes == 0
-            and num_decodes <= self.decode_cudagraph_max_bs
-        ):
+        if self._stage_decode(num_prefills, num_decodes, num_spec_decodes):
             self.non_spec_state_indices_tensor[:num_decodes].copy_(
                 non_spec_state_indices_tensor, non_blocking=True
             )
@@ -631,7 +717,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             non_spec_query_start_loc[num_decodes + 1 :].fill_(non_spec_num_query_tokens)
 
         attn_metadata = GDNAttentionMetadata(
-            radiance_stash_indices=(block_table_tensor[:, 1] if self._rad_lazy else None),  # radiance lazy gdn
+            paiton_stash_indices=(block_table_tensor[:, 1] if self._rad_lazy else None),  # paiton lazy gdn
             num_prefills=num_prefills,
             num_prefill_tokens=num_prefill_tokens,
             num_decodes=num_decodes,
@@ -639,34 +725,38 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             num_spec_decodes=num_spec_decodes,
             num_spec_decode_tokens=num_spec_decode_tokens,
             num_actual_tokens=m.num_actual_tokens,
+            checkpoint=checkpoint,
             has_initial_state=has_initial_state,
             chunk_indices=chunk_indices,
             chunk_offsets=chunk_offsets,
             prefill_query_start_loc=prefill_query_start_loc,
             prefill_state_indices=prefill_state_indices,
             prefill_has_initial_state=prefill_has_initial_state,
+            aiter_prefill_metadata=aiter_prefill_metadata,
             spec_query_start_loc=spec_query_start_loc,
             non_spec_query_start_loc=non_spec_query_start_loc,
             spec_state_indices_tensor=spec_state_indices_tensor,
             non_spec_state_indices_tensor=non_spec_state_indices_tensor,
             spec_sequence_masks=spec_sequence_masks,
+            spec_sequence_masks_cpu=spec_sequence_masks_cpu,
             spec_token_indx=spec_token_indx,
             non_spec_token_indx=non_spec_token_indx,
             num_accepted_tokens=num_accepted_tokens,
+            uniform_spec_sequence_length=uniform_spec_sequence_length,
             nums_dict=nums_dict,
             batch_ptr=batch_ptr,
             token_chunk_offset_ptr=token_chunk_offset_ptr,
         )
-        # radiance (patch_gdn_shared_build.py): make this build reusable by the step's
+        # paiton (patch_gdn_shared_build.py): make this build reusable by the step's
         # remaining GDN groups. Only the steady spec-decode cudagraph shape qualifies.
         if (
-            _radiance_shared is not None
-            and not _radiance_shared
+            _paiton_shared is not None
+            and not _paiton_shared
             and _rad_fastpath
             and num_prefills == 0
             and num_decodes == 0
         ):
-            _radiance_shared.update(
+            _paiton_shared.update(
                 kind="spec_fast", md=attn_metadata, nsd=num_spec_decodes,
                 mask_all=_rad_mask_all,
                 mask_rows=(spec_sequence_masks_cpu.numel()
@@ -679,11 +769,95 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
             )
         return attn_metadata
 
+    def _stage_spec_decode(
+        self,
+        num_prefills: int,
+        num_decodes: int,
+        num_spec_decodes: int,
+        num_spec_decode_tokens: int,
+    ) -> bool:
+        """Whether spec-decode metadata goes into the FULL cudagraph buffers."""
+        return (
+            self.use_full_cuda_graph
+            and num_prefills == 0
+            and num_decodes == 0
+            and num_spec_decodes <= self.decode_cudagraph_max_bs
+            and num_spec_decode_tokens <= self.decode_cudagraph_max_bs
+        )
+
+    def _stage_decode(
+        self, num_prefills: int, num_decodes: int, num_spec_decodes: int
+    ) -> bool:
+        """Whether decode metadata goes into the FULL cudagraph buffers."""
+        return (
+            self.use_full_cuda_graph
+            and num_prefills == 0
+            and num_spec_decodes == 0
+            and num_decodes <= self.decode_cudagraph_max_bs
+        )
+
+    def update_block_table(
+        self,
+        metadata: GDNAttentionMetadata,
+        blk_table: torch.Tensor,
+        slot_mapping: torch.Tensor,
+    ) -> GDNAttentionMetadata:
+        """Re-gather this group's state indices. The other fields are
+        batch-level and stay shared with ``metadata``."""
+        m = metadata
+        checkpoint = (
+            m.checkpoint.regather_state_indices(blk_table)
+            if m.checkpoint is not None
+            else None
+        )
+        if self.vllm_config.cache_config.mamba_cache_mode == "align":
+            assert self.mamba_aligned_state_indices is not None
+            blk_table = self.mamba_aligned_state_indices
+        masks = m.spec_sequence_masks_cpu
+        spec_indices = non_spec_indices = prefill_indices = None
+        if masks is None:
+            non_spec_indices = blk_table[:, 0]
+            if m.num_prefills > 0:
+                prefill_indices = non_spec_indices[m.num_decodes :]
+        elif m.num_prefills == 0:
+            # Same as build(): padded sequences trail the spec decodes.
+            spec_indices = blk_table[: m.num_spec_decodes, : self.num_spec + 1]
+        else:
+            spec_indices = blk_table[masks, : self.num_spec + 1]
+            non_spec_indices = prefill_indices = blk_table[~masks, 0]
+
+        if self._stage_spec_decode(
+            m.num_prefills, m.num_decodes, m.num_spec_decodes, m.num_spec_decode_tokens
+        ):
+            assert m.spec_state_indices_tensor is not None
+            batch_size = m.spec_state_indices_tensor.shape[0]
+            self.spec_state_indices_tensor[: m.num_spec_decodes].copy_(
+                spec_indices, non_blocking=True
+            )
+            spec_indices = self.spec_state_indices_tensor[:batch_size]
+            spec_indices[m.num_spec_decodes :].fill_(NULL_BLOCK_ID)
+
+        if self._stage_decode(m.num_prefills, m.num_decodes, m.num_spec_decodes):
+            assert m.non_spec_state_indices_tensor is not None
+            batch_size = m.non_spec_state_indices_tensor.shape[0]
+            self.non_spec_state_indices_tensor[: m.num_decodes].copy_(
+                non_spec_indices, non_blocking=True
+            )
+            non_spec_indices = self.non_spec_state_indices_tensor[:batch_size]
+            non_spec_indices[m.num_decodes :].fill_(NULL_BLOCK_ID)
+
+        return replace(
+            m,
+            spec_state_indices_tensor=spec_indices,
+            non_spec_state_indices_tensor=non_spec_indices,
+            prefill_state_indices=prefill_indices,
+            checkpoint=checkpoint,
+        )
+
     def build_for_cudagraph_capture(
         self, common_attn_metadata: CommonAttentionMetadata
     ):
-        """
-        This method builds the metadata for full cudagraph capture.
+        """This method builds the metadata for full cudagraph capture.
         Currently, only decode is supported for full cudagraphs with Mamba.
         """
         m = common_attn_metadata
@@ -700,6 +874,7 @@ class GDNAttentionMetadataBuilder(AttentionMetadataBuilder[GDNAttentionMetadata]
         )
 
         num_accepted_tokens = torch.diff(m.query_start_loc)
-        num_decode_draft_tokens_cpu = (num_accepted_tokens - 1).cpu()
+        num_decode_draft_tokens_cpu = torch.diff(m.query_start_loc_cpu).sub_(1)
+        assert num_decode_draft_tokens_cpu.shape == num_accepted_tokens.shape
 
         return self.build(0, m, num_accepted_tokens, num_decode_draft_tokens_cpu)

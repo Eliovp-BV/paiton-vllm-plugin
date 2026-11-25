@@ -2,7 +2,7 @@
 
 Both GHCR images are published and their immutable pulls are verified. Digests, profile hashes and publication records are in [runtime.agentic-v1.1.0.lock.json](runtime.agentic-v1.1.0.lock.json).
 
-These images run the pinned Qwen3.8-27B MXFP4 target and compatible DFlash2 through regular vLLM and the Paiton plugin on one Radeon AI PRO R9700 with 32 GB VRAM. They contain the unchanged native runtime from v1.0.0. End users need no Paiton compiler or separate Radiance distribution.
+These images run the pinned Qwen3.8-27B MXFP4 target and compatible DFlash2 through regular vLLM and the Paiton plugin on one Radeon AI PRO R9700 with 32 GB VRAM. They contain the unchanged native runtime from v1.0.0. End users need no Paiton compiler or separate reference-engine distribution.
 
 The new defaults select Qwen XML tool-call parsing, the Qwen reasoning parser and thinking disabled. Individual requests can enable thinking with `chat_template_kwargs: {"enable_thinking": true}`. Model weights are downloaded from the original pinned repositories and hash-verified; they are not bundled in the image.
 

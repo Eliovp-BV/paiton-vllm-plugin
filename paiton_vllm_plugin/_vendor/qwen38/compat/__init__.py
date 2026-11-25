@@ -19,10 +19,10 @@ def register():
     # Invoke the original hook; fail closed if its outer initialization raises.
     # The deployment pins the complete qualified external runtime and providers.
     try:
-        import radiance_kernels
-        radiance_kernels.install_all()
+        import paiton_kernels
+        paiton_kernels.install_all()
     except Exception as exc:
-        sys.stderr.write(f"[radiance] install_all failed: {exc!r}\n")
+        sys.stderr.write(f"[paiton] install_all failed: {exc!r}\n")
         raise RuntimeError("external runtime compatibility initialization failed") from exc
     if provider == "qk_norm":
         from paiton_vllm_plugin.runtime_native_qk import install

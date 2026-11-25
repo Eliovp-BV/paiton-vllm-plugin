@@ -22,9 +22,9 @@ SPEC.loader.exec_module(launcher)
 
 # Runs inside the image with python3 -I -S: no site packages, so no .pth hook and no import of the policy.
 CHECK = r'''
-import ast, hashlib, json
+import ast, hashlib, json, sysconfig
 from pathlib import Path
-DP = Path('/usr/local/lib/python3.12/dist-packages')
+DP = Path(sysconfig.get_paths()['purelib'])   # python3.12 on the vLLM 0.29 images, python3.14 on 0.32
 POLICY = DP / 'paiton_ngram_codraft_policy.py'
 if not POLICY.exists():
     print(json.dumps({'absent': True})); raise SystemExit
@@ -63,6 +63,10 @@ def unavailable(reason):
 
 def test_ngram_policy_pins_match_the_pinned_image():
     image = pinned_image()
+    if image.partition('@')[0].endswith(launcher.UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+        # the vLLM 0.32 images carry the 0.29 adapter unported; the launcher does not pass the switch on and says so
+        # (test_qwen38_rocm10_launcher: test_ngram_codraft_forwarded_only_when_set_on_host)
+        pytest.xfail(f'{image}: n-gram co-drafting is not offered on the vLLM 0.32 images')
     if shutil.which('docker') is None:
         unavailable('docker is not installed')
     if subprocess.run(['docker', 'image', 'inspect', image], capture_output=True).returncode != 0:

@@ -224,7 +224,7 @@
     "Update p50 is the median streamed-update gap, not per-token latency or TTFT.",
     "Sampled output content and accepted-token work can differ; these are serving-throughput measurements, not identical-output timing.",
     "Nominal prefill depths correspond to median actual prompt lengths 1516.5, 5894.5, 11802, 23549.5 and 47016.5.",
-    "GGZ comparison values are historical references from the previous post; GGZ was not rerun."
+    "Reference-backend comparison values are historical references from the previous post; the reference backend was not rerun."
   ],
   "published_image": {
     "tag": "ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-65k-20260920-r2",

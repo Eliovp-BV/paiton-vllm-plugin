@@ -947,7 +947,7 @@
     }
   ],
   "evidence": {
-    "run": "radiance-dflash2-final-bounded-493",
+    "run": "refengine-dflash2-final-bounded-493",
     "original_sha256": "63046590e282eced26fc95bb88a812d48b733e3b58f0a1d54c04633bf097fbb9",
     "omitted": "Environment inventory only; all measured timing samples and result fields retained"
   }

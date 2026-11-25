@@ -1,6 +1,6 @@
 # BetterBench comparison methodology
 
-These measurements compare two complete serving stacks on one **AMD Radeon AI PRO R9700, 32 GB VRAM**, with **16 GB host RAM**, on 16 September 2026. Servers ran sequentially. The headline comparison uses the Paiton release repeat and the stronger GGZ14 repeat with matched HIP settings and reused compilation caches. All four runs remain available in [data](data/) and [reports](reports/).
+These measurements compare two complete serving stacks on one **AMD Radeon AI PRO R9700, 32 GB VRAM**, with **16 GB host RAM**, on 16 September 2026. Servers ran sequentially. The headline comparison uses the Paiton release repeat and the stronger reference-backend repeat with matched HIP settings and reused compilation caches. All four runs remain available in [data](data/) and [reports](reports/).
 
 ## Models and serving settings
 
@@ -13,9 +13,9 @@ Both stacks load the same original target and drafter files, tokenizer and chat 
 
 Both use tensor parallelism 1, an 8,192-token context limit, seven speculative tokens, unpadded draft batches, FP8 KV, at most eight sequences, 4,096-token prefill chunks, synchronous scheduling and disabled prefix caching. Both allocate **5 GiB to cache**. Identical checkpoint storage does not imply identical runtime arithmetic: attention implementations and draft policies differ.
 
-Paiton uses its published image with vLLM `0.28.0+rocm723`; the GGZ14 stack uses vLLM `0.27.1` and repository revision `92eed82fcbb1cca31f7a9108c6371a0bba647ee2`. Effective graph modes are respectively `FULL_DECODE_ONLY` and `FULL_AND_PIECEWISE`. [Provenance](provenance.json) pins the images, source and libr4d revision. This is a serving-stack comparison, not an isolated kernel experiment.
+Paiton uses its published image with vLLM `0.28.0+rocm723`; the reference-backend stack uses vLLM `0.27.1` and repository revision `92eed82fcbb1cca31f7a9108c6371a0bba647ee2`. Effective graph modes are respectively `FULL_DECODE_ONLY` and `FULL_AND_PIECEWISE`. [Provenance](provenance.json) pins the images, source and the reference kernel library revision. This is a serving-stack comparison, not an isolated kernel experiment.
 
-The stronger GGZ repeat adds the four HIP settings used by Paiton: `DEBUG_HIP_DYNAMIC_QUEUES=0`, `HIP_FORCE_DEV_KERNARG=1`, `HSA_NO_SCRATCH_RECLAIM=1` and `HSA_ENABLE_IPC_MODE_LEGACY=1`. It also reuses compilation caches. Its improvement cannot establish any individual flag's causal effect. Some first-use framework compilation warnings remained in both repeated runs; this is not a fully warmed sustained-load qualification.
+The stronger reference-backend repeat adds the four HIP settings used by Paiton: `DEBUG_HIP_DYNAMIC_QUEUES=0`, `HIP_FORCE_DEV_KERNARG=1`, `HSA_NO_SCRATCH_RECLAIM=1` and `HSA_ENABLE_IPC_MODE_LEGACY=1`. It also reuses compilation caches. Its improvement cannot establish any individual flag's causal effect. Some first-use framework compilation warnings remained in both repeated runs; this is not a fully warmed sustained-load qualification.
 
 ## Workload and measurements
 
@@ -36,9 +36,9 @@ BetterBench defines the reported metrics as follows:
 
 ## Capacity, completeness and limits
 
-Equal cache bytes produce different capacities: startup reports **74,430 tokens for Paiton and 25,746 for GGZ14**. These are allocator-reported figures, not a maximum-context stress test. [Allowlisted log excerpts](evidence/cache-log-excerpts.json) include the capacity lines and an initial GGZ run with three running requests and five waiting. Admission and memory efficiency contribute to the C8 aggregate/TTFT difference. Neither server was separately tuned for its maximum practical cache allocation.
+Equal cache bytes produce different capacities: startup reports **74,430 tokens for Paiton and 25,746 for the reference backend**. These are allocator-reported figures, not a maximum-context stress test. [Allowlisted log excerpts](evidence/cache-log-excerpts.json) include the capacity lines and an initial reference-backend run with three running requests and five waiting. Admission and memory efficiency contribute to the C8 aggregate/TTFT difference. Neither server was separately tuned for its maximum practical cache allocation.
 
-All **208 measured requests** completed successfully. This establishes request completeness, not answer quality. Two separate untimed, non-thinking smoke checks produced the expected arithmetic and JSON responses on both engines; [their evidence](evidence/) is only a basic output check. Timed serial generations hit the length cap in **15/16 Paiton and 14/16 GGZ** requests in the final pair. Completed-answer quality and distributional equivalence were not evaluated.
+All **208 measured requests** completed successfully. This establishes request completeness, not answer quality. Two separate untimed, non-thinking smoke checks produced the expected arithmetic and JSON responses on both engines; [their evidence](evidence/) is only a basic output check. Timed serial generations hit the length cap in **15/16 Paiton and 14/16 the reference backend** requests in the final pair. Completed-answer quality and distributional equivalence were not evaluated.
 
 Paiton's final result includes short-prompt TTFT regressions of 3.6–12.0% in five categories, C1/C2 median TTFT increases of 7.3%/11.0%, and C4/C8 per-request decode reductions of 3.1%/15.5%. [The complete comparison](COMPARISON.md) preserves these alongside the throughput gains. Small differences may be noise: this short, sequential screen supports descriptive comparisons, not confidence intervals, p99 conclusions or universal superiority.
 

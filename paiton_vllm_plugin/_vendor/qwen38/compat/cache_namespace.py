@@ -16,7 +16,7 @@ START_ONLY_SETTINGS = frozenset({'PAITON_START_READAHEAD', 'PAITON_START_WARMUP'
 def configure(root, manifest):
     root = Path(root)
     provider = os.environ.get('PAITON_RUNTIME_COMPAT_NATIVE_PROVIDER', 'off')
-    selected = {k: v for k, v in os.environ.items() if k.startswith('RADIANCE_')}
+    selected = {k: v for k, v in os.environ.items() if k.startswith('PAITON_RT_')}
     value = dict(compatibility=manifest, provider=provider, environment=selected,
                  build=os.environ.get('PAITON_RUNTIME_COMPAT_BUILD_ID', 'development'),
                  bootstrap=hashlib.sha256((root/'bootstrap.py').read_bytes()).hexdigest())
@@ -32,7 +32,7 @@ def configure(root, manifest):
     if os.environ.get('PAITON_COMPILE_CACHE', '0') == '1':
         # PAITON opt-in persistent compile cache: the W3 decode adapter disables vLLM's cache because a graph compiled
         # for one weight path could be reloaded into another. Key the namespace on every PAITON_ setting and on the
-        # installed runtime pieces (adapters, radiance modules, native libraries), so such a reload cannot happen.
+        # installed runtime pieces (adapters, paiton modules, native libraries), so such a reload cannot happen.
         value['paiton_env'] = {k: v for k, v in os.environ.items()
                                if k.startswith('PAITON_') and not k.startswith('PAITON_RUNTIME_COMPAT_CACHE')
                                and k not in START_ONLY_SETTINGS}
@@ -42,8 +42,8 @@ def configure(root, manifest):
                 for f in sorted(base.rglob('*') if base.name == 'paiton' else base.glob('*')):
                     if 'cache-seed' in f.parts:   # the shipped compile-cache seed is not a runtime piece
                         continue
-                    if f.is_file() and (base.name == 'paiton' or f.name.startswith(('paiton', 'radiance', 'r4d',
-                                                                                        'libr4d', 'zzz'))):
+                    if f.is_file() and (base.name == 'paiton' or f.name.startswith(('paiton', 'pdk',
+                                                                                        'libpdk', 'zzz'))):
                         st = f.stat()
                         listing.append((str(f), st.st_size, int(st.st_mtime)))
         value['paiton_runtime'] = hashlib.sha256(json.dumps(listing).encode()).hexdigest()

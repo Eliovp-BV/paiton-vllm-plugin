@@ -35,7 +35,7 @@ assert not any(x.split('.')[0] in {'torch','triton','vllm','paiton_runtime_compa
         env = {
             k: v
             for k, v in os.environ.items()
-            if not k.startswith(("PAITON_", "VLLM_", "RADIANCE_"))
+            if not k.startswith(("PAITON_", "VLLM_", "PAITON_RT_"))
         }
         env.update(
             PAITON_GPU_ARCH="gfx1201",

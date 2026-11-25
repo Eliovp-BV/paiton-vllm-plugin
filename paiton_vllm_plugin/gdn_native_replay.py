@@ -2,7 +2,7 @@
 
 This external adapter preserves stock convolution/prefill and tensor ownership.
 The separately compiled HIP artifact implements speculative recurrent updates,
-accepted-prefix replay and state transitions. No Radiance import is required.
+accepted-prefix replay and state transitions. No reference-engine import is required.
 """
 import ctypes
 from dataclasses import replace

@@ -2463,7 +2463,7 @@ z
    </g>
   </g>
   <g id="text_44">
-   <!-- The same one-GPU runs, including metrics that favor GGZ14 -->
+   <!-- The same one-GPU runs, including metrics that favor the reference backend -->
    <g style="fill: #51616e" transform="translate(70.56 62.214281) scale(0.11 -0.11)">
     <defs>
      <path id="DejaVuSans-6d" d="M 3328 2828
@@ -2619,7 +2619,7 @@ z
    </g>
   </g>
   <g id="text_45">
-   <!-- GGZ14 has lower TTFT at C1 and C2, and higher per-request decode at C4 and C8. -->
+   <!-- The reference backend has lower TTFT at C1 and C2, and higher per-request decode at C4 and C8. -->
    <g style="fill: #162d3b" transform="translate(80.64 505.6128) scale(0.11 -0.11)">
     <defs>
      <path id="DejaVuSans-Bold-47" d="M 4781 347
@@ -2832,7 +2832,7 @@ z
    </g>
   </g>
   <g id="text_46">
-   <!-- At C8, Paiton completes the batch faster despite GGZ14's higher per-request decode rate. -->
+   <!-- At C8, Paiton completes the batch faster despite the reference backend's higher per-request decode rate. -->
    <g style="fill: #51616e" transform="translate(80.64 526.5216) scale(0.11 -0.11)">
     <defs>
      <path id="DejaVuSans-41" d="M 2188 4044
@@ -3382,7 +3382,7 @@ z
    </g>
   </g>
   <g id="text_49">
-   <!-- Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched GGZ14 run shown. -->
+   <!-- Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched reference-backend run shown. -->
    <g style="fill: #51616e" transform="translate(70.56 603.1872) scale(0.095 -0.095)">
     <defs>
      <path id="DejaVuSans-3b" d="M 750 3309
@@ -3562,7 +3562,7 @@ z
 " style="fill: #d98520"/>
    </g>
    <g id="text_51">
-    <!-- GGZ14 current · HIP settings matched -->
+    <!-- Reference backend, HIP settings matched -->
     <g style="fill: #162d3b" transform="translate(232.171719 102.527081) scale(0.11 -0.11)">
      <use xlink:href="#DejaVuSans-47"/>
      <use xlink:href="#DejaVuSans-47" transform="translate(77.490234 0)"/>

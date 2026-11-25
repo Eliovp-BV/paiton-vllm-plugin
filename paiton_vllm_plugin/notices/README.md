@@ -4,8 +4,8 @@ These copies accompany the lightweight native CLI wheel. The Apache-2.0
 license for Paiton's public integration does not grant a blanket license to
 every third-party component or separate native execution artifact.
 
-- `Qwen-release-notices.md` retains Radiance/libr4d attribution and the
-  maintainer's recorded author-permission statement. Its historical AMD
+- `Qwen-release-notices.md` retains the model and framework attribution. Its
+  historical AMD
   checkpoint and draft entries do not describe the native CLI's non-speculative
   Unsloth NVFP4 profile. See the installed execution catalogue for that exact
   checkpoint, revision and released runtime provenance.

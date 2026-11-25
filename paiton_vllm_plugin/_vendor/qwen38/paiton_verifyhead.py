@@ -5,11 +5,11 @@ The decode profile of the shipped DFlash2 build shows exactly one 2.02 ms bf16 G
 124160 x 5120 per rank, 1.18 GiB, and it runs at 613 GB/s, i.e. at the DRAM roofline. As with the
 draft head, the only lever is bytes.
 
-radiance_drafthead already has the machinery -- an int2 coarse pass that emits the top KCAND of each
+paiton_drafthead already has the machinery -- an int2 coarse pass that emits the top KCAND of each
 64-wide block, and an exact rerank of the best RERANK of those against the untouched bf16 weight.
 This module points it at the target's LogitsProcessor as well. Because DFlash2 shares one lm_head
 between the drafter and the target, the packing is literally the same buffers (see _HEAD_CACHE in
-radiance_drafthead): arming this costs no additional VRAM.
+paiton_drafthead): arming this costs no additional VRAM.
 
 WHY THIS IS A DIFFERENT RISK CLASS FROM THE DRAFT HEAD, AND WHAT MAKES IT SAFE.
 
@@ -18,7 +18,7 @@ acceptance and cannot change what the model emits. This head IS the target. A to
 pass fails to surface is a token the model can no longer produce, so the approximation has to be
 exact over everything the sampler can actually consume.
 
-`_radiance_topk_only` makes the reranked set the ONLY eligible one (everything else is -inf), so a
+`_paiton_topk_only` makes the reranked set the ONLY eligible one (everything else is -inf), so a
 row carries exactly RERANK finite, exactly-scored entries. That is sufficient when, and only when,
 the sampler's support is a subset of those RERANK tokens:
 
@@ -50,7 +50,7 @@ drafted token outside the top_k set has target probability zero in the exact dis
 rejecting it is the correct outcome rather than an artefact -- provided the true top_k tokens are
 all present, which is the recall property the 4x margin buys and GSM8K gates.
 
-Off by default (`RADIANCE_VERIFY_HEAD=1`). Requires `RADIANCE_FAST_DRAFT=1`, which is what builds
+Off by default (`PAITON_RT_VERIFY_HEAD=1`). Requires `PAITON_RT_FAST_DRAFT=1`, which is what builds
 the int2 packing this reuses.
 """
 import os
@@ -60,12 +60,12 @@ import types
 import torch
 
 try:
-    import radiance_drafthead as _dh
+    import paiton_drafthead as _dh
 except Exception as e:                  # pragma: no cover
     _dh = None
-    sys.stderr.write(f"[radiance.verifyhead] radiance_drafthead unavailable: {e!r}\n")
+    sys.stderr.write(f"[paiton.verifyhead] paiton_drafthead unavailable: {e!r}\n")
 
-ENABLED = os.environ.get("RADIANCE_VERIFY_HEAD", "0") == "1"
+ENABLED = os.environ.get("PAITON_RT_VERIFY_HEAD", "0") == "1"
 # Rows above which the gate declines. NON-BINDING BY DEFAULT, deliberately.
 #
 # This knob was added at 32 because a BetterBench single pass showed conc 8 at -6.2%, and the theory
@@ -79,7 +79,7 @@ ENABLED = os.environ.get("RADIANCE_VERIFY_HEAD", "0") == "1"
 # All three overlap. There is no measured M at which this head loses -- even the isolated figures
 # have int2 at 1218 us against bf16's 2002 at M=64. So the cap does not bind, and it is kept only
 # because batches wider than 64 rows are untested here (max_num_seqs=8 x SPEC 7 + 1 is the ceiling).
-MAX_ROWS = int(os.environ.get("RADIANCE_VERIFY_HEAD_MAX_M", "4096"))
+MAX_ROWS = int(os.environ.get("PAITON_RT_VERIFY_HEAD_MAX_M", "4096"))
 
 # NO_LOGPROBS sentinel in vllm/v1/worker/gpu/sample/states.py.
 _NO_LOGPROBS = -1
@@ -115,18 +115,18 @@ def _all_zero_weight_bounded(weight):
     # Optional one-time original allocation probe: establish an OOM rather
     # than infer one from the upstream runner's otherwise silent fallback.
     global _original_zero_check_attempted
-    if (os.environ.get("RADIANCE_VERIFY_HEAD_INIT_TRY_ORIGINAL", "0") == "1"
+    if (os.environ.get("PAITON_RT_VERIFY_HEAD_INIT_TRY_ORIGINAL", "0") == "1"
             and not _original_zero_check_attempted):
         _original_zero_check_attempted = True
         try:
             result = float(weight.data.abs().max()) == 0.0
-            sys.stderr.write("[radiance.verifyhead] ORIGINAL_ZERO_CHECK_OK: zero="
+            sys.stderr.write("[paiton.verifyhead] ORIGINAL_ZERO_CHECK_OK: zero="
                              + str(result) + "\n")
             sys.stderr.flush()
             return result
         except torch.OutOfMemoryError as error:
             import traceback
-            sys.stderr.write("[radiance.verifyhead] ORIGINAL_ZERO_CHECK_OOM: "
+            sys.stderr.write("[paiton.verifyhead] ORIGINAL_ZERO_CHECK_OOM: "
                              + repr(error) + "\n")
             traceback.print_exc(file=sys.stderr)
             sys.stderr.flush()
@@ -143,41 +143,41 @@ def _arm(model):
     lp, lm_head = _find_target_lp(model)
     if lp is None:
         _state["failed"] = True
-        sys.stderr.write("[radiance.verifyhead] no (lm_head, logits_processor) pair found; off\n")
+        sys.stderr.write("[paiton.verifyhead] no (lm_head, logits_processor) pair found; off\n")
         return
     w = getattr(lm_head, "weight", None)
     if w is None or w.dim() != 2 or _all_zero_weight_bounded(w):
         _state["failed"] = True
-        sys.stderr.write("[radiance.verifyhead] target lm_head not a live 2-D weight; off\n")
+        sys.stderr.write("[paiton.verifyhead] target lm_head not a live 2-D weight; off\n")
         return
 
     # The exact path we fall back to. Bind it BEFORE _quantize_head_now replaces _apply_head, and
     # take it off the class rather than the instance so it is the untouched implementation.
     exact = types.MethodType(type(lp)._apply_head, lp)
 
-    lp._radiance_topk_only = True
+    lp._paiton_topk_only = True
     status = _dh._quantize_head_now(lp, lm_head)
-    if not hasattr(lp, "_radiance_wq"):
+    if not hasattr(lp, "_paiton_wq"):
         _state["failed"] = True
-        sys.stderr.write(f"[radiance.verifyhead] quantisation declined: {status}; off\n")
+        sys.stderr.write(f"[paiton.verifyhead] quantisation declined: {status}; off\n")
         return
 
     fast = lp._apply_head                    # the int2 path _quantize_head_now just bound
-    lp._radiance_exact_head = exact
-    lp._radiance_fast_head = fast
-    lp._radiance_fast_ok = False
+    lp._paiton_exact_head = exact
+    lp._paiton_fast_head = fast
+    lp._paiton_fast_ok = False
     lp._apply_head = types.MethodType(_apply_head_gated, lp)
     _state["lp"] = lp
     _state["armed"] = True
-    sys.stderr.write(f"[radiance.verifyhead] VERIFY_HEAD: {status} "
+    sys.stderr.write(f"[paiton.verifyhead] VERIFY_HEAD: {status} "
                      f"(max top_k {_dh.RERANK // 4}, exact fallback otherwise)\n")
     sys.stderr.flush()
 
 
 def _apply_head_gated(self, lm_head, hidden_states, embedding_bias=None):
-    if getattr(self, "_radiance_fast_ok", False):
-        return self._radiance_fast_head(lm_head, hidden_states, embedding_bias)
-    return self._radiance_exact_head(lm_head, hidden_states, embedding_bias)
+    if getattr(self, "_paiton_fast_ok", False):
+        return self._paiton_fast_head(lm_head, hidden_states, embedding_bias)
+    return self._paiton_exact_head(lm_head, hidden_states, embedding_bias)
 
 
 def _batch_is_safe(runner, input_batch, grammar_output) -> bool:
@@ -232,10 +232,10 @@ def before_compute_logits(runner, input_batch, grammar_output) -> None:
         if not _state["armed"]:
             return
     ok = _batch_is_safe(runner, input_batch, grammar_output)
-    _state["lp"]._radiance_fast_ok = ok
+    _state["lp"]._paiton_fast_ok = ok
     _state["fast" if ok else "slow"] += 1
     if not _state["reported"] and _state["fast"] + _state["slow"] == 200:
         _state["reported"] = True
-        sys.stderr.write(f"[radiance.verifyhead] first 200 steps: {_state['fast']} on the int2 "
+        sys.stderr.write(f"[paiton.verifyhead] first 200 steps: {_state['fast']} on the int2 "
                          f"head, {_state['slow']} fell back to bf16\n")
         sys.stderr.flush()

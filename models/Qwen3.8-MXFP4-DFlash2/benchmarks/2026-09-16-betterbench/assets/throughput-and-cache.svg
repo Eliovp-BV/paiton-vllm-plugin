@@ -767,7 +767,7 @@ z
     <g id="ytick_2">
      <g id="line2d_12"/>
      <g id="text_8">
-      <!-- GGZ14 -->
+      <!-- The reference backend -->
       <g style="fill: #51616e" transform="translate(45.140937 308.323903) scale(0.11 -0.11)">
        <defs>
         <path id="DejaVuSans-47" d="M 3809 666
@@ -2902,7 +2902,7 @@ z
     <g id="ytick_14">
      <g id="line2d_50"/>
      <g id="text_56">
-      <!-- GGZ14 -->
+      <!-- The reference backend -->
       <g style="fill: #51616e" transform="translate(538.365765 607.523903) scale(0.11 -0.11)">
        <use xlink:href="#DejaVuSans-47"/>
        <use xlink:href="#DejaVuSans-47" transform="translate(77.490234 0)"/>
@@ -3853,7 +3853,7 @@ z
    </g>
   </g>
   <g id="text_66">
-   <!-- Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched GGZ14 run shown. -->
+   <!-- Short sampled screen; no statistical significance or quality claim. Stronger HIP-matched reference-backend run shown. -->
    <g style="fill: #51616e" transform="translate(70.56 761.112) scale(0.095 -0.095)">
     <defs>
      <path id="DejaVuSans-3b" d="M 750 3309
@@ -4031,7 +4031,7 @@ z
 " style="fill: #d98520"/>
    </g>
    <g id="text_68">
-    <!-- GGZ14 current · HIP settings matched -->
+    <!-- Reference backend, HIP settings matched -->
     <g style="fill: #162d3b" transform="translate(232.171719 111.714281) scale(0.11 -0.11)">
      <use xlink:href="#DejaVuSans-47"/>
      <use xlink:href="#DejaVuSans-47" transform="translate(77.490234 0)"/>

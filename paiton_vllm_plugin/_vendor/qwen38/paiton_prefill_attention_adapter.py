@@ -3,7 +3,7 @@ import ctypes as C
 import functools,hashlib,importlib.abc,json,os,sys
 from pathlib import Path
 from paiton_prefill_attention_policy import Policy
-TARGET='radiance_r4d_attn'
+TARGET='paiton_pdk_attn'
 class Args(C.Structure):
  _fields_=[(n,C.c_void_p) for n in ('q','kv','block_table','seqused_k','out','k_descale','v_descale','q_descale','scratch')]+[(n,C.c_int) for n in ('num_seqs','q_len','q_heads','kv_heads','head_dim','block_size','max_blocks')]+[('kv_block_stride',C.c_long),('kv_head_stride',C.c_long),('scale',C.c_float),('splits',C.c_int),('max_ctx',C.c_int)]
 def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
@@ -18,7 +18,7 @@ def bind(backend):
  if m['version']!=policy.version or m['arch']!='gfx1201' or m['fp8_mode']!=3 or m['kv_tile']!=96:raise RuntimeError('Attention contract changed')
  import paiton_prefill_attention_policy as policy_module
  if sha(policy_module.__file__)!=m['policy_sha256']:raise RuntimeError('Attention policy changed')
- if sha(backend.__file__)!=external['backend_sha256'] or sha(backend.r4d.__file__)!=external['r4d_sha256']:raise RuntimeError('Attention reference changed')
+ if sha(backend.__file__)!=external['backend_sha256'] or sha(backend.pdk.__file__)!=external['pdk_sha256']:raise RuntimeError('Attention reference changed')
  if sha(root/m['file'])!=m['sha256']:raise RuntimeError('Attention artifact changed')
  mode=os.RTLD_NOW|os.RTLD_LOCAL|getattr(os,'RTLD_DEEPBIND',0)
  lib=C.CDLL(str(root/m['file']),mode=mode);lib.paiton_prefill_attention_abi_size.restype=C.c_size_t
@@ -64,13 +64,13 @@ def bind(backend):
   # The pinned builder already allocates its GPU scratch at construction.
   # Initialize diagnostic counters there, outside capture even with warm AOT
   # caches that can skip the first eager model execution.
-  builder_init=backend.R4DAttentionMetadataBuilder.__init__
+  builder_init=backend.PDKAttentionMetadataBuilder.__init__
   @functools.wraps(builder_init)
   def initialize_builder(self,*args,**kwargs):
    result=builder_init(self,*args,**kwargs)
    initialize(backend.torch.cuda.current_stream().cuda_stream)
    return result
-  backend.R4DAttentionMetadataBuilder.__init__=initialize_builder
+  backend.PDKAttentionMetadataBuilder.__init__=initialize_builder
   # Initialize counters on the first GPU attention call, before graph capture,
   # even when startup only executes decode and contains no eligible prefill.
   decode=backend._DECODE[0]

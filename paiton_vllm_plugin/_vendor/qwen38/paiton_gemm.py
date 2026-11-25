@@ -1,7 +1,7 @@
-"""RADIANCE skinny bf16 GEMM dispatch. Routes small unquantized projections to the R4D gfx1201
+"""PAITON skinny bf16 GEMM dispatch. Routes small unquantized projections to the PDK gfx1201
 kernel `gemm_bf16_nt_m64` (C[M,N] = x[M,K] @ W[N,K]^T, one 16x16x16 WMMA per row tile per 16 of K,
 split-K reduced in LDS) from vLLM's ROCm unquantized-linear chokepoint. Enabled with the rest of the
-library by RADIANCE_USE_R4D.
+library by PAITON_RT_USE_PDK.
 
 Two shapes qualify on this box, and they are the same problem twice: a projection whose weight is
 under a megabyte, so rocBLAS lays it out as a handful of workgroups and leaves the GPU idle while
@@ -28,15 +28,15 @@ import sys
 
 import torch
 
-# RADIANCE_USE_R4D is the master switch for the whole libr4d integration (patch_r4d.py): with
+# PAITON_RT_USE_PDK is the master switch for the whole libpdk integration (patch_pdk.py): with
 # it off this module behaves exactly as it would in an image built without the library.
-USE_R4D = os.environ.get("RADIANCE_USE_R4D", "1") == "1"
-# RADIANCE_SKINNY_GEMM: 0 takes just this dispatch out without disabling the rest of the library,
+USE_PDK = os.environ.get("PAITON_RT_USE_PDK", "1") == "1"
+# PAITON_RT_SKINNY_GEMM: 0 takes just this dispatch out without disabling the rest of the library,
 # which is what an A/B of it against rocBLAS needs; "all" adds the shapes in _CFG_TAXED.
-_MODE = os.environ.get("RADIANCE_SKINNY_GEMM", "1")
-ENABLED = USE_R4D and _MODE != "0"
+_MODE = os.environ.get("PAITON_RT_SKINNY_GEMM", "1")
+ENABLED = USE_PDK and _MODE != "0"
 # Each distinct (N, K, M) this dispatch claims is logged once; a shape that never appears stayed on
-# the path it would have taken without R4D.
+# the path it would have taken without PDK.
 _seen: set = set()
 
 M_MIN = 6          # below this vLLM's own wvSplitK serves the shape
@@ -59,10 +59,10 @@ _CFG = {
 # splits, 20 splits) all land at 3.78-3.93, so it is not this particular rounding either: a
 # perturbation of the target's gates -- any perturbation, however small and however unbiased --
 # moves the hidden states the drafter was fitted to, and that loss is one-sided. The control is the
-# act-scale change in radiance_kernels, which alters the schedule but not one output bit and leaves
+# act-scale change in paiton_kernels, which alters the schedule but not one output bit and leaves
 # acceptance identical to the digit.
 #
-# RADIANCE_SKINNY_GEMM=all enables them anyway -- for a serve with no drafter, where the tax does
+# PAITON_RT_SKINNY_GEMM=all enables them anyway -- for a serve with no drafter, where the tax does
 # not exist, the step-time win is real.
 _CFG_TAXED = {
     # in_proj_ba. TP-sharded (the replicate-instead path upstream is gated on is_cuda()), so N is 48
@@ -82,7 +82,7 @@ _CFG_TAXED = {
     # 10240 at a bf16 ULP, and this drafter is ULP-sensitive. Whether that is a real tax or the
     # trajectory re-roll any numeric change buys (a change that alters the text lands anywhere in a
     # ~6% acceptance band on this stack) cannot be told apart without a paired acceptance harness,
-    # so these stay behind RADIANCE_SKINNY_GEMM=all with the other taxed shapes.
+    # so these stay behind PAITON_RT_SKINNY_GEMM=all with the other taxed shapes.
     (1280, 5120): (1, 8, 1),
     (256, 5120): (1, 8, 1),
 }
@@ -90,11 +90,11 @@ if _MODE == "all":
     _CFG.update(_CFG_TAXED)
 
 try:
-    import r4d as _r4d                     # the compiled R4D kernel library
+    import pdk as _pdk                     # the compiled PDK kernel library
 except Exception as e:                     # library missing or failed to load: stay on rocBLAS
-    _r4d = None
+    _pdk = None
     ENABLED = False
-    sys.stderr.write(f"[radiance.gemm] r4d import failed, disabled: {e!r}\n")
+    sys.stderr.write(f"[paiton.gemm] pdk import failed, disabled: {e!r}\n")
 
 _GEMM = None
 _M_MAX = 0
@@ -102,16 +102,16 @@ if ENABLED:
     # The entry point carries the shape it is compiled for, so ask the library which kernel it has
     # rather than naming one here. M=64 excludes the older dot2 kernel, whose accumulators cap it at
     # 16; None means this build predates the WMMA one and every shape below stays on the path it
-    # would have taken without R4D.
-    _name = _r4d.select("gemm_nt", M=64, K=5120, dtype="bf16")
+    # would have taken without PDK.
+    _name = _pdk.select("gemm_nt", M=64, K=5120, dtype="bf16")
     if _name is None:
         ENABLED = False
-        sys.stderr.write("[radiance.gemm] no gemm_nt kernel for M<=64 bf16, disabled\n")
+        sys.stderr.write("[paiton.gemm] no gemm_nt kernel for M<=64 bf16, disabled\n")
     else:
-        _GEMM = getattr(_r4d, _name)
-        _M_MAX = int(_r4d.GEMM64_MAX_M)
+        _GEMM = getattr(_pdk, _name)
+        _M_MAX = int(_pdk.GEMM64_MAX_M)
         sys.stderr.write(
-            "[radiance.gemm] skinny GEMM kernel ENABLED for M in [%d,%d]: %s\n"
+            "[paiton.gemm] skinny GEMM kernel ENABLED for M in [%d,%d]: %s\n"
             % (M_MIN, _M_MAX, ", ".join("%dx%d" % nk for nk in sorted(_CFG))))
 
 
@@ -137,7 +137,7 @@ def maybe_gemm(x: torch.Tensor, weight: torch.Tensor):
         return None
     if (n, k, m) not in _seen:
         _seen.add((n, k, m))
-        sys.stderr.write("[radiance.gemm] claimed N=%d K=%d M=%d  WV=%d SK=%d MB=%d\n"
+        sys.stderr.write("[paiton.gemm] claimed N=%d K=%d M=%d  WV=%d SK=%d MB=%d\n"
                          % (n, k, m, cfg[0], cfg[1], cfg[2]))
     c = torch.empty((m, n), device=x.device, dtype=torch.bfloat16)
     _GEMM(x2.data_ptr(), weight.data_ptr(), c.data_ptr(), m, k, n, cfg[0], cfg[1], cfg[2],

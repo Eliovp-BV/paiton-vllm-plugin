@@ -17,14 +17,17 @@ import time
 
 
 IMAGES = {
-    # The 23 November release (r5): the 19 November r4 image with prefix-cache hits that keep the previous prompt's tail
-    # in --mode long-kv4 (DFLASH_NO_DROP_IMAGE_SUFFIXES); everything else, the native libraries included, is r4's. Block
-    # verification of the drafted tokens as on r3 and r4 (SPEC_BLOCK_IMAGE_SUFFIXES). The previous release images
-    # (PREVIOUS_IMAGES) stay usable through --image with their previous behaviour.
-    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
+    # The 24 November release (r6): the r5 runtime on AMD's rocm/vllm image (ROCm 10.2, vLLM 0.32, Python 3.14; digest
+    # 380efeed), with the Paiton runtime names, 19 vLLM bookkeeping kernels in native HIP, prefix-cache hits without the
+    # EAGLE block drop in every text mode with the 4-bit cache (ALL_TEXT_NO_DROP_IMAGE_SUFFIXES) and its own
+    # compile-cache seed. Older images run with the launcher at OLDER_IMAGES_LAUNCHER_TAG.
+    '65k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm102-vllm032-20261124-r6@sha256:e96b59ecd4de5fd27859469f99e2d90393561dcfcd53ccdd197d87bc6f10555a',
     '200k': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-200k-20260918-r2@sha256:32dab97330ea84b86967537d25f91878c30f21ff844f71369508c5a049b89178',
 }
 PREVIOUS_IMAGES = {
+    # the 23 November release (r5): r4 plus prefix-cache hits that keep the previous prompt's tail in --mode long-kv4;
+    # it reads the old runtime names, so it runs with the launcher at OLDER_IMAGES_LAUNCHER_TAG
+    '20261123-r5': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261123-r5@sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
     # the 19 November release (r4): r3 plus the n-gram co-drafting fix; each follow-up turn recomputes one more 800-token unit
     '20261119-r4': 'ghcr.io/eliovp/paiton-vllm-plugin:qwen38-rocm10-vllm029-20261119-r4@sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     # the 18 November release (r3): r2 plus faster native kernels and block verification; PAITON_NGRAM_CODRAFT=1 does not arm
@@ -157,6 +160,15 @@ KV4_SPARSE_ALIGN = True
 # previous prompt, draft acceptance 3.99 -> 3.97, greedy cache-hit answers as close to cold ones as before. Text only, up
 # to 262,144 tokens (not --mode long-512k) and without the host tier (--host-cache-gib, --extend-cache): the measured cases.
 DFLASH_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261123-r5',)
+# vLLM 0.32 and later have this switch upstream: the speculative config's disable_eagle_block_drop, read by the scheduler,
+# the KV-group setup, the Mamba prefill checkpoints and the offload connectors. Images on that base get it instead of the
+# overlay's variable, which their scheduler no longer reads.
+UPSTREAM_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm102-vllm032-20261123-c1', 'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7', 'qwen38-rocm102-vllm032-20261123-c8', 'qwen38-rocm102-vllm032-20261123-c9', 'qwen38-rocm102-vllm032-20261124-r6')
+# Images that also skip the drop with the host tier (--host-cache-gib, --extend-cache) and in --mode long-512k: their
+# offload overlay trims the drafter's chunks without the drop, so the tier holds as many tokens as with it. With the
+# drop, vLLM 0.32 keeps a re-ask's state one 1,600-token block lower (c6: 1.2-1.7 s more at 300K-500K, one prefill step
+# more on some restores). Text only (vision unmeasured).
+ALL_TEXT_NO_DROP_IMAGE_SUFFIXES = ('qwen38-rocm102-vllm032-20261123-c7', 'qwen38-rocm102-vllm032-20261123-c8', 'qwen38-rocm102-vllm032-20261123-c9', 'qwen38-rocm102-vllm032-20261124-r6')
 # --mode long-kv4 --vision: the embedding in system memory, the vision encoder on the GPU, the allocator capped as
 # without --vision, 740 pool blocks (496,129 KV tokens with prefix caching), images up to VISION_MAX_PIXELS and a
 # VISION_MM_CACHE_GIB processor cache. Measured on the 5 October image, 6 Oct (vision suite: cold and cached images,
@@ -181,8 +193,18 @@ KV4_LONG_VISION_DRAFT_FP8_GEMM = True
 KV4_HOST_CACHE_UNFIXED_SUFFIXES = ('qwen38-rocm10-vllm029-20261003-r1',)
 # --mode long-kv4 --vision was qualified on the 5 October image only (VRAM headroom and the vision suite under load).
 KV4_LONG_VISION_UNQUALIFIED_SUFFIXES = ('qwen38-rocm10-vllm029-20261004-r1',)
+# Images before c4 read the old runtime names (attention backend, settings, log tags); this launcher passes the Paiton
+# names, so it refuses them. The launcher at OLDER_IMAGES_LAUNCHER_TAG serves them.
+REFUSE_PRE_PAITON_NAME_IMAGES = True
+PRE_PAITON_NAME_TAG_PREFIXES = ('qwen38-rocm10-vllm029-',)
+PRE_PAITON_NAME_IMAGE_SUFFIXES = tuple(f'qwen38-rocm102-vllm032-20261123-{c}' for c in ('c1', 'c2', 'c3', 'c3b'))
+OLDER_IMAGES_LAUNCHER_TAG = 'qwen38-rocm10-vllm029-20261123-r5'
+# The vLLM 0.32 images were gated with the 3-bit weights only (user direction, 23 Nov 2026): MXFP4 runs on r5 with
+# the launcher at OLDER_IMAGES_LAUNCHER_TAG.
+REFUSE_MXFP4_ON_VLLM032 = True
 # Published image digests, so a reference by digest alone (without the tag) is recognised like its tag.
 IMAGES_BY_RELEASE_DIGEST = {
+    '20261123-r5': 'sha256:9c28a28e336a5b359a147d2d19e9981fab560755a6db64f51b367974abedf121',
     '20261119-r4': 'sha256:e43170cdfd93526f5141b82e57e4e22cdd734dc62c94704b8cc30f533015ab17',
     '20261118-r3': 'sha256:c2b1fefa491e3187171b90f6e80af105c110258a65fe15ed9b7c026827e4bf1c',
     '20261107-r2': 'sha256:efe8c3f3242330009822e97afa10c10fb4a83ec250eb5e5468abc6a6650278c8',
@@ -277,13 +299,16 @@ W3_LONG_KV4_SYSMEM_CACHE_BYTES = 850 * 14336000
 # --mode long --vision, long-512k, --system-memory-weights in --mode long, the desktop profile). MXFP4 keeps the bf16 head.
 LMHEAD_W8_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261005-r1', 'qwen38-rocm10-vllm029-20261107-r2',
                             'qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
-                            'qwen38-rocm10-vllm029-20261123-r5')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer, r5 = r4 + one layer
+                            'qwen38-rocm10-vllm029-20261123-r5',
+                            'qwen38-rocm102-vllm032-20261123-c1',
+                            'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7', 'qwen38-rocm102-vllm032-20261123-c8', 'qwen38-rocm102-vllm032-20261123-c9', 'qwen38-rocm102-vllm032-20261124-r6')   # r2 = r1 + layers, r3 = r2 + layers, r4 = r3 + one layer, r5 = r4 + one layer
 # Block verification of the drafted tokens (rejection_sample_method block): the same output distribution as token-wise
 # verification, more accepted draft tokens per step for sampled requests (T > 0). Gate on r2, 19 Nov 2026 (drafter
 # round 3): task scores and first-token distributions unchanged, greedy ids identical; T 1.0 +3.8 % accepted tokens and
 # +2.6 % tok/s at one request. Only the images below get it; earlier images keep token-wise verification.
 SPEC_BLOCK_IMAGE_SUFFIXES = ('qwen38-rocm10-vllm029-20261118-r3', 'qwen38-rocm10-vllm029-20261119-r4',
-                             'qwen38-rocm10-vllm029-20261123-r5')
+                             'qwen38-rocm10-vllm029-20261123-r5', 'qwen38-rocm102-vllm032-20261123-c1',
+                             'qwen38-rocm102-vllm032-20261123-c2', 'qwen38-rocm102-vllm032-20261123-c3', 'qwen38-rocm102-vllm032-20261123-c3b', 'qwen38-rocm102-vllm032-20261123-c4', 'qwen38-rocm102-vllm032-20261123-c5', 'qwen38-rocm102-vllm032-20261123-c6', 'qwen38-rocm102-vllm032-20261123-c7', 'qwen38-rocm102-vllm032-20261123-c8', 'qwen38-rocm102-vllm032-20261123-c9', 'qwen38-rocm102-vllm032-20261124-r6')
 LMHEAD_W8_POOL_BLOCKS = 88
 LMHEAD_W8_POOL_BYTES = LMHEAD_W8_POOL_BLOCKS * 14336000          # 1,261,568,000 B: what the FP8 head frees, as pool bytes
 W3_LONG_KV4_SYSMEM_LMHEAD_W8_CACHE_BYTES = (850 + LMHEAD_W8_POOL_BLOCKS) * 14336000
@@ -342,6 +367,17 @@ TIER_BYTES_BY_IMAGE_SUFFIX = {       # image name suffix: (stored, loaded) bytes
     'qwen38-rocm10-vllm029-20261118-r3': (24576, 19000),       # the 18 November image (r2 plus faster native kernels)
     'qwen38-rocm10-vllm029-20261119-r4': (24576, 19000),       # the 19 November image (r3 plus the n-gram fix)
     'qwen38-rocm10-vllm029-20261123-r5': (24576, 19000),       # the 23 November image (r4 plus the scheduler overlay)
+    # ROCm 10.2 / vLLM 0.32 candidates: same store as r5 (disk folder 8.3 GB vs r5's 8.4 GB after the same 385K-token fill)
+    'qwen38-rocm102-vllm032-20261123-c2': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c3': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c3b': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c4': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c5': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c6': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c7': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c8': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261123-c9': (24576, 19000),
+    'qwen38-rocm102-vllm032-20261124-r6': (24576, 19000),
 }
 KV4_POOL_TOKENS = {True: 569878, False: 451879}    # long-kv4 with prefix caching, keyed by: embedding in system memory
 KV4_POOL_TOKENS_LMHEAD_W8 = {True: 628877, False: 451879}   # the same with the FP8 lm_head (measured 6 Oct; the GPU-embedding budget is unchanged)
@@ -432,7 +468,7 @@ def release_command(release):
         '--max-num-batched-tokens', '4096', '--kv-cache-dtype', 'fp8',
         '--kv-cache-memory-bytes', str(cache), '--gpu-memory-utilization', '0.98',
         '--no-enable-prefix-caching', '--enable-chunked-prefill', '--language-model-only',
-        '--safetensors-load-strategy', 'lazy', '--attention-backend', 'R4D',
+        '--safetensors-load-strategy', 'lazy', '--attention-backend', 'PDK',
         '--compilation-config', json.dumps(compilation),
         '--speculative-config', json.dumps(speculative), '--mamba-cache-mode', mamba,
         '--mamba-cache-dtype', 'bfloat16', '--mamba-ssm-cache-dtype', 'float16',
@@ -514,6 +550,21 @@ def _image_parts(args):
 
 def _released_digests(*keys):
     return {IMAGES_BY_RELEASE_DIGEST[key] for key in keys}
+
+
+def refuse_pre_paiton_name_image(args):
+    """Every listed release and the c1 to c3b candidates read the old runtime names: refuse them."""
+    if not REFUSE_PRE_PAITON_NAME_IMAGES:
+        return
+    name, digest = _image_parts(args)
+    old_digests = set(IMAGES_BY_RELEASE_DIGEST.values()) | {
+        image.partition('@')[2] for image in (*IMAGES.values(), *PREVIOUS_IMAGES.values())
+        if image.partition('@')[0].rpartition(':')[2].startswith(PRE_PAITON_NAME_TAG_PREFIXES)}
+    if (name.rpartition(':')[2].startswith(PRE_PAITON_NAME_TAG_PREFIXES) or name.endswith(PRE_PAITON_NAME_IMAGE_SUFFIXES)
+            or (digest and digest in old_digests)):
+        raise ValueError(f'{args.image or IMAGES[args.release]} predates the Paiton runtime names: this launcher serves '
+                         'the ROCm 10.2 images from qwen38-rocm102-vllm032-20261123-c4 on (pass one with --image); use '
+                         f'the launcher at tag {OLDER_IMAGES_LAUNCHER_TAG} for older images')
 
 
 def image_is_kv4_v4(args):
@@ -1452,7 +1503,12 @@ def engine_command(args, weights='mxfp4'):
     if threshold is not None:
         command += ['--long-prefill-token-threshold', str(threshold)]
     if context is not None and context > KV4_MAX_CONTEXT:
-        command += ['--hf-overrides', json.dumps({'text_config': {'rope_parameters': YARN_FACTOR_2}})]
+        text_config = {'rope_parameters': YARN_FACTOR_2}
+        if _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+            # vLLM 0.32 reads a YaRN model's max_position_embeddings as already scaled (0.29 multiplied the original by
+            # the factor) and refuses 524288 otherwise; the rope itself only uses the original length and the factor
+            text_config['max_position_embeddings'] = KV4_YARN_CONTEXT
+        command += ['--hf-overrides', json.dumps({'text_config': text_config})]
     if getattr(args, 'host_cache_gib', None):
         command += ['--kv-offloading-size', f'{args.host_cache_gib:g}', '--kv-offloading-backend', 'native']
     if getattr(args, 'disk_cache_dir', None):
@@ -1470,10 +1526,16 @@ def weights_mode(args, environment):
     if args.release not in W3_RELEASES:
         if args.weights == 'w3a4':
             raise ValueError(f'--weights w3a4 is not available for the {args.release} release')
-        return 'mxfp4'
-    if args.weights == 'auto':
-        return 'w3a4' if environment.get('PAITON_W3ROT_DIR') else 'mxfp4'
-    return args.weights
+        weights = 'mxfp4'
+    elif args.weights == 'auto':
+        weights = 'w3a4' if environment.get('PAITON_W3ROT_DIR') else 'mxfp4'
+    else:
+        weights = args.weights
+    if REFUSE_MXFP4_ON_VLLM032 and weights == 'mxfp4' and _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+        raise ValueError('this image serves the 3-bit W3A4 weights only: set PAITON_W3ROT_DIR to them or use '
+                         f'run-3bit.sh; the MXFP4 weights run on image r5 with the launcher at tag '
+                         f'{OLDER_IMAGES_LAUNCHER_TAG}')
+    return weights
 
 
 def disk_cache_fingerprint(args, environment, weights, kv_mode, image):
@@ -1553,11 +1615,16 @@ def docker_command(args, environment):
     if getattr(args, 'compile_cache', False):
         # the image's compat layer keys the compile-cache folders on every PAITON_ setting and the installed runtime
         command += ['-e', 'PAITON_COMPILE_CACHE=1']
+    vllm032 = _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES)   # the vLLM 0.32 images
     for variable in ('PAITON_NGRAM_CODRAFT', 'PAITON_NGRAM_CODRAFT_HOT_MATCH'):
-        # Opt-in n-gram co-drafting. Forwarded only when set on the host, so the
-        # image default (off) applies otherwise.
-        if variable in environment:
+        # Opt-in n-gram co-drafting. Forwarded only when set on the host, so the image default (off) applies otherwise.
+        # Not on the vLLM 0.32 images: their adapter still pins the 0.29 sources and would not arm (main() says so).
+        if variable in environment and not vllm032:
             command += ['-e', variable + '=' + environment[variable]]
+    if vllm032:
+        # xgrammar imports tvm_ffi, which tries to build a torch DLPack addon at every start on a GPU: about 7 s, and the
+        # build always fails against this torch. Skipping it changes nothing (torch already has the stream attribute).
+        command += ['-e', 'TVM_FFI_DISABLE_TORCH_C_DLPACK=1']
     pinned_weights = 0
     if (getattr(args, 'system_memory_weights', False) or getattr(args, 'host_cache_gib', None)) and \
             image_predates_prefix_fix(args):
@@ -1631,20 +1698,26 @@ def docker_command(args, environment):
         command += ['-e', 'PAITON_PC_EAGLE_TAIL=1']
         if KV4_SPARSE_ALIGN:
             command += ['-e', 'PAITON_PC_SPARSE_ALIGN=1']
-        if (_image_parts(args)[0].endswith(DFLASH_NO_DROP_IMAGE_SUFFIXES) and not args.vision
-                and not getattr(args, 'host_cache_gib', None) and args.context <= LONG_CONTEXT):
-            command += ['-e', 'PAITON_PC_DFLASH_NO_DROP=1']
+        no_drop_image = _image_parts(args)[0]
+        if (no_drop_image.endswith(DFLASH_NO_DROP_IMAGE_SUFFIXES + UPSTREAM_NO_DROP_IMAGE_SUFFIXES) and not args.vision
+                and (no_drop_image.endswith(ALL_TEXT_NO_DROP_IMAGE_SUFFIXES)
+                     or (not getattr(args, 'host_cache_gib', None) and args.context <= LONG_CONTEXT))):
+            if no_drop_image.endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+                index = engine.index('--speculative-config') + 1
+                engine[index] = json.dumps({**json.loads(engine[index]), 'disable_eagle_block_drop': True})
+            else:
+                command += ['-e', 'PAITON_PC_DFLASH_NO_DROP=1']
     gdn_state = getattr(args, 'gdn_state', 'auto')
     if gdn_state == 'lazy':
         if prefix_caching_enabled(args):
             raise ValueError('--gdn-state lazy runs without prefix caching (prefix reuse needs a snapshot per draft '
                              'token); drop --gdn-state lazy, or use --mode long-kv4 --prefix-caching off')
-        # opt-in: one stash block per request instead of one per draft token (radiance_gdn_lazy.py)
-        command += ['-e', 'RADIANCE_GDN_LAZY=1']
+        # opt-in: one stash block per request instead of one per draft token (paiton_gdn_lazy.py)
+        command += ['-e', 'PAITON_RT_GDN_LAZY=1']
     elif (gdn_state == 'eager' or prefix_caching_enabled(args)
           or (args.kv_cache == 'kv4' and args.profile == 'chat')):
         # the 4-bit long mode keeps its measured GDN path while it runs without prefix caching
-        command += ['-e', 'RADIANCE_GDN_LAZY=0']
+        command += ['-e', 'PAITON_RT_GDN_LAZY=0']
     if args.profile == 'chat' or weights == 'w3a4' or args.vision:
         # The allocator setting the chat profile, the W3A4 KV budget and the vision budgets were measured with.
         allocator = 'max_split_size_mb:64'
@@ -1708,6 +1781,7 @@ def main(argv=None):
             return 0
         return subprocess.run(command).returncode
     try:
+        refuse_pre_paiton_name_image(args)
         given = args
         args = apply_mode(args, os.environ)
         command = docker_command(args, os.environ)
@@ -1726,6 +1800,9 @@ def main(argv=None):
                           KV4_LONG_PREFIX_CACHING_OFF), file=sys.stderr)
     for note in getattr(args, 'launcher_notes', None) or ():
         print('Note: ' + note, file=sys.stderr)
+    if 'PAITON_NGRAM_CODRAFT' in os.environ and _image_parts(args)[0].endswith(UPSTREAM_NO_DROP_IMAGE_SUFFIXES):
+        print(f'Note: n-gram co-drafting (PAITON_NGRAM_CODRAFT) is not available on this vLLM 0.32 image and is not '
+              f'passed on; it runs on r5 with the launcher at tag {OLDER_IMAGES_LAUNCHER_TAG}.', file=sys.stderr)
     pools, gtt, pinned = host_pools(args)
     # a note only when GTT buffers are chosen or the GTT size is known to be too small for them (unknown size or an
     # explicit --host-pools userptr: ROCm's default, silently)

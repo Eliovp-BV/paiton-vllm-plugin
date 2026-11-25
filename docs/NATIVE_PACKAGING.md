@@ -33,7 +33,7 @@ new compiler dependency or kernel conversion is introduced by native packaging.
 | --- | --- |
 | Compatible user environment | Python, vLLM, Torch, HIP/ROCm and the exact framework dependencies listed by the catalogue; standard upstream compilation and graph preparation |
 | Lightweight wheel | CLI, typed API, activation/startup hooks, model adapters, pinned catalogue/manifests, Qwen external adapter/overlay sources and receipts, retained notices |
-| Qwen native bundle | Released HIP libraries and manifests under `native/`, `r4d.so`, `radiance_mxfp4_fp8.so`, sanitized provenance and prebuilt offline guard |
+| Qwen native bundle | Released HIP libraries and manifests under `native/`, `pdk.so`, `paiton_mxfp4_fp8.so`, sanitized provenance and prebuilt offline guard |
 | MiniCPM native bundle | Existing AWQ decode library and manifest, prebuilt offline guard |
 | Qronos native bundle | Released compiled model and W4 LM-head libraries/manifests, compiled serving configuration, offline guard |
 | Ornith native bundle | Released compiled model/manifest and serving configuration, offline guard |

@@ -12,11 +12,11 @@ _HEAD_CACHE={}
 def _apply_head_int2(self,lm_head,hidden_states,embedding_bias):
     return (RERANK, KCAND)
 def _quantize_head_now(lp,lm_head):
-    lp._radiance_wq=object();lp._radiance_n=248320
+    lp._paiton_wq=object();lp._paiton_n=248320
     lp._apply_head=types.MethodType(_apply_head_int2,lp)
     return 'bound'
 def _quantize_draft_head(mtp,lp_attr='logits_processor'):
-    lp=getattr(mtp,lp_attr);lp._radiance_topk_only=lp_attr=='candidate_logits_processor'
+    lp=getattr(mtp,lp_attr);lp._paiton_topk_only=lp_attr=='candidate_logits_processor'
     if getattr(mtp,'lazy',False):return 'deferred'
     return _quantize_head_now(lp,mtp.lm_head)
 '''
@@ -32,7 +32,7 @@ class Tests(unittest.TestCase):
   self.hidden=types.SimpleNamespace(shape=(8,5120))
  def test_draft_and_target_share_packing_but_not_policy(self):
   self.m._quantize_draft_head(self.d,'candidate_logits_processor');draft=self.d.candidate_logits_processor
-  target=types.SimpleNamespace(_radiance_topk_only=True);self.m._quantize_head_now(target,self.d.lm_head)
+  target=types.SimpleNamespace(_paiton_topk_only=True);self.m._quantize_head_now(target,self.d.lm_head)
   self.assertEqual(draft._apply_head(None,self.hidden,None),(self.pool,self.block_candidates))
   self.assertEqual(target._apply_head(None,self.hidden,None),(80,8))
   self.assertEqual(self.m.RERANK//4,20);self.assertIs(self.m._apply_head_int2,self.original)
@@ -65,11 +65,11 @@ class WiderBlockTests(Tests):
 
 class ConfigTests(unittest.TestCase):
  def test_exact_menu_and_required_target_defaults(self):
-  base={'RADIANCE_DRAFT_RERANK':'80','RADIANCE_FAST_DRAFT':'1'}
+  base={'PAITON_RT_DRAFT_RERANK':'80','PAITON_RT_FAST_DRAFT':'1'}
   for pool in (128,256):self.assertEqual(a.configuration(base|{a.FLAG:str(pool)}),pool)
   for value in ('512','80','-1','bad'):
    with self.assertRaises(ValueError):a.configuration(base|{a.FLAG:value})
-  with self.assertRaises(ValueError):a.configuration(base|{a.FLAG:'256','RADIANCE_DRAFT_RERANK':'128'})
+  with self.assertRaises(ValueError):a.configuration(base|{a.FLAG:'256','PAITON_RT_DRAFT_RERANK':'128'})
  def test_block_policy_menu_is_bounded(self):
   env={a.BLOCK_FLAG:'16','PAITON_DFLASH_DRAFT_SAMPLE_METHOD':'probabilistic'}
   self.assertEqual(a.block_configuration(env,128),16)

@@ -10,8 +10,8 @@ import threading
 import time
 from paiton_gdn_merged_prefill_policy import Policy, FLAG
 
-TARGET='radiance_mxfp4_fp8'
-ATTENTION_TARGET='radiance_r4d_attn'
+TARGET='paiton_mxfp4_fp8'
+ATTENTION_TARGET='paiton_pdk_attn'
 ROOT=Path('/opt/paiton/runtime/gdn-merged-prefill')
 LIB=AUDIT=POLICY=None
 CALLS=FALLBACKS=0
@@ -96,14 +96,14 @@ def verify_source(module):
 
 def initialize_at_metadata_construction(module):
     """The pinned builder allocates GPU scratch before model graph capture."""
-    original=module.R4DAttentionMetadataBuilder.__init__
+    original=module.PDKAttentionMetadataBuilder.__init__
     import functools
     @functools.wraps(original)
     def initialize(self,*args,**kwargs):
         result=original(self,*args,**kwargs)
         if LIB is None:load()
         return result
-    module.R4DAttentionMetadataBuilder.__init__=initialize
+    module.PDKAttentionMetadataBuilder.__init__=initialize
 
 class Loader:
     def __init__(self,original):self.original=original

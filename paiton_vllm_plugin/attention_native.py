@@ -1,7 +1,7 @@
 """External tensor adapter for Paiton's native paged-attention C ABI.
 
 Stock vLLM owns metadata, cache writes and unsupported attention.
-The compiled HIP artifact has no Torch, Triton or Radiance dependency.
+The compiled HIP artifact has no Torch, Triton or reference-engine dependency.
 """
 import ctypes
 import hashlib

@@ -1,4 +1,4 @@
-"""Radiance-native RMSNorm + per-token fp8 quant, for the vLLM fusion pass on gfx1201.
+"""Paiton-native RMSNorm + per-token fp8 quant, for the vLLM fusion pass on gfx1201.
 
 WHY THIS EXISTS. vLLM already carries the right pattern -- `rms_norm(x,w,eps)` followed by a
 per-token dynamic fp8 quant, rewritten into one fused op (rocm_aiter_fusion.py,
@@ -20,7 +20,7 @@ torch.library.custom_op is opaque to inductor, so a custom-op replacement runs a
 ~8 elementwise kernels -- measured, that pushed launches per forward from 1904 to 2009 and made step
 time worse. Written as plain torch, inductor traces it and fuses the whole norm+quant into a single
 triton kernel, which is the point. A HIP kernel can replace it later behind the same call site
-(libr4d's r4d_gdn_gated_rmsnorm_h128_bf16 is the template); this is the version that has to be beaten.
+(libpdk's pdk_gdn_gated_rmsnorm_h128_bf16 is the template); this is the version that has to be beaten.
 """
 import os
 import torch
@@ -52,4 +52,4 @@ def fused_add_rmsnorm_quant(x, residual, weight, epsilon, quant_dtype=FP8):
     return [q, s, sc]
 
 
-ENABLED = os.environ.get("RADIANCE_RMS_QUANT_FUSION", "0") == "1"
+ENABLED = os.environ.get("PAITON_RT_RMS_QUANT_FUSION", "0") == "1"

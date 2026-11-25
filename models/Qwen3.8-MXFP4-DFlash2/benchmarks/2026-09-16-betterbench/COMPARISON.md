@@ -1,10 +1,10 @@
-# Paiton versus GGZ14: matched quick comparison
+# Paiton versus the reference backend: matched quick comparison
 
 Benchmark revision, source hash, profile, corpus bytes/IDs, model ID and all sampling/config fields match.
 
 Positive change means a larger Paiton value. Throughput favors larger values; latency favors smaller values.
 
-| Workload | Metric | Paiton | GGZ14 | Paiton change | Unit |
+| Workload | Metric | Paiton | The reference backend | Paiton change | Unit |
 |---|---|---:|---:|---:|---|
 | summary: weighted serial | decode | 98.57 | 83.93 | +17.45% | tok/s |
 | category: chat | decode | 76.44 | 56.52 | +35.24% | tok/s |
@@ -42,13 +42,13 @@ Positive change means a larger Paiton value. Throughput favors larger values; la
 
 Actual prefill input tokens:
 
-- Target 2000: Paiton [1560, 1530]; GGZ14 [1560, 1530].
-- Target 7000: Paiton [5211, 5257]; GGZ14 [5211, 5257].
+- Target 2000: Paiton [1560, 1530]; the reference backend [1560, 1530].
+- Target 7000: Paiton [5211, 5257]; the reference backend [5211, 5257].
 
 Speculative counters cover the entire client interval, including discarded warmups:
 
 - paiton: 1921 drafts, 5350/13447 draft tokens accepted (39.79%); 2.785 accepted tokens/draft; 3.785 accepted-plus-one/draft (counter-derived proxy).
-- ggz: 1919 drafts, 5340/12534 draft tokens accepted (42.60%); 2.783 accepted tokens/draft; 3.783 accepted-plus-one/draft (counter-derived proxy).
+- refb: 1919 drafts, 5340/12534 draft tokens accepted (42.60%); 2.783 accepted tokens/draft; 3.783 accepted-plus-one/draft (counter-derived proxy).
 
 Observed Paiton regressions (including small changes that may be noise):
 
@@ -62,7 +62,7 @@ Observed Paiton regressions (including small changes that may be noise):
 - concurrency C4, per-request decode: -3.14%.
 - concurrency C8, per-request decode: -15.50%.
 
-Serial completions at token limit: Paiton 15/16; GGZ14 14/16.
+Serial completions at token limit: Paiton 15/16; the reference backend 14/16.
 
 - Separate sequential runs; these are descriptive comparisons, not interleaved statistical pairs.
 - No significance or percentile claims from this short screen; small changes may be noise.
