@@ -60,7 +60,7 @@ class Inkling2Launcher(unittest.TestCase):
             return dict(os.environ)
 
     def test_one_constant_sets_the_cache_format(self):
-        self.assertIn(server.KV_CACHE, ('bf16', 'fp8', 'kv4'))
+        self.assertEqual(server.KV_CACHE, 'kv4')  # the release default of the 32 GB build (lead, 25 Nov 2026)
         self.assertEqual(self.environment()['PAITON_INK2_KV'], server.KV_CACHE)
         for other in ('bf16', 'fp8', 'kv4'):
             with mock.patch.object(server, 'KV_CACHE', other):

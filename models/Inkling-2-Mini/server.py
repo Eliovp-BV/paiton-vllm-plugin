@@ -136,7 +136,7 @@ def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
 # auto: vLLM sizes the context to the cache memory the card has left (322,736 tokens on a 32 GB R9700).
 MAX_MODEL_LEN = 'auto'
 # The release's cache format of the 8 full-attention visits; --kv-cache or -e PAITON_INK2_KV picks another.
-KV_CACHE = 'bf16'
+KV_CACHE = 'kv4'
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
 # system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
