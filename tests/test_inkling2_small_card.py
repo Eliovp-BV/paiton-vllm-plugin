@@ -100,10 +100,21 @@ class Inkling2SmallCard(unittest.TestCase):
         self.assertEqual(lines[2]['environment']['PAITON_INK2_HOST_EMBED'], '1')
 
     def test_refuses_a_host_that_cannot_pin_the_copies(self):
-        for avail, gtt in ((20, 15.6), (28, 12.0)):  # 16 GB host; GTT already in use
+        for avail, gtt in ((16, 15.6), (28, 9.0)):  # 16 GB host; GTT already in use: short even with 10 layers whole
             with self.assertRaises(SystemExit) as stop:
                 self.run_small(self.host(avail, gtt), 15.9, 32768, True, False, 'bf16')
             self.assertIn('pinned host memory', str(stop.exception))
+
+    def test_a_short_host_keeps_whole_layers_on_the_card(self):
+        cases = ((64, 32.0, None), (28, 15.6, '13'), (28, 15.0, '13,10'), (28, 13.0, '13,10,15,6,7,11'))
+        for avail, gtt, layers in cases:  # a 64 GB host pins all; 32 GB hosts (GTT = half the RAM) keep 1 to 6 whole
+            args, env, note = self.run_small(self.host(avail, gtt), 15.9, 32768, True, False, 'bf16')
+            self.assertEqual(env.get('PAITON_INK2_POOL_RESIDENT'), layers)
+            pinned = server.EXPERTS_GIB + server.EMBED_GIB - (len(layers.split(',')) if layers else 0) * server.LAYER_GIB
+            self.assertLessEqual(pinned, min(avail - server.SERVER_HOST_GIB, gtt) - server.PIN_MARGIN_GIB)
+            self.assertEqual('kept whole' in note, layers is not None)
+        planned = server.small_card(15.9, 32768, True, False, 'bf16', need_pool=False, host=(26, 15.5))[1]
+        self.assertEqual(planned['PAITON_INK2_POOL_RESIDENT'], '13')  # --plan-host: a 32 GB host, this host unread
 
     def test_refuses_a_context_that_leaves_no_pool(self):
         with self.assertRaises(SystemExit) as stop:

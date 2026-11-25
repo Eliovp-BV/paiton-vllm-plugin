@@ -75,6 +75,12 @@ SMALL_FIXED_GIB = 4.67   # resident besides experts and cache, drafter on: decod
 DRAFTER_GIB, DFLASH2_GIB, VISION_GIB = 0.69, 0.92, 0.59
 EXPERTS_GIB, EMBED_GIB = 14.59, 0.86  # every expert keeps a host copy for the pool to fetch from; the embedding moves too
 SERVER_HOST_GIB = 8.0    # the server's own unpinned host memory while it loads
+# A host that cannot pin every copy (GTT is half the RAM: about 15.5 GiB on a 32 GB host) keeps whole NVFP4 layers on
+# the card instead: such a layer never misses and needs no host copy. Order: the layers the pool already holds most of
+# (replay of the c10 routes at 9.96 GiB of experts): 1 layer costs about 1 % decode, 4 about 3 %, 8 about 10 %.
+RESIDENT_ORDER = (13, 10, 15, 6, 7, 11, 12, 9, 14, 16)
+LAYER_GIB = 128 * 4_478_976 / 2 ** 30  # one NVFP4 layer's 128 experts
+PIN_MARGIN_GIB = 0.5     # GTT the runtime takes itself (G2: 0.11 GiB over the planned copies) and other users
 # Pool hit rate by GiB of experts in VRAM, drafter on and off (20 real-text requests of image c10 replayed through
 # the native pool, compiler native/inkling2_pool ABI 2, two pool groups by expert format, 20 % of the bytes MXFP8).
 HIT = {True: ((5.98, 0.888), (8.26, 0.952), (9.39, 0.970)), False: ((7.29, 0.948), (9.29, 0.975), (10.29, 0.983))}
@@ -103,8 +109,9 @@ def card_free_gib(dri=Path('/dev/dri')):
     return min(free) / 2 ** 30 if free else None
 
 
-def small_card(free, context, drafter, vision, kv, need_pool=True):
-    """(vLLM arguments, environment, plan) of the 16 GB profile; stops with the reason when it cannot run here."""
+def small_card(free, context, drafter, vision, kv, need_pool=True, host=None):
+    """(vLLM arguments, environment, plan) of the 16 GB profile; stops with the reason when it cannot run here.
+    `host`: (MemAvailable GiB, GTT room GiB) to plan for instead of this host's."""
     from paiton_vllm_plugin.inkling2.cache_plan import cache_bytes
     # drafter: False, True or 'dspark' (the model's own), or 'dflash2'
     dflash2, drafter = drafter == 'dflash2', bool(drafter)
@@ -122,20 +129,32 @@ def small_card(free, context, drafter, vision, kv, need_pool=True):
                          'the 16 GB build is not released yet')
     if pool < 1.0:
         raise SystemExit(f'{note}: too few experts on the card; free the card or serve a shorter --max-model-len')
-    meminfo = dict(line.split(':', 1) for line in MEMINFO.read_text().splitlines())
-    avail = int(meminfo['MemAvailable'].split()[0]) / 2 ** 20 - SERVER_HOST_GIB
-    totals = [int((dev / 'mem_info_gtt_total').read_text()) for dev in amd_cards()]
-    gtt = (min(totals) - sum(int((dev / 'mem_info_gtt_used').read_text()) for dev in amd_cards())) / 2 ** 30
-    if min(avail, gtt) < EXPERTS_GIB + EMBED_GIB:
+    if host is None:
+        meminfo = dict(line.split(':', 1) for line in MEMINFO.read_text().splitlines())
+        totals = [int((dev / 'mem_info_gtt_total').read_text()) for dev in amd_cards()]
+        host = (int(meminfo['MemAvailable'].split()[0]) / 2 ** 20,
+                (min(totals) - sum(int((dev / 'mem_info_gtt_used').read_text()) for dev in amd_cards())) / 2 ** 30)
+    avail, gtt = host[0] - SERVER_HOST_GIB, host[1]
+    room = min(avail, gtt) - PIN_MARGIN_GIB
+    whole = 0
+    while EXPERTS_GIB + EMBED_GIB - whole * LAYER_GIB > room and whole < len(RESIDENT_ORDER):
+        whole += 1
+    pinned = EXPERTS_GIB + EMBED_GIB - whole * LAYER_GIB
+    if pinned > room or pool - whole * LAYER_GIB < 1.0:
         raise SystemExit(f'{note}. The expert and embedding copies need {EXPERTS_GIB + EMBED_GIB:.2f} GiB of pinned host '
-                         f'memory; this host has {avail:.1f} GiB available (less {SERVER_HOST_GIB:g} for the server) '
-                         f'and {gtt:.1f} GiB of GTT room')
+                         f'memory, {pinned:.2f} with {whole} layers kept whole on the card; this host has {avail:.1f} GiB '
+                         f'available (less {SERVER_HOST_GIB:g} for the server) and {gtt:.1f} GiB of GTT room')
+    if whole:
+        note += (f'; {whole} expert layer{"s" if whole > 1 else ""} kept whole on the card, so {pinned:.2f} GiB of host copies fit this host '
+                 '(a little slower; more host memory or GTT pins them all)')
     args = ['--max-model-len', str(context), '--max-num-seqs', '1', '--max-num-batched-tokens', '256',
             '--kv-cache-memory-bytes', str(int(cache * 2 ** 30))]
     if not vision:
         args += ['--limit-mm-per-prompt', json.dumps({'image': 0})]
     env = dict(HSA_USERPTR_FOR_PAGED_MEM='0', PAITON_INK2_HOST_EMBED='1', PAITON_INK2_EXPERT_POOL_GIB=f'{pool:.2f}',
                PAITON_INK2_KV=kv)  # the format the plan sized the cache for, not the 32 GB default
+    if whole:
+        env['PAITON_INK2_POOL_RESIDENT'] = ','.join(map(str, RESIDENT_ORDER[:whole]))
     return args, env, note
 
 
@@ -299,6 +318,9 @@ def main():
     parser.add_argument('--dry-run', nargs='?', type=float, const=-1.0, default=None, metavar='FREE_GIB',
                         help='print the plan, the environment and the vLLM command without downloading or serving; '
                              'FREE_GIB plans for a card with that much free VRAM (15.9 for a 16 GB card)')
+    parser.add_argument('--plan-host', metavar='MEM_GIB,GTT_GIB', default=None,
+                        help='with --dry-run FREE_GIB: plan for a host with this much MemAvailable and GTT room '
+                             '(a 32 GB host: about 26,15.5)')
     parser.add_argument('--vision', action='store_true',
                         help='16 GB cards: load the vision tower (off there by default; 0.59 GiB less for experts)')
     parser.add_argument('--int8-attention', action='store_true',
@@ -332,11 +354,19 @@ def main():
     activate_model_launcher(False, os.environ)
     drafter = False if args.no_drafter else args.drafter
     planned = args.dry_run is not None and args.dry_run >= 0
+    host = None
+    if args.plan_host is not None:
+        try:
+            host = tuple(float(x) for x in args.plan_host.split(','))
+        except ValueError:
+            host = ()
+        if not planned or len(host) != 2 or min(host) <= 0:
+            parser.error('--plan-host MEM_GIB,GTT_GIB needs --dry-run FREE_GIB and two numbers of GiB')
     free = None if args.download_only else args.dry_run if planned else card_free_gib()
     if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
         small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, drafter, args.vision,
                                       args.kv_cache or os.environ.get('PAITON_INK2_KV', 'bf16'),
-                                      need_pool=args.dry_run is None)
+                                      need_pool=args.dry_run is None, host=host)
         print(json.dumps({'card_profile': note}), flush=True)
         for name, value in env.items():
             os.environ.setdefault(name, value)  # `docker run -e` wins
