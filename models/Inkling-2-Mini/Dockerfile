@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.19@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6
 # Inkling 2 Mini on one R9700 (gfx1201): AMD's ROCm 10.2 / vLLM 0.32 image plus the plugin and Paiton's native
 # libraries. Build from the repository root with the libraries as a named context:
-#   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> .
+#   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> \
+#     --build-context runner_glue=<folder with the runner glue files> --build-context triton_seed=<Triton cache folder> .
 FROM rocm/vllm@sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/inkling2-release-source/
 # Only the parts of the plugin that Inkling 2 loads (import trace of the launcher in every mode, 25 Nov 2026): the entry
@@ -13,11 +14,23 @@ RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /o
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
 # The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
+# vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
+# native HIP: the runner glue of the Qwen3.8 27B r6 image, unchanged. The adapter checks the library's sha256 against
+# manifest.json; PAITON_RUNNER_GLUE=1 swaps the kernels in.
+COPY --from=runner_glue libpaiton_runner_glue.so manifest.json /opt/paiton/runtime/runner-glue/
+COPY --from=runner_glue paiton_runner_glue_adapter.py /opt/paiton/runner-glue-py/
+COPY --from=runner_glue zzz_paiton_runner_glue.pth /usr/local/lib/python3.14/dist-packages/
+# vLLM's sampling kernels still compile with Triton on first use (7 to 14 s on the first sampled request after a start).
+# The seed holds them, compiled by a serving run of this image with the cache at this same path, so the cache's
+# absolute paths resolve; kernels not in it compile into the container as before.
+COPY --from=triton_seed . /opt/paiton/cache-seed/triton/
+RUN chmod -R a+rwX /opt/paiton/cache-seed
 # The base image keeps amdsmi on its PYTHONPATH and its own LD_LIBRARY_PATH: prepend, never replace.
 # GPU_MAX_HW_QUEUES=1: a fourth working hardware queue slows decode on RDNA4.
 ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     HF_HOME=/models/cache/huggingface HF_HUB_CACHE=/models/cache/huggingface/hub \
     XDG_CACHE_HOME=/models/cache VLLM_CACHE_ROOT=/models/cache/vllm VLLM_DO_NOT_TRACK=1 \
+    PAITON_RUNNER_GLUE=1 TRITON_CACHE_DIR=/opt/paiton/cache-seed/triton \
     PAITON_INK2_MOE_SO=/opt/paiton/inkling2/lib/inkling2_moe_gfx1201.so \
     PAITON_INK2_ATTN_SO=/opt/paiton/inkling2/lib/inkling2_attn_gfx1201.so \
     PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so \
