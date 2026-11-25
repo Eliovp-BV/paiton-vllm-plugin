@@ -138,6 +138,9 @@ The cache must hold the exact revision above. [Cache paths and Docker mounts](..
 
 - One Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by this image.
 - Linux with a working AMD GPU driver, and Docker.
+- The image's vLLM (0.32.1.dev, ROCm 10.2 build). The plugin's Inkling code is built and tested for that vLLM only,
+  not for a stock vLLM 0.32.0 install. vLLM versions after 0.32 bring their own Inkling 2 model classes under the same
+  names; the plugin then leaves them in place, so its R9700 code is not used. Use the launcher and its image.
 - 21 GB of disk for the weights and 64 GB for the image (a 22 GB download).
 
 Licenses and provenance: [NOTICE.md](NOTICE.md). The model is Apache-2.0; the publisher's usage policy is in
