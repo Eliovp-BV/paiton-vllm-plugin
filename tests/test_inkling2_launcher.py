@@ -1,5 +1,4 @@
 from collections import namedtuple
-import hashlib
 import importlib.util
 import json
 import os
@@ -99,12 +98,13 @@ class Inkling2CacheTier(unittest.TestCase):
 
     def test_image_and_script_carry_what_the_disk_tier_needs(self):
         docker, script = (FOLDER / 'Dockerfile').read_text(), (FOLDER / 'serve-docker.sh').read_text()
-        source = 'paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py'
-        self.assertIn('COPY ' + source + ' ', docker)
-        manifest = json.loads((ROOT / 'paiton_vllm_plugin/_vendor/qwen38/compat/compat_manifest.json').read_text())
-        entry = next(v for k, v in manifest['files'].items() if k.endswith('vllm/v1/kv_offload/cpu/gpu_worker.py'))
-        self.assertIn(entry['original_sha256'], docker)
-        self.assertEqual(hashlib.sha256((ROOT / source).read_bytes()).hexdigest(), entry['overlay_sha256'])
+        site = '/usr/local/lib/python3.14/dist-packages/'
+        self.assertIn('COPY models/Inkling-2-Mini/vllm-overlays/ ' + site + '\n', docker)
+        overlays = FOLDER / 'vllm-overlays'
+        files = sorted(p.relative_to(overlays).as_posix() for p in overlays.rglob('*') if p.is_file())
+        self.assertEqual(len(files), 5)
+        for rel in files:  # every file the folder replaces is checked against vLLM 0.32's own
+            self.assertIn('  ' + site + rel + '"', docker)
         shm = int(script.split('--shm-size=')[1].split('g')[0])
         self.assertGreaterEqual(shm, server.STAGING_GIB + 0.5)
 
