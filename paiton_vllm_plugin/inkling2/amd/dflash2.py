@@ -60,6 +60,9 @@ class _Sample(C.Structure):  # PaitonInkling2Dflash2Sample (ABI 2): vLLM's buffe
                 ("stride_state", C.c_int64), ("stride_step", C.c_int64), ("cached_ids", _P)]
 
 
+assert C.sizeof(_Sample) == 64 and _Call.sample.offset + 8 == C.sizeof(_Call)  # the library's layout
+
+
 _lib = None
 
 
