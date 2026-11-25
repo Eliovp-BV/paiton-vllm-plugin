@@ -55,6 +55,68 @@ def prepare(offline=False, verify=False):
 DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
            'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
 
+# 16 GB cards (RX 9070 / 9070 XT, RX 9060 XT 16 GB). Model and drafter take about 20 GiB, so the routed experts the
+# card cannot hold stay in pinned host memory and a miss is fetched, never skipped: the output stays exact.
+SMALL_CARD_GIB = 20.0    # free VRAM below this at start selects the profile
+SMALL_CONTEXT = 32768    # its default context; --max-model-len 65536 for 64K (a smaller expert pool, more misses)
+SMALL_FIXED_GIB = 4.67   # resident besides experts and cache, drafter on: decoder, head rows, drafter, runtime, KFD headroom
+DRAFTER_GIB, VISION_GIB = 0.69, 0.59
+EXPERTS_GIB, EMBED_GIB = 14.59, 0.86  # every expert keeps a host copy for the pool to fetch from; the embedding moves too
+SERVER_HOST_GIB = 8.0    # the server's own unpinned host memory while it loads
+# Pool hit rate by GiB of experts in VRAM, drafter on and off (replay of 20 real-text requests on image c10).
+HIT = {True: ((5.98, 0.806), (8.26, 0.919), (9.39, 0.961)), False: ((7.29, 0.927), (9.29, 0.969), (10.29, 0.981))}
+MEMINFO = Path('/proc/meminfo')
+EXPERT_POOL = False  # shortcut: this image has no expert pool yet (16 GB plan K1 to K3, N3); True once it ships
+
+
+def amd_cards():
+    """sysfs folders of the AMD GPUs on this host."""
+    for dev in Path('/sys/class/drm').glob('renderD*/device'):
+        try:
+            if (dev / 'vendor').read_text().strip() == '0x1002':
+                yield dev
+        except OSError:
+            continue
+
+
+def card_free_gib():
+    """Free VRAM of the smallest AMD card this process can open (a container has only its own render nodes)."""
+    free = [int((dev / 'mem_info_vram_total').read_text()) - int((dev / 'mem_info_vram_used').read_text())
+            for dev in amd_cards() if (Path('/dev/dri') / dev.parent.name).exists()]
+    return min(free) / 2 ** 30 if free else None
+
+
+def small_card(free, context, drafter, vision, kv):
+    """(vLLM arguments, environment, plan) of the 16 GB profile; stops with the reason when it cannot run here."""
+    from paiton_vllm_plugin.inkling2.cache_plan import cache_bytes
+    cache = cache_bytes(context, 1, 256, kv=kv, drafter=drafter) / 2 ** 30
+    rope = context * 512 / 2 ** 30 if drafter else 0.0
+    pool = free - SMALL_FIXED_GIB + (0 if drafter else DRAFTER_GIB) - (VISION_GIB if vision else 0) - cache - rope
+    points = HIT[drafter]
+    hit = next((f'{a[1] + (b[1] - a[1]) * (pool - a[0]) / (b[0] - a[0]):.2f}' for a, b in zip(points, points[1:])
+                if a[0] <= pool <= b[0]), f'{points[-1][1]:.2f} or more' if pool > points[-1][0] else f'under {points[0][1]:.2f}')
+    note = (f'16 GB profile: {free:.1f} GiB free VRAM; cache {cache:.2f} GiB for {context} tokens, one request; '
+            f'{pool:.2f} of {EXPERTS_GIB} GiB of experts on the card (replay hit rate {hit}), the rest in host memory')
+    if not EXPERT_POOL:
+        raise SystemExit(f'{note}. This image keeps every expert on the card and needs about 20 GiB free; '
+                         'the 16 GB build is not released yet')
+    if pool < 1.0:
+        raise SystemExit(f'{note}: too few experts on the card; serve a shorter --max-model-len')
+    meminfo = dict(line.split(':', 1) for line in MEMINFO.read_text().splitlines())
+    avail = int(meminfo['MemAvailable'].split()[0]) / 2 ** 20 - SERVER_HOST_GIB
+    totals = [int((dev / 'mem_info_gtt_total').read_text()) for dev in amd_cards()]
+    gtt = (min(totals) - sum(int((dev / 'mem_info_gtt_used').read_text()) for dev in amd_cards())) / 2 ** 30
+    if min(avail, gtt) < EXPERTS_GIB + EMBED_GIB:
+        raise SystemExit(f'{note}. The expert and embedding copies need {EXPERTS_GIB + EMBED_GIB:.2f} GiB of pinned host '
+                         f'memory; this host has {avail:.1f} GiB available (less {SERVER_HOST_GIB:g} for the server) '
+                         f'and {gtt:.1f} GiB of GTT room')
+    args = ['--max-model-len', str(context), '--max-num-seqs', '1', '--max-num-batched-tokens', '256',
+            '--kv-cache-memory-bytes', str(int(cache * 2 ** 30))]
+    if not vision:
+        args += ['--limit-mm-per-prompt', json.dumps({'image': 0})]
+    env = dict(HSA_USERPTR_FOR_PAGED_MEM='0', PAITON_INK2_HOST_EMBED='1', PAITON_INK2_EXPERT_POOL_GIB=f'{pool:.2f}')
+    return args, env, note
+
 
 def command(snapshot, host='0.0.0.0', extra=(), drafter=True):
     # Later arguments win in vLLM's parser, so `extra` (what the user adds after the image name) overrides these.
@@ -182,6 +244,10 @@ def main():
                         help='address the API listens on (default 0.0.0.0, every interface; 127.0.0.1 keeps it local)')
     parser.add_argument('--api-key', default=None,
                         help='opt-in: require this key on /v1 requests (passed to vLLM as VLLM_API_KEY, never printed)')
+    parser.add_argument('--max-model-len', type=int, default=None,
+                        help='context in tokens (default: what the cache holds on a 32 GB card, 32,768 on a 16 GB card)')
+    parser.add_argument('--vision', action='store_true',
+                        help='16 GB cards: load the vision tower (off there by default; 0.59 GiB less for experts)')
     parser.add_argument('--int8-attention', action='store_true',
                         help='opt-in: attention projection weights as 8-bit rows instead of bf16; about 9 %% faster '
                              'decode, a small measurable change of the output distribution (KL +0.003)')
@@ -205,6 +271,16 @@ def main():
         parser.error('--host-cache-gib must be a number of GiB greater than 0')
     from paiton_vllm_plugin.activation import activate_model_launcher
     activate_model_launcher(False, os.environ)
+    free = None if args.download_only else card_free_gib()
+    if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
+        small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, not args.no_drafter, args.vision,
+                                      args.kv_cache or 'bf16')
+        print(json.dumps({'card_profile': note}), flush=True)
+        for name, value in env.items():
+            os.environ.setdefault(name, value)  # `docker run -e` wins
+        extra = [*small, *extra]
+    elif args.max_model_len:
+        extra = ['--max-model-len', str(args.max_model_len), *extra]
     snapshot = prepare(args.offline, args.verify)
     if args.download_only:
         return
