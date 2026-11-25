@@ -152,6 +152,7 @@ class Pool:
         self.state, self.ring = C.addressof(st), C.addressof(self._ring)
         self.miss_logs = self.miss_log.data_ptr()
         self.skip_stats = torch.zeros(2, dtype=torch.float32, device=dev)  # experts skipped, sum of dropped / row total
+        self.skip_sum = torch.zeros(2, dtype=torch.float64, device=dev)  # fp32 counts are exact to 2^24: moved here per forward
         st.skip_gate, st.skip_stats = SKIP, self.skip_stats.data_ptr()
         # [decode (8 rows or fewer), prefill] x [forwards, NVFP4 misses, MXFP8 misses, staged, rows]
         self.counts = torch.zeros((2, 5), dtype=torch.int64, device=dev)
@@ -176,12 +177,15 @@ class Pool:
             return
         c[0] += 1
         c[4] += tokens
+        if SKIP:
+            self.skip_sum += self.skip_stats
+            self.skip_stats.zero_()
         self.forwards += 1
         if self.forwards % 200 == 0:
             for kind, (f, nv, mx, staged, rows) in zip(("decode", "prefill"), self.counts.tolist()):
                 skip = ""
                 if SKIP and kind == "decode":  # the skip runs in decode forwards only; 48 visits per row
-                    n, share = self.skip_stats.tolist()
+                    n, share = self.skip_sum.tolist()
                     skip = f" skipped {n:.0f} dropped weight {100 * share / max(48 * rows, 1):.3f} %"
                 sys.stderr.write(f"[paiton.inkling2] expert pool stats {kind}: forwards {f} misses {nv + mx} "
                                  f"({(nv * EXPERT_BYTES[True] + mx * EXPERT_BYTES[False]) / 1e6:.0f} MB) staged {staged}{skip}\n")
