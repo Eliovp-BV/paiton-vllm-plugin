@@ -62,7 +62,7 @@ DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
 # drafter.
 DFLASH2 = {'method': 'dspark', 'num_speculative_tokens': 7,
            'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
-DEFAULT_DRAFTER = 'dspark'
+DEFAULT_DRAFTER = 'dflash2'  # --drafter dspark serves with the model's own drafter
 DFLASH2_SO = 'PAITON_INK2_DFLASH2_SO'  # the image's DFlash2 drafter library
 
 # 16 GB cards (RX 9070 / 9070 XT, RX 9060 XT 16 GB). Model and drafter take about 20 GiB, so the routed experts the
@@ -287,9 +287,10 @@ def main():
                         help='cache format of the 8 full-attention visits: bf16 32,768 bytes per context token, fp8 '
                              f'half, kv4 about a quarter (default {KV_CACHE}); the window visits stay bf16')
     parser.add_argument('--drafter', choices=('dspark', 'dflash2'), default=DEFAULT_DRAFTER,
-                        help='dspark: the drafter in the model checkpoint. dflash2: the DFlash2 drafter '
+                        help='dflash2: the DFlash2 drafter '
                              f'{LOCK["drafters"]["dflash2"]["model"]} (Apache-2.0, a third-party checkpoint), '
-                             'downloaded at first start (1.0 GB) and checked like the model. Default: %(default)s')
+                             'downloaded at first start (1.0 GB) and checked like the model. dspark: the drafter in '
+                             'the model checkpoint. Default: %(default)s')
     parser.add_argument('--no-drafter', action='store_true',
                         help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
     parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
@@ -322,8 +323,16 @@ def main():
     snapshot = '<checkpoint>' if args.dry_run is not None else prepare(args.offline, args.verify)
     draft_snapshot = None
     if drafter == 'dflash2':
-        draft_snapshot = ('<DFlash2 drafter>' if args.dry_run is not None
-                          else prepare(args.offline, args.verify, LOCK['drafters']['dflash2']))
+        entry = LOCK['drafters']['dflash2']
+        try:
+            draft_snapshot = ('<DFlash2 drafter>' if args.dry_run is not None
+                              else prepare(args.offline, args.verify, entry))
+        except FileNotFoundError:
+            if not args.offline:
+                raise
+            raise SystemExit(f'--offline: the DFlash2 drafter files ({entry["model"]} at {entry["revision"]}) are not in '
+                             'the cache. Start once without --offline to download them (1.0 GB), or serve with '
+                             '--drafter dspark or --no-drafter') from None
     if args.download_only:
         return
     if drafter == 'dflash2' and args.dry_run is None and not os.path.exists(os.environ.get(DFLASH2_SO, '')):

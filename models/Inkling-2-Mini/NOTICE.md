@@ -6,11 +6,12 @@
   `USAGE_POLICY` links to the publisher's acceptable use policy.
 - The weights are downloaded into the user's cache folder at first start and checked against
   `checkpoint.lock.json`. The image does not contain them, and this repository publishes no converted copy.
-- DFlash2 drafter (`--drafter dflash2`): weights by incoai, Apache-2.0, repository `incoai/Inkling-2-Mini-DFlash2`,
-  revision `4f9088ea66c21f2b99ed657d1941c306b03e84d2`. That repository states the license in its model card and ships
-  no license file. The launcher downloads its two files (1.0 GB) into the user's cache folder the first time this
-  drafter is chosen and checks them against `checkpoint.lock.json`. The image does not contain them, and this
-  repository publishes no copy. Paiton's library for this drafter was written from the reference implementation in
+- DFlash2 drafter (`--drafter dflash2`, the launcher's default; `--drafter dspark` serves with the drafter in the
+  model checkpoint): weights by incoai, Apache-2.0, repository `incoai/Inkling-2-Mini-DFlash2`, revision
+  `4f9088ea66c21f2b99ed657d1941c306b03e84d2`. That repository states the license in its model card and ships no
+  license file. The launcher downloads its two files (1.0 GB) into the user's cache folder at the first start with
+  this drafter and checks them against `checkpoint.lock.json`. The image does not contain them, and this repository
+  publishes no copy. Paiton's library for this drafter was written from the reference implementation in
   vLLM 0.32 (Apache-2.0), read as a specification.
 - The expert weights run in the formats they were trained and published in (NVFP4 and MXFP8). The LM head is
   stored as 8-bit rows when the model loads; everything else stays bf16.
