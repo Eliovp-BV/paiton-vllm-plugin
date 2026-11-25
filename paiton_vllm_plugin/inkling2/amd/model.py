@@ -493,6 +493,10 @@ class Inkling2ForConditionalGeneration(
             self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
             if not self._drafter:
                 self.release_bf16_head()
+        if native_ops.PROJ != "bf16":
+            # The same for the attention projections: their 8-bit rows at load, the bf16 matrices given back.
+            native_ops.release_projections(
+                weight for layer in self.model.layers for weight in (layer.attn.qkvr.weight, layer.attn.wo_ud.weight))
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)

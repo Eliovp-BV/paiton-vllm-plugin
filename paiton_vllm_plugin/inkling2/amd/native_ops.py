@@ -361,21 +361,34 @@ def linear_rows(x: torch.Tensor, codes: torch.Tensor, scale: torch.Tensor, fmt: 
 
 # PAITON_INK2_PROJ=fp8 or int8 (default bf16): the attention input and output
 # projections read 8-bit rows with one scale per row, converted on the card the
-# first time a weight is used (the bf16 weight stays where it is). int8 also
-# covers the tap projections of the full layers, and has a prefill kernel.
+# first time a weight is used. int8 also covers the tap projections of the full
+# layers, and has a prefill kernel. `release_projections` makes the rows of the
+# input and output projections at load and gives back their bf16 matrices.
 PROJ = os.environ.get("PAITON_INK2_PROJ", "bf16")
 if PROJ not in ("bf16", "fp8", "int8"):
     raise ValueError("PAITON_INK2_PROJ must be bf16, fp8 or int8")
-_proj_rows: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
+_proj_rows: dict[int, tuple[torch.Tensor, torch.Tensor, torch.Tensor]] = {}  # id(weight): (weight, codes, scale)
 
 
 def _rows_of(weight: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    key = weight.data_ptr()
-    if key not in _proj_rows:
+    """The 8-bit rows of a projection weight (the module's parameter itself: the key outlives its bf16 data)."""
+    hit = _proj_rows.get(id(weight))
+    if hit is None:
         if PROJ not in proj_formats():
             raise ValueError(f"the operator library has no linear layer on {PROJ} rows (has {proj_formats()})")
-        _proj_rows[key] = head_rows(weight, PROJ)
-    return _proj_rows[key]
+        hit = _proj_rows[id(weight)] = (weight, *head_rows(weight, PROJ))
+    return hit[1:]
+
+
+def release_projections(weights) -> None:
+    """Make the 8-bit rows of `weights` (parameters only ever read through `_rows_of`: the fused input projection
+    and the output projection of every layer) and free their bf16 data, which nothing reads again: same rows, same
+    tokens, 1.2 GiB more for the cache when called before vLLM measures the card."""
+    assert PROJ != "bf16"
+    for weight in weights:
+        _rows_of(weight)
+        weight.data = weight.data.new_empty((0, weight.shape[1]))
+    torch.cuda.empty_cache()
 
 
 def o_project(x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:

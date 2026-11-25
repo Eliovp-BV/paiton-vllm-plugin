@@ -135,6 +135,10 @@ class NativeStep:
                     codes, scale = native_ops._rows_of(weight)
                     setattr(l, name + "_codes", codes.data_ptr())
                     setattr(l, name + "_scale", scale.data_ptr())
+                    if not weight.numel():
+                        # bf16 matrix freed (native_ops.release_projections): with a proj_format the library reads the
+                        # rows only, but it refuses a null bf16 pointer, so it gets the codes' address
+                        setattr(l, name, codes.data_ptr())
             l.gate_bias = ptr(layer.mlp.gate.bias, F32, "gate bias")
             l.mlp_query = ptr(model.attn_res.mlp_queries[i], F32, "mlp query")
             if i:
