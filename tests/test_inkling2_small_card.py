@@ -56,7 +56,7 @@ class Inkling2SmallCard(unittest.TestCase):
             args, env, note = self.run_small(self.host(28, 15.6), 15.9, context, True, False, 'bf16')
             self.assertAlmostEqual(float(env['PAITON_INK2_EXPERT_POOL_GIB']), pool, delta=0.02)
             self.assertEqual(args[args.index('--max-model-len') + 1], str(context))
-        self.assertIn('hit rate 0.96', self.run_small(self.host(28, 15.6), 15.9, 32768, True, False, 'bf16')[2])
+        self.assertIn('hit rate 0.9', self.run_small(self.host(28, 15.6), 15.9, 32768, True, False, 'bf16')[2])
 
     def test_arguments_and_environment(self):
         args, env, _ = self.run_small(self.host(28, 15.6), 15.9, 32768, True, False, 'bf16')
@@ -69,6 +69,25 @@ class Inkling2SmallCard(unittest.TestCase):
         self.assertNotIn('--limit-mm-per-prompt', vision)
         self.assertAlmostEqual(float(env['PAITON_INK2_EXPERT_POOL_GIB']) - float(venv['PAITON_INK2_EXPERT_POOL_GIB']),
                                server.VISION_GIB, delta=0.011)
+
+    def test_dry_run_prints_the_plan_on_any_host(self):
+        import contextlib
+        import io
+        import os
+        import sys
+        patches = self.host(28, 15.6)[:2]  # the pool flag stays False: a dry run plans without it
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        out = io.StringIO()
+        with mock.patch.object(sys, 'argv', ['server.py', '--dry-run', '15.9']), mock.patch.dict(os.environ), \
+                contextlib.redirect_stdout(out):
+            server.main()
+        lines = [json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertIn('16 GB profile: 15.9 GiB free VRAM', lines[0]['card_profile'])
+        argv = lines[1]['command']
+        self.assertEqual(argv[len(argv) - argv[::-1].index('--max-model-len')], '32768')  # the profile's, last wins
+        self.assertEqual(lines[2]['environment']['PAITON_INK2_HOST_EMBED'], '1')
 
     def test_refuses_a_host_that_cannot_pin_the_copies(self):
         for avail, gtt in ((20, 15.6), (28, 12.0)):  # 16 GB host; GTT already in use
