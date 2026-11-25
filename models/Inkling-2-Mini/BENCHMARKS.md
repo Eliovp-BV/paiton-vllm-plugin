@@ -86,7 +86,8 @@ port faults, not for quantization loss.
 - 8-bit output head (the default): next-token KL against the bf16 head 0.00045 on the check set, and no change in
   the task score.
 - `--int8-attention` (off by default): KL about 0.003 against the default, decode about 9.5 % faster without the
-  drafter.
+  drafter. Task set with the drafter on: the same 34 of 35. The needle prompts take longer with it (14 s against
+  10.5 s at 31,000 tokens, 60 s against 46.5 s at 130,000): the prefill kernels of this release read bf16 rows only.
 
 ## Limits of these numbers
 
