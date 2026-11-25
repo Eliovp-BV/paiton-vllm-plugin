@@ -24,6 +24,7 @@ GIB = float(os.environ.get("PAITON_INK2_EXPERT_POOL_GIB") or 0)  # GiB of expert
 ENABLED = GIB > 0
 RING_SLOTS = int(os.environ.get("PAITON_INK2_POOL_RING", "16"))  # staged experts of a visit copied to the card; 0: read in place
 MXFP8_SHARE = 0.20  # replay of the c10 routes: flat between 0.15 and 0.25
+STATS = os.environ.get("PAITON_INK2_POOL_STATS") == "1"  # G3: misses and MB per forward on stderr every 200 forwards
 LAYERS, EXPERTS, ROWS = 24, 128, 2304  # w13 has 2 x 1152 rows, w2 2304: both 2304
 PARTS = ("w13_weight", "w13_weight_scale", "w2_weight", "w2_weight_scale")
 ROW_BYTES = {True: (1152, 144, 576, 72), False: (2304, 72, 1152, 36)}  # per part, NVFP4 / MXFP8
@@ -144,10 +145,33 @@ class Pool:
         self._ring = _Ring(self.ring_buf.data_ptr() if ring_slots else None, None, ring_slots)
         self.state, self.ring = C.addressof(st), C.addressof(self._ring)
         self.miss_logs = self.miss_log.data_ptr()
+        # [decode (8 rows or fewer), prefill] x [forwards, NVFP4 misses, MXFP8 misses, staged]
+        self.counts = torch.zeros((2, 4), dtype=torch.int64, device=dev)
+        self.forwards = 0
         self.slots = slots
         sys.stderr.write(f"[paiton.inkling2] expert pool: {slots[0]} NVFP4 + {slots[1]} MXFP8 slots "
                          f"({sum(s * b for s, b in zip(slots, size)) / 2 ** 30:.2f} GiB), ring {ring_slots}, "
                          f"seeded {used[0]} + {used[1]}; host copies {sum(h[1].numel() for h in _HOST.values()) / 2 ** 30:.2f} GiB\n")
+
+    def account(self, tokens: int, layer: int | None = None) -> None:
+        """Add the miss log to the counters: one visit (`layer`, the Python expert path, row 0) or a whole forward
+        of the sequencer (rows 0-47; visits 44-47 run the MXFP8 layers 20-23)."""
+        c, log = self.counts[int(tokens > 8)], self.miss_log
+        if layer is None:
+            c[1] += log[:44, 0].sum()
+            c[2] += log[44:, 0].sum()
+            c[3] += log[:, 1].sum()
+        else:
+            c[1 + int(layer >= 20)] += log[0, 0]
+            c[3] += log[0, 1]
+        if layer not in (None, 0):
+            return
+        c[0] += 1
+        self.forwards += 1
+        if self.forwards % 200 == 0:
+            for kind, (f, nv, mx, staged) in zip(("decode", "prefill"), self.counts.tolist()):
+                sys.stderr.write(f"[paiton.inkling2] expert pool stats {kind}: forwards {f} misses {nv + mx} "
+                                 f"({(nv * EXPERT_BYTES[True] + mx * EXPERT_BYTES[False]) / 1e6:.0f} MB) staged {staged}\n")
 
     def table(self, layer: int) -> int:
         """Device address of the layer's expert table."""

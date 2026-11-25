@@ -172,6 +172,8 @@ class Inkling2NativeExperts(nn.Module):
                                                   idx.data_ptr(), tokens, int(tokens <= 8), pool.miss_logs, stream)
             rc = rc or lib.PaitonInkling2MoeLayer(
                 C.byref(self._w), x.data_ptr(), idx.data_ptr(), weights.data_ptr(), *tail)
+            if expert_pool.STATS and not rc:
+                pool.account(tokens, self.layer_id)
         elif gate is not None:
             assert gate.weight.dtype == torch.bfloat16 and gate.bias.dtype == torch.float32
             idx = torch.empty((tokens, 8), dtype=torch.int32, device=x.device)

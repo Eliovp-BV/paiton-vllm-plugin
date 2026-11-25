@@ -665,6 +665,8 @@ class Inkling2ForConditionalGeneration(
 
             out = native_step.forward(self.model, input_ids, positions, inputs_embeds)
             if out is not None:
+                if expert_pool.STATS and expert_pool.POOL is not None:
+                    expert_pool.POOL.account(positions.shape[0])
                 return out
         if inputs_embeds is None:
             assert input_ids is not None
