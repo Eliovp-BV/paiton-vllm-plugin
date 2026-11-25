@@ -212,9 +212,12 @@ def main():
         os.environ['PAITON_INK2_PROJ'] = 'int8'
     if args.kv_cache:
         os.environ['PAITON_INK2_KV'] = args.kv_cache
-    # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison.
+    # Defaults of the release; `docker run -e NAME=value` overrides one for a comparison. PAITON_INK2_HOST_EMBED=1: the
+    # input embedding in 0.86 GiB of pinned host memory (exact; about 24K more context); -e PAITON_INK2_HOST_EMBED=0
+    # keeps it on the card.
     for name, value in dict(PAITON_INKLING2='1', PAITON_INK2_EXPERTS='native', PAITON_INK2_OPS='native',
-                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8').items():
+                            PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8', PAITON_INK2_DRAFT_LOGITS='int8',
+                            PAITON_INK2_HOST_EMBED='1').items():
         os.environ.setdefault(name, value)
     if args.host_cache_gib or args.extend_cache:
         tier, note = tier_settings(args.host_cache_gib, args.extend_cache)  # after the PAITON_INK2 settings: disk key
