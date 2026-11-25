@@ -2,7 +2,7 @@
 """Inkling 2 Mini text forward as one native call (gfx1201).
 
 Binding of `inkling2_step_gfx1201.so` (path in `PAITON_INK2_STEP_SO`, ABI
-version 3): the library runs the 48 layer visits of a looped forward by calling
+version 4): the library runs the 48 layer visits of a looped forward by calling
 the operator, expert and attention libraries in the order `loop.py` calls them,
 so Python makes one call per forward instead of about 1,200. `PAITON_INK2_STEP=native`
 (read in `amd/model.py`) turns it on; it needs `PAITON_INK2_OPS=native`.
@@ -18,30 +18,33 @@ import os
 import torch
 
 from . import native_ops
-from .experts_native import _Weights
+from .experts_native import _WeightsTable
 from .native_attention import KV, NativeAttention, _int32, _Layer
 
 BF16, F32 = torch.bfloat16, torch.float32
 # 1: one attention call per decode visit; 2: the operator library's fused launches; 4: in a forward of more than
-# 64 rows the loop controller's two products are linear calls (sequencer build 7 on). Same bits with any of them.
+# 64 rows the loop controller's two products are linear calls (sequencer build 7 on); 16: the router and the expert
+# layer as two calls (the order of a model with an expert pool). Same bits with any of them.
 FLAGS = int(os.environ.get("PAITON_INK2_STEP_FLAGS", "0"))
 TIME = bool(os.environ.get("PAITON_INK2_TIME"))  # bring-up: print the library calls per forward
 _P = C.c_void_p
 
 
+# `moe` is the expert weights struct of expert ABI 2 (the layer's expert table after the ABI 1 fields); an expert
+# library of ABI 1 does not read the table.
 class _StepLayer(C.Structure):  # PaitonInkling2StepLayer
     _fields_ = [(n, _P) for n in (
         "qkvr", "wo", "attn_norm", "mlp_norm", "k_conv", "v_conv", "k_dyn", "v_dyn", "attn_conv", "mlp_conv",
         "attn_query", "mlp_query", "gate_weight", "gate_bias", "ctrl_down", "ctrl_up", "message_query",
         "qkvr_codes", "qkvr_scale", "wo_codes", "wo_scale", "kdyn_codes", "kdyn_scale", "vdyn_codes", "vdyn_scale",
-    )] + [("attn", _Layer), ("moe", _Weights), ("route_scale", C.c_float), ("is_local", C.c_int)]
+    )] + [("attn", _Layer), ("moe", _WeightsTable), ("route_scale", C.c_float), ("is_local", C.c_int)]
 
 
 class _Model(C.Structure):  # PaitonInkling2StepModel
     _fields_ = [("layers", _StepLayer * 24)] + [(n, _P) for n in ("embed", "embed_norm", "final_norm", "output_query")] + [
         ("eps", C.c_float)] + [(n, C.c_int) for n in (
             "vocab", "num_layers", "block_size", "core_start", "core_stop", "num_passes", "normalize_values",
-            "proj_format")]
+            "proj_format")] + [(n, _P) for n in ("pool", "ring", "miss_logs")]
 
 
 class _AttnGroup(C.Structure):  # PaitonInkling2StepAttnGroup
@@ -75,8 +78,8 @@ def _library():
         if not path:
             raise ValueError("PAITON_INK2_STEP=native needs PAITON_INK2_STEP_SO")
         lib = C.CDLL(path)
-        if lib.PaitonInkling2StepAbiVersion() != 3:
-            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 3")
+        if lib.PaitonInkling2StepAbiVersion() != 4:
+            raise RuntimeError(f"{path}: sequencer ABI {lib.PaitonInkling2StepAbiVersion()}, need 4")
         sizes = (C.c_int * 6)()
         lib.PaitonInkling2StepSizes(sizes)
         ours = [C.sizeof(t) for t in (_Model, _StepLayer, _Visit, _AttnGroup, _ConvGroup, _Call)]
@@ -108,6 +111,11 @@ class NativeStep:
                    block_size=model.block_size, core_start=core.start, core_stop=core.stop,
                    num_passes=model.config.num_loop_passes, normalize_values=int(model.normalize_values),
                    proj_format=("bf16", "fp8", "int8").index(native_ops.PROJ))
+        # 16 GB cards: the device addresses of the pool state, the staging ring and the per-visit miss logs
+        # (`expert_pool.Pool`); without a pool every expert is on the card and the three stay null.
+        pool = getattr(model, "expert_pool", None)
+        if pool is not None:
+            m.pool, m.ring, m.miss_logs = pool.state, pool.ring, pool.miss_logs
         m.embed = ptr(model.embed_tokens.weight, BF16, "embedding table")
         m.embed_norm = ptr(model.embed_norm.weight, BF16, "embed norm")
         m.final_norm = ptr(model.norm.weight, BF16, "final norm")
@@ -116,7 +124,8 @@ class NativeStep:
             attn, experts, l = layer.attn, layer.mlp.experts, m.layers[i]
             if experts._w is None:
                 experts._w = experts._weights()
-            l.attn, l.moe, l.route_scale, l.is_local = attn.native.layer, experts._w, layer.mlp.route_scale, layer.is_local
+            l.attn, l.route_scale, l.is_local = attn.native.layer, layer.mlp.route_scale, layer.is_local
+            C.memmove(C.byref(l.moe), C.byref(experts._w), C.sizeof(experts._w))  # 64 bytes (ABI 1) or 72 with the table
             weights = dict(
                 qkvr=attn.qkvr.weight, wo=attn.wo_ud.weight, attn_norm=layer.attn_norm.weight, mlp_norm=layer.mlp_norm.weight,
                 k_conv=attn.k_sconv.conv_weight, v_conv=attn.v_sconv.conv_weight, attn_conv=layer.attn_sconv.conv_weight,
