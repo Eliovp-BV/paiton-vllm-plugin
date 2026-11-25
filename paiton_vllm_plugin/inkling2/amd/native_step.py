@@ -19,7 +19,7 @@ import torch
 
 from . import native_ops
 from .experts_native import _Weights
-from .native_attention import _int32, _Layer
+from .native_attention import KV, _int32, _Layer
 
 BF16, F32 = torch.bfloat16, torch.float32
 # 1: one attention call per decode visit; 2: the operator library's fused launches; 4: in a forward of more than
@@ -262,6 +262,13 @@ def forward(model, input_ids, positions, inputs_embeds):
     attn_metadata = get_forward_context().attn_metadata
     if (not isinstance(attn_metadata, dict) or getattr(model, "tap", None) is not None or positions.shape[0] == 0
             or not hasattr(model, "loop_core")):
+        return None
+    if KV != "bf16":
+        # shortcut: the sequencer's visits take bf16 caches only (one attention flag word for all visits); until
+        # it takes a per-visit format, a packed full-visit cache runs the Python loop (same calls, slower).
+        if not getattr(model, "_native_step_off", False):
+            model._native_step_off = True
+            print(f"INK2 STEP: PAITON_INK2_KV={KV}: the forward sequencer is off, the Python loop runs", flush=True)
         return None
     step = getattr(model, "_native_step", None)
     if step is None:

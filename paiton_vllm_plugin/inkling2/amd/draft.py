@@ -30,9 +30,17 @@ from vllm.model_executor.layers.rotary_embedding import get_rope
 from ..configs import Inkling2DSparkConfig
 from . import native_ops
 from .attention import Inkling2AttentionPassCache
-from .native_attention import NativeAttention, _Batch, _Cache, _int32, _ok, _rows, _stream
+from .native_attention import KV, NativeAttention, _Batch, _Cache, _int32, _ok, _rows, _stream
 
 BF16, F32 = torch.bfloat16, torch.float32
+
+# PAITON_INK2_DRAFT_WINDOW: keys the draft's full layer (layer 1) sees before its block. "full": the whole context
+# (bf16, 4,096 bytes per context token: 4 GiB and a 4 GiB read per draft step at one million tokens); a number: a
+# window of that many tokens, which changes the drafts (never the target's tokens) past that context. 1024, the
+# default with a packed target cache, puts the layer in the cache group of the window layers: a lone bf16 full layer
+# next to packed target visits makes vLLM split every layer into its own group (99 groups instead of 13).
+_window = os.environ.get("PAITON_INK2_DRAFT_WINDOW", "full" if KV == "bf16" else "1024")
+DRAFT_WINDOW = None if _window == "full" else int(_window)
 
 # PAITON_INK2_DRAFT_LOGITS: the draft's base logits (7 rows over the whole unembedding per request and step).
 # bf16 (default): the operator library's Linear. wide: its LinearBf16 (the LM head's kernel form, other fp32
@@ -106,12 +114,13 @@ class Inkling2DraftLayer(nn.Module):
         self.o_proj = _param(hidden, self.q_size)
         self.gate_proj, self.up_proj, self.down_proj = _param(mlp, hidden), _param(mlp, hidden), _param(hidden, mlp)
         self.q_norm, self.k_norm, self.k_norm_ctx = (_param(head) for _ in range(3))
-        # Owns the paged KV cache only, with the spec of the target's layers of the same kind.
+        # Owns the paged KV cache only (bf16 whatever the target's format), with the spec of the target's window
+        # layers, or for the full layer the whole context unless DRAFT_WINDOW cuts it to a window.
+        window = config.sliding_window_size if is_local else DRAFT_WINDOW
         self.cache = Inkling2AttentionPassCache(
-            f"{prefix}.attn", config.num_attention_heads, config.num_key_value_heads, head,
-            config.sliding_window_size if is_local else None)
-        # Keys a block sees: itself and, on local layers, the window before it.
-        self.window = config.sliding_window_size + block if is_local else 0
+            f"{prefix}.attn", config.num_attention_heads, config.num_key_value_heads, head, window, packed=False)
+        # Keys a block sees: itself and the window before it (0: the whole context).
+        self.window = window + block if window else 0
         self.native: _DraftLayer | None = None
 
 
@@ -309,6 +318,12 @@ class Inkling2DSparkModel(nn.Module):
             "PaitonInkling2DsparkFold")
         self.head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
         self.__dict__["target"] = target_model  # not a submodule: only its int8 head rows are read
+        from . import model as target_module
+
+        if target_module.LMHEAD == "int8" and DRAFT_LOGITS == "int8" and target_model._lm_head_rows is not None:
+            # both heads read the target's int8 rows and the fold is made: the shared bf16 matrix is not read again
+            self.head_rows = target_model._lm_head_rows
+            target_model.release_bf16_head()
 
     def get_draft_kv_cache_layer_names(self) -> list[str]:
         return [layer.cache.prefix for layer in self.model.layers]

@@ -38,8 +38,9 @@ from .model import NATIVE_OPS
 if NATIVE_OPS:
     from .native_ops import attn_res, blend_rms_norm, controller_products, pair_rms_norm
 else:
-    from .ops.attn_res import attn_res
-    from .ops.loop import blend_rms_norm, pair_rms_norm
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 LOOP_STREAMS = ("attn", "k", "v", "mlp")
 

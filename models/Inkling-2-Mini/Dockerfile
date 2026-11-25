@@ -1,19 +1,41 @@
 # syntax=docker/dockerfile:1.19@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6
 # Inkling 2 Mini on one R9700 (gfx1201): AMD's ROCm 10.2 / vLLM 0.32 image plus the plugin and Paiton's native
 # libraries. Build from the repository root with the libraries as a named context:
-#   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> .
+#   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> \
+#     --build-context runner_glue=<folder with the runner glue files> --build-context triton_seed=<Triton cache folder> .
 FROM rocm/vllm@sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003
 COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /opt/paiton/inkling2-release-source/
-COPY paiton_vllm_plugin /opt/paiton/inkling2-release-source/paiton_vllm_plugin
-RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source
+# Only the parts of the plugin that Inkling 2 loads (import trace of the launcher in every mode, 25 Nov 2026): the entry
+# point, its two helpers and the inkling2 package. The console scripts are removed: they point at modules left out here.
+COPY paiton_vllm_plugin/__init__.py paiton_vllm_plugin/activation.py paiton_vllm_plugin/artifact_manifest.py /opt/paiton/inkling2-release-source/paiton_vllm_plugin/
+COPY paiton_vllm_plugin/inkling2 /opt/paiton/inkling2-release-source/paiton_vllm_plugin/inkling2
+RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source \
+    && rm -rf /opt/paiton/inkling2-plugin/bin
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
+# vLLM's offload worker as in the 27B release image, used only by the prompt-cache tiers (--host-cache-gib,
+# --extend-cache): the RAM tier as one exact-size hipHostMalloc allocation per tensor (PAITON_HOST_KV_PRIVATE=1), and no
+# silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). The file it replaces is checked.
+RUN echo "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff  /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py" | sha256sum -c
+COPY paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py
 # The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
+# vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
+# native HIP: the runner glue of the Qwen3.8 27B r6 image, unchanged. The adapter checks the library's sha256 against
+# manifest.json; PAITON_RUNNER_GLUE=1 swaps the kernels in.
+COPY --from=runner_glue libpaiton_runner_glue.so manifest.json /opt/paiton/runtime/runner-glue/
+COPY --from=runner_glue paiton_runner_glue_adapter.py /opt/paiton/runner-glue-py/
+COPY --from=runner_glue zzz_paiton_runner_glue.pth /usr/local/lib/python3.14/dist-packages/
+# vLLM's sampling kernels still compile with Triton on first use (7 to 14 s on the first sampled request after a start).
+# The seed holds them, compiled by a serving run of this image with the cache at this same path, so the cache's
+# absolute paths resolve; kernels not in it compile into the container as before.
+COPY --from=triton_seed . /opt/paiton/cache-seed/triton/
+RUN chmod -R a+rwX /opt/paiton/cache-seed
 # The base image keeps amdsmi on its PYTHONPATH and its own LD_LIBRARY_PATH: prepend, never replace.
 # GPU_MAX_HW_QUEUES=1: a fourth working hardware queue slows decode on RDNA4.
 ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     HF_HOME=/models/cache/huggingface HF_HUB_CACHE=/models/cache/huggingface/hub \
     XDG_CACHE_HOME=/models/cache VLLM_CACHE_ROOT=/models/cache/vllm VLLM_DO_NOT_TRACK=1 \
+    PAITON_RUNNER_GLUE=1 TRITON_CACHE_DIR=/opt/paiton/cache-seed/triton \
     PAITON_INK2_MOE_SO=/opt/paiton/inkling2/lib/inkling2_moe_gfx1201.so \
     PAITON_INK2_ATTN_SO=/opt/paiton/inkling2/lib/inkling2_attn_gfx1201.so \
     PAITON_INK2_OPS_SO=/opt/paiton/inkling2/lib/inkling2_ops_gfx1201.so \

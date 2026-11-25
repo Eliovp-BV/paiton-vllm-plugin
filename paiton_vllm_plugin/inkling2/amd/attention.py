@@ -44,16 +44,11 @@ from .sconv import NATIVE_OPS, K_STREAM, V_STREAM, Inkling2ShortConv, conv_metad
 if NATIVE_OPS:
     from . import native_ops
     from .conv_state import InklingConvState
-    from .native_attention import NativeAttention
+    from .native_attention import KV, KV_FORMATS, NativeAttention
 else:
-    from vllm.models.inkling.amd.sconv_swa_attn import InklingConvState
-
-    from .ops.attention import (
-        gated_rel_attention,
-        plan_decode_attention,
-        rel_decode_attention,
-    )
-    from .ops.sconv import attention_prologue, shift_rel_proj
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 
 class Inkling2AttentionMetadataBuilder(FlashAttentionMetadataBuilder):
@@ -75,6 +70,7 @@ def _kv_cache_spec(
     num_kv_heads: int,
     head_dim: int,
     sliding_window: int | None,
+    packed: bool = False,
 ) -> KVCacheSpec:
     # vLLM 0.32 declares a layer's cache as a KVCacheSpec (main:
     # `get_kv_cache_config` / `KVCacheLayerConfig`).
@@ -86,6 +82,12 @@ def _kv_cache_spec(
     )
     if sliding_window is not None:
         return SlidingWindowSpec(**spec, sliding_window=sliding_window)
+    if packed and NATIVE_OPS and KV != "bf16":
+        # One uint8 head slot per token in the library's layout (native_attention.KV_FORMATS), as many library pages
+        # of 16 slots per block as fit the bf16 window page; vLLM pads the rest (format 4: 3 pages, 22.7 %).
+        size, window_page = KV_FORMATS[KV][0], spec["block_size"] * num_kv_heads * head_dim * 2 * 2
+        spec.update(block_size=16 * max(1, window_page // (16 * size)), dtype=torch.uint8, num_head_slots=1,
+                    state_content_bytes=size)
     return FullAttentionSpec(**spec)
 
 
@@ -100,6 +102,7 @@ class Inkling2AttentionPassCache(nn.Module, AttentionLayerBase):
         num_kv_heads: int,
         head_dim: int,
         sliding_window: int | None,
+        packed: bool = True,
     ) -> None:
         super().__init__()
         self.prefix = prefix
@@ -108,6 +111,7 @@ class Inkling2AttentionPassCache(nn.Module, AttentionLayerBase):
         self.num_kv_heads = num_kv_heads
         self.head_dim = head_dim
         self.sliding_window = sliding_window
+        self.packed = packed  # False: bf16 whatever PAITON_INK2_KV says (the drafter's layers)
         self.kv_cache = torch.tensor([])
         forward_context = get_current_vllm_config().compilation_config
         if prefix in forward_context.static_forward_context:
@@ -119,7 +123,7 @@ class Inkling2AttentionPassCache(nn.Module, AttentionLayerBase):
 
     def get_kv_cache_spec(self, vllm_config: VllmConfig) -> KVCacheSpec:
         return _kv_cache_spec(
-            vllm_config, self.num_kv_heads, self.head_dim, self.sliding_window
+            vllm_config, self.num_kv_heads, self.head_dim, self.sliding_window, self.packed
         )
 
 
@@ -280,6 +284,7 @@ class Inkling2Attention(nn.Module, AttentionLayerBase):
             self.num_kv_heads,
             self.head_dim,
             self.sliding_window if self.is_local else None,
+            packed=True,
         )
 
     def _pass_cache(self, pass_idx: int) -> tuple[str, torch.Tensor]:

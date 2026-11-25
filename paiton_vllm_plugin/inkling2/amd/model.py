@@ -53,14 +53,14 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from . import ops_dump
+from . import host_embed, ops_dump
 from .attention import Inkling2Attention
 from .experts_native import Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 
-# PAITON_INK2_OPS=native: every small operator runs on Paiton's native operator
-# library (`native_ops.py`), and no module under `amd/ops/` (Triton) is imported
-# from here. The experts must be native too; images need the native vision
+# PAITON_INK2_OPS=native (required): every small operator runs on Paiton's native
+# operator library (`native_ops.py`), and no Triton module is imported from
+# here. The experts must be native too; images need the native vision
 # library (`native_vision.py`, PAITON_INK2_VISION_SO).
 NATIVE_OPS = os.environ.get("PAITON_INK2_OPS", "") == "native"
 if os.environ.get("PAITON_INK2_OPS", "") not in ("", "native"):
@@ -81,12 +81,9 @@ if NATIVE_OPS:
     from . import native_ops
     from .native_ops import attn_res, rms_norm
 else:
-    from .experts_bringup import Inkling2BringupMoE
-    from .moe import Inkling2MoE
-    from .ops.attention import compute_log_scaling_tau
-    from .ops.attn_res import attn_res
-    from .ops.norm import rms_norm
-    from .vision import Inkling2VisionEncoder, VisionMetadata
+    # shortcut: the Triton path is deleted, so the non-native branches below are dead code; remove them with the next
+    # change to this file.
+    raise ImportError("Inkling 2 runs on the native libraries only: set PAITON_INK2_OPS=native")
 
 
 TAP_DIR = os.environ.get("PAITON_INK2_TAP_DIR")
@@ -423,13 +420,12 @@ class Inkling2ForConditionalGeneration(
         assert vllm_config.parallel_config.pipeline_parallel_size == 1
         from vllm.platforms.rocm import on_gfx950
 
-        # With the native experts no gfx950-only operator is left on the expert
-        # path; the Triton operators of the other layers are not validated on
-        # other architectures yet (bring-up on gfx1201).
+        # Every layer runs on Paiton's native libraries, built and validated for
+        # gfx1201 (R9700); the experts have no other path in this package.
         if not on_gfx950() and os.environ.get("PAITON_INK2_EXPERTS") != "native":
             raise ValueError(
-                "Inkling2 on ROCm requires gfx950 (CDNA4, MI350 series): its "
-                "kernels are written and validated for that architecture only"
+                "Inkling2 on ROCm runs on Paiton's native libraries only: "
+                "set PAITON_INK2_EXPERTS=native"
             )
         if vllm_config.model_config.enable_prompt_embeds:
             # The reference applies embed_norm to raw input embeddings, which
@@ -465,6 +461,15 @@ class Inkling2ForConditionalGeneration(
             soft_cap=text_config.final_logit_softcapping,
         )
         self._lm_head_rows: tuple[torch.Tensor, torch.Tensor] | None = None
+        # With a drafter, the drafter frees the bf16 head after its fold (draft.attach_target); without one, we do.
+        self._drafter = vllm_config.speculative_config is not None
+
+    def release_bf16_head(self) -> None:
+        """Give back the bf16 unembedding (0.86 GiB) once only its 8-bit rows are read: same tokens, more cache."""
+        assert self._lm_head_rows is not None
+        weight = self.lm_head.weight
+        weight.data = weight.data.new_empty((0, weight.shape[1]))
+        torch.cuda.empty_cache()
 
     def get_language_model(self) -> nn.Module:
         return self
@@ -482,6 +487,13 @@ class Inkling2ForConditionalGeneration(
                 hook = getattr(module, "process_weights_after_loading", None)
                 if callable(hook):
                     hook()
+        if LMHEAD != "bf16":
+            # The 8-bit rows at load, not at the first logits call (same call, same rows), so the bf16 matrix can
+            # go before vLLM measures the memory left for the cache.
+            self._lm_head_rows = native_ops.head_rows(self.lm_head.weight, LMHEAD)
+            if not self._drafter:
+                self.release_bf16_head()
+        host_embed.offload(self.model.embed_tokens)  # opt-in (PAITON_INK2_HOST_EMBED=1); the drafter shares the module
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
