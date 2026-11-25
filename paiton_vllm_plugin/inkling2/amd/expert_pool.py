@@ -8,6 +8,10 @@ MXFP8 layers 20-23, 20 % of the bytes for MXFP8), seeded from the shipped plan (
 first). Per visit the library's Fetch applies the rule of native/inkling2_pool (ABI 2) to the router's ids, writes the
 layer's expert table and copies the misses from the host copy before the expert GEMMs: every routed expert is
 computed, so the output stays exact. Structs: the 16 GB plan's FABLE-BRIEF.md 3.2 to 3.4 and k12/ABI.h.
+
+Opt-in, not exact: PAITON_INK2_EXPERT_SKIP=<gate> (expert library ABI 3). In forwards of 8 rows or fewer, an expert
+that is not on the card at the visit's start is skipped when every row routes it with less than gate x that row's
+top-8 total; those rows' other weights are scaled back to the row's total (16 GB plan NOTES.md, 25 Nov 18:40).
 """
 import ctypes as C
 import json
@@ -24,6 +28,7 @@ GIB = float(os.environ.get("PAITON_INK2_EXPERT_POOL_GIB") or 0)  # GiB of expert
 ENABLED = GIB > 0
 RING_SLOTS = int(os.environ.get("PAITON_INK2_POOL_RING", "16"))  # staged experts of a visit copied to the card; 0: read in place
 MXFP8_SHARE = 0.20  # replay of the c10 routes: flat between 0.15 and 0.25
+SKIP = float(os.environ.get("PAITON_INK2_EXPERT_SKIP") or 0)  # 0: exact (the default)
 STATS = os.environ.get("PAITON_INK2_POOL_STATS") == "1"  # G3: misses and MB per forward on stderr every 200 forwards
 LAYERS, EXPERTS, ROWS = 24, 128, 2304  # w13 has 2 x 1152 rows, w2 2304: both 2304
 PARTS = ("w13_weight", "w13_weight_scale", "w2_weight", "w2_weight_scale")
@@ -43,14 +48,15 @@ class _Group(C.Structure):  # PaitonInkling2PoolGroupState; pointers are device 
 class _State(C.Structure):  # PaitonInkling2PoolState (a host struct)
     _fields_ = [("groups", _Group * 2), ("num_groups", C.c_int), ("group_of", C.c_int32 * LAYERS),
                 ("key_slot", C.c_void_p), ("seen", C.c_void_p), ("clock", C.c_void_p),
-                ("host", C.c_void_p * LAYERS), ("expert_bytes", C.c_uint64 * LAYERS)]
+                ("host", C.c_void_p * LAYERS), ("expert_bytes", C.c_uint64 * LAYERS),
+                ("skip_gate", C.c_float), ("skip_stats", C.c_void_p)]  # ABI 3 (an ABI 2 library reads 608 bytes)
 
 
 class _Ring(C.Structure):  # PaitonInkling2StagingRing (a host struct)
     _fields_ = [("slots", C.c_void_p), ("ready", C.c_void_p), ("ring_slots", C.c_int)]
 
 
-assert (C.sizeof(_Group), C.sizeof(_State), C.sizeof(_Ring)) == (48, 608, 24)
+assert (C.sizeof(_Group), C.sizeof(_State), C.sizeof(_Ring)) == (48, 624, 24) and _State.skip_gate.offset == 608
 _HOST: dict[int, tuple] = {}  # layer -> (ctypes buffer, [128, expert bytes] pinned tensor, device address)
 POOL = None  # the model's pool once built
 
@@ -145,8 +151,10 @@ class Pool:
         self._ring = _Ring(self.ring_buf.data_ptr() if ring_slots else None, None, ring_slots)
         self.state, self.ring = C.addressof(st), C.addressof(self._ring)
         self.miss_logs = self.miss_log.data_ptr()
-        # [decode (8 rows or fewer), prefill] x [forwards, NVFP4 misses, MXFP8 misses, staged]
-        self.counts = torch.zeros((2, 4), dtype=torch.int64, device=dev)
+        self.skip_stats = torch.zeros(2, dtype=torch.float32, device=dev)  # experts skipped, sum of dropped / row total
+        st.skip_gate, st.skip_stats = SKIP, self.skip_stats.data_ptr()
+        # [decode (8 rows or fewer), prefill] x [forwards, NVFP4 misses, MXFP8 misses, staged, rows]
+        self.counts = torch.zeros((2, 5), dtype=torch.int64, device=dev)
         self.forwards = 0
         self.slots = slots
         sys.stderr.write(f"[paiton.inkling2] expert pool: {slots[0]} NVFP4 + {slots[1]} MXFP8 slots "
@@ -167,11 +175,16 @@ class Pool:
         if layer not in (None, 0):
             return
         c[0] += 1
+        c[4] += tokens
         self.forwards += 1
         if self.forwards % 200 == 0:
-            for kind, (f, nv, mx, staged) in zip(("decode", "prefill"), self.counts.tolist()):
+            for kind, (f, nv, mx, staged, rows) in zip(("decode", "prefill"), self.counts.tolist()):
+                skip = ""
+                if SKIP and kind == "decode":  # the skip runs in decode forwards only; 48 visits per row
+                    n, share = self.skip_stats.tolist()
+                    skip = f" skipped {n:.0f} dropped weight {100 * share / max(48 * rows, 1):.3f} %"
                 sys.stderr.write(f"[paiton.inkling2] expert pool stats {kind}: forwards {f} misses {nv + mx} "
-                                 f"({(nv * EXPERT_BYTES[True] + mx * EXPERT_BYTES[False]) / 1e6:.0f} MB) staged {staged}\n")
+                                 f"({(nv * EXPERT_BYTES[True] + mx * EXPERT_BYTES[False]) / 1e6:.0f} MB) staged {staged}{skip}\n")
 
     def table(self, layer: int) -> int:
         """Device address of the layer's expert table."""
