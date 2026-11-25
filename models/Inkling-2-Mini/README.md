@@ -57,7 +57,7 @@ Options go after the script name.
 | Option | What it does |
 | --- | --- |
 | `--no-drafter` | Serves without the drafter: 68 tok/s for one request instead of 106. Frees 0.7 GiB. |
-| `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build). Off by default. |
+| `--int8-attention` | Stores the attention projections as 8-bit rows. Decode without the drafter is about 9.5 % faster; the next-token distribution moves a little (KL 0.003 against the default build) and long prompts are read slower (60 s against 46.5 s for 130,000 tokens). Same task score, 34 of 35. Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. About 6 % faster for one request at `P` = 0.3 in our test, no gain at four. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights, start without network, check the files. |
 | `--host`, `--api-key` | Bind address and API key inside the container. |
