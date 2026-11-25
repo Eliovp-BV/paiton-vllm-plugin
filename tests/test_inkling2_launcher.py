@@ -49,7 +49,9 @@ class Inkling2Launcher(unittest.TestCase):
 
     def environment(self, *arguments, **preset):
         """The environment the launcher hands to vLLM for `arguments`, with `preset` already set by the user."""
+        # no card: the profile of the host that runs the tests (a busy card looks like a 16 GB one) stays out
         with mock.patch.dict(os.environ, preset), mock.patch.object(server, 'prepare', return_value='/checkpoint'), \
+                mock.patch.object(server, 'card_free_gib', return_value=None), \
                 mock.patch.object(server.os, 'execv') as execv, \
                 mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
             if 'PAITON_INK2_KV' not in preset:
@@ -93,6 +95,14 @@ class Inkling2CacheTier(unittest.TestCase):
         self.assertEqual(os.environ['PAITON_HOST_KV_PRIVATE'], '1')
         self.assertEqual(server.tier_settings(None, 'auto')[0][1], '64')   # auto: all the host can pin
 
+    def test_server_pins_come_off_the_limit(self):
+        with mock.patch.dict(os.environ, {'PAITON_HOST_PIN_LIMIT_GIB': ''}), \
+                mock.patch.object(server, 'pin_limit_gib', lambda: 40.0):
+            self.assertEqual(server.tier_settings(None, 'auto', 15.45)[0][1], '24.5')   # floor to 0.5 GiB
+            with self.assertRaises(SystemExit):
+                server.tier_settings(30.0, None, 15.45)
+        self.assertEqual(server.tier_settings(None, 'auto', 15.45)[0][1], '64')   # an explicit limit stays as given
+
     def test_refusals(self):
         for host, extend in ((65.0, None), (8.0, 'ram'), (2.0, None)):
             with self.subTest(host=host, extend=extend), self.assertRaises(SystemExit):
@@ -104,6 +114,7 @@ class Inkling2CacheTier(unittest.TestCase):
         self.assertEqual(args[args.index('--prefix-caching-hash-algo') + 1], 'sha256')
         config = json.loads(args[args.index('--kv-transfer-config') + 1])
         self.assertEqual(config['kv_connector_extra_config']['spec_name'], 'TieringOffloadingSpec')
+        self.assertEqual(config['kv_connector_extra_config']['blocks_per_chunk'], 16)   # 9 MiB files: 4x faster restores
         folder = config['kv_connector_extra_config']['secondary_tiers'][0]['root_dir']
         self.assertEqual(folder, str(server.disk_folder()))
         with mock.patch.dict(os.environ, {'PAITON_INK2_PROJ': 'int8'}):   # other cached values, other folder

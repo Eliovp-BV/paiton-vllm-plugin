@@ -53,9 +53,9 @@ from ..processing import (
     Inkling2ProcessingInfo,
 )
 from ..quant_config import Inkling2QuantConfig
-from . import host_embed, ops_dump
+from . import expert_pool, host_embed, ops_dump
 from .attention import Inkling2Attention
-from .experts_native import Inkling2NativeMoE
+from .experts_native import Inkling2NativeExperts, Inkling2NativeMoE
 from .sconv import ATTN_STREAM, MLP_STREAM, Inkling2ConvState, Inkling2ShortConv
 
 # PAITON_INK2_OPS=native (required): every small operator runs on Paiton's native
@@ -202,7 +202,7 @@ class Inkling2DecoderLayer(nn.Module):
         self.mlp: nn.Module
         if mode == "native":
             # Paiton's native expert library (gfx1201), weights as stored.
-            self.mlp = Inkling2NativeMoE(config, "mxfp8" if mxfp8 else "nvfp4")
+            self.mlp = Inkling2NativeMoE(config, "mxfp8" if mxfp8 else "nvfp4", layer_id)
         elif mxfp8 and not mode:
             self.mlp = Inkling2MoE(config)
         else:
@@ -498,6 +498,16 @@ class Inkling2ForConditionalGeneration(
             native_ops.release_projections(
                 weight for layer in self.model.layers for weight in (layer.attn.qkvr.weight, layer.attn.wo_ud.weight))
         host_embed.offload(self.model.embed_tokens)  # opt-in (PAITON_INK2_HOST_EMBED=1); the drafter shares the module
+        if expert_pool.ENABLED:  # 16 GB cards: the expert slots on the card, seeded from the shipped plan
+            if STEP:
+                from . import native_step
+
+                if "pool" not in dict(native_step._Model._fields_):
+                    raise ValueError("PAITON_INK2_EXPERT_POOL_GIB with PAITON_INK2_STEP=native needs the sequencer "
+                                     "binding of ABI 4; unset PAITON_INK2_STEP for the Python expert path")
+            # the sequencer (ABI 4) reads state, ring and miss_logs from here
+            self.model.expert_pool = expert_pool.build(
+                [m for m in self.modules() if isinstance(m, Inkling2NativeExperts) and m.pooled])
 
     def set_aux_hidden_state_layers(self, layers: tuple[int, ...]) -> None:
         self.model.aux_hidden_state_layers = tuple(layers)
@@ -659,6 +669,8 @@ class Inkling2ForConditionalGeneration(
 
             out = native_step.forward(self.model, input_ids, positions, inputs_embeds)
             if out is not None:
+                if expert_pool.STATS and expert_pool.POOL is not None:
+                    expert_pool.POOL.account(positions.shape[0])
                 return out
         if inputs_embeds is None:
             assert input_ids is not None
