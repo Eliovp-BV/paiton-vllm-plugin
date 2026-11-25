@@ -80,8 +80,11 @@ MAX_MODEL_LEN = 'auto'
 SERVER_PEAK_GIB = 8.0      # the server's own unpinned host memory while it loads
 HOST_RESERVE_GIB = 7.0     # the system, a desktop and what must stay available (as the 27B launcher)
 GTT_MARGIN_GIB = 0.5
-CARD_POOL_GIB = 10.0       # the card's prefix-cache pool: a RAM tier is inclusive, so it must clearly exceed this
-STAGING_GIB = 11.0         # disk tier: the system-memory stage every restore passes; holds a document the size of the pool
+# The card's pool on the R9700 (25 Nov 2026, input embedding on the host): 9.9 GiB with the drafter, 11.2 GiB without.
+CARD_POOL_GIB = 12.0       # the card's prefix-cache pool: a RAM tier is inclusive, so it must clearly exceed this
+# The restore set of a pool-sized document: pool tokens x tier bytes per token (39.6 KB with the drafter) + ~0.3 GiB of
+# window and conv chunks at the boundary; ~10.8 GiB without the drafter.
+STAGING_GIB = 12.0         # disk tier: the system-memory stage every restore passes; holds a document the size of the pool
 MIN_TIER_GIB = 4.0
 DISK_MAX_GIB, DISK_FREE_SHARE = 64.0, 0.25
 # vLLM's file tier writes one file per chunk. 16 blocks (256 tokens, 9 MiB files) restore 146K tokens after a restart in
@@ -198,8 +201,8 @@ def main():
                              'long prompt sent again loads instead of being computed again')
     parser.add_argument('--extend-cache', nargs='?', const='auto', choices=('auto', 'ram', 'disk'), default=None,
                         help='opt-in: size that tier from this host: ram = all the memory it can pin now, disk = files '
-                             'under the cache folder (NVMe/SSD; also across restarts) behind an 11 GiB stage; auto '
-                             '(the default) = ram when that holds 12.5 GiB or more')
+                             f'under the cache folder (NVMe/SSD; also across restarts) behind a {STAGING_GIB:g} GiB stage; '
+                             f'auto (the default) = ram when that holds {1.25 * CARD_POOL_GIB:g} GiB or more')
     args, extra = parser.parse_known_args()
     if args.host_cache_gib is not None and not 0 < args.host_cache_gib < math.inf:
         parser.error('--host-cache-gib must be a number of GiB greater than 0')

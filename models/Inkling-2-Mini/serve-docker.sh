@@ -20,7 +20,7 @@ ipc=(--ipc=host)
 # The disk tier of --extend-cache stages blocks in a /dev/shm file that only a clean shutdown removes: a private IPC
 # namespace (its own /dev/shm, freed when the container stops) keeps a killed server from leaving it in the host's.
 for arg in "$@"; do
-  if [[ $arg == --extend-cache* ]]; then ipc=(--ipc=private --shm-size=12g); fi
+  if [[ $arg == --extend-cache* ]]; then ipc=(--ipc=private --shm-size=13g); fi
 done
 # GPU_MAX_HW_QUEUES=1 is the setting of every RDNA4 launcher here (no measured difference for this model on ROCm 10.2).
 exec docker run --rm --name "$name" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
