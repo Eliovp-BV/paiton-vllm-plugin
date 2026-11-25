@@ -49,9 +49,10 @@ def _buckets(kv: str, drafter: bool, draft_window: int | None):
 
 
 def plan(kv: str = "bf16", drafter: bool = False, draft_window: int | None = None, batched_tokens: int = 512,
-         concurrent_batches: int = 2) -> tuple[float, int, int]:
-    """(bytes per context token, fixed bytes per running request, number of cache groups). `concurrent_batches`
-    is 2 with vLLM's async scheduling."""
+         concurrent_batches: int = 2) -> tuple[float, int, int, int]:
+    """(bytes per context token, fixed bytes per running request, number of cache groups, bytes of one pool block).
+    `concurrent_batches` is 2 with vLLM's async scheduling. vLLM 0.32 holds one pool block back (the block pool's null
+    block) from both its capacity check and its auto-fit."""
     buckets = _buckets(kv, drafter, draft_window)
     page = max(b[1] for b in buckets)
     sizes = [b[0] for b in buckets]
@@ -67,7 +68,7 @@ def plan(kv: str = "bf16", drafter: bool = False, draft_window: int | None = Non
             per_token += n * group * page / block
         else:
             fixed_blocks += n * (_cdiv(window - 1 + flight, block) + 1)
-    return per_token, fixed_blocks * group * page, groups
+    return per_token, fixed_blocks * group * page, groups, group * page
 
 
 def fixed_bytes(batched_tokens: int, concurrent_batches: int = 2, **kw) -> int:
@@ -78,11 +79,11 @@ def fixed_bytes(batched_tokens: int, concurrent_batches: int = 2, **kw) -> int:
 
 def cache_bytes(context_tokens: int, requests: int, batched_tokens: int, **kw) -> int:
     """Cache bytes for `context_tokens` in total over `requests` running requests."""
-    per_token, fixed, _ = plan(batched_tokens=batched_tokens, **kw)
-    return int(per_token * context_tokens) + requests * fixed
+    per_token, fixed, _, null = plan(batched_tokens=batched_tokens, **kw)
+    return int(per_token * context_tokens) + requests * fixed + null
 
 
 def max_context_tokens(budget_bytes: int, requests: int, batched_tokens: int, **kw) -> int:
     """Context tokens (all requests together, whole blocks of 16) that fit `budget_bytes`."""
-    per_token, fixed, _ = plan(batched_tokens=batched_tokens, **kw)
-    return max(0, int((budget_bytes - requests * fixed) // per_token) // 16 * 16)
+    per_token, fixed, _, null = plan(batched_tokens=batched_tokens, **kw)
+    return max(0, int((budget_bytes - requests * fixed - null) // per_token) // 16 * 16)

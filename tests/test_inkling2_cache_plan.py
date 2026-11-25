@@ -5,7 +5,8 @@ GIB = 1 << 30
 
 def test_matches_vllm_refusal_numbers():
     # vLLM 0.32: "32.49 GiB KV cache is needed" for 1,000,000 tokens, max_num_batched_tokens 1024 (2,048 in flight)
-    assert round(cache_bytes(1_000_000, 1, 1024) / GIB, 2) == 32.49
+    # (its "needed" leaves out the null block, which it takes off the available memory instead)
+    assert round((cache_bytes(1_000_000, 1, 1024) - plan(batched_tokens=1024)[3]) / GIB, 2) == 32.49
     assert round(fixed_bytes(1024) / GIB, 2) == 1.98
     assert round(fixed_bytes(256) / 1e9, 2) == 0.66
 
@@ -23,8 +24,16 @@ def test_packed_formats():
     assert abs(max_context_tokens(8.3 * GIB, 1, 512, kv="fp8", drafter=True, draft_window=1024) - 469_595) < 64
     assert plan("fp8", True, 1024)[2] == 13
     # format 4: 3 pages of 16,896 bytes per 65,536-byte block (vLLM pads the rest)
-    per_token, _, groups = plan("kv4", True, 1024)
+    per_token, _, groups, _ = plan("kv4", True, 1024)
     assert (round(per_token), groups) == (10923, 13)
+
+
+def test_null_block_of_the_16gb_profile():
+    # vLLM 0.32, 25 Nov (G2, 32K, drafter, 256 tokens a step): 1,954,086,912 B of cache "is less than needed", the
+    # estimated maximum model length is 32,752: it holds one pool block back.
+    old = 1_954_086_912
+    assert cache_bytes(32_752, 1, 256, drafter=True) <= old < cache_bytes(32_768, 1, 256, drafter=True)
+    assert cache_bytes(32_768, 1, 256, drafter=True) - old == plan(drafter=True, batched_tokens=256)[3]
 
 
 def test_max_context_is_the_inverse():
