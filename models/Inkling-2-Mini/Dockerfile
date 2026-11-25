@@ -12,6 +12,11 @@ COPY paiton_vllm_plugin/inkling2 /opt/paiton/inkling2-release-source/paiton_vllm
 RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source \
     && rm -rf /opt/paiton/inkling2-plugin/bin
 COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
+# vLLM's offload worker as in the 27B release image, used only by the prompt-cache tiers (--host-cache-gib,
+# --extend-cache): the RAM tier as one exact-size hipHostMalloc allocation per tensor (PAITON_HOST_KV_PRIVATE=1), and no
+# silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). The file it replaces is checked.
+RUN echo "d074628708ad0378e9b73502c1f3945a647c531d54102a1db9f90ba1c7f98dff  /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py" | sha256sum -c
+COPY paiton_vllm_plugin/_vendor/qwen38/compat/overlays/vllm/v1/kv_offload/cpu/gpu_worker.py /usr/local/lib/python3.14/dist-packages/vllm/v1/kv_offload/cpu/gpu_worker.py
 # The folder holds the six libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
 # vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
