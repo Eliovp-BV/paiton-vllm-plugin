@@ -313,7 +313,8 @@ def main():
                              'downloaded at first start (1.0 GB) and checked like the model. dspark: the drafter in '
                              'the model checkpoint. Default: %(default)s')
     parser.add_argument('--no-drafter', action='store_true',
-                        help='serve without the drafter: one token per step, 0.7 GiB more memory for the cache')
+                        help='serve without the drafter: one token per step, 1.46 GiB more memory for the cache '
+                             '(DFlash2; 1.2 GiB with DSpark)')
     parser.add_argument('--draft-cut', type=float, metavar='P', default=None,
                         help='opt-in: verify only the drafts whose running probability stays above P (0.4 measured '
                              '6 %% faster for one request); the server then runs without async scheduling')
