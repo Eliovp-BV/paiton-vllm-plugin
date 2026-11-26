@@ -66,7 +66,7 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
 
 The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
 8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
-gave 9 of 10 (875 s, 117 tok/s). Greedy decoding repeats on this text in v1.0.0 too (8 of 10 in the reasoning, no answer).
+gave 9 of 10 (875 s, 117 tok/s). v1.0.0 gives the same greedy output on this text: the same loop, 8 of 10 in the reasoning.
 
 - Quality against a bf16 reference in our study: `kv4` about 0.005 KL, `fp8` no change (details under [Run](#run)).
 - The fp8 miss at 260,049 tokens: the reply used its whole 4,000-token budget on reasoning and never started the
