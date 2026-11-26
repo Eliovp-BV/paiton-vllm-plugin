@@ -241,19 +241,19 @@ on the 3-bit image, one run per prompt length, total tok/s and latencies.
 | 1 | greedy | 187.4 | 196 ms / 199 ms | 5.1 / 5.3 ms |
 | 1 | temperature 1.0 | 201.8 | 190 ms / 199 ms | 4.6 / 5.0 ms |
 | 2 | greedy | 272.8 | 224 ms / 368 ms | 6.7 / 7.6 ms |
-| 2 | temperature 1.0 | 297.9 | 223 ms / 364 ms | 6.0 / 6.7 ms |
+| 2 | temperature 1.0 | 305.4 | 223 ms / 362 ms | 6.0 / 6.7 ms |
 | 4 | greedy | 401.0 | 248 ms / 718 ms | 9.1 / 10.9 ms |
-| 4 | temperature 1.0 | 429.3 | 247 ms / 713 ms | 8.2 / 10.2 ms |
+| 4 | temperature 1.0 | 422.3 | 246 ms / 712 ms | 8.6 / 10.2 ms |
 | 8 (4 run, 4 wait) | greedy | 402.5 | 5,209 ms / 6,094 ms | 9.3 / 11.3 ms |
-| 8 (4 run, 4 wait) | temperature 1.0 | 439.0 | 4,899 ms / 5,642 ms | 8.5 / 10.1 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 433.1 | 4,882 ms / 5,501 ms | 8.6 / 10.1 ms |
 
 8,192-token prompts:
 
 | Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
 | ---: | --- | ---: | --- | --- |
-| 1 | greedy | 118.7 | 1,441 ms / 1,447 ms | 5.4 / 6.4 ms |
+| 1 | greedy | 118.9 | 1,440 ms / 1,449 ms | 5.4 / 6.3 ms |
 | 1 | temperature 1.0 | 128.6 | 1,443 ms / 1,446 ms | 5.1 / 5.4 ms |
-| 2 | greedy | 160.6 | 1,606 ms / 2,810 ms | 9.1 / 11.9 ms |
+| 2 | greedy | 160.7 | 1,604 ms / 2,803 ms | 9.1 / 11.9 ms |
 | 2 | temperature 1.0 | 176.4 | 1,612 ms / 2,854 ms | 8.1 / 9.0 ms |
 | 4 | greedy | 199.0 | 1,761 ms / 5,472 ms | 16.6 / 19.0 ms |
 | 4 | temperature 1.0 | 210.3 | 1,518 ms / 5,467 ms | 15.4 / 16.9 ms |
