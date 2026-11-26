@@ -269,7 +269,7 @@ on the 3-bit image, one run per prompt length, total tok/s and latencies.
 | 2 | greedy | 64.7 | 7,669 ms / 12.0 s | 12.8 / 24.8 ms |
 | 2 | temperature 1.0 | 66.4 | 9,322 ms / 12.2 s | 11.9 / 17.3 ms |
 | 4 | greedy | 71.0 | 8,330 ms / 24.0 s | 39.1 / 44.3 ms |
-| 4 | temperature 1.0 | 71.9 | 9,000 ms / 24.0 s | 36.0 / 45.0 ms |
+| 4 | temperature 1.0 | 73.0 | 10.8 s / 23.8 s | 30.5 / 44.9 ms |
 | 8 (4 run, 4 wait) | greedy | 70.9 | 35.0 s / 52.5 s | 39.6 / 51.9 ms |
 | 8 (4 run, 4 wait) | temperature 1.0 | 73.1 | 33.9 s / 52.1 s | 41.5 / 44.6 ms |
 
