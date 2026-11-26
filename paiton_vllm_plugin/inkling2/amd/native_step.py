@@ -322,10 +322,17 @@ def forward(model, input_ids, positions, inputs_embeds):
     return step.forward(input_ids, positions, inputs_embeds, attn_metadata, tuple(model.aux_hidden_state_layers))
 
 
+# Steps of up to this many rows (the launcher's default chunk) keep growing the workspace after the cache is sized, as
+# c17r does, out of the room the VRAM cap leaves: counting it costs the default 23K of its 1,048,576 tokens (lead, 26 Nov).
+LAZY_STEP_ROWS = 512
+
+
 def reserve_after_loop(model, positions):
-    """After a Python-loop forward (vLLM's profile run): reserve the workspace of the worst step now, once the loop has
-    freed its activations, so the peak vLLM sizes the cache from is the larger of the two and not their sum. Serving
-    runs only the sequencer (ws2 on c17r, 26 Nov: reserved before the loop, the default context fell to 1,013,504)."""
+    """After a Python-loop forward (vLLM's profile run) with steps above LAZY_STEP_ROWS: reserve the workspace of the
+    worst step now, once the loop has freed its activations, so the peak vLLM sizes the cache from is the larger of the
+    two and not their sum. Serving runs only the sequencer (c17r --fast died growing it to 1.23 GiB at 2,030 rows;
+    reserved before the loop, the default context fell to 1,013,504; after it, --fast fits 524,800, 26 Nov)."""
     step = getattr(model, "_native_step", None)
-    if step is not None:
-        step.reserve(max(positions.shape[0], getattr(model, "max_step_rows", 0)), positions.device, worst=True)
+    rows = getattr(model, "max_step_rows", 0)
+    if step is not None and rows > LAZY_STEP_ROWS:
+        step.reserve(max(positions.shape[0], rows), positions.device, worst=True)

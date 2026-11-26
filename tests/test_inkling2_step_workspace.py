@@ -91,6 +91,14 @@ class StepWorkspace(unittest.TestCase):
         self.assertIsNone(self.run_forward(m, 16))  # a dummy run of 16 rows still reserves the scheduler's largest step
         self.assertEqual(m._native_step.workspace.numel(), WORST)
 
+    def test_default_chunk_grows_lazily(self):
+        m = model(bound=False, max_step_rows=native_step.LAZY_STEP_ROWS)  # the launcher's default: as c17r
+        self.assertIsNone(self.run_forward(m, 512))
+        self.assertEqual(m._native_step.workspace.numel(), 0)  # nothing counted in the profile run
+        m = model(bound=False, max_step_rows=native_step.LAZY_STEP_ROWS + 1)
+        self.assertIsNone(self.run_forward(m, 513))
+        self.assertEqual(m._native_step.workspace.numel(), 513 * ROW_BYTES + native_step.WORKSPACE_MARGIN)
+
     def test_forward_grows_through_reserve(self):
         step = native_step.NativeStep(None)
         step.reserve(100, 'cpu')  # a step's own size (forward), no margin
