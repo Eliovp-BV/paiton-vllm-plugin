@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 import tempfile
@@ -308,6 +309,37 @@ class Inkling2Launcher(unittest.TestCase):
                 self.started(PAITON_INK2_IMAGE='w3', prepare=mock.Mock(side_effect=fetch))
             self.assertIn('w3x.lock.json', str(stop.exception))
         w3x._layers.cache_clear()
+
+    def test_serve_docker_picks_the_image(self):
+        with tempfile.TemporaryDirectory() as root:
+            fake = Path(root) / 'bin'
+            fake.mkdir()
+            (fake / 'docker').write_text('#!/bin/sh\nfor a in "$@"; do printf "%s\\n" "$a"; done\n')  # prints its arguments
+            (fake / 'docker').chmod(0o755)
+            folder = Path(root) / 'w3x' / 'F1'
+            folder.mkdir(parents=True)
+
+            def run(*arguments, **env):
+                out = subprocess.run(['bash', str(FOLDER / 'serve-docker.sh'), *arguments], capture_output=True, text=True,
+                                     check=True, env={'PATH': f'{fake}:/usr/bin:/bin', 'HOME': root,
+                                                      'PAITON_CACHE': f'{root}/cache', **env}).stdout.splitlines()
+                image = next(a for a in out if 'paiton-vllm-plugin:' in a or a == env.get('PAITON_IMAGE'))
+                return image, out[out.index(image) + 1:], out
+            main, w3 = 'paiton-vllm-plugin:inkling-2-mini-rdna4-', 'paiton-vllm-plugin:inkling-2-mini-w3-rdna4-'
+            image, rest, _ = run('--max-model-len', '8192')
+            self.assertIn(main, image)
+            self.assertEqual(rest, ['--max-model-len', '8192'])
+            for arguments, env in ((('--w3', '--fast'), {}), (('--fast',), {'PAITON_W3': '1'})):
+                image, rest, out = run(*arguments, **env)
+                self.assertIn(w3, image)
+                self.assertEqual(rest, ['--fast'])  # --w3 is serve-docker's own, the image does not see it
+                self.assertFalse([a for a in out if '/models/w3x' in a])  # nothing mounted: the image downloads them
+            self.assertIn(main, run(PAITON_W3='0')[0])
+            image, rest, out = run(PAITON_W3X=str(folder))  # a folder of the user's: the 3-bit image, its parent mounted
+            self.assertIn(w3, image)
+            self.assertEqual(rest, ['--w3x', '/models/w3x/F1'])
+            self.assertIn(f'{folder.parent}:/models/w3x:ro', out)
+            self.assertEqual(run('--w3', PAITON_IMAGE='local/inkling:test')[0], 'local/inkling:test')  # the image wins
 
     def test_w3x_folder_counts_its_real_expert_bytes(self):
         from paiton_vllm_plugin.inkling2 import w3x
