@@ -7,8 +7,9 @@
 - The weights are downloaded into the user's cache folder at first start and checked against
   `checkpoint.lock.json`. The images do not contain them, and this repository publishes no converted copy.
 - 3-bit expert files for the super fast image (`inkling-2-mini-w3-rdna4-v1.2.0`): made by Paiton from the expert
-  weights of the revision above and published as [V120 3-bit weights repo and revision] under Apache-2.0, as a
-  modified copy of those weights. [V120 licence check: wording for the derived files, the model card's notice.]
+  weights of the revision above and published as `EliovpAI/Inkling-2-Mini-W3-INT3-Paiton-RDNA4` at revision
+  `0b824fcf035916564fbdd9962acf5177d0ed332a` under Apache-2.0, as a
+  modified copy of those weights. [TBD licence check: wording for the derived files, the model card's notice.]
 - DFlash2 drafter (`--drafter dflash2`, the launcher's default; `--drafter dspark` serves with the drafter in the
   model checkpoint): weights by incoai, Apache-2.0, repository `incoai/Inkling-2-Mini-DFlash2`, revision
   `4f9088ea66c21f2b99ed657d1941c306b03e84d2`. That repository states the license in its model card and ships no

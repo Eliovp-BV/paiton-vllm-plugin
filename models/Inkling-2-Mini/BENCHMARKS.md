@@ -1,6 +1,6 @@
 # Inkling 2 Mini benchmarks
 
-Measured on 25 to [V120 last date] November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap,
+Measured on 25 to [TBD last date] November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap,
 with the images `inkling-2-mini-rdna4-v1.2.0` (default and `--fast`) and `inkling-2-mini-w3-rdna4-v1.2.0` (super fast)
 or the earlier builds a table names (ROCm 10.2, vLLM 0.32), and the checkpoint `thinkingmachines/Inkling-2-Mini` at
 revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6`, with the launcher's defaults unless a row says otherwise: the
@@ -30,7 +30,7 @@ without the drafter.
   1,038,311-token prompt read at 1,174 tok/s against 1,172; the 1,038,311-token row is v1.0.0's own run. v1.2.0 has
   the same model libraries except the expert library, whose prompt kernels are faster and give the same bits: with
   the default settings its greedy tokens are the same as v1.0.0's on the 11 check requests, alone and four at once.
-  [V120 default tables: rerun on v1.2.0, or keep v1.0.0's with this note.] The
+  [TBD default tables: rerun on v1.2.0, or keep v1.0.0's with this note.] The
   [fast mode and super fast](#fast-mode---fast-and-super-fast-3-bit-image) numbers come from the v1.2.0 images.
 - No other job ran on this card during an arm. The second card of the host ran other work at the same time.
 - Compare numbers within the same card: the same image and arm ran 2.6 % faster on the host's second R9700 than on
@@ -142,53 +142,53 @@ at once. The launcher drafts five tokens for one request and four when requests 
 ## Fast mode (`--fast`) and super fast (3-bit image)
 
 `--fast` sets 2,048-token prompt steps (default 512) and four drafts while one request runs (default five); the
-weights, the arithmetic and the draft check stay those of the default. The launcher then fits [V120 fast context]
+weights, the arithmetic and the draft check stay those of the default. The launcher then fits 524,800
 tokens per request instead of 1,048,576. Super fast, the image `inkling-2-mini-w3-rdna4-v1.2.0`, adds 3-bit experts
-([V120 W3 PICK: layers]), 8-bit attention projections and the relaxed draft check (`0.1,0.3`, see the
+([TBD W3 PICK: layers]), 8-bit attention projections and the relaxed draft check (`0.1,0.3`, see the
 [guide](README.md#super-fast-3-bit-image)), with 1,048,576 tokens per request.
 
 LocalMaxxing's inference matrix (lmx 0.1.66 with the site's settings: its prose prompt at temperature 1.0, 30 s per
-cell), one fresh server per version on [V120 card], one run each (not mirrored). Prompt speed, one request, tok/s:
+cell), one fresh server per version on [TBD card], one run each (not mirrored). Prompt speed, one request, tok/s:
 
-[V120 BENCH PROMPT TABLE: default / --fast / super fast]
+[TBD BENCH PROMPT TABLE: default / --fast / super fast]
 
 Generation, total tok/s at 1 / 2 / 4 requests at once:
 
-[V120 BENCH GENERATION TABLE: default / --fast / super fast]
+[TBD BENCH GENERATION TABLE: default / --fast / super fast]
 
-- Tokens per check step on this prose: [V120 accept: default, --fast, super fast]. Each context fill starts with its
+- Tokens per check step on this prose: [TBD accept: default, --fast, super fast]. Each context fill starts with its
   own random text, so the generation cells move by a few percent from run to run through the accepted drafts; the
   prompt cells repeat within 0.3 %.
 - LocalMaxxing's two short speed tests (512-token replies, one request), `code-v1` / `reasoning-v1`:
-  [V120 speed tests, three versions].
-- Ten facts hidden in a long text, temperature 1.0: [V120 fact checks: --fast at its context, super fast at about
-  1M tokens].
+  [TBD speed tests, three versions].
+- Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
+  788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). [TBD --fast at its context.]
 
-[V120 FAST-GRID: `vllm bench serve`, 1,024-, 8,192- and 32,768-token prompts at 4 and 8 users, --fast and super fast,
+[TBD FAST-GRID: `vllm bench serve`, 1,024-, 8,192- and 32,768-token prompts at 4 and 8 users, --fast and super fast,
 against the default rows above.]
 
 `--fast`, output against the default:
 
 - Greedy: the token ids of the 11 check requests are the same as with the defaults, alone and four at once. A prompt
   longer than 512 tokens is read in larger pieces, which changes the order of some sums in attention, so a greedy
-  reply can part from the default's after some tokens: [V120 bench count on long prompts].
+  reply can part from the default's after some tokens: [TBD bench count on long prompts].
 - Temperature 1.0: distribution test against serving without a drafter (5-token replies, 3 prompts, 2,500 seeds per
-  prompt, the token frequencies at positions 2 to 5, 12 cells): [V120 dist --fast: cells that differ, total
+  prompt, the token frequencies at positions 2 to 5, 12 cells): [TBD dist --fast: cells that differ, total
   variation mean and max]. With the defaults 0 of 12 cells differ (mean 0.046, max 0.080, the size of the test's own
   noise).
 
 Super fast, output against the default:
 
-- Greedy token ids against the image's own exact path for the same 3-bit weights: [V120 w1 gate: equal on the check
+- Greedy token ids against the image's own exact path for the same 3-bit weights: [TBD w1 gate: equal on the check
   requests at 1 and 4].
-- 3-bit experts in our quality study: [V120 P3: next-token KL, top-1 agreement, needles].
-- Task set, 35 tasks: greedy [V120 w3 task set greedy] of 35; temperature 1.0, seeds 1 to 3: [V120 w3 task set T1, per
+- 3-bit experts in our quality study: [TBD P3: next-token KL, top-1 agreement, needles].
+- Task set, 35 tasks: greedy [TBD w3 task set greedy] of 35; temperature 1.0, seeds 1 to 3: [TBD w3 task set T1, per
   seed and per group].
 - The relaxed draft check alone, measured with the 4-bit experts: in the distribution test above 10 of 12 cells
   differ (mean 0.230, max 0.430), and 42 % of the sampled tokens were the token that serving without a drafter picks
-  most often, against 29 % with the standard check. [V120 keep, or the same test on the 3-bit image.]
+  most often, against 29 % with the standard check. [TBD keep, or the same test on the 3-bit image.]
 
-Memory with BetterBench decode and concurrency (temperature 0.7, top-p 0.95, top-k 20): [V120 gates: peaks with --fast
+Memory with BetterBench decode and concurrency (temperature 0.7, top-p 0.95, top-k 20): [TBD gates: peaks with --fast
 and super fast, every request ok].
 
 ## Quality
