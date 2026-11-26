@@ -32,11 +32,7 @@ class _WeightsTable(_Weights):  # ABI 2: the ABI 1 fields (padded to 64 bytes), 
     _fields_ = [("table", C.c_void_p)]  # None: the c10 addressing, base + e * stride
 
 
-class _WeightsW3(_WeightsTable):  # ABI 4, read with format 2 / 3 only: a factor per expert and output row, or null
-    _fields_ = [("w13_row_factor", C.c_void_p), ("w2_row_factor", C.c_void_p)]
-
-
-assert C.sizeof(_Weights) == 64 and _WeightsTable.table.offset == 64 and C.sizeof(_WeightsW3) == 88
+assert C.sizeof(_Weights) == 64 and _WeightsTable.table.offset == 64
 _lib = None
 _abi = 0
 _workspace: dict[torch.device, torch.Tensor] = {}
@@ -87,7 +83,6 @@ class Inkling2NativeExperts(nn.Module):
         self.nvfp4 = expert_format == "nvfp4"
         # PAITON_INK2_W3X: this layer's experts as 3-bit codes from the W3X folder (`w3x.py`) instead of the checkpoint's
         self.w3 = layer_id is not None and layer_id in w3x.layers()
-        self.w3_stride = w3x.layers()[layer_id][1] if self.w3 else 0
         # PAITON_INK2_EXPERT_POOL_GIB (16 GB cards): the four weight parts load into pinned host memory
         # (`expert_pool.py`), a pool of them is on the card.
         self.layer_id, self.pooled = layer_id, expert_pool.ENABLED
@@ -106,7 +101,7 @@ class Inkling2NativeExperts(nn.Module):
             if self.w3:  # filled by load_w3, not from the checkpoint
                 self._raw(f"{name}_w3", (num, w3x.codes_bytes(n, k)), torch.uint8)
                 self._raw(f"{name}_w3_scale", (num, n, k // w3x.GROUP), torch.uint8)
-                self._raw(f"{name}_w3_factor", (num, n) if self.w3_stride else (num,), torch.float32)
+                self._raw(f"{name}_w3_factor", (num,), torch.float32)
             elif self.nvfp4:
                 shapes[f"{name}_weight"] = ((num, n, k // 2), torch.uint8)
                 shapes[f"{name}_weight_scale"] = ((num, n, k // 16), torch.float8_e4m3fn)
@@ -118,8 +113,6 @@ class Inkling2NativeExperts(nn.Module):
         host = expert_pool.host_params(layer_id, self.nvfp4, shapes) if self.pooled else {}
         for name, (shape, dtype) in shapes.items():
             self._raw(name, shape, dtype, host.get(name))
-        if self.w3_stride:  # per-row factors: the matrix factor is 1
-            self.register_buffer("w3_ones", torch.ones(num, dtype=torch.float32), persistent=False)
 
     def _raw(self, name: str, shape: tuple[int, ...], dtype: torch.dtype, data: torch.Tensor | None = None) -> None:
         self.register_parameter(
@@ -148,18 +141,16 @@ class Inkling2NativeExperts(nn.Module):
         # Built at the first call: the tensors are on the card by then.
         _library()
         # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations (W3X-LOADER question 1)
-        if self.w3:  # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations (W3X-ENTRY.md v1)
-            w = _WeightsW3(format=2 if self.nvfp4 else 3)
+        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations, same 72-byte struct (lead, 10:48)
+        w = (_WeightsTable if _abi >= 2 else _Weights)(format=(2 if self.nvfp4 else 3) if self.w3 else 0 if self.nvfp4 else 1)
+        if self.w3:
             for name in ("w13", "w2"):
-                factor = f"{name}_row_factor" if self.w3_stride else f"{name}_amax"
-                for field, tensor in ((name, getattr(self, f"{name}_w3")), (f"{name}_scale", getattr(self, f"{name}_w3_scale")),
-                                      (factor, getattr(self, f"{name}_w3_factor")),
-                                      *(((f"{name}_amax", self.w3_ones),) if self.w3_stride else ())):
+                for field, suffix in ((name, "_w3"), (f"{name}_scale", "_w3_scale"), (f"{name}_amax", "_w3_factor")):
+                    tensor = getattr(self, name + suffix)
                     assert tensor.is_cuda and tensor.is_contiguous()
                     setattr(w, field, tensor.data_ptr())
-                setattr(w, f"{name}_denominator", 1.0)  # the factors are the whole outer scale
+                setattr(w, f"{name}_denominator", 1.0)  # the factor is the whole outer scale
             return w
-        w = (_WeightsTable if _abi >= 2 else _Weights)(format=0 if self.nvfp4 else 1)
         if self.pooled:  # the table replaces the four base addresses (not read then)
             if _abi < 2 or (expert_pool.SKIP and _abi < 3):
                 raise RuntimeError(f"the expert pool needs an expert library of ABI {3 if expert_pool.SKIP else 2} "

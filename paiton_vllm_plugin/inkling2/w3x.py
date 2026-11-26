@@ -4,9 +4,9 @@ from the W3X export: manifest.json and one layer_LL.safetensors per 3-bit layer.
 (that file's codes, scales and factor) or "checkpoint" (the checkpoint's own NVFP4 / MXFP8 experts, today's path).
 
 File layout (notes/W3X-LAYOUT.md): weight = (u - 4) x e4m3(scale) x factor, u in 0..7 as 3 bits LSB-first per row
-(32 codes in 3 dwords), one e4m3 scale per 64 inputs, an fp32 factor per expert matrix (factor_stride 0) or per
-output row (1). The expert library (ABI 4, TUNE's W3X-ENTRY.md v1) repacks the codes into its card layout on the host
-(PaitonInkling2MoeW3Repack); scales and factors load as stored.
+(32 codes in 3 dwords), one e4m3 scale per 64 inputs, an fp32 factor per expert matrix. The expert library (ABI 4,
+TUNE's W3X-ENTRY.md) repacks the codes into its card layout on the host (PaitonInkling2MoeW3Repack); scales and
+factors load as stored.
 No torch here: the launcher reads the manifest before vLLM starts."""
 from concurrent.futures import ThreadPoolExecutor
 import json
@@ -26,20 +26,19 @@ def codes_bytes(n: int, k: int) -> int:
     return n * k * 3 // 8
 
 
-def expert_bytes(stride: int = 0) -> int:
-    """One 3-bit expert on the card: codes, scales and factors (3,110,408 B with one factor per matrix)."""
-    return sum(codes_bytes(n, k) + n * k // GROUP + 4 * (n if stride else 1) for n, k in SHAPES.values())
+def expert_bytes() -> int:
+    """One 3-bit expert on the card: codes, scales and the two matrix factors (3,110,408 B)."""
+    return sum(codes_bytes(n, k) + n * k // GROUP + 4 for n, k in SHAPES.values())
 
 
-def layers(folder: str | None = None) -> dict[int, tuple[Path, int]]:
-    """{layer: (file, factor stride)} of the 3-bit layers in the manifest of `folder` (default PAITON_INK2_W3X); {}
-    without one."""
+def layers(folder: str | None = None) -> dict[int, Path]:
+    """{layer: file} of the 3-bit layers in the manifest of `folder` (default PAITON_INK2_W3X); {} without one."""
     folder = folder or os.environ.get("PAITON_INK2_W3X")
     return _layers(folder) if folder else {}
 
 
 @cache
-def _layers(folder: str) -> dict[int, tuple[Path, int]]:
+def _layers(folder: str) -> dict[int, Path]:
     root = Path(folder)
     try:
         manifest = json.loads((root / "manifest.json").read_text())
@@ -48,7 +47,7 @@ def _layers(folder: str) -> dict[int, tuple[Path, int]]:
     head = {key: manifest.get(key) for key in ("format", "version", "group", "shapes")}
     if head != dict(format="W3X", version=1, group=GROUP, shapes={m: list(s) for m, s in SHAPES.items()}):
         raise ValueError(f"{root}/manifest.json: not a W3X v1 file of this model: {head}")
-    found: dict[int, tuple[Path, int]] = {}
+    found: dict[int, Path] = {}
     seen = set()
     for entry in manifest.get("layers", []):
         layer, kind = entry.get("layer"), entry.get("format")
@@ -57,19 +56,20 @@ def _layers(folder: str) -> dict[int, tuple[Path, int]]:
         seen.add(layer)
         if kind == "checkpoint":
             continue
+        # shortcut: per-row factors (stride 1) are the reserved formats 4 / 5 (lead, 26 Nov 10:48); load them once built
         stride, name = entry.get("factor_stride"), entry.get("file", "")
-        if stride not in (0, 1) or isinstance(stride, bool):
-            raise ValueError(f"{root}: layer {layer} has factor_stride {stride!r}, not 0 or 1")
+        if stride != 0 or isinstance(stride, bool):
+            raise ValueError(f"{root}: layer {layer} has factor_stride {stride!r}; the expert library takes 0 (per matrix)")
         if Path(name).name != name or not (root / name).is_file():
             raise ValueError(f"{root}: layer {layer} names file {name!r}, not a file in that folder")
-        found[layer] = root / name, stride
+        found[layer] = root / name
     return found
 
 
 def experts_gib(folder: str | None = None) -> float:
     """GiB of routed experts on the card with the 3-bit layers of `folder` (14.59 exact, 8.90 all 3-bit)."""
     w3 = layers(folder)
-    return EXPERTS * sum(expert_bytes(w3[layer][1]) if layer in w3 else CHECKPOINT_EXPERT_BYTES[layer in MXFP8_LAYERS]
+    return EXPERTS * sum(expert_bytes() if layer in w3 else CHECKPOINT_EXPERT_BYTES[layer in MXFP8_LAYERS]
                          for layer in range(LAYERS)) / 2 ** 30
 
 
@@ -81,17 +81,17 @@ def replaces(name: str) -> bool:
 
 def read(layer: int, repack, card_bytes) -> dict:
     """Host tensors of one 3-bit layer: {"w13" | "w2": (card codes [128, card_bytes(n, k)] u8, scales [128, n, k/64]
-    u8, factor [128] or [128, n] f32)}. `repack(codes_ptr, n, k, out_ptr)` is the library's PaitonInkling2MoeW3Repack:
+    u8, factor [128] f32)}. `repack(codes_ptr, n, k, out_ptr)` is the library's PaitonInkling2MoeW3Repack:
     thread-safe, one expert matrix per call (about 5 ns per weight on one core), so the experts run on several threads."""
     import torch
     from safetensors import safe_open
 
-    (path, stride), out = layers()[layer], {}
+    path, out = layers()[layer], {}
     workers = min(16, len(os.sched_getaffinity(0)))
     with safe_open(str(path), framework="pt") as f:
         for m, (n, k) in SHAPES.items():
             want = {f"{m}.codes": ([EXPERTS, n, codes_bytes(1, k)], "U8"), f"{m}.scales": ([EXPERTS, n, k // GROUP], "U8"),
-                    f"{m}.factor": ([EXPERTS, n] if stride else [EXPERTS], "F32")}
+                    f"{m}.factor": ([EXPERTS], "F32")}
             for key, (shape, dtype) in want.items():
                 part = f.get_slice(key) if key in f.keys() else None
                 if part is None or list(part.get_shape()) != shape or part.get_dtype() != dtype:

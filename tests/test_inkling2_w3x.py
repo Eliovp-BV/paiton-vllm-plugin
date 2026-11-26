@@ -26,7 +26,7 @@ def folder(entries, files=(), head=HEAD):
     return str(root)
 
 
-def fake_layer(root, layer, experts=2, shapes=None, stride=0):
+def fake_layer(root, layer, experts=2, shapes=None):
     """A small W3X layer file: codes = byte pattern by expert, scales = expert id, factor = expert id + 0.5."""
     tensors = {}
     for m, (n, k) in (shapes or w3x.SHAPES).items():
@@ -34,8 +34,6 @@ def fake_layer(root, layer, experts=2, shapes=None, stride=0):
         tensors[f'{m}.codes'] = codes.to(torch.uint8).reshape(experts, n, w3x.codes_bytes(1, k))
         tensors[f'{m}.scales'] = torch.arange(experts, dtype=torch.uint8).repeat_interleave(n * k // 64).reshape(experts, n, k // 64)
         tensors[f'{m}.factor'] = torch.arange(experts, dtype=torch.float32) + 0.5
-        if stride:
-            tensors[f'{m}.factor'] = tensors[f'{m}.factor'][:, None].repeat(1, n).contiguous()
     name = f'layer_{layer:02d}.safetensors'
     save_file(tensors, str(Path(root) / name), metadata=dict(format='W3X', version='1', layer=str(layer), factor_stride='0'))
     return name
@@ -47,7 +45,6 @@ class Manifest(unittest.TestCase):
 
     def test_sizes(self):
         self.assertEqual(w3x.expert_bytes(), 3_110_408)  # notes/W3X-LAYOUT.md item 6
-        self.assertEqual(w3x.expert_bytes(1), 3_110_400 + 2 * 4 * 2304)  # a factor per output row of both matrices
         all_w3 = folder([dict(layer=i, format='w3', file=f'l{i}', factor_stride=0) for i in range(24)], [f'l{i}' for i in range(24)])
         self.assertAlmostEqual(w3x.experts_gib(all_w3), 8.90, places=2)
         exact = folder([dict(layer=i, format='checkpoint') for i in range(24)])
@@ -63,7 +60,7 @@ class Manifest(unittest.TestCase):
                 (HEAD, [good, good], ['l0']),  # one layer twice
                 (HEAD, [{**good, 'layer': 24}], ['l0']),
                 (HEAD, [{**good, 'format': 'w4'}], ['l0']),
-                (HEAD, [{**good, 'factor_stride': 2}], ['l0']),
+                (HEAD, [{**good, 'factor_stride': 1}], ['l0']),  # per-row factors: formats 4 / 5, reserved
                 (HEAD, [{**good, 'factor_stride': True}], ['l0']),
                 (HEAD, [{**good, 'file': '../l0'}], ['l0']),
                 (HEAD, [good], [])):  # file missing
@@ -120,15 +117,6 @@ class Read(unittest.TestCase):
                 w3x.read(5, lambda *a: 1, w3x.codes_bytes)
             with mock.patch.object(w3x, 'SHAPES', {'w13': (32, 256), 'w2': (16, 128)}), self.assertRaises(ValueError):
                 w3x.read(5, repack, w3x.codes_bytes)  # file shape is not this model's
-            fake_layer(root, 5, shapes=SMALL, stride=1)  # per-row factors: [experts, n]
-            with self.assertRaises(ValueError):
-                w3x.read(5, repack, w3x.codes_bytes)  # the manifest says stride 0
-            (Path(root) / 'manifest.json').write_text(json.dumps({**HEAD, 'shapes': {m: list(v) for m, v in SMALL.items()},
-                                                                   'layers': [dict(layer=5, format='w3', file=name, factor_stride=1)]}))
-            w3x._layers.cache_clear()
-            out = w3x.read(5, repack, w3x.codes_bytes)
-            self.assertEqual(out['w13'][2].shape, (2, 32))
-            self.assertEqual(out['w2'][2][1].unique().tolist(), [1.5])
 
     @unittest.skipUnless((REAL / 'manifest.json').is_file(), 'needs the W3X v1 files on the testbench')
     def test_real_files(self):
@@ -184,19 +172,9 @@ class Experts(unittest.TestCase):
                 for fmt, code in (('nvfp4', 2), ('mxfp8', 3)):  # W3X-LOADER question 1: 3 = MXFP8 activations
                     e = experts[fmt]
                     w = e._weights()
-                    self.assertEqual((w.format, w.w13, w.w2_scale, w.w13_amax, w.w2_denominator, w.table, w.w13_row_factor),
-                                     (code, e.w13_w3.data_ptr(), e.w2_w3_scale.data_ptr(), e.w13_w3_factor.data_ptr(), 1.0, None, None))
-                    self.assertEqual(C.sizeof(w), 88)
-                w3x._layers.cache_clear()
-                (Path(self.root) / 'manifest.json').write_text(json.dumps(
-                    {**HEAD, 'layers': [dict(layer=2, format='w3', file='l2', factor_stride=1)]}))
-                e = experts_native.Inkling2NativeExperts(CONFIG, 'nvfp4', 2)
-                self.assertEqual(tuple(e.w2_w3_factor.shape), (128, 2304))
-                w = e._weights()  # per-row factors: the row pointers, the matrix factors all 1
-                self.assertEqual((w.w13_amax, w.w13_row_factor, w.w2_row_factor),
-                                 (e.w3_ones.data_ptr(), e.w13_w3_factor.data_ptr(), e.w2_w3_factor.data_ptr()))
-                self.assertEqual(e.w3_ones.tolist(), [1.0] * 128)
-                self.assertNotIn('w3_ones', dict(e.named_parameters()))  # not a checkpoint tensor
+                    self.assertEqual((w.format, w.w13, w.w2_scale, w.w13_amax, w.w2_denominator, w.table),
+                                     (code, e.w13_w3.data_ptr(), e.w2_w3_scale.data_ptr(), e.w13_w3_factor.data_ptr(), 1.0, None))
+                    self.assertEqual(C.sizeof(w), 72)  # the struct the sequencer embeds (lead, 10:48)
 
 
 if __name__ == '__main__':
