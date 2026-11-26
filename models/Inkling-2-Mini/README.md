@@ -214,6 +214,8 @@ start it downloads its 3-bit expert files (9.6 GB) into the cache:
 PAITON_W3X=~/my-w3x-folder ./models/Inkling-2-Mini/serve-docker.sh   # a folder of 3-bit files of your own
 ```
 
+Like the main image, the 3-bit image is for 32 GB cards. It is not tested on 16 GB cards.
+
 Against the default it changes four things:
 
 | Part | Default | Super fast |
@@ -227,6 +229,7 @@ The first three change the output, so super fast is close to the default but not
 
 - 3-bit experts: in our quality study (teacher-forced, six groups from short prompts to 128K-token documents)
   they pick the same next token as the default 95.28 % of the time (two runs of the default that differ only in the order of some attention sums agree on 97.18 %) and add 0.019 to the KL divergence per token.
+  At 256K and 512K tokens (two and three documents): 98.08 % against 98.50 % and 94.56 % against 96.96 %.
 - 8-bit attention projections: about 0.003 next-token KL against the default.
 - Relaxed draft check: a drafted token is kept when the normal check keeps it, and also when the model gives it a
   probability of at least 0.1, or of at least 0.3 times that of its most likely token when that is lower. More drafts
@@ -403,7 +406,8 @@ string, from which the model reads a label and a value. The vision tower loads w
 ## What it does not do yet
 
 - Cards with less memory than the R9700's 32 GB are not supported yet: when the card has less than 20 GiB free at
-  start, the launcher stops before the download.
+  start, the launcher stops before the download. The 3-bit image's launcher starts with 14.3 GiB free or more, so it
+  can start on a 16 GB card, but it is not tested there.
 - The server runs at most four requests at once (`--max-num-seqs 4`); more wait in vLLM's queue. Our 8-user grids
   (1K- to 32K-token prompts) pass that way.
 - Super fast changes the output (3-bit experts, 8-bit attention projections, the relaxed draft check). Use the
