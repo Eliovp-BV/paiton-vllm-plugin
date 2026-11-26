@@ -149,7 +149,7 @@ class Inkling2NativeExperts(nn.Module):
                     tensor = getattr(self, name + suffix)
                     assert tensor.is_cuda and tensor.is_contiguous()
                     setattr(w, field, tensor.data_ptr())
-                setattr(w, f"{name}_denominator", 1.0)  # the factor is the whole outer scale
+                setattr(w, f"{name}_denominator", w3x.denominator(self.layer_id, name))  # 1.0: the factor is the whole outer scale
             return w
         if self.pooled:  # the table replaces the four base addresses (not read then)
             if _abi < 2 or (expert_pool.SKIP and _abi < 3):
