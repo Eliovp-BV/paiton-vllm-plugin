@@ -17,6 +17,7 @@ import os
 import torch
 from torch import nn
 
+from .. import w3x
 from . import expert_pool
 
 
@@ -46,8 +47,8 @@ def _library():
         lib = C.CDLL(path)
         lib.PaitonInkling2MoeGetAbiVersion.restype = C.c_uint
         _abi = lib.PaitonInkling2MoeGetAbiVersion()
-        if _abi not in (1, 2, 3):
-            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1, 2 or 3")
+        if _abi not in (1, 2, 3, 4):
+            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 to 4")
         if _abi >= 2:
             lib.PaitonInkling2MoeRoute.restype = C.c_int
             lib.PaitonInkling2MoeRoute.argtypes = [C.c_void_p] * 4 + [C.c_float] + [C.c_void_p] * 2 + [C.c_int, C.c_void_p]
@@ -55,6 +56,11 @@ def _library():
             lib.PaitonInkling2MoeFetch.argtypes = (
                 [C.c_void_p, C.c_int] + [C.c_void_p] * (3 if _abi == 2 else 4) + [C.c_int, C.c_int, C.c_void_p, C.c_void_p]
             )  # ABI 3: the routing weights after idx (the opt-in expert skip rewrites both)
+        if _abi >= 4:  # ABI 4 adds the 3-bit experts (format 2 and 3) and their host repack
+            lib.PaitonInkling2MoeW3Bytes.restype = C.c_size_t
+            lib.PaitonInkling2MoeW3Bytes.argtypes = [C.c_int, C.c_int]
+            lib.PaitonInkling2MoeW3Repack.restype = C.c_int
+            lib.PaitonInkling2MoeW3Repack.argtypes = [C.c_void_p, C.c_int, C.c_int, C.c_void_p]
         _lib = lib
         _lib.PaitonInkling2MoeWorkspaceBytes.restype = C.c_size_t
         _lib.PaitonInkling2MoeWorkspaceBytes.argtypes = [C.c_int, C.c_int]
@@ -75,11 +81,15 @@ class Inkling2NativeExperts(nn.Module):
         super().__init__()
         assert expert_format in ("nvfp4", "mxfp8")
         self.nvfp4 = expert_format == "nvfp4"
+        # PAITON_INK2_W3X: this layer's experts as 3-bit codes from the W3X folder (`w3x.py`) instead of the checkpoint's
+        self.w3 = layer_id is not None and layer_id in w3x.layers()
         # PAITON_INK2_EXPERT_POOL_GIB (16 GB cards): the four weight parts load into pinned host memory
         # (`expert_pool.py`), a pool of them is on the card.
         self.layer_id, self.pooled = layer_id, expert_pool.ENABLED
         if self.pooled and layer_id is None:
             raise ValueError("the expert pool needs the layer id of every expert module")
+        if self.pooled and self.w3:
+            raise ValueError("PAITON_INK2_W3X: 3-bit experts with the expert pool (16 GB cards) are not built")
         shapes = {}
         # The library's dimensions are fixed to Inkling 2 Mini.
         num, hidden, inter = config.n_routed_experts, config.hidden_size, config.intermediate_size
@@ -88,7 +98,11 @@ class Inkling2NativeExperts(nn.Module):
         self.flags = int(os.environ.get("PAITON_INK2_MOE_FLAGS", "0"))
         self._w: _Weights | None = None
         for name, (n, k) in (("w13", (2 * inter, hidden)), ("w2", (hidden, inter))):
-            if self.nvfp4:
+            if self.w3:  # filled by load_w3, not from the checkpoint
+                self._raw(f"{name}_w3", (num, w3x.codes_bytes(n, k)), torch.uint8)
+                self._raw(f"{name}_w3_scale", (num, n, k // w3x.GROUP), torch.uint8)
+                self._raw(f"{name}_w3_factor", (num,), torch.float32)
+            elif self.nvfp4:
                 shapes[f"{name}_weight"] = ((num, n, k // 2), torch.uint8)
                 shapes[f"{name}_weight_scale"] = ((num, n, k // 16), torch.float8_e4m3fn)
                 self._raw(f"{name}_weight_amax", (num,), torch.float32)
@@ -105,10 +119,38 @@ class Inkling2NativeExperts(nn.Module):
             name, nn.Parameter(torch.empty(shape, dtype=dtype) if data is None else data, requires_grad=False)
         )
 
+    def load_w3(self) -> list[str]:
+        """Fills the 3-bit parameters from the W3X file of this layer; returns their names."""
+        lib = _library()
+        if _abi < 4:
+            raise RuntimeError(f"PAITON_INK2_W3X needs an expert library of ABI 4, this one has {_abi}")
+
+        def card_bytes(n: int, k: int) -> int:
+            size = lib.PaitonInkling2MoeW3Bytes(n, k)
+            assert size == w3x.codes_bytes(n, k), f"library W3 bytes {size} for {n} x {k}"
+            return size
+
+        names = []
+        for name, (codes, scales, factor) in w3x.read(self.layer_id, lib.PaitonInkling2MoeW3Repack, card_bytes).items():
+            for suffix, host in (("_w3", codes), ("_w3_scale", scales), ("_w3_factor", factor)):
+                getattr(self, name + suffix).data.copy_(host)
+                names.append(name + suffix)
+        return names
+
     def _weights(self) -> _Weights:
         # Built at the first call: the tensors are on the card by then.
         _library()
-        w = (_WeightsTable if _abi >= 2 else _Weights)(format=0 if self.nvfp4 else 1)
+        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations (W3X-LOADER question 1)
+        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations, same 72-byte struct (lead, 10:48)
+        w = (_WeightsTable if _abi >= 2 else _Weights)(format=(2 if self.nvfp4 else 3) if self.w3 else 0 if self.nvfp4 else 1)
+        if self.w3:
+            for name in ("w13", "w2"):
+                for field, suffix in ((name, "_w3"), (f"{name}_scale", "_w3_scale"), (f"{name}_amax", "_w3_factor")):
+                    tensor = getattr(self, name + suffix)
+                    assert tensor.is_cuda and tensor.is_contiguous()
+                    setattr(w, field, tensor.data_ptr())
+                setattr(w, f"{name}_denominator", 1.0)  # the factor is the whole outer scale
+            return w
         if self.pooled:  # the table replaces the four base addresses (not read then)
             if _abi < 2 or (expert_pool.SKIP and _abi < 3):
                 raise RuntimeError(f"the expert pool needs an expert library of ABI {3 if expert_pool.SKIP else 2} "

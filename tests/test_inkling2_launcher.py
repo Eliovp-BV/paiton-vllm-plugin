@@ -176,6 +176,84 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit), mock.patch.object(server.sys, 'stderr'):
             self.environment('--kv-cache', 'int4')
 
+    def started(self, *arguments, **preset):
+        """(vLLM argv, printed lines) of a launcher start; `preset` as `docker run -e`."""
+        lines = []
+        with mock.patch.dict(os.environ, {server.DFLASH2_SO: __file__, **preset}), \
+                mock.patch.object(server, 'prepare', return_value='/checkpoint'), \
+                mock.patch.object(server, 'card_free_gib', return_value=None), \
+                mock.patch.object(server.os, 'execv') as execv, \
+                mock.patch('builtins.print', side_effect=lambda line, **_: lines.append(json.loads(line))), \
+                mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
+            for name in {*server.FAST, *server.FAST_PATHS} - set(preset):
+                os.environ.pop(name, None)  # the host's own environment stays out
+            server.main()
+        return next(line['command'] for line in lines if 'command' in line), lines  # also for --dry-run
+
+    def test_fast_is_one_switch_over_separate_variables(self):
+        def parts(argv):
+            config = json.loads(argv[argv.index('--speculative-config') + 1])
+            return argv[argv.index('--max-num-batched-tokens') + 1], config['num_speculative_tokens_per_batch_size']
+        argv, lines = self.started()
+        self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))  # the release default
+        self.assertFalse([line for line in lines if 'fast_profile' in line])  # nothing printed without a fast setting
+        argv, lines = self.started('--fast')
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
+        self.assertIn({'fast_profile': server.FAST}, lines)
+        environment = next(line['environment'] for line in lines if 'environment' in line)
+        self.assertEqual(environment['PAITON_RUNNER_GLUE_ACCEPT'], '0.1,0.3')  # the sampler glue reads it in vLLM
+        argv, lines = self.started(PAITON_RUNNER_GLUE_ACCEPT='0.3,0.6')  # alone: command unchanged, line names it
+        self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))
+        self.assertIn({'fast_profile': {'PAITON_RUNNER_GLUE_ACCEPT': '0.3,0.6'}}, lines)
+        for name, value, want in (('PAITON_INK2_PREFILL_CHUNK', '2048', ('2048', [[1, 1, 5], [2, 4, 4]])),
+                                  ('PAITON_INK2_DRAFTS_1', '4', ('512', [[1, 1, 4], [2, 4, 4]]))):
+            argv, lines = self.started(**{name: value})  # one alone, without --fast
+            self.assertEqual(parts(argv), want)
+            self.assertIn({'fast_profile': {name: value}}, lines)
+        argv, lines = self.started('--fast', PAITON_INK2_DRAFTS_1='5')  # `docker run -e` wins over --fast
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 5], [2, 4, 4]]))
+        argv, _ = self.started('--fast', '--drafter', 'dspark')
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
+        self.assertEqual(server.DRAFTER['num_speculative_tokens_per_batch_size'], [[1, 1, 5], [2, 4, 4]])  # not changed in place
+        self.assertNotIn('--speculative-config', self.started('--fast', '--no-drafter')[0])
+        for bad in ('0', '8', 'four'):
+            with self.assertRaises(SystemExit):
+                self.started(PAITON_INK2_DRAFTS_1=bad)
+        with self.assertRaises(SystemExit) as stop:  # the 16 GB profile has its own chunk and one request
+            self.started('--fast', '--dry-run', '15.9')
+        self.assertIn('32 GB', str(stop.exception))
+
+    def test_w3x_folder_counts_its_real_expert_bytes(self):
+        from paiton_vllm_plugin.inkling2 import w3x
+        w3x._layers.cache_clear()
+        with tempfile.TemporaryDirectory() as root:
+            head = dict(format='W3X', version=1, group=64, shapes=dict(w13=[2304, 2304], w2=[2304, 1152]))
+            entries = [dict(layer=i, format='w3', file=f'layer_{i:02d}.safetensors', factor_stride=0) for i in range(24)]
+            (Path(root) / 'manifest.json').write_text(json.dumps({**head, 'layers': entries}))
+            for entry in entries:
+                (Path(root) / entry['file']).write_bytes(b'')
+            argv, lines = self.started('--w3x', root, '--fast')
+            self.assertEqual(os.environ.get('PAITON_INK2_W3X'), None)  # the test's own environment is restored
+            self.assertIn('8.90 GiB of experts', next(line['w3x'] for line in lines if 'w3x' in line))
+            self.assertEqual(next(line['fast_profile'] for line in lines if 'fast_profile' in line),
+                             {**server.FAST, 'PAITON_INK2_W3X': root})
+            # all 3-bit: 5.69 GiB less of experts, so a card with 15.9 GiB free holds them all (no 16 GB profile)
+            argv, lines = self.started('--w3x', root, '--dry-run', '15.9')
+            self.assertFalse([line for line in lines if 'card_profile' in line])
+            self.assertEqual(argv[argv.index('--max-num-seqs') + 1], '4')
+            with self.assertRaises(SystemExit) as stop:  # below that the expert pool would be needed: not built for 3 bits
+                self.started('--w3x', root, '--dry-run', '13.0')
+            self.assertIn('3-bit experts need 14.3 GiB', str(stop.exception))
+            (Path(root) / 'manifest.json').write_text('{}')
+            w3x._layers.cache_clear()
+            with self.assertRaises(SystemExit) as stop:
+                self.started('--w3x', root)
+            self.assertIn('--w3x', str(stop.exception))
+        w3x._layers.cache_clear()
+        script = (FOLDER / 'serve-docker.sh').read_text()
+        self.assertIn('-v "$PAITON_W3X:/models/w3x:ro"', script)
+        self.assertIn('w3x=(--w3x /models/w3x)', script)
+
 
 class Inkling2CacheTier(unittest.TestCase):
     def setUp(self):

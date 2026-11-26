@@ -161,11 +161,15 @@ def small_card(free, context, drafter, vision, kv, need_pool=True, host=None):
 def command(snapshot, host='0.0.0.0', extra=(), drafter=True, draft_snapshot=None):
     # drafter: False, True or 'dspark' (the model's own), or 'dflash2' with the folder of its checkpoint
     config = {**DFLASH2, 'model': str(draft_snapshot)} if drafter == 'dflash2' else DRAFTER
+    if os.environ.get('PAITON_INK2_DRAFTS_1'):  # FAST: drafts checked while one request runs
+        table = config['num_speculative_tokens_per_batch_size']
+        config = {**config, 'num_speculative_tokens_per_batch_size': [[1, 1, int(os.environ['PAITON_INK2_DRAFTS_1'])], *table[1:]]}
     # Later arguments win in vLLM's parser, so `extra` (what the user adds after the image name) overrides these.
     return [sys.executable, '-m', 'vllm.entrypoints.openai.api_server',
         '--model', str(snapshot), '--served-model-name', os.environ.get('PAITON_SERVED_MODEL', 'inkling-2-mini'),
         '--host', host, '--port', '8042', '--quantization', 'inkling2', '--enforce-eager',
-        '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4', '--max-num-batched-tokens', '512',
+        '--max-model-len', MAX_MODEL_LEN, '--max-num-seqs', '4',
+        '--max-num-batched-tokens', os.environ.get('PAITON_INK2_PREFILL_CHUNK') or '512',
         '--reasoning-parser', 'inkling2', '--enable-auto-tool-choice', '--tool-call-parser', 'inkling2',
         *(['--speculative-config', json.dumps(config)] if drafter else []), *extra]
 
@@ -177,6 +181,16 @@ MAX_MODEL_LEN = 'auto'
 KV_CACHE = 'kv4'
 # VRAM the allocator leaves unclaimed after warm-up (the 27B release's cap); -e PAITON_VRAM_HEADROOM_MIB=0 = off
 VRAM_HEADROOM_MIB = 1024
+# --fast (opt-in, 32 GB cards): the measured fast settings. Each is its own environment variable, so `docker run -e`
+# sets one alone or overrides it; --fast only picks the set. PAITON_INK2_PREFILL_CHUNK: prompt tokens per step (default
+# 512); 2,048 = prefill +37 % at one request, 8K to 128K, auto context 640,960 tokens instead of the full 1,048,576
+# (c16, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts checked while one request runs (default 5); 4 = check steps +4.6 %.
+# PAITON_RUNNER_GLUE_ACCEPT (read by the image's sampler glue, lossy): relaxed draft acceptance "eps,delta"; at a
+# temperature above 0 a draft is also kept when the model gives it at least min(eps, delta x its top probability);
+# 0.1,0.3 = prose +25 % at one request, distribution test against no drafter FAIL (sampler session, 26 Nov 2026).
+FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4', PAITON_RUNNER_GLUE_ACCEPT='0.1,0.3')
+WHOLE = dict(PAITON_INK2_PREFILL_CHUNK=math.inf, PAITON_INK2_DRAFTS_1=DRAFTER['num_speculative_tokens'])  # 1 to top
+FAST_PATHS = ('PAITON_INK2_W3X',)  # fast settings that name a path, so --fast cannot set them: --w3x DIR
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
 # system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
@@ -328,6 +342,17 @@ def main():
     parser.add_argument('--int8-attention', action='store_true',
                         help='opt-in: attention projection weights as 8-bit rows instead of bf16; about 9 %% faster '
                              'decode, a small measurable change of the output distribution (KL +0.003)')
+    parser.add_argument('--fast', action='store_true',
+                        help='opt-in, 32 GB cards: the measured fast settings ('
+                             + ', '.join(f'{k}={v}' for k, v in FAST.items()) + '): prefill about 37 %% faster, '
+                             '4.6 %% more check steps at one request, auto context 640,960 tokens instead of 1,048,576; '
+                             'relaxed draft acceptance at temperatures above 0 (prose about 25 %% faster at one request, '
+                             'not exact: the output distribution changes); `docker run -e NAME=value` sets or overrides '
+                             'one alone')
+    parser.add_argument('--w3x', metavar='DIR', default=None,
+                        help='opt-in, not exact: routed experts as 3-bit codes from the W3X folder DIR (manifest.json '
+                             'and layer files; the manifest says per layer 3-bit or the checkpoint format): 8.90 GiB '
+                             f'of experts instead of {EXPERTS_GIB} when every layer is 3-bit, so more context fits')
     parser.add_argument('--kv-cache', choices=('bf16', 'fp8', 'kv4'), default=None,
                         help='cache format of the 8 full-attention visits: bf16 32,768 bytes per context token, fp8 '
                              f'half, kv4 about a quarter (default {KV_CACHE}); the window visits stay bf16')
@@ -364,8 +389,25 @@ def main():
             host = ()
         if not planned or len(host) != 2 or min(host) <= 0:
             parser.error('--plan-host MEM_GIB,GTT_GIB needs --dry-run FREE_GIB and two numbers of GiB')
+    if args.w3x:
+        os.environ['PAITON_INK2_W3X'] = args.w3x
+    experts = EXPERTS_GIB
+    if os.environ.get('PAITON_INK2_W3X'):
+        from paiton_vllm_plugin.inkling2 import w3x
+        try:
+            layers, experts = w3x.layers(), w3x.experts_gib()
+        except ValueError as error:
+            raise SystemExit(f'--w3x: {error}') from None
+        print(json.dumps({'w3x': f'{len(layers)} of {w3x.LAYERS} expert layers 3-bit from {os.environ["PAITON_INK2_W3X"]}: '
+                                 f'{experts:.2f} GiB of experts on the card instead of {EXPERTS_GIB}'}), flush=True)
     free = None if args.download_only else args.dry_run if planned else card_free_gib()
-    if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
+    # the switch counts the real expert bytes: smaller 3-bit experts leave the same room for the rest
+    if free is not None and free < SMALL_CARD_GIB - (EXPERTS_GIB - experts):  # before the download: a card that cannot serve stops here
+        if args.fast:
+            raise SystemExit(f'--fast is for 32 GB cards; this card has {free:.1f} GiB free VRAM')
+        if experts < EXPERTS_GIB:
+            raise SystemExit(f'--w3x: 3-bit experts need {SMALL_CARD_GIB - (EXPERTS_GIB - experts):.1f} GiB free VRAM '
+                             f'(every expert on the card), this card has {free:.1f}; the expert pool does not take them')
         small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, drafter, args.vision,
                                       args.kv_cache or os.environ.get('PAITON_INK2_KV', 'bf16'),
                                       need_pool=args.dry_run is None, host=host)
@@ -414,6 +456,15 @@ def main():
                             # the 27B 0.32 images, plugin 67ddb9f); without it nothing else changes
                             TVM_FFI_DISABLE_TORCH_C_DLPACK='1').items():
         os.environ.setdefault(name, value)
+    for name, value in FAST.items() if args.fast else ():
+        os.environ.setdefault(name, value)
+    fast = {name: os.environ[name] for name in (*FAST, *FAST_PATHS) if os.environ.get(name)}
+    for name, top in WHOLE.items():  # the glue checks its own setting
+        value = fast.get(name, '1')
+        if not value.isdigit() or not 1 <= int(value) <= top:
+            raise SystemExit(f'{name}={value}: a whole number from 1' + (f' to {top}' if top < math.inf else ''))
+    if fast:  # one line names every fast setting that is on, whether from --fast or `docker run -e`
+        print(json.dumps({'fast_profile': fast}), flush=True)
     pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
               + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
     if args.host_cache_gib or args.extend_cache:
