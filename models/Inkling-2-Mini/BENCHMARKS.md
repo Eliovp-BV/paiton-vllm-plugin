@@ -291,12 +291,25 @@ Super fast, output against the default:
 - Greedy token ids against the image's own exact path for the same 3-bit weights: equal on all 11 check requests, alone and four
   at once.
 - 3-bit experts against the checkpoint's own experts (our quality study: teacher-forced, the 3-bit weights decoded
-  from the published files, 59 prompts from short chat, code, tool and image prompts to 512K-token documents; floor:
-  the reference run again with only the order of the attention sums changed). Up to 128K tokens the 3-bit experts
-  pick the reference's top token 1.0 to 3.2 points less often than the floor does and add 0.0106 to 0.0271 KL per
-  token (over the six groups: 95.28 % against 97.18 %, 0.0189 KL); at 256K (two documents) 0.4 points and 0.0048,
-  at 512K (three documents) 2.4 points and 0.0152. In the 2K to 512K documents they give every token of all 56
-  planted codes the highest probability, as the reference does.
+  from the published files, 62 prompts from short chat, code, tool and image prompts to 512K-token documents; floor:
+  the reference run again with only the order of the attention sums changed). The 3-bit experts pick the reference's
+  top token 1.0 to 3.2 points less often than the floor does up to 128K tokens, 1.7 points less at 256K and 2.4 at
+  512K. In the 2K to 512K documents they give every token of all 68 planted codes the highest probability, as the
+  reference does. Over the six groups up to 128K: 95.28 % against 97.18 %, 0.0189 KL per token above the floor.
+
+  | Prompts | Count | Scored tokens | Same top token, 3-bit | Same top token, reference run again | Added KL per token (95 % interval) |
+  |---|---:|---:|---:|---:|---|
+  | Short chat, code and tool prompts | 21 | 2,572 | 94.87 % | 98.06 % | 0.0235 (0.0189 to 0.0285) |
+  | Short prompts with an image | 3 | 385 | 97.40 % | 98.38 % | 0.0123 (0.0074 to 0.0180) |
+  | 2K tokens | 12 | 5,003 | 93.34 % | 95.91 % | 0.0271 (0.0227 to 0.0318) |
+  | 8K tokens | 7 | 4,043 | 95.45 % | 96.94 % | 0.0106 (0.0082 to 0.0136) |
+  | 32K tokens | 6 | 3,623 | 96.69 % | 97.90 % | 0.0171 (0.0119 to 0.0228) |
+  | 128K tokens | 5 | 2,085 | 93.91 % | 95.88 % | 0.0228 (0.0171 to 0.0296) |
+  | 256K tokens | 5 | 2,085 | 94.24 % | 95.94 % | 0.0137 (0.0098 to 0.0174) |
+  | 512K tokens | 3 | 1,251 | 94.56 % | 96.96 % | 0.0152 (0.0104 to 0.0204) |
+
+  Added KL is the KL divergence from the reference minus that of the floor, in nats per token. The intervals cover
+  token noise within a row, not the choice of prompts; the 256K and 512K rows rest on five and three documents.
 - Task set, 35 tasks: greedy 34 of 35, as with the default. Temperature 1.0, seeds 1 to 3: 35, 34 and 33 of 35
   (102 of 105); the default 32, 32 and 32 (96), `--fast` 32, 33 and 34 (99). Three seeds can move such a total by
   about 5 (the default's arithmetic scored 99 on the v1.0.0 image), so the totals don't rank the versions; the

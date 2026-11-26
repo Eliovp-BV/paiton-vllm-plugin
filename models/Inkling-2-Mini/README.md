@@ -233,7 +233,7 @@ The first three change the output, so super fast is close to the default but not
 
 - 3-bit experts: in our quality study (teacher-forced, six groups from short prompts to 128K-token documents)
   they pick the same next token as the default 95.28 % of the time (two runs of the default that differ only in the order of some attention sums agree on 97.18 %) and add 0.019 to the KL divergence per token.
-  At 256K and 512K tokens (two and three documents): 98.08 % against 98.50 % and 94.56 % against 96.96 %.
+  At 256K and 512K tokens (five and three documents): 94.24 % against 95.94 % and 94.56 % against 96.96 %.
 - 8-bit attention projections: about 0.003 next-token KL against the default.
 - Relaxed draft check: a drafted token is kept when the normal check keeps it, and also when the model gives it a
   probability of at least 0.1, or of at least 0.3 times that of its most likely token when that is lower. More drafts
