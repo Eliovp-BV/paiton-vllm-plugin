@@ -30,7 +30,8 @@ without the drafter.
   1,038,311-token prompt read at 1,174 tok/s against 1,172; the 1,038,311-token row is v1.0.0's own run. v1.2.0 has
   the same model libraries except the expert library, whose prompt kernels are faster and give the same bits: with
   the default settings its greedy tokens are the same as v1.0.0's on the 11 check requests, alone and four at once.
-  [TBD default tables: rerun on v1.2.0, or keep v1.0.0's with this note.] The
+  A v1.2.0 run of the 1,024-token `vllm bench serve` cells with the drafter on came within 1 % of the "on" columns
+  below (151.8 / 129.8 tok/s with one request, 287.7 / 296.2 with four; one run, not mirrored). The
   [fast mode and super fast](#fast-mode---fast-and-super-fast-3-bit-image) numbers come from the v1.2.0 images.
 - No other job ran on this card during an arm. The second card of the host ran other work at the same time.
 - Compare numbers within the same card: the same image and arm ran 2.6 % faster on the host's second R9700 than on
@@ -185,8 +186,51 @@ Fast mode has no 4-user number at 128K: four requests with 128K tokens of contex
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
   788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). [TBD --fast at its context.]
 
-[TBD FAST-GRID: `vllm bench serve`, 1,024-, 8,192- and 32,768-token prompts at 4 and 8 users, --fast and super fast,
-against the default rows above.]
+`vllm bench serve` with `--fast` on the v1.2.0 image, same method as the 1,024-token table above (512-token replies,
+new prompts in every cell), one run per prompt length. Total tok/s and latencies:
+
+1,024-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 148.2 | 216 ms / 219 ms | 6.4 / 7.7 ms |
+| 1 | temperature 1.0 | 134.0 | 215 ms / 218 ms | 7.1 / 7.8 ms |
+| 2 | greedy | 207.7 | 249 ms / 402 ms | 8.9 / 9.7 ms |
+| 2 | temperature 1.0 | 205.5 | 250 ms / 415 ms | 9.1 / 10.2 ms |
+| 4 | greedy | 298.1 | 276 ms / 748 ms | 12.5 / 13.9 ms |
+| 4 | temperature 1.0 | 310.5 | 337 ms / 747 ms | 11.8 / 13.8 ms |
+| 8 (4 run, 4 wait) | greedy | 307.8 | 6,700 ms / 8,028 ms | 12.3 / 14.9 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 301.7 | 6,987 ms / 7,970 ms | 12.7 / 15.1 ms |
+
+8,192-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 99.7 | 1,505 ms / 1,515 ms | 7.4 / 8.0 ms |
+| 1 | temperature 1.0 | 92.6 | 1,499 ms / 1,504 ms | 8.0 / 8.8 ms |
+| 2 | greedy | 132.6 | 1,562 ms / 2,881 ms | 12.1 / 14.8 ms |
+| 2 | temperature 1.0 | 129.7 | 1,568 ms / 2,865 ms | 12.0 / 13.2 ms |
+| 4 | greedy | 167.4 | 1,595 ms / 5,658 ms | 19.9 / 22.5 ms |
+| 4 | temperature 1.0 | 165.2 | 1,698 ms / 5,667 ms | 18.8 / 23.7 ms |
+| 8 (4 run, 4 wait) | greedy | 169.3 | 13.7 s / 17.8 s | 20.3 / 23.6 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 170.6 | 13.3 s / 17.6 s | 20.0 / 24.0 ms |
+
+32,768-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 50.2 | 6,308 ms / 6,624 ms | 7.3 / 9.6 ms |
+| 1 | temperature 1.0 | 48.2 | 6,374 ms / 6,405 ms | 8.5 / 8.5 ms |
+| 2 | greedy | 58.4 | 9,030 ms / 12.5 s | 16.7 / 21.6 ms |
+| 2 | temperature 1.0 | 57.8 | 9,619 ms / 12.6 s | 15.5 / 22.4 ms |
+| 4 | greedy | 65.7 | 10.9 s / 25.6 s | 38.0 / 45.6 ms |
+| 4 | temperature 1.0 | 64.5 | 12.6 s / 24.8 s | 41.2 / 49.9 ms |
+| 8 (4 run, 4 wait) | greedy | 66.9 | 36.7 s / 55.0 s | 45.9 / 52.9 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 66.3 | 37.2 s / 55.4 s | 42.7 / 48.8 ms |
+
+The default on the same image, one run, 1,024-token prompts: 151.8 / 129.8 tok/s (greedy / temperature 1.0) with one
+request, 287.7 / 296.2 with four; 8,192-token prompts: 90.6 / 86.5 and 147.5 / 145.3. Super fast:
+[TBD W3-GRID: the same three tables for super fast.]
 
 `--fast`, output against the default:
 

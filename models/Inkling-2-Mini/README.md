@@ -5,9 +5,9 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 
 | Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
 | --- | --- | ---: | --- | --- |
-| Default | `serve-docker.sh` | 1,048,576 | the model's own | 93 to 102, / 3,088 to 3,897, |
-| Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | 97 to 106, / 4,022 to 5,562, |
-| Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | 149 to 180, / 4,153 to 5,702, |
+| Default | `serve-docker.sh` | 1,048,576 | the model's own | 93 to 102 / 3,088 to 3,897 |
+| Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | 97 to 106 / 4,022 to 5,562 |
+| Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | 149 to 180 / 4,153 to 5,702 |
 
 The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt; generation with no context up to
 128K tokens of it, prompt speed for 8K- to 128K-token prompts);
@@ -18,10 +18,10 @@ checkpoint, 8-bit attention projections and a relaxed draft check; [Super fast](
 each of these costs.
 
 With the defaults one request can hold **1,048,576 tokens**, the model's full context length. With 1,024-token
-prompts and 512-token replies (`vllm bench serve`), one request generates at **[TBD VBS default greedy 1] tok/s**
-with greedy decoding and at **[TBD VBS default T1 1] tok/s** at the model's default temperature of 1.0 (the model's
-own sampling settings: no top-p or top-k); four requests at once reach [TBD VBS default greedy 4] and
-[TBD VBS default T1 4] tok/s in total. After a 522,196-token prompt one request still generates at 126 tok/s. All
+prompts and 512-token replies (`vllm bench serve`), one request generates at **151.8 tok/s**
+with greedy decoding and at **129.8 tok/s** at the model's default temperature of 1.0 (the model's
+own sampling settings: no top-p or top-k); four requests at once reach 287.7 and
+296.2 tok/s in total. After a 522,196-token prompt one request still generates at 126 tok/s. All
 numbers are from November 2026 at a 300 W power cap; the tables are in [Context and speed](#context-and-speed) and the
 [benchmarks](BENCHMARKS.md). vLLM has no path for this model on this card, so the comparison in the benchmarks is with
 Paiton's own first complete build, which ran at 25 to 26 tok/s for one request and 67 to 72 for four on our real-text
@@ -75,7 +75,8 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
   tokens of reasoning), so they do not rank the formats.
 - The numbers in this section come from v1.0.0 and the build before it. v1.2.0 has the same model libraries except
   the expert library, whose prompt kernels are faster and give the same bits; the LocalMaxxing table under
-  [Fast mode](#fast-mode) is from v1.2.0. [TBD default tables: rerun on v1.2.0, or keep v1.0.0's with this note.]
+  [Fast mode](#fast-mode) is from v1.2.0. A v1.2.0 run of the 1,024-token `vllm bench serve` cells with the drafter
+  on came within 1 % of v1.0.0's (151.8 / 129.8 tok/s with one request, 287.7 / 296.2 with four).
 
 ### Speed with `vllm bench serve`
 
@@ -179,8 +180,8 @@ the decode cells, tok/s:
 | Decode 64K | 102.3 | 96.6 | 167.5 |
 | Decode 128K | 93.8 | 96.8 | 149.4 |
 
-- With two requests at once `--fast` reaches 143 to 167, tok/s in total and with four
-  230 to 246 (defaults: 150 to 170, and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
+- With two requests at once `--fast` reaches 143 to 167 tok/s in total and with four
+  230 to 246 (defaults: 150 to 170 and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
   524,832-token cache.
 - On LocalMaxxing's two short speed tests (512-token replies), the default averages 164.6 tok/s on `code-v1` and 169.9 on `reasoning-v1` over two fresh servers (163.7 and
   165.4 tok/s at draft acceptance 0.608 and 0.614; 163.1 and 176.8 at 0.580 and 0.646); one `--fast` run gave 152.0 and
@@ -188,7 +189,17 @@ the decode cells, tok/s:
   per step cost about 4 %.
 - [TBD fact check: ten facts at the fast context, temperature 1.0, with `--fast`.]
 
-[TBD FAST-GRID: `vllm bench serve` with `--fast`, 1,024-, 8,192- and 32,768-token prompts, 4 and 8 users.]
+`vllm bench serve` with `--fast` on the v1.2.0 image (512-token replies, new prompts in every cell, one run), total
+tok/s, greedy / temperature 1.0:
+
+| Prompt tokens | 1 request | 2 at once | 4 at once | 8 sent (4 run, 4 wait) |
+| ---: | --- | --- | --- | --- |
+| 1,024 | 148.2 / 134.0 | 207.7 / 205.5 | 298.1 / 310.5 | 307.8 / 301.7 |
+| 8,192 | 99.7 / 92.6 | 132.6 / 129.7 | 167.4 / 165.2 | 169.3 / 170.6 |
+| 32,768 | 50.2 / 48.2 | 58.4 / 57.8 | 65.7 / 64.5 | 66.9 / 66.3 |
+
+The default on the same image, one run: 151.8 / 129.8 tok/s with one request and 287.7 / 296.2 with four at
+1,024-token prompts; 90.6 / 86.5 and 147.5 / 145.3 at 8,192.
 
 ## Super fast (3-bit image)
 
