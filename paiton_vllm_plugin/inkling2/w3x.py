@@ -83,9 +83,10 @@ def _layers(folder: str) -> dict[int, tuple[Path, dict]]:
     return found
 
 
-def experts_gib(folder: str | None = None) -> float:
-    """GiB of routed experts on the card with the 3-bit layers of `folder` (14.59 exact, 8.90 all 3-bit)."""
-    w3 = layers(folder)
+def experts_gib(folder: str | None = None, w3=None) -> float:
+    """GiB of routed experts on the card with the 3-bit layers of `folder`, or the layer numbers `w3` (14.59 exact,
+    8.90 all 3-bit)."""
+    w3 = layers(folder) if w3 is None else w3
     return EXPERTS * sum(expert_bytes() if layer in w3 else CHECKPOINT_EXPERT_BYTES[layer in MXFP8_LAYERS]
                          for layer in range(LAYERS)) / 2 ** 30
 

@@ -11,7 +11,7 @@ COPY paiton_vllm_plugin/__init__.py paiton_vllm_plugin/activation.py paiton_vllm
 COPY paiton_vllm_plugin/inkling2 /opt/paiton/inkling2-release-source/paiton_vllm_plugin/inkling2
 RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source \
     && rm -rf /opt/paiton/inkling2-plugin/bin
-COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
+COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json models/Inkling-2-Mini/w3x.lock.json /opt/paiton/inkling2/
 # vLLM's offload worker as in the 27B release image, used only by the prompt-cache tiers (--host-cache-gib,
 # --extend-cache): the RAM tier as one exact-size hipHostMalloc allocation per tensor (PAITON_HOST_KV_PRIVATE=1), and no
 # silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). With it, vLLM PR #52838 on the

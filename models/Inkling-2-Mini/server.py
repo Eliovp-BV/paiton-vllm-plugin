@@ -11,6 +11,9 @@ import time
 
 HERE = Path(__file__).resolve().parent
 LOCK = json.loads((HERE / 'checkpoint.lock.json').read_text())
+# The 3-bit image's experts (W3X folder: manifest.json and one file per 3-bit layer), downloaded and checked like the
+# checkpoint when no folder of the user's is named; "w3_layers" sizes the card check before the download.
+W3X_LOCK = json.loads((HERE / 'w3x.lock.json').read_text())
 
 
 def prepare(offline=False, verify=False, lock=LOCK):
@@ -395,12 +398,12 @@ def main():
     w3_image = os.environ.get('PAITON_INK2_IMAGE') == 'w3'
     if args.w3x:
         os.environ['PAITON_INK2_W3X'] = args.w3x
-    if w3_image and not os.environ.get('PAITON_INK2_W3X'):
-        raise SystemExit('this image serves the routed experts as 3-bit codes: mount the W3X folder (manifest.json and '
-                         'its layer files) and name it, e.g. -v <folder>:/models/w3x:ro and --w3x /models/w3x, or '
-                         '-e PAITON_INK2_W3X=/models/w3x')
+    w3_download = w3_image and not os.environ.get('PAITON_INK2_W3X')  # a folder of the user's wins
     experts = EXPERTS_GIB
-    if os.environ.get('PAITON_INK2_W3X'):
+    if w3_download:
+        from paiton_vllm_plugin.inkling2 import w3x
+        experts = w3x.experts_gib(w3=set(W3X_LOCK['w3_layers']))
+    elif os.environ.get('PAITON_INK2_W3X'):
         from paiton_vllm_plugin.inkling2 import w3x
         try:
             layers, experts = w3x.layers(), w3x.experts_gib()
@@ -438,6 +441,25 @@ def main():
             raise SystemExit(f'--offline: the DFlash2 drafter files ({entry["model"]} at {entry["revision"]}) are not in '
                              'the cache. Start once without --offline to download them (1.0 GB), or serve with '
                              '--drafter dspark or --no-drafter') from None
+    if w3_download:
+        try:
+            folder = '<W3X folder>' if args.dry_run is not None else prepare(args.offline, args.verify, W3X_LOCK)
+        except FileNotFoundError:
+            if not args.offline:
+                raise
+            raise SystemExit(f'--offline: the 3-bit expert files ({W3X_LOCK["model"]} at {W3X_LOCK["revision"]}) are not '
+                             'in the cache. Start once without --offline to download them '
+                             f'({sum(item["bytes"] for item in W3X_LOCK["files"]) / 1e9:.1f} GB), or name a W3X folder '
+                             'with --w3x DIR') from None
+        os.environ['PAITON_INK2_W3X'] = str(folder)
+        try:
+            if args.dry_run is None and set(w3x.layers()) != set(W3X_LOCK['w3_layers']):
+                raise ValueError('its manifest names other 3-bit layers than w3x.lock.json')
+        except ValueError as error:
+            raise SystemExit(f'{W3X_LOCK["model"]} ({folder}): {error}') from None
+        print(json.dumps({'w3x': f'{len(W3X_LOCK["w3_layers"])} of {w3x.LAYERS} expert layers 3-bit from '
+                                 f'{W3X_LOCK["model"]} at {W3X_LOCK["revision"][:12]} ({folder}): {experts:.2f} GiB of '
+                                 f'experts on the card instead of {EXPERTS_GIB}'}), flush=True)
     if args.download_only:
         return
     if drafter == 'dflash2' and args.dry_run is None and not os.path.exists(os.environ.get(DFLASH2_SO, '')):
