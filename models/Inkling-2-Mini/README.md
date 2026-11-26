@@ -200,7 +200,7 @@ Against the default it changes four things:
 The first three change the output, so super fast is close to the default but not the same:
 
 - 3-bit experts: in our quality study (teacher-forced, six groups from short prompts to 128K-token documents)
-  they pick the same next token as the default 95.65 % of the time (two runs of the default that differ only in the order of some attention sums agree on 97.33 %) and add 0.018 to the KL divergence per token.
+  they pick the same next token as the default 95.81 % of the time (two runs of the default that differ only in the order of some attention sums agree on 97.33 %) and add 0.018 to the KL divergence per token.
 - 8-bit attention projections: about 0.003 next-token KL against the default.
 - Relaxed draft check: a drafted token is kept when the normal check keeps it, and also when the model gives it a
   probability of at least 0.1, or of at least 0.3 times that of its most likely token when that is lower. More drafts

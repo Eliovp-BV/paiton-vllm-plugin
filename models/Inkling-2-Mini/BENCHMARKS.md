@@ -183,10 +183,12 @@ Super fast, output against the default:
 
 - Greedy token ids against the image's own exact path for the same 3-bit weights: [TBD w1 gate: equal on the check
   requests at 1 and 4].
-- 3-bit experts in our quality study (teacher-forced on the model's own replies, six groups from short prompts,
-  three of them with an image, to 128K-token documents; reference: the default's experts in the arithmetic it
-  serves): top-1 agreement 95.65 %, against 97.33 % for two reference runs that differ only in the order of some
-  attention sums; worst group 2K, 93.72 % (95.80 %); 128K 94.96 % (96.64 %). KL per token 0.0177 above that floor.
+- 3-bit experts in our quality study (the published files, teacher-forced on the model's own replies, six groups from
+  short prompts, three of them with an image, to 128K-token documents; reference: the default's experts in the
+  arithmetic it serves): top-1 agreement 95.81 %, against 97.33 % for two reference runs that differ only in the
+  order of some attention sums; worst group 2K, 93.48 % (95.80 %); 128K 95.52 % (96.64 %). KL per token 0.0182 above
+  that floor. One 256K and one 512K prompt: top-1 97.12 % (98.08 %) and 99.52 % (99.16 %), KL 0.0038 and 0.0030
+  above the floor.
 - Task set, 35 tasks: greedy 34 of 35, as with the default. Temperature 1.0, seeds 1 to 3: 35, 34 and 33 of 35
   (102 of 105); the default 32, 32 and 32 (96), `--fast` 32, 33 and 34 (99). Three seeds can move such a total by
   about 5 (the default's arithmetic scored 99 on the v1.0.0 image), so the totals don't rank the versions; the
