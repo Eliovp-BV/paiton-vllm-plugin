@@ -26,7 +26,8 @@ BF16, F32 = torch.bfloat16, torch.float32
 # 64 rows the loop controller's two products are linear calls (sequencer build 7 on); 16: the router and the expert
 # layer as two calls (the order of a model with an expert pool). Same bits with any of them.
 FLAGS = int(os.environ.get("PAITON_INK2_STEP_FLAGS", "0"))
-TIME = bool(os.environ.get("PAITON_INK2_TIME"))  # bring-up: print the library calls per forward
+TIME = bool(os.environ.get("PAITON_INK2_TIME"))
+WORKSPACE_MARGIN = 16 << 20  # over the library's largest size at any step size (parent, 26 Nov: a small margin)  # bring-up: print the library calls per forward
 _P = C.c_void_p
 
 
@@ -162,12 +163,23 @@ class NativeStep:
         self.workspace = torch.empty(0, dtype=torch.uint8)
         self.visits = None
         self.calls = (C.c_int64 * 4)()
+        self.worst_rows = 0
 
-    def reserve(self, tokens: int, device) -> None:
-        """The workspace of a forward of `tokens` rows, grown now if smaller. In vLLM's profile run (the largest step,
-        max_num_batched_tokens rows, before the caches exist) it counts in the peak the cache is sized from, so a
-        later step never has to grow it past what the cache left (c17r --fast: 1.23 GiB at 2,030 rows, OOM)."""
-        need = _library().PaitonInkling2StepWorkspaceBytes(self.handle, tokens, self.moe_flags)
+    def reserve(self, tokens: int, device, worst: bool = False) -> None:
+        """The workspace of a forward of `tokens` rows, grown now if smaller. `worst`: the largest size of any step of
+        1 to `tokens` rows plus WORKSPACE_MARGIN. Called so in vLLM's profile run (before the caches exist, with the
+        largest step, max_num_batched_tokens rows) it counts in the peak the cache is sized from, so no later step has
+        to grow it past what the cache left, whatever order the step sizes come in (c17r --fast: 1.23 GiB at 2,030
+        rows after the cache was full, OOM)."""
+        lib = _library()
+        if worst:
+            if tokens <= self.worst_rows:
+                return
+            need = max(lib.PaitonInkling2StepWorkspaceBytes(self.handle, t, self.moe_flags)
+                       for t in range(1, tokens + 1)) + WORKSPACE_MARGIN
+            self.worst_rows = tokens
+        else:
+            need = lib.PaitonInkling2StepWorkspaceBytes(self.handle, tokens, self.moe_flags)
         if self.workspace.numel() < need:
             self.workspace = torch.empty(need, dtype=torch.uint8, device=device)
 
@@ -303,8 +315,8 @@ def forward(model, input_ids, positions, inputs_embeds):
             layer.attn._pass_cache(p)[1].numel() == 0 or layer.conv_states[p].kv_cache.numel() == 0
             for layer in model.layers for p in range(len(layer.conv_states))):
         # vLLM's profile run (no metadata, no caches yet, max_num_batched_tokens rows) and other dummy runs: the Python
-        # loop runs them, and the workspace grows now, so the cache is sized with it counted
-        step.reserve(positions.shape[0], positions.device)
+        # loop runs them, and the workspace of the worst step grows now, so the cache is sized with it counted
+        step.reserve(max(positions.shape[0], getattr(model, "max_step_rows", 0)), positions.device, worst=True)
         return None
     if step.visits is None:
         step.bind(model)

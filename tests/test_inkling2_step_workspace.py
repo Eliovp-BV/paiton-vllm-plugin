@@ -12,23 +12,30 @@ from paiton_vllm_plugin.inkling2.amd import native_step
 ROW_BYTES = 640_000  # the fake library's workspace per row
 
 
+def size(tokens):  # not monotone: a bump at 1,039 rows above the 2,048-row size (the worst case is not the largest step)
+    return tokens * ROW_BYTES + (2_000 * ROW_BYTES if tokens == 1039 else 0)
+
+
+WORST = 3_039 * ROW_BYTES + native_step.WORKSPACE_MARGIN
+
+
 class Cache:
     def __init__(self, bound):
         self.kv_cache = torch.empty(4 if bound else 0)
 
 
-def model(bound):
+def model(bound, max_step_rows=2048):
     attn = SimpleNamespace(_pass_cache=lambda p: ("layer", torch.empty(4 if bound else 0)))
-    return SimpleNamespace(loop_core=range(6, 18), aux_hidden_state_layers=(),
+    return SimpleNamespace(loop_core=range(6, 18), aux_hidden_state_layers=(), max_step_rows=max_step_rows,
                            layers=[SimpleNamespace(attn=attn, conv_states=[Cache(bound)])])
 
 
 class StepWorkspace(unittest.TestCase):
     def setUp(self):
-        lib = SimpleNamespace(PaitonInkling2StepWorkspaceBytes=lambda handle, tokens, flags: tokens * ROW_BYTES)
+        lib = SimpleNamespace(PaitonInkling2StepWorkspaceBytes=lambda handle, tokens, flags: size(tokens))
 
         def init(step, m):
-            step.handle, step.moe_flags, step.visits = None, 0, None
+            step.handle, step.moe_flags, step.visits, step.worst_rows = None, 0, None, 0
             step.workspace = torch.empty(0, dtype=torch.uint8)
         self.context = SimpleNamespace(attn_metadata=None)
         vllm = ModuleType('vllm.forward_context')
@@ -50,7 +57,7 @@ class StepWorkspace(unittest.TestCase):
         m = model(bound=False)
         self.assertIsNone(self.run_forward(m, 2048))  # vLLM's profile run: no metadata, the Python loop runs it
         step = m._native_step
-        self.assertEqual(step.workspace.numel(), 2048 * ROW_BYTES)  # allocated now, so the peak counts it
+        self.assertEqual(step.workspace.numel(), WORST)  # the worst size of 1 to 2,048 rows, allocated now: the peak counts it
         before = step.workspace
         self.assertIsNone(self.run_forward(m, 512))  # a smaller dummy run neither shrinks nor reallocates
         self.assertIs(step.workspace, before)
@@ -73,12 +80,19 @@ class StepWorkspace(unittest.TestCase):
         self.assertEqual(fwd.call_count, 2)
         self.assertIs(step.workspace, before)  # the 2,030-row step found its workspace in place
 
+    def test_scheduler_maximum_wins_over_a_smaller_dummy_run(self):
+        m = model(bound=False)
+        self.assertIsNone(self.run_forward(m, 16))  # a dummy run of 16 rows still reserves the scheduler's largest step
+        self.assertEqual(m._native_step.workspace.numel(), WORST)
+
     def test_forward_grows_through_reserve(self):
         step = native_step.NativeStep(None)
-        step.reserve(100, 'cpu')
+        step.reserve(100, 'cpu')  # a step's own size (forward), no margin
         self.assertEqual(step.workspace.numel(), 100 * ROW_BYTES)
         step.reserve(50, 'cpu')
         self.assertEqual(step.workspace.numel(), 100 * ROW_BYTES)
+        step.reserve(1039, 'cpu', worst=True)
+        self.assertEqual(step.workspace.numel(), 3_039 * ROW_BYTES + native_step.WORKSPACE_MARGIN)
 
 
 if __name__ == '__main__':
