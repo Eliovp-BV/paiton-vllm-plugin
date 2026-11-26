@@ -163,7 +163,10 @@ Fast mode has no 4-user number at 128K: four requests with 128K tokens of contex
   own random text, so the generation cells move by a few percent from run to run through the accepted drafts; the
   prompt cells repeat within 0.3 %.
 - LocalMaxxing's two short speed tests (512-token replies, one request), `code-v1` / `reasoning-v1`:
-  [TBD speed tests, three versions].
+  default 164.6 / 169.9 tok/s, the mean of two fresh servers (`code-v1` 163.7 and 165.4 tok/s at draft acceptance
+  0.608 and 0.614; `reasoning-v1` 163.1 and 176.8 at 0.580 and 0.646); `--fast` 152.0 / 166.6 (one server, first
+  token after 137 / 144 ms); super fast [TBD w3 speed tests]. The accepted drafts move these short replies by
+  several percent from server to server.
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
   788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). [TBD --fast at its context.]
 

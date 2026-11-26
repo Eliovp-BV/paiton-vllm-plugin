@@ -170,8 +170,9 @@ the decode cells, tok/s:
 - With two requests at once `--fast` reaches 143 to 167 tok/s in total and with four
   230 to 246 (defaults: 150 to 170 and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
   524,832-token cache.
-- On LocalMaxxing's two short speed tests (512-token replies), [TBD speed tests: code-v1 and reasoning-v1, default
-  and --fast, after the bench's A/B]. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
+- On LocalMaxxing's two short speed tests (512-token replies), the default averages 164.6 tok/s on `code-v1` and 169.9 on `reasoning-v1` over two fresh servers (163.7 and
+  165.4 tok/s at draft acceptance 0.608 and 0.614; 163.1 and 176.8 at 0.580 and 0.646); one `--fast` server gave 152.0 and
+  166.6. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
   `--fast`'s four.
 - [TBD fact check: ten facts at the fast context, temperature 1.0, with `--fast`.]
 
