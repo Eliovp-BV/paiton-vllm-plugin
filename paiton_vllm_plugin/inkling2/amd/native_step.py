@@ -100,8 +100,8 @@ def _library():
 
 class NativeStep:
     """The sequencer of one loaded `Inkling2LoopModel`. Built at the first
-    forward with caches: the weights and the attention tables are on the card
-    by then."""
+    forward (vLLM's profile run): the weights are on the card by then. The
+    caches are bound at the first forward that has them (`bind`)."""
 
     def __init__(self, model) -> None:
         lib = _library()
@@ -159,6 +159,20 @@ class NativeStep:
         if rc != 0:
             raise RuntimeError(f"PaitonInkling2StepPrepare failed with HIP error {rc}")
         self.moe_flags, self.attn_flags = model.layers[0].mlp.experts.flags, model.layers[0].attn.native.flags
+        self.workspace = torch.empty(0, dtype=torch.uint8)
+        self.visits = None
+        self.calls = (C.c_int64 * 4)()
+
+    def reserve(self, tokens: int, device) -> None:
+        """The workspace of a forward of `tokens` rows, grown now if smaller. In vLLM's profile run (the largest step,
+        max_num_batched_tokens rows, before the caches exist) it counts in the peak the cache is sized from, so a
+        later step never has to grow it past what the cache left (c17r --fast: 1.23 GiB at 2,030 rows, OOM)."""
+        need = _library().PaitonInkling2StepWorkspaceBytes(self.handle, tokens, self.moe_flags)
+        if self.workspace.numel() < need:
+            self.workspace = torch.empty(need, dtype=torch.uint8, device=device)
+
+    def bind(self, model) -> None:
+        lib = _library()
         # Per visit: its KV cache and conv-state cache (bound once by vLLM), and which metadata record of a forward
         # it reads. Layers of one cache group share one record, so a forward fills one struct per group.
         count, layer_id, pass_id = lib.PaitonInkling2StepVisits(self.handle), C.c_int(), C.c_int()
@@ -181,8 +195,6 @@ class NativeStep:
                 self.packed[name] = (kv, fmt[0])
             self.pairs.append((name, conv.prefix))
         self.grouped = False
-        self.workspace = torch.empty(0, dtype=torch.uint8)
-        self.calls = (C.c_int64 * 4)()
         self.forwards, self.counted, self.padded = 0, [0, 0, 0, 0], 0
         print(f"INK2 STEP: forward sequencer active, {count} visits, flags {FLAGS}, projections on {native_ops.PROJ} rows, "
               f"full-visit cache {KV}", flush=True)
@@ -240,9 +252,7 @@ class NativeStep:
             conv_groups[g] = _ConvGroup(*(t.data_ptr() for t in tensors), tensors[0].shape[1])
         device = positions.device
         lib = _library()
-        need = lib.PaitonInkling2StepWorkspaceBytes(self.handle, tokens, self.moe_flags)
-        if self.workspace.numel() < need:
-            self.workspace = torch.empty(need, dtype=torch.uint8, device=device)
+        self.reserve(tokens, device)
         hidden = torch.empty((tokens, 2304), dtype=BF16, device=device)
         call = _Call(positions=native_ops._as(positions, torch.int64).data_ptr(), visits=C.addressof(self.visits),
                      attn_groups=C.addressof(attn_groups), conv_groups=C.addressof(conv_groups), hidden=hidden.data_ptr(),
@@ -284,13 +294,18 @@ def forward(model, input_ids, positions, inputs_embeds):
     from vllm.forward_context import get_forward_context
 
     attn_metadata = get_forward_context().attn_metadata
-    if (not isinstance(attn_metadata, dict) or getattr(model, "tap", None) is not None or positions.shape[0] == 0
-            or not hasattr(model, "loop_core")):
+    if getattr(model, "tap", None) is not None or positions.shape[0] == 0 or not hasattr(model, "loop_core"):
         return None
     step = getattr(model, "_native_step", None)
     if step is None:
-        if any(layer.attn._pass_cache(p)[1].numel() == 0 or layer.conv_states[p].kv_cache.numel() == 0
-               for layer in model.layers for p in range(len(layer.conv_states))):
-            return None  # caches not bound yet (profile run)
         step = model._native_step = NativeStep(model)
+    if not isinstance(attn_metadata, dict) or step.visits is None and any(
+            layer.attn._pass_cache(p)[1].numel() == 0 or layer.conv_states[p].kv_cache.numel() == 0
+            for layer in model.layers for p in range(len(layer.conv_states))):
+        # vLLM's profile run (no metadata, no caches yet, max_num_batched_tokens rows) and other dummy runs: the Python
+        # loop runs them, and the workspace grows now, so the cache is sized with it counted
+        step.reserve(positions.shape[0], positions.device)
+        return None
+    if step.visits is None:
+        step.bind(model)
     return step.forward(input_ids, positions, inputs_embeds, attn_metadata, tuple(model.aux_hidden_state_layers))
