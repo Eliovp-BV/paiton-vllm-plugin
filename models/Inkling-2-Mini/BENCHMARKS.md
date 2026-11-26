@@ -231,8 +231,47 @@ new prompts in every cell), one run per prompt length. Total tok/s and latencies
 | 8 (4 run, 4 wait) | temperature 1.0 | 66.3 | 37.2 s / 55.4 s | 42.7 / 48.8 ms |
 
 The default on the same image, one run, 1,024-token prompts: 151.8 / 129.8 tok/s (greedy / temperature 1.0) with one
-request, 287.7 / 296.2 with four; 8,192-token prompts: 90.6 / 86.5 and 147.5 / 145.3. Super fast:
-[TBD W3-GRID: the same three tables for super fast.]
+request, 287.7 / 296.2 with four; 8,192-token prompts: 90.6 / 86.5 and 147.5 / 145.3. Super fast
+on the 3-bit image, one run per prompt length, total tok/s and latencies.
+
+1,024-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 187.4 | 196 ms / 199 ms | 5.1 / 5.3 ms |
+| 1 | temperature 1.0 | 201.8 | 190 ms / 199 ms | 4.6 / 5.0 ms |
+| 2 | greedy | 272.8 | 224 ms / 368 ms | 6.7 / 7.6 ms |
+| 2 | temperature 1.0 | 297.9 | 223 ms / 364 ms | 6.0 / 6.7 ms |
+| 4 | greedy | 401.0 | 248 ms / 718 ms | 9.1 / 10.9 ms |
+| 4 | temperature 1.0 | 429.3 | 247 ms / 713 ms | 8.2 / 10.2 ms |
+| 8 (4 run, 4 wait) | greedy | 402.5 | 5,209 ms / 6,094 ms | 9.3 / 11.3 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 439.0 | 4,899 ms / 5,642 ms | 8.5 / 10.1 ms |
+
+8,192-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 118.7 | 1,441 ms / 1,447 ms | 5.4 / 6.4 ms |
+| 1 | temperature 1.0 | 128.6 | 1,443 ms / 1,446 ms | 5.1 / 5.4 ms |
+| 2 | greedy | 160.6 | 1,606 ms / 2,810 ms | 9.1 / 11.9 ms |
+| 2 | temperature 1.0 | 176.4 | 1,612 ms / 2,854 ms | 8.1 / 9.0 ms |
+| 4 | greedy | 199.0 | 1,761 ms / 5,472 ms | 16.6 / 19.0 ms |
+| 4 | temperature 1.0 | 210.3 | 1,518 ms / 5,467 ms | 15.4 / 16.9 ms |
+| 8 (4 run, 4 wait) | greedy | 197.4 | 11.9 s / 15.6 s | 16.5 / 23.1 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 211.7 | 11.2 s / 14.9 s | 15.9 / 18.9 ms |
+
+32,768-token prompts:
+
+| Users | Sampling | Total tok/s | First token p50 / p99 | Time per token p50 / p99 |
+| ---: | --- | ---: | --- | --- |
+| 1 | greedy | 59.1 | 6,086 ms / 6,134 ms | 5.0 / 5.8 ms |
+| 1 | temperature 1.0 | 59.1 | 6,168 ms / 6,178 ms | 4.8 / 5.5 ms |
+| 2 | greedy | 64.7 | 7,669 ms / 12.0 s | 12.8 / 24.8 ms |
+| 2 | temperature 1.0 | 66.4 | 9,322 ms / 12.2 s | 11.9 / 17.3 ms |
+| 4 | greedy | 71.0 | 8,330 ms / 24.0 s | 39.1 / 44.3 ms |
+| 4 | temperature 1.0 | 71.9 | 9,000 ms / 24.0 s | 36.0 / 45.0 ms |
+| 8 (4 run, 4 wait) | greedy | 70.9 | 35.0 s / 52.5 s | 39.6 / 51.9 ms |
+| 8 (4 run, 4 wait) | temperature 1.0 | 73.1 | 33.9 s / 52.1 s | 41.5 / 44.6 ms |
 
 `--fast`, output against the default:
 
