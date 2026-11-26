@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -15,6 +16,12 @@ GIB = 2 ** 30
 
 
 class Inkling2SmallCard(unittest.TestCase):
+    def setUp(self):  # the main image's start, also inside the 3-bit image (its ENV sets PAITON_INK2_IMAGE=w3)
+        patch = mock.patch.dict(os.environ)
+        patch.start()
+        self.addCleanup(patch.stop)
+        os.environ.pop('PAITON_INK2_IMAGE', None)
+
     def host(self, avail_gib, gtt_total_gib, gtt_used_gib=0.0):
         """A fake host: /proc/meminfo and one AMD card's GTT counters."""
         folder = Path(tempfile.mkdtemp())

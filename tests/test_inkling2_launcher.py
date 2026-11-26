@@ -19,6 +19,12 @@ spec.loader.exec_module(server)
 
 
 class Inkling2Launcher(unittest.TestCase):
+    def setUp(self):  # the main image's start, also inside the 3-bit image (its ENV sets PAITON_INK2_IMAGE=w3)
+        patch = mock.patch.dict(os.environ)
+        patch.start()
+        self.addCleanup(patch.stop)
+        os.environ.pop('PAITON_INK2_IMAGE', None)
+
     def test_lock_pins_one_revision_and_the_weights(self):
         lock = json.loads((FOLDER / 'checkpoint.lock.json').read_text())
         self.assertEqual(len(lock['revision']), 40)
@@ -245,7 +251,10 @@ class Inkling2Launcher(unittest.TestCase):
             self.assertIn('not exact', line['image'])
             environment = next(line['environment'] for line in lines if 'environment' in line)
             self.assertEqual((environment['PAITON_RUNNER_GLUE_ACCEPT'], environment['PAITON_INK2_PROJ']), ('0.1,0.3', 'int8'))
-            self.assertEqual(argv[argv.index('--max-model-len') + 1], 'auto')  # the cache decides, up to the model's 1,048,576
+            # vLLM's auto: the model's 1,048,576 whenever the cache holds it (F1 at chunk 2,048: 1,218,579 tokens), less
+            # only where it does not, so a smaller card or W3X folder still starts
+            self.assertEqual(argv[argv.index('--max-model-len') + 1], 'auto')
+            self.assertNotIn('--max-model-len', argv[argv.index('--max-model-len') + 2:])  # nothing narrows it
             _, lines = self.started(PAITON_INK2_IMAGE='w3', PAITON_INK2_W3X=root, PAITON_INK2_PROJ='bf16')  # -e wins
             environment = next(line['environment'] for line in lines if 'environment' in line)
             self.assertEqual(environment['PAITON_INK2_PROJ'], 'bf16')
