@@ -18,7 +18,7 @@
 - The model code in `paiton_vllm_plugin/inkling2` started from the vLLM project's Inkling 2 model code
   (Apache-2.0, copyright the vLLM contributors) and was changed to run on vLLM 0.32 and on Paiton's native
   libraries. The file headers keep the original notices.
-- The image contains Paiton's compiled libraries for gfx1201 (experts, attention, operators, forward sequencer, vision tower, the two drafters).
+- The image contains Paiton's compiled libraries for gfx1201 and gfx1200 (experts, attention, operators, forward sequencer, vision tower, the two drafters).
   The compiler source is private and not part of the image.
 - Base image: `rocm/vllm@sha256:380efeed0d5fa65fc044253adc1ce53a04907d1202b30fb36e175370ee39a003` (ROCm 10.2,
   vLLM 0.32). Its notices and license texts stay in place, and the third-party notices of this repository apply.
