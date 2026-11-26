@@ -122,6 +122,9 @@ class NativeStep:
         m.output_query = ptr(model.attn_res.output_query, F32, "output query")
         for i, layer in enumerate(model.layers):
             attn, experts, l = layer.attn, layer.mlp.experts, m.layers[i]
+            if experts.w3:  # the 88-byte struct of 3-bit layers does not fit this sequencer's 72-byte field
+                raise RuntimeError("PAITON_INK2_W3X: 3-bit experts need a sequencer built for the ABI 4 expert struct; "
+                                   "this one embeds 72 bytes (unset PAITON_INK2_STEP to run them without it)")
             if experts._w is None:
                 experts._w = experts._weights()
             l.attn, l.route_scale, l.is_local = attn.native.layer, layer.mlp.route_scale, layer.is_local

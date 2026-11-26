@@ -185,10 +185,10 @@ class Inkling2Launcher(unittest.TestCase):
                 mock.patch.object(server.os, 'execv') as execv, \
                 mock.patch('builtins.print', side_effect=lambda line, **_: lines.append(json.loads(line))), \
                 mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
-            for name in set(server.FAST) - set(preset):
+            for name in {*server.FAST, *server.FAST_PATHS} - set(preset):
                 os.environ.pop(name, None)  # the host's own environment stays out
             server.main()
-        return execv.call_args.args[1], lines
+        return next(line['command'] for line in lines if 'command' in line), lines  # also for --dry-run
 
     def test_fast_is_one_switch_over_separate_variables(self):
         def parts(argv):
@@ -217,6 +217,37 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit) as stop:  # the 16 GB profile has its own chunk and one request
             self.started('--fast', '--dry-run', '15.9')
         self.assertIn('32 GB', str(stop.exception))
+
+    def test_w3x_folder_counts_its_real_expert_bytes(self):
+        from paiton_vllm_plugin.inkling2 import w3x
+        w3x._layers.cache_clear()
+        with tempfile.TemporaryDirectory() as root:
+            head = dict(format='W3X', version=1, group=64, shapes=dict(w13=[2304, 2304], w2=[2304, 1152]))
+            entries = [dict(layer=i, format='w3', file=f'layer_{i:02d}.safetensors', factor_stride=0) for i in range(24)]
+            (Path(root) / 'manifest.json').write_text(json.dumps({**head, 'layers': entries}))
+            for entry in entries:
+                (Path(root) / entry['file']).write_bytes(b'')
+            argv, lines = self.started('--w3x', root, '--fast')
+            self.assertEqual(os.environ.get('PAITON_INK2_W3X'), None)  # the test's own environment is restored
+            self.assertIn('8.90 GiB of experts', next(line['w3x'] for line in lines if 'w3x' in line))
+            self.assertEqual(next(line['fast_profile'] for line in lines if 'fast_profile' in line),
+                             {**server.FAST, 'PAITON_INK2_W3X': root})
+            # all 3-bit: 5.69 GiB less of experts, so a card with 15.9 GiB free holds them all (no 16 GB profile)
+            argv, lines = self.started('--w3x', root, '--dry-run', '15.9')
+            self.assertFalse([line for line in lines if 'card_profile' in line])
+            self.assertEqual(argv[argv.index('--max-num-seqs') + 1], '4')
+            with self.assertRaises(SystemExit) as stop:  # below that the expert pool would be needed: not built for 3 bits
+                self.started('--w3x', root, '--dry-run', '13.0')
+            self.assertIn('3-bit experts need 14.3 GiB', str(stop.exception))
+            (Path(root) / 'manifest.json').write_text('{}')
+            w3x._layers.cache_clear()
+            with self.assertRaises(SystemExit) as stop:
+                self.started('--w3x', root)
+            self.assertIn('--w3x', str(stop.exception))
+        w3x._layers.cache_clear()
+        script = (FOLDER / 'serve-docker.sh').read_text()
+        self.assertIn('-v "$PAITON_W3X:/models/w3x:ro"', script)
+        self.assertIn('w3x=(--w3x /models/w3x)', script)
 
 
 class Inkling2CacheTier(unittest.TestCase):

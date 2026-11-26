@@ -52,6 +52,7 @@ from ..processing import (
     Inkling2MultiModalProcessor,
     Inkling2ProcessingInfo,
 )
+from .. import w3x
 from ..quant_config import Inkling2QuantConfig
 from . import expert_pool, host_embed, ops_dump
 from .attention import Inkling2Attention
@@ -199,6 +200,8 @@ class Inkling2DecoderLayer(nn.Module):
             raise ValueError("PAITON_INK2_EXPERTS must be unset, ref-a, ref-b or native")
         if NATIVE_OPS and mode != "native":
             raise ValueError("PAITON_INK2_OPS=native needs PAITON_INK2_EXPERTS=native")
+        if layer_id in w3x.layers() and mode != "native":
+            raise ValueError("PAITON_INK2_W3X needs PAITON_INK2_EXPERTS=native")
         self.mlp: nn.Module
         if mode == "native":
             # Paiton's native expert library (gfx1201), weights as stored.
@@ -748,6 +751,8 @@ class Inkling2ForConditionalGeneration(
                     name = name.replace(old, new)
                     shard_id = shard
                     break
+            if w3x.replaces(name):  # a 3-bit layer: its experts come from the W3X file below
+                continue
             if name not in params:
                 m = re.search(
                     r"\.(layers|attn_queries|mlp_queries)\.(\d+)(?:\.|$)", name
@@ -776,6 +781,10 @@ class Inkling2ForConditionalGeneration(
                 loaded.add(name)
         if self.visual is not None:
             loaded |= {f"visual.{n}" for n in self.visual.load_weights(visual_weights)}
+        for layer in w3x.layers():
+            if layer < num_layers:
+                experts = self.model.layers[layer].mlp.experts
+                loaded |= {f"model.layers.{layer}.mlp.experts.{n}" for n in experts.load_w3()}
         if missing := params.keys() - loaded:
             raise ValueError(f"Missing checkpoint tensors: {sorted(missing)}")
         return loaded

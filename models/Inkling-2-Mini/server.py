@@ -186,6 +186,7 @@ VRAM_HEADROOM_MIB = 1024
 # 512); 2,048 = prefill +37 % at one request, 8K to 128K, auto context 640,960 tokens instead of the full 1,048,576
 # (c16, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts checked while one request runs (default 5); 4 = check steps +4.6 %.
 FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4')
+FAST_PATHS = ('PAITON_INK2_W3X',)  # fast settings that name a path, so --fast cannot set them: --w3x DIR
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
 # system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
@@ -342,6 +343,10 @@ def main():
                              + ', '.join(f'{k}={v}' for k, v in FAST.items()) + '): prefill about 37 %% faster, '
                              '4.6 %% more check steps at one request, auto context 640,960 tokens instead of 1,048,576; '
                              '`docker run -e NAME=value` sets or overrides one alone')
+    parser.add_argument('--w3x', metavar='DIR', default=None,
+                        help='opt-in, not exact: routed experts as 3-bit codes from the W3X folder DIR (manifest.json '
+                             'and layer files; the manifest says per layer 3-bit or the checkpoint format): 8.90 GiB '
+                             f'of experts instead of {EXPERTS_GIB} when every layer is 3-bit, so more context fits')
     parser.add_argument('--kv-cache', choices=('bf16', 'fp8', 'kv4'), default=None,
                         help='cache format of the 8 full-attention visits: bf16 32,768 bytes per context token, fp8 '
                              f'half, kv4 about a quarter (default {KV_CACHE}); the window visits stay bf16')
@@ -378,10 +383,25 @@ def main():
             host = ()
         if not planned or len(host) != 2 or min(host) <= 0:
             parser.error('--plan-host MEM_GIB,GTT_GIB needs --dry-run FREE_GIB and two numbers of GiB')
+    if args.w3x:
+        os.environ['PAITON_INK2_W3X'] = args.w3x
+    experts = EXPERTS_GIB
+    if os.environ.get('PAITON_INK2_W3X'):
+        from paiton_vllm_plugin.inkling2 import w3x
+        try:
+            layers, experts = w3x.layers(), w3x.experts_gib()
+        except ValueError as error:
+            raise SystemExit(f'--w3x: {error}') from None
+        print(json.dumps({'w3x': f'{len(layers)} of {w3x.LAYERS} expert layers 3-bit from {os.environ["PAITON_INK2_W3X"]}: '
+                                 f'{experts:.2f} GiB of experts on the card instead of {EXPERTS_GIB}'}), flush=True)
     free = None if args.download_only else args.dry_run if planned else card_free_gib()
-    if free is not None and free < SMALL_CARD_GIB:  # before the download: a card that cannot serve stops here
+    # the switch counts the real expert bytes: smaller 3-bit experts leave the same room for the rest
+    if free is not None and free < SMALL_CARD_GIB - (EXPERTS_GIB - experts):  # before the download: a card that cannot serve stops here
         if args.fast:
             raise SystemExit(f'--fast is for 32 GB cards; this card has {free:.1f} GiB free VRAM')
+        if experts < EXPERTS_GIB:
+            raise SystemExit(f'--w3x: 3-bit experts need {SMALL_CARD_GIB - (EXPERTS_GIB - experts):.1f} GiB free VRAM '
+                             f'(every expert on the card), this card has {free:.1f}; the expert pool does not take them')
         small, env, note = small_card(free, args.max_model_len or SMALL_CONTEXT, drafter, args.vision,
                                       args.kv_cache or os.environ.get('PAITON_INK2_KV', 'bf16'),
                                       need_pool=args.dry_run is None, host=host)
@@ -432,8 +452,10 @@ def main():
         os.environ.setdefault(name, value)
     for name, value in FAST.items() if args.fast else ():
         os.environ.setdefault(name, value)
-    fast = {name: os.environ[name] for name in FAST if os.environ.get(name)}
+    fast = {name: os.environ[name] for name in (*FAST, *FAST_PATHS) if os.environ.get(name)}
     for name, value in fast.items():
+        if name in FAST_PATHS:
+            continue
         top = DRAFTER['num_speculative_tokens'] if name == 'PAITON_INK2_DRAFTS_1' else math.inf
         if not value.isdigit() or not 1 <= int(value) <= top:
             raise SystemExit(f'{name}={value}: a whole number from 1' + (f' to {top}' if top < math.inf else ''))

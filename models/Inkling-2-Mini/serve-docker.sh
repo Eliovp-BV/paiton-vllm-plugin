@@ -16,6 +16,12 @@ if [[ -n "${PAITON_API_KEY:-}" ]]; then
   export VLLM_API_KEY="$PAITON_API_KEY"
   extra+=(-e VLLM_API_KEY)
 fi
+# Opt-in, not exact: PAITON_W3X=<folder> serves the 3-bit experts of that W3X folder (mounted read-only, launcher --w3x).
+w3x=()
+if [[ -n "${PAITON_W3X:-}" ]]; then
+  extra+=(-v "$PAITON_W3X:/models/w3x:ro")
+  w3x=(--w3x /models/w3x)
+fi
 ipc=(--ipc=host)
 # The disk tier of --extend-cache stages blocks in a /dev/shm file that only a clean shutdown removes: a private IPC
 # namespace (its own /dev/shm, freed when the container stops) keeps a killed server from leaving it in the host's.
@@ -24,4 +30,4 @@ for arg in "$@"; do
 done
 # GPU_MAX_HW_QUEUES=1 is the setting of every RDNA4 launcher here (no measured difference for this model on ROCm 10.2).
 exec docker run --rm --name "$name" --device /dev/kfd --device /dev/dri -e GPU_MAX_HW_QUEUES=1 \
-  "${ipc[@]}" -p "$bind:$port:8042" -v "$cache:/models/cache" "${extra[@]}" "$image" "$@"
+  "${ipc[@]}" -p "$bind:$port:8042" -v "$cache:/models/cache" "${extra[@]}" "$image" "${w3x[@]}" "$@"
