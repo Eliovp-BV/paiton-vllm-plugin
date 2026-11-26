@@ -184,7 +184,9 @@ Fast mode has no 4-user number at 128K: four requests with 128K tokens of contex
   109 / 103 ms). The accepted drafts move these short replies by
   several percent from server to server.
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
-  788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). [TBD --fast at its context.]
+  788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). `--fast` at its own context, one run: in a
+  516,065-token prompt (prompt 238.5 s, 2,164 tok/s; generation 123.3 tok/s) the reasoning named all ten facts, but
+  the 4,000-token budget ran out before the answer started, as in the fp8 case above.
 
 `vllm bench serve` with `--fast` on the v1.2.0 image, same method as the 1,024-token table above (512-token replies,
 new prompts in every cell), one run per prompt length. Total tok/s and latencies:
@@ -243,8 +245,8 @@ request, 287.7 / 296.2 with four; 8,192-token prompts: 90.6 / 86.5 and 147.5 / 1
 
 Super fast, output against the default:
 
-- Greedy token ids against the image's own exact path for the same 3-bit weights: [TBD w1 gate: equal on the check
-  requests at 1 and 4].
+- Greedy token ids against the image's own exact path for the same 3-bit weights: equal on all 11 check requests, alone and four
+  at once.
 - 3-bit experts in our quality study (the published files, teacher-forced on the model's own replies, six groups from
   short prompts, three of them with an image, to 128K-token documents; reference: the default's experts in the
   arithmetic it serves): top-1 agreement 95.81 %, against 97.33 % for two reference runs that differ only in the
@@ -259,8 +261,9 @@ Super fast, output against the default:
   differ (mean 0.230, max 0.430), and 42 % of the sampled tokens were the token that serving without a drafter picks
   most often, against 29 % with the standard check. The 3-bit image was not run through this test.
 
-Memory with BetterBench decode and concurrency (temperature 0.7, top-p 0.95, top-k 20): [TBD gates: peaks with --fast
-and super fast, every request ok].
+Memory with BetterBench decode and concurrency (temperature 0.7, top-p 0.95, top-k 20): `--fast` peaked at 29.38 GiB (decode,
+160 of 160 requests) and 29.47 GiB (concurrency, 48 of 48 at every level); super fast at 29.33 and 29.42 GiB, with
+the same counts.
 
 ## Quality
 
