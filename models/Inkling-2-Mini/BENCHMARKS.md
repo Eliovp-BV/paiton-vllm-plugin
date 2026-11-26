@@ -61,7 +61,7 @@ facts found, generation speed after the prompt:
 The fp8 miss at 260,049 tokens is a reply that spent its 4,000-token budget on reasoning and never started the
 answer; its reasoning names 9 of the 10 facts. The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
 8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
-gave 9 of 10 (1,187 tok/s, generation 117.4 tok/s).
+gave 9 of 10 (1,187 tok/s, generation 117.4 tok/s). Greedy decoding repeats on this text in v1.0.0 too (8 of 10 in the reasoning, no answer).
 
 ## `vllm bench serve`, 1,024-token prompts
 

@@ -66,7 +66,7 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
 
 The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
 8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
-gave 9 of 10 (875 s, 117 tok/s).
+gave 9 of 10 (875 s, 117 tok/s). Greedy decoding repeats on this text in v1.0.0 too (8 of 10 in the reasoning, no answer).
 
 - Quality against a bf16 reference in our study: `kv4` about 0.005 KL, `fp8` no change (details under [Run](#run)).
 - The fp8 miss at 260,049 tokens: the reply used its whole 4,000-token budget on reasoning and never started the
@@ -294,7 +294,8 @@ What the default start gives you:
   check (ten facts in a 466,944-token text) ran into a loop with the 4-bit cache where fp8 answered. fp8 loops the
   same way on a 262,144-token text, where the bf16 reference picks the same tokens, so we count it as the model's
   behaviour. At the default temperature neither text loops: two of three samples answered each, and the third ran
-  out of its 4,000-token budget. `--kv-cache fp8` (558,496 tokens) showed no change in the study.
+  out of its 4,000-token budget. The 1,038,312-token check loops the same way greedy, in v1.0.0 too; at temperature
+  1.0 it answered with 9 of 10. `--kv-cache fp8` (558,496 tokens) showed no change in the study.
 - Tool calls (`tool_choice: "auto"`) and reasoning in a separate `reasoning` field of the reply.
 - Prefix caching (vLLM's default): the start of a prompt that the server has seen before is not computed again.
 - Speculative decoding: the default drafter (downloaded at the first start; license in [NOTICE.md](NOTICE.md))
