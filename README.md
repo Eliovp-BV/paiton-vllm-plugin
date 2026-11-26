@@ -41,7 +41,8 @@ its numbers.
 | 1x R9700 | Fast chat and coding | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | about 180 tok/s, 65K tokens per request |
 | 1x R9700 | Coding agents, long documents | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit, `--mode long-kv4` | 262K tokens per request, prefix caching, images with `--vision` |
 | 1x R9700 | The most accurate answers | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), MXFP4 | about 156 tok/s, 65K tokens per request |
-| 1x R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 1,048,576 tokens per request, 151 tok/s greedy and 129 at temperature 1.0 (1,024-token prompts); with `--fast` 115 to 132 tok/s at temperature 1.0 (LocalMaxxing matrix, one request) and 640,960 tokens; published weights unchanged |
+| 1x R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 1,048,576 tokens per request, [V120 VBS default greedy 1] tok/s greedy and [V120 VBS default T1 1] at temperature 1.0 (1,024-token prompts); with `--fast` [V120 RANGES: fast decode] tok/s at temperature 1.0 (LocalMaxxing matrix, one request) and [V120 fast context] tokens, the same output; published weights unchanged |
+| 1x R9700 | Inkling 2 Mini, fastest | [Inkling 2 Mini](models/Inkling-2-Mini/README.md#super-fast-3-bit-image), 3-bit image | [V120 RANGES: w3 decode] tok/s at temperature 1.0 (LocalMaxxing matrix, one request), 1,048,576 tokens per request; 3-bit experts, output close to the default |
 | 2x R9700 | A larger model, fastest | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 3-bit | about 259 tok/s, 98K-token window; 128 GB+ of RAM |
 | 2x R9700 | A larger model, most accurate | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | the 16-bit model's task scores, about 245 tok/s; 196 GB+ of RAM |
 | 2x R9700 | Coding agents | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit, `--prefix-caching` | 262K-token window; a repeated 200K-token prompt starts in under 1 s |
@@ -157,7 +158,7 @@ These models provide an OpenAI-compatible API through vLLM.
 | --- | --- | --- |
 | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding on a single R9700; accuracy, speed and long-conversation profiles | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#benchmarks) |
 | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md) | Chat and coding on two R9700s; 3-bit or 4-bit, with optional image input on supported 4-bit profiles | [Results](models/Qwen3.8-Flash-Next/BENCHMARKS.md) |
-| [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | Chat, coding, tools and image input on an R9700, 1,048,576 tokens per request, speculative decoding, an opt-in fast mode | [Results](models/Inkling-2-Mini/BENCHMARKS.md) |
+| [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | Chat, coding, tools and image input on an R9700, 1,048,576 tokens per request, speculative decoding, an opt-in fast mode and a 3-bit image | [Results](models/Inkling-2-Mini/BENCHMARKS.md) |
 | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools | [Results](models/MiniCPM5-2B/BENCHMARKS.md) |
 | [Qwen3.8 NEO CODER MAX 27B](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat | [Results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [Qwen3-Coder 30B A3B](models/Qwen3-Coder-30B/README.md) | Code generation, review, testing and tools | [Results](models/Qwen3-Coder-30B/BENCHMARKS.md) |

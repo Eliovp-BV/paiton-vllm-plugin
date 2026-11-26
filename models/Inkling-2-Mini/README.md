@@ -1,33 +1,47 @@
 # Inkling 2 Mini on a single R9700
 
 Inkling 2 Mini is Thinking Machines' model for chat, coding, tool calls and image input. This guide serves it with
-vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB).
+vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 
-One request can hold **1,048,576 tokens**, the model's full context length. With 1,024-token prompts
-and 512-token replies (`vllm bench serve`), one request generates at **151 tok/s** with greedy decoding and at
-**129 tok/s** at the model's default temperature of 1.0 (the model's own sampling settings: no top-p or top-k); four
-requests at once reach 285 and 295 tok/s in total. After a 522,196-token prompt one request still generates at
-126 tok/s. All numbers are from 26 November 2026 at a 300 W power cap; the
-tables are in [Context and speed](#context-and-speed) and the [benchmarks](BENCHMARKS.md). vLLM has no path for this
-model on this card, so the comparison in the benchmarks is with Paiton's own first complete build, which ran at 25 to
-26 tok/s for one request and 67 to 72 for four on our real-text set (greedy), where this release gives 143 and 241.
+| Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
+| --- | --- | ---: | --- | --- |
+| Default | `serve-docker.sh` | 1,048,576 | the model's own | [V120 RANGES: default decode] / [V120 RANGES: default prefill] |
+| Fast | `serve-docker.sh --fast` | [V120 fast context] | the model's own, as with the default | [V120 RANGES: fast decode] / [V120 RANGES: fast prefill] |
+| Super fast | `PAITON_W3X=<folder> serve-docker.sh` | 1,048,576 | close to the default, not the same | [V120 RANGES: w3 decode] / [V120 RANGES: w3 prefill] |
 
-`--fast` gives up part of the context and some sampling accuracy for speed. It holds 640,960 tokens per request and,
-on LocalMaxxing's one-request matrix (its prose prompt at temperature 1.0), generates at 115 to 132 tok/s and reads
-prompts at 3,898 to 5,238 tok/s, against 83 to 110 and 2,732 to 3,772 with the defaults. See [Fast mode](#fast-mode).
+The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt, 4K to 128K tokens of context);
+the tables are in [Fast mode](#fast-mode) and [Super fast](#super-fast-3-bit-image). Default and fast run on the image
+`inkling-2-mini-rdna4-v1.2.0` and use the publisher's weights unchanged. Super fast is a second image,
+`inkling-2-mini-w3-rdna4-v1.2.0`, with 3-bit copies of the expert weights that we made from the publisher's
+checkpoint, 8-bit attention projections and a relaxed draft check; [Super fast](#super-fast-3-bit-image) says what
+each of these costs.
+
+With the defaults one request can hold **1,048,576 tokens**, the model's full context length. With 1,024-token
+prompts and 512-token replies (`vllm bench serve`), one request generates at **[V120 VBS default greedy 1] tok/s**
+with greedy decoding and at **[V120 VBS default T1 1] tok/s** at the model's default temperature of 1.0 (the model's
+own sampling settings: no top-p or top-k); four requests at once reach [V120 VBS default greedy 4] and
+[V120 VBS default T1 4] tok/s in total. After a 522,196-token prompt one request still generates at 126 tok/s. All
+numbers are from November 2026 at a 300 W power cap; the tables are in [Context and speed](#context-and-speed) and the
+[benchmarks](BENCHMARKS.md). vLLM has no path for this model on this card, so the comparison in the benchmarks is with
+Paiton's own first complete build, which ran at 25 to 26 tok/s for one request and 67 to 72 for four on our real-text
+set (greedy), where the default gives 143 and 241.
 
 Start it:
 
 ```bash
 git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
-./models/Inkling-2-Mini/serve-docker.sh
+./models/Inkling-2-Mini/serve-docker.sh            # default
+./models/Inkling-2-Mini/serve-docker.sh --fast     # fast
+hf download [V120 3-bit weights repo] --local-dir ~/inkling-2-mini-w3x   # super fast: the 3-bit expert files
+PAITON_W3X=~/inkling-2-mini-w3x ./models/Inkling-2-Mini/serve-docker.sh   # then the 3-bit image
 ```
 
-The first start downloads the pinned weights (20.2 GB) and the drafter (1.0 GB). The OpenAI-compatible API is on port
-8042, model name `inkling-2-mini`.
+The first start downloads the pinned weights (20.2 GB) and the drafter (1.0 GB); super fast also downloads its 3-bit
+expert files ([V120 3-bit weights size]). The OpenAI-compatible API is on port 8042, model name `inkling-2-mini`.
 
-[Context and speed](#context-and-speed) · [Fast mode](#fast-mode) · [Run](#run) · [Options](#options) ·
+[Context and speed](#context-and-speed) · [Fast mode](#fast-mode) · [Super fast](#super-fast-3-bit-image) ·
+[Run](#run) · [Options](#options) ·
 [Prompt cache in RAM or on an SSD](#prompt-cache-in-ram-or-on-an-ssd-opt-in) · [Reasoning effort](#reasoning-effort) ·
 [Images](#images) ·
 [What it does not do yet](#what-it-does-not-do-yet) · [Weights](#model-weights-and-existing-downloads)
@@ -59,11 +73,9 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
   fp8 and 2,380 for bf16.
 - The generation speeds in the long-prompt cells depend on each reply (the fp8 cell at 260,049 tokens is 4,000
   tokens of reasoning), so they do not rank the formats.
-- The numbers with the default settings come from builds with the same model libraries as this image (v1.0.0 and
-  the build before it). Run again on v1.0.0, the `vllm bench serve` cells came within 0.4 % of them and the
-  1,038,311-token prompt read at 1,174 tok/s against 1,172. On this image, LocalMaxxing's matrix with the defaults read
-  prompts of 8K to 128K tokens within 1.2 % of v1.0.0's run and generated at 93.8 tok/s without context against
-  93.9.
+- The numbers in this section come from v1.0.0 and the build before it. v1.2.0 has the same model libraries except
+  the expert library, whose prompt kernels are faster and give the same bits; the LocalMaxxing table under
+  [Fast mode](#fast-mode) is from v1.2.0. [V120 default tables: rerun on v1.2.0, or keep v1.0.0's with this note.]
 
 ### Speed with `vllm bench serve`
 
@@ -117,72 +129,94 @@ With greedy decoding the token ids are the same with each drafter and without on
 
 ## Fast mode
 
-`--fast` is opt-in and for 32 GB cards. It gives up part of the context and some sampling accuracy for speed:
+`--fast` is opt-in and for 32 GB cards. It gives up part of the context for speed and leaves the output as it is:
 
 ```bash
 ./models/Inkling-2-Mini/serve-docker.sh --fast
 ```
 
-LocalMaxxing's inference matrix (lmx 0.1.66: its prose prompt at temperature 1.0, 30 s per cell, one request), on
-this image with one fresh server per mode on the same card, one run each. Prompt speed for the prefill cells and
-generation speed for the decode cells, tok/s:
-
-| Cell | Default | `--fast` |
-| --- | ---: | ---: |
-| Prefill 4K | 2,732 | 4,100 |
-| Prefill 8K | 3,772 | 5,238 |
-| Prefill 16K | 3,546 | 4,562 |
-| Prefill 32K | 3,526 | 4,884 |
-| Prefill 64K | 3,333 | 4,528 |
-| Prefill 128K | 2,978 | 3,898 |
-| Decode, no context | 93.8 | 131.6 |
-| Decode 4K | 100.9 | 129.7 |
-| Decode 16K | 102.1 | 127.1 |
-| Decode 32K | 109.7 | 124.3 |
-| Decode 64K | 99.6 | 114.7 |
-| Decode 128K | 82.8 | 115.6 |
-
-- With two requests at once `--fast` reaches 181 to 207 tok/s in total and with four 271 to 323 (defaults: 128 to
-  162 and 222 to 254).
-- On LocalMaxxing's two short speed tests (512-token replies) the defaults are a little faster: 170.1 tok/s on
-  `code-v1` and 176.2 on `reasoning-v1` (run on v1.0.0), against 169.2 and 164.3 with `--fast`. These replies accept
-  more drafted tokens, and the defaults check five per step instead of four.
-- In a ten-fact check with a 632,802-token prompt at temperature 1.0, `--fast` found all ten facts. [PENDING: the
-  confirmation run of that check on this image with `--fast`.]
-
-[FAST-GRID: `vllm bench serve` with `--fast`, 1,024-, 8,192- and 32,768-token prompts.]
-
-It sets three values:
+It sets two values:
 
 | Variable | Default | `--fast` | What it does |
 | --- | --- | --- | --- |
 | `PAITON_INK2_PREFILL_CHUNK` | 512 | 2048 | prompt tokens per step |
 | `PAITON_INK2_DRAFTS_1` | 5 | 4 | drafted tokens checked per step while one request runs |
-| `PAITON_RUNNER_GLUE_ACCEPT` | not set | `0.1,0.3` | relaxed draft acceptance at a temperature above 0 |
 
 Each one is an environment variable of its own, so in your own `docker run` you can set one alone or override one
 with `-e NAME=value` (`serve-docker.sh` does not pass these variables on). The server prints one `fast_profile` line
 with the values it uses.
 
-What it costs:
+What it costs is context: [V120 fast context] tokens per request instead of 1,048,576. Prompt steps of 2,048 tokens
+need more card memory while they run; the launcher reserves that memory before vLLM sizes the cache, so less is left
+for the cache.
 
-- Context: 640,960 tokens per request instead of 1,048,576. Prompt steps of 2,048 tokens need more card memory while
-  they run, so less is left for the cache.
-- Sampled replies (temperature above 0) no longer follow the model's own distribution. A drafted token is kept when
-  the normal check keeps it, and also when the model gives it a probability of at least 0.1, or of at least 0.3 times
-  that of its most likely token when that is lower. More drafts pass per step, and the output is sharper, as at a
-  lower temperature: in our distribution test 42 % of the sampled tokens were the token that serving without a
-  drafter picks most often, against 29 % with the default rule. That test (5-token replies, 2,500 seeds per prompt,
-  against serving without a drafter) finds a difference in 10 of its 12 cells with `--fast` and in none with the
-  defaults. On our 35-task set at temperature 1.0 (three seeds) `--fast` solved 95 of 105, against 99 of 105 with
-  the same prompt steps and drafts and the default acceptance rule. The gap is in the needle tasks: the replies ran
-  longer, and 6 of 15 instead of 3 hit the 512-token reply limit before the answer. No needle reply gave a wrong
-  code.
-- Greedy replies: the relaxed rule does not apply to them. With `--fast` they are the same tokens as with the
-  defaults on our 11 check requests, alone and four at once.
+What stays the same:
 
-A build with 3-bit experts for more speed is in progress; the launcher's `--w3x` option is for its files, which are
-not published yet.
+- The weights, the arithmetic and the draft check are those of the default. Greedy replies to prompts of up to 512
+  tokens are the same tokens as with the defaults (checked on our 11 check requests, alone and four at once).
+- Sampled replies follow the model's distribution: our distribution test (5-token replies, 2,500 seeds per prompt,
+  against serving without a drafter) [V120 dist --fast: cells with a difference, of 12].
+- A prompt longer than 512 tokens is read in larger pieces, which changes the order of some sums in attention, so a
+  greedy reply can part from the default's after some tokens, as after a prefix-cache hit (see
+  [What it does not do yet](#what-it-does-not-do-yet)): [V120 bench count on long prompts]. Both are valid outputs of
+  the model.
+
+LocalMaxxing's inference matrix (lmx 0.1.66: its prose prompt at temperature 1.0, 30 s per cell, one request), one
+fresh server per version on the same card, one run each. Prompt speed for the prefill cells and generation speed for
+the decode cells, tok/s:
+
+[V120 GUIDE TABLE: cells by default / --fast / super fast]
+
+- With two requests at once `--fast` reaches [V120 RANGES: 2 users fast] tok/s in total and with four
+  [V120 RANGES: 4 users fast] (defaults: [V120 RANGES: 2 users default] and [V120 RANGES: 4 users default]).
+- On LocalMaxxing's two short speed tests (512-token replies), [V120 speed tests: code-v1 and reasoning-v1, default
+  and --fast]. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
+  `--fast`'s four.
+- [V120 fact check: ten facts at the fast context, temperature 1.0, with `--fast`.]
+
+[V120 FAST-GRID: `vllm bench serve` with `--fast`, 1,024-, 8,192- and 32,768-token prompts, 4 and 8 users.]
+
+## Super fast (3-bit image)
+
+Super fast is a second image, `inkling-2-mini-w3-rdna4-v1.2.0`. It starts in this mode without an option; `PAITON_W3X` names
+the folder of the 3-bit expert files, and with it `serve-docker.sh` picks the 3-bit image and mounts the folder:
+
+```bash
+hf download [V120 3-bit weights repo] --local-dir ~/inkling-2-mini-w3x
+PAITON_W3X=~/inkling-2-mini-w3x ./models/Inkling-2-Mini/serve-docker.sh
+```
+
+Against the default it changes four things:
+
+| Part | Default | Super fast |
+| --- | --- | --- |
+| Expert weights | the publisher's: 4-bit (layers 0 to 19) and 8-bit (layers 20 to 23) | [V120 W3 PICK: F1 3-bit in all 24 layers / F2 3-bit in layers 0 to 19, layers 20 to 23 as published] |
+| Attention projections | bf16 | 8-bit rows (as `--int8-attention`) |
+| Draft check at a temperature above 0 | standard | relaxed (below) |
+| Prompt steps, drafts while one request runs | 512, 5 | 2,048, 4 (as `--fast`) |
+
+The first three change the output, so super fast is close to the default but not the same:
+
+- 3-bit experts: [V120 P3: next-token KL and top-1 agreement against the default, quality study].
+- 8-bit attention projections: about 0.003 next-token KL against the default.
+- Relaxed draft check: a drafted token is kept when the normal check keeps it, and also when the model gives it a
+  probability of at least 0.1, or of at least 0.3 times that of its most likely token when that is lower. More drafts
+  pass per step, and sampled replies are sharper, as at a lower temperature. Greedy replies are not touched by it.
+  [V120 distribution test with the relaxed check: cells with a difference, share of the most likely token.]
+- Task set, 35 tasks: [V120 w3 task set greedy] of 35 greedy (default 34), [V120 w3 task set T1] of 105 at
+  temperature 1.0 with three seeds (default [V120 default task set T1]).
+- [V120 w3 fact check: ten facts at about 1M tokens.]
+
+Context: 1,048,576 tokens per request, as with the default. The 3-bit experts take [V120 w3 expert GiB] GiB less
+card memory, so the cache holds [V120 w3 cache tokens] tokens in all: room for [V120 w3: what that allows, e.g. a
+second long request].
+
+Speed: the matrix above has a super-fast column. [V120 w3 grids and multi-user cells.]
+
+The 3-bit expert files are [V120 3-bit weights repo and revision]. We made them from the publisher's checkpoint at
+revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6` (Apache-2.0, see [NOTICE.md](NOTICE.md)); everything else (the
+other layers, the vision tower, the drafter) loads from the publisher's files as in the default image.
+[V120 check with the loader: download, verification and cache folder of the 3-bit files.]
 
 ## Run
 
@@ -233,11 +267,11 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
-| `--fast` | Fast mode: 2,048-token prompt steps, four drafts while one request runs and relaxed draft acceptance at a temperature above 0; 640,960 tokens per request. See [Fast mode](#fast-mode). Off by default. |
+| `--fast` | Fast mode: 2,048-token prompt steps and four drafts while one request runs, the default's output; [V120 fast context] tokens per request. See [Fast mode](#fast-mode). Off by default. |
 | `--drafter dspark` | Drafts with the draft head in the model's checkpoint instead of the default drafter (no extra download): on the real-text set 109 tok/s greedy for one request instead of 143. Greedy replies are the same tokens. |
 | `--no-drafter` | Serves without a drafter: 69 tok/s for one request and 171 for four (greedy, `vllm bench serve`), instead of 151 and 285. 1.5 GiB more for the cache; the context stays at 1,048,576. |
 | `--kv-cache fp8`, `--kv-cache bf16` | Cache format of the full-attention passes. fp8 holds 558,496 tokens per request and showed no change in our quality study; bf16 holds 279,248. Speed and long prompts per format: [Context and speed](#context-and-speed). Both have the first-hit miss in [What it does not do yet](#what-it-does-not-do-yet). |
-| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 235,600 tokens with the drafter, 309,120 without. Prompt speed stays within 1.3 %. Measured on the build of 25 November with the bf16 cache and the model's own draft head; not measured with the default drafter, at temperature 1.0 or through the task set. Off by default. |
+| `--int8-attention` | Stores the attention projections (input, output and tap projections) as 8-bit rows. Greedy, one request: 78 tok/s instead of 68 without the drafter, 115 instead of 112 with it; four at once 151 instead of 134 without the drafter, 194 instead of 187 with it. The next-token distribution moves a little (KL about 0.003 against the default) and the context is smaller: 235,600 tokens with the drafter, 309,120 without. Prompt speed stays within 1.3 %. Measured on the build of 25 November with the bf16 cache and the model's own draft head; not measured with the default drafter, at temperature 1.0 or through the task set. Off by default; super fast has it on. |
 | `--host-cache-gib GIB`, `--extend-cache [auto\|ram\|disk]` | Keep prompts the card's cache drops in system memory or on an SSD; see [Prompt cache in RAM or on an SSD](#prompt-cache-in-ram-or-on-an-ssd-opt-in). Off by default. |
 | `--draft-cut P` | Stops a draft at the first token the drafter gives a probability below `P`. Needs vLLM's synchronous scheduling, which the launcher then sets. Not measured on this build. Off by default. |
 | `--download-only`, `--offline`, `--verify` | Prepare the weights and exit; start without network access; hash every file again before the start. |
@@ -313,14 +347,16 @@ string, from which the model reads a label and a value. The vision tower loads w
 
 ## What it runs
 
-- The weights are the publisher's files, unchanged: the experts in the 4-bit and 8-bit formats the model was trained
-  in, everything else in bf16. Nothing is quantized again, with one exception: the output head is stored as 8-bit
-  rows when the model loads (no measurable change in our checks, see the benchmarks).
+- Default and fast: the weights are the publisher's files, unchanged: the experts in the 4-bit and 8-bit formats the
+  model was trained in, everything else in bf16. Nothing is quantized again, with one exception: the output head is
+  stored as 8-bit rows when the model loads (no measurable change in our checks, see the benchmarks).
+- Super fast: the experts come from our 3-bit files ([V120 W3 PICK: layers]), the attention projections are stored as
+  8-bit rows when the model loads, and the rest is as above.
 - Experts, attention, the small operators, the vision tower and the drafter run in Paiton's native HIP libraries for
   the R9700. One library call runs a whole forward pass. vLLM's step bookkeeping (input preparation, block tables,
   slot mapping, drafter bookkeeping) runs in native HIP too.
 - Memory on the card: vLLM reports 18.49 GiB for the model with the default drafter and the vision tower (18.24 with
-  `--drafter dspark`, 17.03 without a drafter); the rest is cache.
+  `--drafter dspark`, 17.03 without a drafter, [V120 w3 model GiB] for super fast); the rest is cache.
   The input embedding table (0.86 GiB) stays in pinned system memory, which gives about 24K more context than on the
   card and the same tokens.
 - After warm-up the launcher keeps 1 GiB of the card free of PyTorch's allocator. With it, card memory peaked at
@@ -332,7 +368,9 @@ string, from which the model reads a label and a value. The vision tower loads w
 
 - Cards with less memory than the R9700's 32 GB are not supported yet: when the card has less than 20 GiB free at
   start, the launcher stops before the download.
-- More than four requests at once is not tested.
+- More than four requests at once is not tested. [V120 check: the 8-user grids queue four and run four.]
+- Super fast changes the output (3-bit experts, 8-bit attention projections, the relaxed draft check). Use the
+  default or `--fast` when you need the model's own output. [V120 w3 limits from the gates and task set.]
 - With a drafter on (the default), vLLM refuses `min_p` and `logit_bias` with HTTP 400 ("not yet supported with
   speculative decoding"). Start with `--no-drafter` for requests that need them.
 - A seeded request at a temperature above 0 repeats exactly when it runs alone. When requests run together, the
@@ -352,8 +390,7 @@ string, from which the model reads a label and a value. The vision tower loads w
 - Time to first token on a long prompt is the model's full prefill: 48 s for 143,840 tokens, 82 s for 218,915 and
   295 s for 522,196.
 - The first request after a start that asks for logprobs, a repetition penalty or a JSON schema waits one to two
-  seconds while vLLM compiles that option's sampling kernel (on this image: 2.6 s instead of 0.3 s for a short reply
-  with logprobs, 1.6 s with a JSON schema, 1.0 s with a repetition penalty). Later requests with the option do not
+  seconds while vLLM compiles that option's sampling kernel (on v1.2.0: [V120 option first use]). Later requests with the option do not
   wait.
 - The launcher uses a single card; a second card does not make a request faster.
 
@@ -373,15 +410,19 @@ PAITON_HF_CACHE="$HOME/.cache/huggingface" ./models/Inkling-2-Mini/serve-docker.
 
 The cache must hold the exact revision above. [Cache paths and Docker mounts](../../docs/MODEL_WEIGHTS.md).
 
+Super fast needs the same files plus its 3-bit expert files: [V120 3-bit weights repo, revision, size, how the
+launcher downloads and checks them].
+
 ## Requirements
 
-- A Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by this image.
+- A Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by these images.
 - Linux with a working AMD GPU driver, and Docker.
 - The image's vLLM (0.32.1.dev, ROCm 10.2 build). The plugin's Inkling code is built and tested for that vLLM only,
   not for a stock vLLM 0.32.0 install. vLLM versions after 0.32 bring their own Inkling 2 model classes under the same
   names; the plugin then leaves them in place, so its R9700 code is not used. Use the launcher and its image.
 - 22 GB of disk for the weights and the drafter, and 67 GB for the image (a 23 GB download; the base layers are the same as those of
   the Qwen3.8 27B image of 24 November, so a host that has that image downloads only the last 0.1 GB or less).
+  [V120 sizes: main image, 3-bit image, the shared layers, 3-bit files on disk.]
 
 Licenses and provenance: [NOTICE.md](NOTICE.md). The model is Apache-2.0; the publisher's usage policy is in
 [USAGE_POLICY](USAGE_POLICY).
