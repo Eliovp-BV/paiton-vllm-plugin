@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.19@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6
-# Inkling 2 Mini on a single R9700 (gfx1201): AMD's ROCm 10.2 / vLLM 0.32 image plus the plugin and Paiton's native
+# Inkling 2 Mini on one R9700 (gfx1201): AMD's ROCm 10.2 / vLLM 0.32 image plus the plugin and Paiton's native
 # libraries. Build from the repository root with the libraries as a named context:
 #   docker build -f models/Inkling-2-Mini/Dockerfile --build-context inkling2_libs=<folder with the .so files> \
 #     --build-context runner_glue=<folder with the runner glue files> --build-context triton_seed=<Triton cache folder> .
@@ -11,7 +11,7 @@ COPY paiton_vllm_plugin/__init__.py paiton_vllm_plugin/activation.py paiton_vllm
 COPY paiton_vllm_plugin/inkling2 /opt/paiton/inkling2-release-source/paiton_vllm_plugin/inkling2
 RUN python3 -m pip install --no-index --no-build-isolation --no-deps --target /opt/paiton/inkling2-plugin /opt/paiton/inkling2-release-source \
     && rm -rf /opt/paiton/inkling2-plugin/bin
-COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json /opt/paiton/inkling2/
+COPY models/Inkling-2-Mini/server.py models/Inkling-2-Mini/checkpoint.lock.json models/Inkling-2-Mini/w3x.lock.json /opt/paiton/inkling2/
 # vLLM's offload worker as in the 27B release image, used only by the prompt-cache tiers (--host-cache-gib,
 # --extend-cache): the RAM tier as one exact-size hipHostMalloc allocation per tensor (PAITON_HOST_KV_PRIVATE=1), and no
 # silent fall back to pageable copies, which corrupt data on gfx1201 (ROCm clr #291). With it, vLLM PR #52838 on the
@@ -27,10 +27,9 @@ RUN printf '%s\n' \
 COPY models/Inkling-2-Mini/vllm-overlays/ /usr/local/lib/python3.14/dist-packages/
 # The folder holds the seven libraries and MANIFEST.json (sha256 and source commit of each).
 COPY --from=inkling2_libs . /opt/paiton/inkling2/lib/
-# vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) and
-# the draft acceptance check in native HIP (the runner glue); PAITON_RUNNER_GLUE_ACCEPT=eps,delta relaxes the check
-# (launcher --fast). The adapter checks the library's sha256 against manifest.json; PAITON_RUNNER_GLUE=1 swaps the
-# kernels in.
+# vLLM 0.32's model-runner bookkeeping kernels (input preparation, block tables, slot mapping, drafter bookkeeping) in
+# native HIP: the runner glue of the Qwen3.8 27B r6 image, unchanged. The adapter checks the library's sha256 against
+# manifest.json; PAITON_RUNNER_GLUE=1 swaps the kernels in.
 COPY --from=runner_glue libpaiton_runner_glue.so manifest.json /opt/paiton/runtime/runner-glue/
 COPY --from=runner_glue paiton_runner_glue_adapter.py /opt/paiton/runner-glue-py/
 COPY --from=runner_glue zzz_paiton_runner_glue.pth /usr/local/lib/python3.14/dist-packages/
@@ -52,10 +51,16 @@ ENV PYTHONPATH=/opt/paiton/inkling2-plugin:${PYTHONPATH} GPU_MAX_HW_QUEUES=1 \
     PAITON_INK2_VISION_SO=/opt/paiton/inkling2/lib/inkling2_vision_gfx1201.so \
     PAITON_INK2_DSPARK_SO=/opt/paiton/inkling2/lib/inkling2_dspark_gfx1201.so \
     PAITON_INK2_DFLASH2_SO=/opt/paiton/inkling2/lib/inkling2_dflash2_gfx1201.so
+# INK2_IMAGE=w3 builds the 3-bit image (inkling-2-mini-w3-rdna4-...): the launcher then starts with its settings
+# (server.py, W3_FAST) and needs a W3X folder. Empty = the main image.
+ARG INK2_IMAGE=
+ENV PAITON_INK2_IMAGE=${INK2_IMAGE}
 ARG PLUGIN_REVISION=local
+ARG IMAGE_TITLE="Paiton Inkling 2 Mini R9700"
+ARG IMAGE_VERSION=inkling-2-mini-rdna4-v1.2.0
 LABEL org.opencontainers.image.revision="${PLUGIN_REVISION}" \
-      org.opencontainers.image.title="Paiton Inkling 2 Mini R9700" \
-      org.opencontainers.image.version="inkling-2-mini-rdna4-v1.1.0" \
+      org.opencontainers.image.title="${IMAGE_TITLE}" \
+      org.opencontainers.image.version="${IMAGE_VERSION}" \
       org.opencontainers.image.source="https://github.com/Eliovp-BV/paiton-vllm-plugin" \
       org.opencontainers.image.licenses="Apache-2.0" \
       dev.paiton.model.revision="7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6" \

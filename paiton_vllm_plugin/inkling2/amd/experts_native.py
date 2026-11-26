@@ -47,8 +47,8 @@ def _library():
         lib = C.CDLL(path)
         lib.PaitonInkling2MoeGetAbiVersion.restype = C.c_uint
         _abi = lib.PaitonInkling2MoeGetAbiVersion()
-        if _abi not in (1, 2, 3, 4):
-            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 to 4")
+        if _abi not in (1, 2, 3, 4, 5):
+            raise RuntimeError(f"{path}: expert library ABI {_abi}, need 1 to 5")
         if _abi >= 2:
             lib.PaitonInkling2MoeRoute.restype = C.c_int
             lib.PaitonInkling2MoeRoute.argtypes = [C.c_void_p] * 4 + [C.c_float] + [C.c_void_p] * 2 + [C.c_int, C.c_void_p]
@@ -56,7 +56,7 @@ def _library():
             lib.PaitonInkling2MoeFetch.argtypes = (
                 [C.c_void_p, C.c_int] + [C.c_void_p] * (3 if _abi == 2 else 4) + [C.c_int, C.c_int, C.c_void_p, C.c_void_p]
             )  # ABI 3: the routing weights after idx (the opt-in expert skip rewrites both)
-        if _abi >= 4:  # ABI 4 adds the 3-bit experts (format 2 and 3) and their host repack
+        if _abi >= 4:  # ABI 4 adds the 3-bit experts (format 2 and 3) and their host repack; ABI 5 (formats 4 and 5, row factors, not read here) keeps the entries and the 72-byte struct, its repack writes its own card layout
             lib.PaitonInkling2MoeW3Bytes.restype = C.c_size_t
             lib.PaitonInkling2MoeW3Bytes.argtypes = [C.c_int, C.c_int]
             lib.PaitonInkling2MoeW3Repack.restype = C.c_int
@@ -140,7 +140,6 @@ class Inkling2NativeExperts(nn.Module):
     def _weights(self) -> _Weights:
         # Built at the first call: the tensors are on the card by then.
         _library()
-        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations (W3X-LOADER question 1)
         # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations, same 72-byte struct
         w = (_WeightsTable if _abi >= 2 else _Weights)(format=(2 if self.nvfp4 else 3) if self.w3 else 0 if self.nvfp4 else 1)
         if self.w3:
@@ -149,7 +148,7 @@ class Inkling2NativeExperts(nn.Module):
                     tensor = getattr(self, name + suffix)
                     assert tensor.is_cuda and tensor.is_contiguous()
                     setattr(w, field, tensor.data_ptr())
-                setattr(w, f"{name}_denominator", 1.0)  # the factor is the whole outer scale
+                setattr(w, f"{name}_denominator", w3x.denominator(self.layer_id, name))  # 1.0: the factor is the whole outer scale
             return w
         if self.pooled:  # the table replaces the four base addresses (not read then)
             if _abi < 2 or (expert_pool.SKIP and _abi < 3):

@@ -62,6 +62,9 @@ class Manifest(unittest.TestCase):
                 (HEAD, [{**good, 'format': 'w4'}], ['l0']),
                 (HEAD, [{**good, 'factor_stride': 1}], ['l0']),  # per-row factors: formats 4 / 5, reserved
                 (HEAD, [{**good, 'factor_stride': True}], ['l0']),
+                (HEAD, [{**good, 'denominator': {'w13': 0}}], ['l0']),
+                (HEAD, [{**good, 'denominator': {'w4': 2688}}], ['l0']),
+                (HEAD, [{**good, 'denominator': 2688}], ['l0']),
                 (HEAD, [{**good, 'file': '../l0'}], ['l0']),
                 (HEAD, [good], [])):  # file missing
             w3x._layers.cache_clear()
@@ -169,12 +172,17 @@ class Experts(unittest.TestCase):
                 self.assertEqual(read.call_args.args[:2], (2, lib.PaitonInkling2MoeW3Repack))
                 self.assertEqual(sorted(names), sorted(n for n, _ in experts['nvfp4'].named_parameters()))
                 self.assertTrue(bool((experts['nvfp4'].w2_w3 == 7).all()) and experts['nvfp4'].w13_w3_factor[0] == 0.25)
-                for fmt, code in (('nvfp4', 2), ('mxfp8', 3)):  # W3X-LOADER question 1: 3 = MXFP8 activations
+                for fmt, code in (('nvfp4', 2), ('mxfp8', 3)):  # 3 = MXFP8 activations
                     e = experts[fmt]
                     w = e._weights()
                     self.assertEqual((w.format, w.w13, w.w2_scale, w.w13_amax, w.w2_denominator, w.table),
                                      (code, e.w13_w3.data_ptr(), e.w2_w3_scale.data_ptr(), e.w13_w3_factor.data_ptr(), 1.0, None))
                     self.assertEqual(C.sizeof(w), 72)  # the struct the sequencer embeds
+                w3x._layers.cache_clear()  # a vehicle's amax and denominator for a bit gate
+                (Path(self.root) / 'manifest.json').write_text(json.dumps(
+                    {**HEAD, 'layers': [dict(layer=2, format='w3', file='l2', factor_stride=0, denominator={'w13': 2688})]}))
+                w = experts['nvfp4']._weights()
+                self.assertEqual((w.w13_denominator, w.w2_denominator), (2688.0, 1.0))
 
 
 if __name__ == '__main__':

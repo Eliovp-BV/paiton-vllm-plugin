@@ -18,7 +18,22 @@ server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
 
+def w3x_folder(root, w3=range(24)):
+    """A fake W3X folder (or snapshot of the 3-bit download): manifest.json and empty layer files."""
+    head = dict(format='W3X', version=1, group=64, shapes=dict(w13=[2304, 2304], w2=[2304, 1152]))
+    entries = [dict(layer=i, format='w3', file=f'layer_{i:02d}.safetensors', factor_stride=0) for i in w3]
+    (Path(root) / 'manifest.json').write_text(json.dumps({**head, 'layers': entries}))
+    for entry in entries:
+        (Path(root) / entry['file']).write_bytes(b'')
+
+
 class Inkling2Launcher(unittest.TestCase):
+    def setUp(self):  # the main image's start, also inside the 3-bit image (its ENV sets PAITON_INK2_IMAGE=w3)
+        patch = mock.patch.dict(os.environ)
+        patch.start()
+        self.addCleanup(patch.stop)
+        os.environ.pop('PAITON_INK2_IMAGE', None)
+
     def test_lock_pins_one_revision_and_the_weights(self):
         lock = json.loads((FOLDER / 'checkpoint.lock.json').read_text())
         self.assertEqual(len(lock['revision']), 40)
@@ -176,16 +191,16 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit), mock.patch.object(server.sys, 'stderr'):
             self.environment('--kv-cache', 'int4')
 
-    def started(self, *arguments, **preset):
+    def started(self, *arguments, prepare=None, **preset):
         """(vLLM argv, printed lines) of a launcher start; `preset` as `docker run -e`."""
         lines = []
         with mock.patch.dict(os.environ, {server.DFLASH2_SO: __file__, **preset}), \
-                mock.patch.object(server, 'prepare', return_value='/checkpoint'), \
+                mock.patch.object(server, 'prepare', prepare or mock.Mock(return_value='/checkpoint')), \
                 mock.patch.object(server, 'card_free_gib', return_value=None), \
                 mock.patch.object(server.os, 'execv') as execv, \
                 mock.patch('builtins.print', side_effect=lambda line, **_: lines.append(json.loads(line))), \
                 mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
-            for name in {*server.FAST, *server.FAST_PATHS} - set(preset):
+            for name in {*server.W3_FAST, *server.FAST_PATHS, 'PAITON_INK2_IMAGE'} - set(preset):
                 os.environ.pop(name, None)  # the host's own environment stays out
             server.main()
         return next(line['command'] for line in lines if 'command' in line), lines  # also for --dry-run
@@ -201,7 +216,8 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
         self.assertIn({'fast_profile': server.FAST}, lines)
         environment = next(line['environment'] for line in lines if 'environment' in line)
-        self.assertEqual(environment['PAITON_RUNNER_GLUE_ACCEPT'], '0.1,0.3')  # the sampler glue reads it in vLLM
+        self.assertNotIn('PAITON_RUNNER_GLUE_ACCEPT', environment)  # exact: relaxed acceptance is the 3-bit image's
+        self.assertNotIn('PAITON_INK2_PROJ', environment)
         argv, lines = self.started(PAITON_RUNNER_GLUE_ACCEPT='0.3,0.6')  # alone: command unchanged, line names it
         self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))
         self.assertIn({'fast_profile': {'PAITON_RUNNER_GLUE_ACCEPT': '0.3,0.6'}}, lines)
@@ -222,6 +238,76 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit) as stop:  # the 16 GB profile has its own chunk and one request
             self.started('--fast', '--dry-run', '15.9')
         self.assertIn('32 GB', str(stop.exception))
+
+    def test_w3_image_starts_with_its_settings(self):
+        from paiton_vllm_plugin.inkling2 import w3x
+        w3x._layers.cache_clear()
+        with tempfile.TemporaryDirectory() as root:
+            w3x_folder(root)
+            argv, lines = self.started('--w3x', root, PAITON_INK2_IMAGE='w3')  # no flag: the whole set
+            config = json.loads(argv[argv.index('--speculative-config') + 1])
+            self.assertEqual((argv[argv.index('--max-num-batched-tokens') + 1], config['num_speculative_tokens_per_batch_size']),
+                             ('2048', [[1, 1, 4], [2, 4, 4]]))
+            line = next(line for line in lines if 'fast_profile' in line)
+            self.assertEqual(line['fast_profile'], {**server.W3_FAST, 'PAITON_INK2_W3X': root})
+            self.assertIn('not exact', line['image'])
+            environment = next(line['environment'] for line in lines if 'environment' in line)
+            self.assertEqual((environment['PAITON_RUNNER_GLUE_ACCEPT'], environment['PAITON_INK2_PROJ']), ('0.1,0.3', 'int8'))
+            # vLLM's auto: the model's 1,048,576 whenever the cache holds it (F1 at chunk 2,048: 1,218,579 tokens), less
+            # only where it does not, so a smaller card or W3X folder still starts
+            self.assertEqual(argv[argv.index('--max-model-len') + 1], 'auto')
+            self.assertNotIn('--max-model-len', argv[argv.index('--max-model-len') + 2:])  # nothing narrows it
+            _, lines = self.started(PAITON_INK2_IMAGE='w3', PAITON_INK2_W3X=root, PAITON_INK2_PROJ='bf16')  # -e wins
+            environment = next(line['environment'] for line in lines if 'environment' in line)
+            self.assertEqual(environment['PAITON_INK2_PROJ'], 'bf16')
+
+    def test_w3_image_downloads_its_experts_without_a_folder(self):
+        from paiton_vllm_plugin.inkling2 import w3x
+        lock = server.W3X_LOCK
+        self.assertRegex(lock['revision'], '^[0-9a-f]{40}$')
+        names = {item['name'] for item in lock['files']}
+        self.assertLessEqual({'manifest.json', *(f'layer_{i:02d}.safetensors' for i in lock['w3_layers'])}, names)
+        self.assertTrue(all(len(item['sha256']) == 64 and item['bytes'] > 0 for item in lock['files']))
+        self.assertIn('models/Inkling-2-Mini/w3x.lock.json', (FOLDER / 'Dockerfile').read_text())
+        w3x._layers.cache_clear()
+        with tempfile.TemporaryDirectory() as snapshot, tempfile.TemporaryDirectory() as other:
+            w3x_folder(snapshot, lock['w3_layers'])
+
+            def fetch(offline=False, verify=False, lock=server.LOCK):
+                return snapshot if lock is server.W3X_LOCK else '/checkpoint'
+            calls = mock.Mock(side_effect=fetch)
+            argv, lines = self.started(PAITON_INK2_IMAGE='w3', prepare=calls)
+            self.assertIn(mock.call(False, False, server.W3X_LOCK), calls.call_args_list)
+            self.assertEqual(next(line['fast_profile'] for line in lines if 'fast_profile' in line)['PAITON_INK2_W3X'], snapshot)
+            self.assertIn(lock['model'], next(line['w3x'] for line in lines if 'w3x' in line))
+            calls = mock.Mock(side_effect=fetch)
+            self.started('--offline', '--verify', PAITON_INK2_IMAGE='w3', prepare=calls)
+            self.assertIn(mock.call(True, True, server.W3X_LOCK), calls.call_args_list)
+            calls = mock.Mock(side_effect=fetch)
+            with mock.patch.dict(os.environ, {'PAITON_INK2_IMAGE': 'w3'}):
+                self.assertIsNone(self.served('--download-only', prepare=calls)[0])  # fetched, nothing served
+            self.assertIn(mock.call(False, False, server.W3X_LOCK), calls.call_args_list)
+            calls = mock.Mock(side_effect=fetch)  # a folder of the user's wins: no download
+            w3x_folder(other)
+            self.started('--w3x', other, PAITON_INK2_IMAGE='w3', prepare=calls)
+            self.assertNotIn(mock.call(False, False, server.W3X_LOCK), calls.call_args_list)
+
+            def missing(offline=False, verify=False, lock=server.LOCK):
+                if lock is server.W3X_LOCK:
+                    raise FileNotFoundError('no snapshot')  # what huggingface_hub raises for a repository not in the cache
+                return '/checkpoint'
+            with self.assertRaises(SystemExit) as stop:
+                self.started('--offline', PAITON_INK2_IMAGE='w3', prepare=mock.Mock(side_effect=missing))
+            for part in ('--offline', lock['model'], lock['revision'], '--w3x'):
+                self.assertIn(part, str(stop.exception))
+            with self.assertRaises(FileNotFoundError):  # online, the download's own error stays
+                self.started(PAITON_INK2_IMAGE='w3', prepare=mock.Mock(side_effect=missing))
+            w3x._layers.cache_clear()
+            w3x_folder(snapshot, [0])  # a snapshot whose manifest does not match the lock stops before vLLM
+            with self.assertRaises(SystemExit) as stop:
+                self.started(PAITON_INK2_IMAGE='w3', prepare=mock.Mock(side_effect=fetch))
+            self.assertIn('w3x.lock.json', str(stop.exception))
+        w3x._layers.cache_clear()
 
     def test_w3x_folder_counts_its_real_expert_bytes(self):
         from paiton_vllm_plugin.inkling2 import w3x
@@ -251,8 +337,8 @@ class Inkling2Launcher(unittest.TestCase):
             self.assertIn('--w3x', str(stop.exception))
         w3x._layers.cache_clear()
         script = (FOLDER / 'serve-docker.sh').read_text()
-        self.assertIn('-v "$PAITON_W3X:/models/w3x:ro"', script)
-        self.assertIn('w3x=(--w3x /models/w3x)', script)
+        self.assertIn('extra+=(-v "$(dirname "$w3x_dir"):/models/w3x:ro")', script)  # links into a sibling folder resolve
+        self.assertIn('w3x=(--w3x "/models/w3x/$(basename "$w3x_dir")")', script)
 
 
 class Inkling2CacheTier(unittest.TestCase):

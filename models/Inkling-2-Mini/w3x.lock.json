@@ -1,0 +1,168 @@
+{
+  "model": "EliovpAI/Inkling-2-Mini-W3-INT3-Paiton-RDNA4",
+  "revision": "0b824fcf035916564fbdd9962acf5177d0ed332a",
+  "license": "apache-2.0",
+  "w3_layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23
+  ],
+  "files": [
+    {
+      "name": "manifest.json",
+      "bytes": 7419,
+      "sha256": "ee158f4095742d422ab66a9c6ad670c9eb0c39045d31099bc5b47b4f16472b86"
+    },
+    {
+      "name": "layer_00.safetensors",
+      "bytes": 398132792,
+      "sha256": "6fe494a266b8b34cae05a3baaa392df1228af9319a9b34e76b318b8cfa43e7a2"
+    },
+    {
+      "name": "layer_01.safetensors",
+      "bytes": 398132792,
+      "sha256": "d5280f76256151d8a522ec8893badbdb79b2a1b5860f1258943c7ef814427e2b"
+    },
+    {
+      "name": "layer_02.safetensors",
+      "bytes": 398132792,
+      "sha256": "6d43e616d6742fc1f1edfa264930acf459bb27507da6f8b2f264755cea80abe1"
+    },
+    {
+      "name": "layer_03.safetensors",
+      "bytes": 398132792,
+      "sha256": "bfd03292a8f2c5f0360b17d9d265bf80885673bdd106f10be3f941d7788c3399"
+    },
+    {
+      "name": "layer_04.safetensors",
+      "bytes": 398132792,
+      "sha256": "df432cc278db20f509c4a82d8295605ddee57ce3e5b79265aef5f24a0418fa89"
+    },
+    {
+      "name": "layer_05.safetensors",
+      "bytes": 398132792,
+      "sha256": "a6081763b3e814d4228b0c42acaa7d8542441a756742e32765954ababfc537b9"
+    },
+    {
+      "name": "layer_06.safetensors",
+      "bytes": 398132792,
+      "sha256": "f71c27ba1e2e88f14603c3bdbd29a2c682f1724615f9d443ba55387c5297c7f5"
+    },
+    {
+      "name": "layer_07.safetensors",
+      "bytes": 398132792,
+      "sha256": "fffc598a0fee4838189028555cfb3daf4dd252b858d4f45a95ad21df8df197e8"
+    },
+    {
+      "name": "layer_08.safetensors",
+      "bytes": 398132792,
+      "sha256": "0e5404109bab2972d8f678596c9adec23cd11f4c357d12f17a348c8d45c10eec"
+    },
+    {
+      "name": "layer_09.safetensors",
+      "bytes": 398132792,
+      "sha256": "55792d3d2ac9e729a52c2b7458e08dccdb8e55529290af5cd6471cb2ed0798ad"
+    },
+    {
+      "name": "layer_10.safetensors",
+      "bytes": 398132792,
+      "sha256": "2657bead59a5a66f36c89bbbe020cedddea0bb36e06a3a1055458ab7f88786f4"
+    },
+    {
+      "name": "layer_11.safetensors",
+      "bytes": 398132792,
+      "sha256": "994b04663e25e27534169882b533e8cb0fbd33e53eddfe981354700755095128"
+    },
+    {
+      "name": "layer_12.safetensors",
+      "bytes": 398132792,
+      "sha256": "59f50cecc54078f0b5976a09eca36e7c176c2ba08f741cfc39513c84c7e3c79c"
+    },
+    {
+      "name": "layer_13.safetensors",
+      "bytes": 398132792,
+      "sha256": "83baf19b4610d7acf756ad0cec6f940877df8986103153eaeecd346c033256d7"
+    },
+    {
+      "name": "layer_14.safetensors",
+      "bytes": 398132792,
+      "sha256": "1cf9d141d8e275b9be8fb4bea993e9a3e5572a3cf61c3db10f12995945d8c83e"
+    },
+    {
+      "name": "layer_15.safetensors",
+      "bytes": 398132792,
+      "sha256": "ac67b6e912fbcc64f37b1980167dcad6f53216d847d0ea0abcf4126321753354"
+    },
+    {
+      "name": "layer_16.safetensors",
+      "bytes": 398132792,
+      "sha256": "85dea080c1391705686a4bdf5524fd08a4537c6608e1770e0f20381810795b4e"
+    },
+    {
+      "name": "layer_17.safetensors",
+      "bytes": 398132792,
+      "sha256": "01fedd4ef9778861c528a2f90d6dde84fcf9ecb4bb2729e7438b3b7a6a629f65"
+    },
+    {
+      "name": "layer_18.safetensors",
+      "bytes": 398132792,
+      "sha256": "16b493d8c081e799b9ca66c4a479fce2543dd456067bf9b3732b38b87db6ec79"
+    },
+    {
+      "name": "layer_19.safetensors",
+      "bytes": 398132792,
+      "sha256": "ab8adfddb1e8e5b148c4e8542b07f9081e2de0ea3746266e278d73688c837a73"
+    },
+    {
+      "name": "layer_20.safetensors",
+      "bytes": 398132792,
+      "sha256": "ad00f4a6566031970d69c3da6f17117621cd69efee39a0f8a623ff864df6588f"
+    },
+    {
+      "name": "layer_21.safetensors",
+      "bytes": 398132792,
+      "sha256": "d0b851e68874671b40db617e262a8efabf984d9b3d2edaadb59a45a9f6d854dc"
+    },
+    {
+      "name": "layer_22.safetensors",
+      "bytes": 398132792,
+      "sha256": "9e1b52fd6e79f1cd224df57db77f747d411c9132cadf42d427a41c0e9acac7b5"
+    },
+    {
+      "name": "layer_23.safetensors",
+      "bytes": 398132792,
+      "sha256": "53aeb49e951425b7b81d1f7a40a8f0622b1252916aeb11d13ccb79921dde353d"
+    },
+    {
+      "name": "config.json",
+      "bytes": 640,
+      "sha256": "550eee8960f9668287d2470183f3835815fd6d61202e367af05a3562e9ddefcf"
+    },
+    {
+      "name": "LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ]
+}

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.1.0@sha256:f94178899939ebeb7f394fd01f8dc3b89a9c8faa12bc033a3af2dd1a74a31fb2}"
+# PAITON_W3X (below) without PAITON_IMAGE picks the 3-bit image, the one whose start is set up for 3-bit experts.
+if [[ -n "${PAITON_W3X:-}" ]]; then default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-w3-rdna4-v1.2.0
+else default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.0.0; fi
+image="${PAITON_IMAGE:-$default_image}"
 cache="${PAITON_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/paiton-inkling-2-mini}"
 port="${PAITON_PORT:-8042}"
 # The API listens on every interface (0.0.0.0); PAITON_BIND=127.0.0.1 keeps it on this machine.
@@ -16,11 +19,14 @@ if [[ -n "${PAITON_API_KEY:-}" ]]; then
   export VLLM_API_KEY="$PAITON_API_KEY"
   extra+=(-e VLLM_API_KEY)
 fi
-# Opt-in, not exact: PAITON_W3X=<folder> serves the 3-bit experts of that W3X folder (mounted read-only, launcher --w3x).
+# Not exact: PAITON_W3X=<folder> serves the 3-bit experts of that W3X folder (launcher --w3x; the 3-bit image needs
+# one). Its parent is mounted read-only, so a manifest whose files link into a sibling folder (../i3g64e_i3g64m/...)
+# finds them.
 w3x=()
 if [[ -n "${PAITON_W3X:-}" ]]; then
-  extra+=(-v "$PAITON_W3X:/models/w3x:ro")
-  w3x=(--w3x /models/w3x)
+  w3x_dir="$(cd "$PAITON_W3X" && pwd)"
+  extra+=(-v "$(dirname "$w3x_dir"):/models/w3x:ro")
+  w3x=(--w3x "/models/w3x/$(basename "$w3x_dir")")
 fi
 ipc=(--ipc=host)
 # The disk tier of --extend-cache stages blocks in a /dev/shm file that only a clean shutdown removes: a private IPC

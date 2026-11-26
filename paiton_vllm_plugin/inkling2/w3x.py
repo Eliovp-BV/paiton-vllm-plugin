@@ -10,6 +10,7 @@ factors load as stored.
 No torch here: the launcher reads the manifest before vLLM starts."""
 from concurrent.futures import ThreadPoolExecutor
 import json
+import math
 import os
 import re
 from functools import cache
@@ -33,12 +34,23 @@ def expert_bytes() -> int:
 
 def layers(folder: str | None = None) -> dict[int, Path]:
     """{layer: file} of the 3-bit layers in the manifest of `folder` (default PAITON_INK2_W3X); {} without one."""
+    return {layer: path for layer, (path, _) in _entries(folder).items()}
+
+
+def denominator(layer: int, m: str) -> float:
+    """The struct's denominator of matrix `m` of a 3-bit layer: 1.0 (the factor is the whole outer scale) unless the
+    manifest entry gives "denominator": {"w13": .., "w2": ..} (a bit gate against a vehicle checkpoint: factor = its
+    amax, denominator = its outer-scale denominator, as the NVFP4 kernels take them)."""
+    return _entries()[layer][1].get(m, 1.0)
+
+
+def _entries(folder: str | None = None) -> dict[int, tuple[Path, dict]]:
     folder = folder or os.environ.get("PAITON_INK2_W3X")
     return _layers(folder) if folder else {}
 
 
 @cache
-def _layers(folder: str) -> dict[int, Path]:
+def _layers(folder: str) -> dict[int, tuple[Path, dict]]:
     root = Path(folder)
     try:
         manifest = json.loads((root / "manifest.json").read_text())
@@ -47,7 +59,7 @@ def _layers(folder: str) -> dict[int, Path]:
     head = {key: manifest.get(key) for key in ("format", "version", "group", "shapes")}
     if head != dict(format="W3X", version=1, group=GROUP, shapes={m: list(s) for m, s in SHAPES.items()}):
         raise ValueError(f"{root}/manifest.json: not a W3X v1 file of this model: {head}")
-    found: dict[int, Path] = {}
+    found: dict[int, tuple[Path, dict]] = {}
     seen = set()
     for entry in manifest.get("layers", []):
         layer, kind = entry.get("layer"), entry.get("format")
@@ -61,14 +73,20 @@ def _layers(folder: str) -> dict[int, Path]:
         if stride != 0 or isinstance(stride, bool):
             raise ValueError(f"{root}: layer {layer} has factor_stride {stride!r}; the expert library takes 0 (per matrix)")
         if Path(name).name != name or not (root / name).is_file():
-            raise ValueError(f"{root}: layer {layer} names file {name!r}, not a file in that folder")
-        found[layer] = root / name
+            raise ValueError(f"{root}: layer {layer} names file {name!r}, not a file in that folder "
+                             "(or a link to a place that is not mounted)")
+        den = entry.get("denominator", {})
+        if not isinstance(den, dict) or not set(den) <= set(SHAPES) or not all(
+                type(v) in (int, float) and 0 < v < math.inf for v in den.values()):
+            raise ValueError(f"{root}: layer {layer} has denominator {den!r}, not {{matrix: number above 0}}")
+        found[layer] = root / name, {m: float(v) for m, v in den.items()}
     return found
 
 
-def experts_gib(folder: str | None = None) -> float:
-    """GiB of routed experts on the card with the 3-bit layers of `folder` (14.59 exact, 8.90 all 3-bit)."""
-    w3 = layers(folder)
+def experts_gib(folder: str | None = None, w3=None) -> float:
+    """GiB of routed experts on the card with the 3-bit layers of `folder`, or the layer numbers `w3` (14.59 exact,
+    8.90 all 3-bit)."""
+    w3 = layers(folder) if w3 is None else w3
     return EXPERTS * sum(expert_bytes() if layer in w3 else CHECKPOINT_EXPERT_BYTES[layer in MXFP8_LAYERS]
                          for layer in range(LAYERS)) / 2 ** 30
 

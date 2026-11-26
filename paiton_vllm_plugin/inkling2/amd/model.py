@@ -455,6 +455,8 @@ class Inkling2ForConditionalGeneration(
 
             model_cls = Inkling2LoopModel
         self.model = model_cls(text_config, quant_config, f"{prefix}model")
+        # the largest step the scheduler can send: the native sequencer reserves its workspace for it (native_step.py)
+        self.model.max_step_rows = vllm_config.scheduler_config.max_num_batched_tokens
         self.lm_head = ParallelLMHead(
             text_config.padded_vocab_size, text_config.hidden_size
         )
@@ -679,6 +681,8 @@ class Inkling2ForConditionalGeneration(
             assert input_ids is not None
             inputs_embeds = self.model.embed_input_ids(input_ids)
         out = self.model(positions, inputs_embeds)
+        if STEP:
+            native_step.reserve_after_loop(self.model, positions)
         tap = getattr(self.model, "tap", None)
         if tap:
             # Bring-up check (PAITON_INK2_TAP_DIR, eager runs): per-visit
