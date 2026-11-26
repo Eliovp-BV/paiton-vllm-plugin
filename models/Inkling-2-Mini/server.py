@@ -175,6 +175,8 @@ MAX_MODEL_LEN = 'auto'
 # The release's cache format of the 8 full-attention visits on 32 GB cards; --kv-cache or -e PAITON_INK2_KV picks another
 # (bf16 is the exact choice). Format 4 (25 Nov 2026): the full 1,048,576-token context, long-prompt speed like bf16.
 KV_CACHE = 'kv4'
+# VRAM the allocator leaves unclaimed after warm-up (the 27B release's cap); -e PAITON_VRAM_HEADROOM_MIB=0 = off
+VRAM_HEADROOM_MIB = 1024
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
 # system memory (vLLM's OffloadingConnector) and, with --extend-cache disk, go on to files (its TieringOffloadingSpec
@@ -405,6 +407,9 @@ def main():
                             PAITON_INK2_STEP='native', PAITON_INK2_STEP_FLAGS='7', PAITON_INK2_LMHEAD='int8',
                             PAITON_INK2_DRAFT_LOGITS='int8', PAITON_INK2_KV=KV_CACHE,
                             PAITON_INK2_HOST_EMBED='1',
+                            # after warm-up PyTorch may grow only to 1 GiB short of the free VRAM: without it sampled
+                            # decode with growing prompts crept to 31.39 of 31.86 GiB (c15); 0 = off
+                            PAITON_VRAM_HEADROOM_MIB=str(VRAM_HEADROOM_MIB),
                             # tvm_ffi's DLPack addon build fails on this image twice per start (about 7 s each on
                             # the 27B 0.32 images, plugin 67ddb9f); without it nothing else changes
                             TVM_FFI_DISABLE_TORCH_C_DLPACK='1').items():

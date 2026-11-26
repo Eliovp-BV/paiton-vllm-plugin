@@ -72,3 +72,8 @@ def register() -> None:
     from .drafter import install
 
     install()
+
+    # Allocator cap after warm-up (PAITON_VRAM_HEADROOM_MIB, set by the launcher)
+    from . import vram_cap
+
+    vram_cap.install()

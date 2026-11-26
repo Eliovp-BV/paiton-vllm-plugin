@@ -146,6 +146,27 @@ class Inkling2Launcher(unittest.TestCase):
             with mock.patch.object(server, 'KV_CACHE', other):
                 self.assertEqual(self.environment()['PAITON_INK2_KV'], other)
 
+    def test_vram_cap_on_by_default_and_zero_switches_it_off(self):
+        sys.path.insert(0, str(ROOT / 'paiton_vllm_plugin/inkling2'))
+        try:
+            import vram_cap  # the helpers alone: no vllm or torch on the host
+        finally:
+            sys.path.pop(0)
+        self.assertEqual(self.environment()['PAITON_VRAM_HEADROOM_MIB'], '1024')
+        gib, mib = 1 << 30, 1 << 20
+        with mock.patch.dict(os.environ, PAITON_VRAM_HEADROOM_MIB='1024'):
+            headroom = vram_cap.headroom_bytes()
+        fraction = vram_cap.cap_fraction(headroom, reserved=28 * gib, free=2 * gib, total=32 * gib)
+        self.assertEqual(round(fraction * 32 * gib), 29 * gib)
+        self.assertIsNone(vram_cap.cap_fraction(headroom, reserved=31 * gib, free=512 * mib, total=32 * gib))
+        self.assertEqual(vram_cap.lower_only(fraction, 0.5), 0.5)
+        self.assertEqual(vram_cap.lower_only(fraction, 0.99), fraction)
+        self.assertIsNone(vram_cap.physical_free_bytes(0, 3, 0, root='/nonexistent'))  # unreadable card: no cap
+        with mock.patch.dict(os.environ, PAITON_VRAM_HEADROOM_MIB='0'):
+            self.assertEqual(vram_cap.headroom_bytes(), 0)
+            vram_cap.apply(None)  # off: returns before touching torch
+        self.assertIsNone(vram_cap.cap_fraction(0, reserved=28 * gib, free=2 * gib, total=32 * gib))
+
     def test_every_cache_format_can_be_asked_for(self):
         for name in ('bf16', 'fp8', 'kv4'):
             self.assertEqual(self.environment('--kv-cache', name)['PAITON_INK2_KV'], name)
