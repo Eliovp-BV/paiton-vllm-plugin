@@ -54,14 +54,16 @@ facts found, generation speed after the prompt:
 
 | `--kv-cache` | 260,049 tokens | 522,196 tokens | 1,038,311 tokens |
 | --- | --- | --- | --- |
-| `kv4` (default) | 2,436 tok/s, 10 of 10, 136.1 tok/s | 1,772 tok/s, 10 of 10, 125.6 tok/s | 1,185 tok/s, 8 of 10 without an answer, 103.6 tok/s |
+| `kv4` (default) | 2,436 tok/s, 10 of 10, 136.1 tok/s | 1,772 tok/s, 10 of 10, 125.6 tok/s | 1,185 tok/s, 8 of 10 without an answer or 10 of 10 (two texts), 103.6 tok/s |
 | `fp8` | 2,397 tok/s, 9 of 10, 158.0 tok/s | 1,713 tok/s, 10 of 10, 120.8 tok/s | does not fit |
 | `bf16` | 2,380 tok/s, 10 of 10, 120.0 tok/s | does not fit | does not fit |
 
 The fp8 miss at 260,049 tokens is a reply that spent its 4,000-token budget on reasoning and never started the
 answer; its reasoning names 9 of the 10 facts. The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
 8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
-gave 9 of 10 (1,187 tok/s, generation 117.4 tok/s). v1.0.0 gives the same greedy output on this text: the same loop, 8 of 10 in the reasoning.
+gave 9 of 10 (1,187 tok/s, generation 117.4 tok/s). v1.0.0 gives the same greedy output on this text: the same loop, 8 of 10 in the reasoning. On a second text with new random facts,
+greedy gave all ten in the reply (1,190 tok/s); at temperature 1.0 its reasoning named all ten, but the 4,000-token
+cap came before the answer.
 
 ## `vllm bench serve`, 1,024-token prompts
 
@@ -336,7 +338,7 @@ section above.
   130,000 tokens, 45.2 to 46.1 s). The miss is a translation request that the model answers directly and correctly
   without calling the offered tool.
 - Ten facts hidden in texts of 260,049 and 522,196 tokens, greedy, defaults: all ten found each time. At 1,038,311
-  tokens on v1.2.0: greedy 8 of 10 in the reasoning without an answer, 9 of 10 at temperature 1.0.
+  tokens on v1.2.0: greedy 8 of 10 in the reasoning without an answer, 9 of 10 at temperature 1.0; on a second text greedy gave all ten.
 - The 4-bit cache against a bf16 reference (our quality study, 2K to 512K-token documents): about 0.005 next-token
   KL, of which 0.001 comes from the 4-bit values; no loss of top-1 agreement or of a needle. fp8 showed no change.
 - 8-bit output head (the default): next-token KL against the bf16 head 0.00045 on the check set.
@@ -360,6 +362,9 @@ section above.
 - Every run used the same host and a 300 W power cap. A card at a higher cap or a faster host gives other numbers.
 - The real-text set is 11 requests. It shows the size of an effect; it is too small for a second decimal.
 - The long-prompt and fact-check tables are one run per cell.
+- On very long prompts greedy decoding can fall into a repeating loop (two of our three long greedy checks on v1.2.0,
+  at 260,062 and 1,038,312 tokens; v1.0.0 repeats the same way), and at temperature 1.0 the reasoning can run past
+  4,000 tokens before the answer. Use the model's default sampling and give long answers a `max_tokens` above 4,000.
 - Four requests at once is the most we ran.
 - The quality checks of the default are greedy. Sampled requests are checked for running and for plausible replies,
   and through the distribution test.
