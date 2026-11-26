@@ -224,7 +224,7 @@ start it downloads its 3-bit expert files (9.6 GB) into the cache:
 PAITON_W3X=~/my-w3x-folder ./models/Inkling-2-Mini/serve-docker.sh   # a folder of 3-bit files of your own
 ```
 
-Like the main image, the 3-bit image is for 32 GB cards. It is not tested on 16 GB cards.
+Like the main image, the 3-bit image is for 32 GB cards. It does not run on 16 GB cards.
 
 Against the default it changes four things:
 
@@ -422,8 +422,8 @@ string, from which the model reads a label and a value. The vision tower loads w
   at 260,062 and 1,038,312 tokens; v1.0.0 repeats the same way), and at temperature 1.0 the reasoning can run past
   4,000 tokens before the answer. Use the model's default sampling and give long answers a `max_tokens` above 4,000.
 - Cards with less memory than the R9700's 32 GB are not supported yet: when the card has less than 20 GiB free at
-  start, the launcher stops before the download. The 3-bit image's launcher starts with 14.3 GiB free or more, so it
-  can start on a 16 GB card, but it is not tested there.
+  start, the launcher stops before the download. The 3-bit image does not run on a 16 GB card either: the launcher lets it
+  start with 14.3 GiB free, but the server then finds no room for the cache and stops. A 16 GB version is in the works.
 - The server runs at most four requests at once (`--max-num-seqs 4`); more wait in vLLM's queue. Our 8-user grids
   (1K- to 32K-token prompts) pass that way.
 - Super fast changes the output (3-bit experts, 8-bit attention projections, the relaxed draft check). Use the

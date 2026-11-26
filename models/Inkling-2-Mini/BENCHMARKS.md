@@ -191,6 +191,15 @@ with 128K tokens of context each need more than its 524,832-token cache.
   176.8); `--fast` 152.0 / 166.6 (one run, first token after 137 / 144 ms); super fast 194.4 / 198.2, the mean of two
   clean runs (189.3 to 199.5 and 195.0 to 201.3). The accepted drafts move these short replies by up to 15 % from
   run to run.
+- The super fast runs are on LocalMaxxing, submitted as INT3+NVFP4+MXFP8: the
+  [matrix](https://www.localmaxxing.com/en/inference-benchmarks/cmwy1h22z00nwpd015sxg9ohx) in the tables above and the
+  speed tests [`code-v1`](https://www.localmaxxing.com/en/runs/cmwy1fmri00jupd01smx13pwq) (189.3 tok/s) and
+  [`reasoning-v1`](https://www.localmaxxing.com/en/runs/cmwy1fni800jxpd011bs22xqv) (195.0 tok/s), the lower run of
+  each pair.
+- The `--fast` runs are on LocalMaxxing too: the
+  [matrix](https://www.localmaxxing.com/en/inference-benchmarks/cmwy1p9ed0120pd0149iqw514) in the tables above and the
+  speed tests [`code-v1`](https://www.localmaxxing.com/en/runs/cmwy1p9q5012qpd01b6pmx5fz) (152.0 tok/s) and
+  [`reasoning-v1`](https://www.localmaxxing.com/en/runs/cmwy1pa3g012tpd016feh30o1) (166.6 tok/s).
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
   788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). `--fast` at its own context, one run each: at
   temperature 1.0 (516,065 tokens, prompt 238.5 s, 2,164 tok/s) the reasoning named all ten facts, but the 4,000-token
