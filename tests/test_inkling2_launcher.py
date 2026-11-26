@@ -72,8 +72,10 @@ class Inkling2Launcher(unittest.TestCase):
             config, prepare = self.served(*arguments)
             self.assertEqual((config['method'], config['model'], config['num_speculative_tokens']), ('dspark', '/draft', 7))
             self.assertEqual(config['num_speculative_tokens_per_batch_size'], [[1, 1, 5], [2, 4, 4]])
+            self.assertEqual(config['draft_sample_method'], 'probabilistic')  # sampled drafts at temperature above 0
             self.assertEqual([call.args[2:] for call in prepare.call_args_list], [(), (entry,)])
         config, prepare = self.served('--drafter', 'dspark')
+        self.assertNotIn('draft_sample_method', config)  # the model's own drafter drafts greedily
         self.assertEqual(config, server.DRAFTER)
         self.assertNotIn('model', config)
         self.assertEqual(prepare.call_count, 1)  # the model's own drafter is in the checkpoint

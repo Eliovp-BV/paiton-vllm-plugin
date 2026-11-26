@@ -21,6 +21,7 @@ import urllib.request
 
 URL = "http://127.0.0.1:18971"
 USERS = int(os.environ.get("INK2_USERS", "1"))  # requests sent at once
+SEEDS = [int(s) for s in os.environ.get("INK2_SEEDS", "1").split()]  # every request once per seed (sampled runs)
 TEMP = float(os.environ.get("INK2_TEMP", "0"))  # 0 = greedy (the token comparisons need it); 1.0 = the model default
 
 
@@ -89,6 +90,8 @@ def run(model_dir, out_json, prompt_files, extra):
             requests.append(("long", "/v1/completions", {
                 "model": "inkling2", "prompt": long_ids, "temperature": TEMP, "seed": 1, "max_tokens": 64,
                 "skip_special_tokens": False, "return_token_ids": True}))
+        requests = [(name if seed == SEEDS[0] else f"{name}@{seed}", path, {**body, "seed": seed})
+                    for seed in SEEDS for name, path, body in requests]
         drafts = accepted = wall = wall_tokens = 0.0
         first = counters()
         for start in range(0, len(requests), USERS):  # USERS requests at once

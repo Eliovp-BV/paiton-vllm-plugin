@@ -52,7 +52,15 @@ class _Call(C.Structure):  # PaitonInkling2Dflash2Call
     _fields_ = [("input_ids", _P), ("positions", _P), ("slots", _P * LAYERS), ("batch", _Batch * LAYERS),
                 ("cache", _Cache * LAYERS), ("workspace", _P), ("workspace_bytes", C.c_size_t), ("tokens", _P),
                 ("walk", _P), ("scores", _P), ("trace", _P), ("requests", C.c_int), ("block", C.c_int),
-                ("ids_i64", C.c_int)]
+                ("ids_i64", C.c_int), ("sample", _P)]
+
+
+class _Sample(C.Structure):  # PaitonInkling2Dflash2Sample (ABI 2): vLLM's buffers for sampled drafts
+    _fields_ = [("req_state", _P), ("temperature", _P), ("seeds", _P), ("sample_pos", _P), ("draft_logits", _P),
+                ("stride_state", C.c_int64), ("stride_step", C.c_int64), ("cached_ids", _P)]
+
+
+assert C.sizeof(_Sample) == 64 and _Call.sample.offset + 8 == C.sizeof(_Call)  # the library's layout
 
 
 _lib = None
@@ -65,8 +73,8 @@ def _library():
         if not path:
             raise ValueError("the DFlash2 drafter needs PAITON_INK2_DFLASH2_SO")
         lib = C.CDLL(path)
-        if lib.PaitonInkling2Dflash2AbiVersion() != 1:
-            raise RuntimeError(f"{path}: DFlash2 ABI {lib.PaitonInkling2Dflash2AbiVersion()}, need 1")
+        if lib.PaitonInkling2Dflash2AbiVersion() not in (1, 2):  # 2 adds the sampled draw (`_Call.sample`)
+            raise RuntimeError(f"{path}: DFlash2 ABI {lib.PaitonInkling2Dflash2AbiVersion()}, need 1 or 2")
         lib.PaitonInkling2Dflash2Prepare.argtypes = [C.POINTER(_Model), C.c_char_p, C.POINTER(_P)]
         lib.PaitonInkling2Dflash2WorkspaceBytes.restype = C.c_size_t
         lib.PaitonInkling2Dflash2WorkspaceBytes.argtypes = [_P, C.c_int, C.c_int, C.c_int]
@@ -236,6 +244,7 @@ class Inkling2DFlash2Model(nn.Module):
         _ok(_library().PaitonInkling2Dflash2Prepare(C.byref(native), os.environ["PAITON_INK2_OPS_SO"].encode(),
                                                     C.byref(self.handle)), "PaitonInkling2Dflash2Prepare")
         self.__dict__["target"] = target  # not a submodule: its embedding and head rows must outlive the handle
+        self.abi = _library().PaitonInkling2Dflash2AbiVersion()
 
     def get_draft_kv_cache_layer_names(self) -> list[str]:
         return [layer.cache.prefix for layer in self.model.layers]
@@ -273,9 +282,11 @@ class Inkling2DFlash2Model(nn.Module):
             workspace.data_ptr(), workspace.numel(), _stream(context_states.device)), "PaitonInkling2Dflash2Context")
 
     def draft(self, input_ids: torch.Tensor, positions: torch.Tensor, requests: int,
-              attn_metadata: dict) -> torch.Tensor:
+              attn_metadata: dict, sample: tuple | None = None) -> torch.Tensor:
         """Draft tokens, int32 `(requests, block - 1)`, of the blocks `input_ids` (per request the bonus token,
-        then the mask token) at `positions`."""
+        then the mask token) at `positions`. `sample` (vLLM's sample_idx_mapping, temperature, seeds, sample_pos,
+        draft_logits and an int32 `(request states, block - 1, 16)` buffer): requests at a temperature above 0 get
+        sampled drafts, and every request's 16 scores per row go to its rows of draft_logits."""
         block, tokens = self.block, requests * self.block
         assert input_ids.dtype in (torch.int32, torch.int64) and input_ids.is_contiguous()
         assert positions.dtype == torch.int64 and positions.is_contiguous() and input_ids.shape[0] >= tokens
@@ -284,6 +295,14 @@ class Inkling2DFlash2Model(nn.Module):
         call = _Call(input_ids=input_ids.data_ptr(), positions=positions.data_ptr(), workspace=workspace.data_ptr(),
                      workspace_bytes=workspace.numel(), tokens=out.data_ptr(), requests=requests, block=block,
                      ids_i64=input_ids.dtype == torch.int64)
+        if sample is not None:
+            state, temperature, seeds, sample_pos, logits, cached = sample
+            assert state.dtype == seeds.dtype == sample_pos.dtype == torch.int64 and cached.dtype == torch.int32
+            assert temperature.dtype == logits.dtype == torch.float32 and logits.dim() == 3
+            assert state.shape[0] >= requests * (block - 1) <= sample_pos.shape[0] and cached.shape[:2] == logits.shape[:2]
+            native = _Sample(state.data_ptr(), temperature.data_ptr(), seeds.data_ptr(), sample_pos.data_ptr(),
+                             logits.data_ptr(), logits.stride(0), logits.stride(1), cached.data_ptr())
+            call.sample = C.addressof(native)  # read during the call
         held, batches = [], {}  # tensors the call points at; one batch per cache group's metadata
         for i, layer in enumerate(self.model.layers):
             md = attn_metadata[layer.cache.prefix]

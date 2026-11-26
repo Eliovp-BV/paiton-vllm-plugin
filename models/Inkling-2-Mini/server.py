@@ -59,9 +59,11 @@ DRAFTER = {'method': 'dspark', 'num_speculative_tokens': 7,
 # fetched at its pinned revision into the same cache as the checkpoint; NOTICE.md). It always drafts a block of 7;
 # the table says how many of them the server checks (mirrored on image c10: checking 7 / 6 instead of 5 / 4 is equal
 # at temperature 0 and 5 % slower at the model's default 1.0). Served through the same vLLM method as the model's own
-# drafter.
+# drafter. draft_sample_method probabilistic (drafter library of ABI 2): a request at a temperature above 0 gets drafts
+# drawn from the drafter's 16 candidates per token and the check accepts them with p / q, which keeps the reply's
+# distribution; requests at temperature 0 get the same drafts as before.
 DFLASH2 = {'method': 'dspark', 'num_speculative_tokens': 7,
-           'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]]}
+           'num_speculative_tokens_per_batch_size': [[1, 1, 5], [2, 4, 4]], 'draft_sample_method': 'probabilistic'}
 DEFAULT_DRAFTER = 'dflash2'  # --drafter dspark serves with the model's own drafter
 DFLASH2_SO = 'PAITON_INK2_DFLASH2_SO'  # the image's DFlash2 drafter library
 
