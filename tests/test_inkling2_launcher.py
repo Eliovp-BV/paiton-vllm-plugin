@@ -176,6 +176,48 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit), mock.patch.object(server.sys, 'stderr'):
             self.environment('--kv-cache', 'int4')
 
+    def started(self, *arguments, **preset):
+        """(vLLM argv, printed lines) of a launcher start; `preset` as `docker run -e`."""
+        lines = []
+        with mock.patch.dict(os.environ, {server.DFLASH2_SO: __file__, **preset}), \
+                mock.patch.object(server, 'prepare', return_value='/checkpoint'), \
+                mock.patch.object(server, 'card_free_gib', return_value=None), \
+                mock.patch.object(server.os, 'execv') as execv, \
+                mock.patch('builtins.print', side_effect=lambda line, **_: lines.append(json.loads(line))), \
+                mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
+            for name in set(server.FAST) - set(preset):
+                os.environ.pop(name, None)  # the host's own environment stays out
+            server.main()
+        return execv.call_args.args[1], lines
+
+    def test_fast_is_one_switch_over_separate_variables(self):
+        def parts(argv):
+            config = json.loads(argv[argv.index('--speculative-config') + 1])
+            return argv[argv.index('--max-num-batched-tokens') + 1], config['num_speculative_tokens_per_batch_size']
+        argv, lines = self.started()
+        self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))  # the release default
+        self.assertFalse([line for line in lines if 'fast_profile' in line])  # nothing printed without a fast setting
+        argv, lines = self.started('--fast')
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
+        self.assertIn({'fast_profile': server.FAST}, lines)
+        for name, value, want in (('PAITON_INK2_PREFILL_CHUNK', '2048', ('2048', [[1, 1, 5], [2, 4, 4]])),
+                                  ('PAITON_INK2_DRAFTS_1', '4', ('512', [[1, 1, 4], [2, 4, 4]]))):
+            argv, lines = self.started(**{name: value})  # one alone, without --fast
+            self.assertEqual(parts(argv), want)
+            self.assertIn({'fast_profile': {name: value}}, lines)
+        argv, lines = self.started('--fast', PAITON_INK2_DRAFTS_1='5')  # `docker run -e` wins over --fast
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 5], [2, 4, 4]]))
+        argv, _ = self.started('--fast', '--drafter', 'dspark')
+        self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
+        self.assertEqual(server.DRAFTER['num_speculative_tokens_per_batch_size'], [[1, 1, 5], [2, 4, 4]])  # not changed in place
+        self.assertNotIn('--speculative-config', self.started('--fast', '--no-drafter')[0])
+        for bad in ('0', '8', 'four'):
+            with self.assertRaises(SystemExit):
+                self.started(PAITON_INK2_DRAFTS_1=bad)
+        with self.assertRaises(SystemExit) as stop:  # the 16 GB profile has its own chunk and one request
+            self.started('--fast', '--dry-run', '15.9')
+        self.assertIn('32 GB', str(stop.exception))
+
 
 class Inkling2CacheTier(unittest.TestCase):
     def setUp(self):
