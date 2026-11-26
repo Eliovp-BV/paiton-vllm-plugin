@@ -27,7 +27,8 @@ without the drafter.
   replies run to 512 tokens. The guide's headline speeds come from it.
 - The default-setting tables from "Context and cache formats" to "Release image against the first build" come from
   v1.0.0 and the build before it. Run again on v1.0.0, the `vllm bench serve` cells came within 0.4 % of them and the
-  1,038,311-token prompt read at 1,174 tok/s against 1,172; the 1,038,311-token row is v1.0.0's own run. v1.2.0 has
+  1,038,311-token prompt read at 1,174 tok/s against 1,172; the 1,038,311-token rows are v1.0.0's own runs, except the
+  fact cell of the cache-format table, which is v1.2.0's. v1.2.0 has
   the same model libraries except the expert library, whose prompt kernels are faster and give the same bits: with
   the default settings its greedy tokens are the same as v1.0.0's on the 11 check requests, alone and four at once.
   A v1.2.0 run of the 1,024-token `vllm bench serve` cells with the drafter on came within 1 % of the "on" columns
@@ -53,12 +54,14 @@ facts found, generation speed after the prompt:
 
 | `--kv-cache` | 260,049 tokens | 522,196 tokens | 1,038,311 tokens |
 | --- | --- | --- | --- |
-| `kv4` (default) | 2,436 tok/s, 10 of 10, 136.1 tok/s | 1,772 tok/s, 10 of 10, 125.6 tok/s | 1,174 tok/s, 10 of 10, 122.3 tok/s |
+| `kv4` (default) | 2,436 tok/s, 10 of 10, 136.1 tok/s | 1,772 tok/s, 10 of 10, 125.6 tok/s | 1,185 tok/s, 8 of 10 without an answer, 103.6 tok/s |
 | `fp8` | 2,397 tok/s, 9 of 10, 158.0 tok/s | 1,713 tok/s, 10 of 10, 120.8 tok/s | does not fit |
 | `bf16` | 2,380 tok/s, 10 of 10, 120.0 tok/s | does not fit | does not fit |
 
 The fp8 miss at 260,049 tokens is a reply that spent its 4,000-token budget on reasoning and never started the
-answer; its reasoning names 9 of the 10 facts.
+answer; its reasoning names 9 of the 10 facts. The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
+8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
+gave 9 of 10 (1,187 tok/s, generation 117.4 tok/s).
 
 ## `vllm bench serve`, 1,024-token prompts
 
@@ -319,8 +322,8 @@ section above.
   10, tool calls 9 of 10, needle in a long text 5 of 5 (two at 31,000 tokens, answered in 10.2 and 12.2 s; three at
   130,000 tokens, 45.2 to 46.1 s). The miss is a translation request that the model answers directly and correctly
   without calling the offered tool.
-- Ten facts hidden in texts of 260,049, 522,196 and 1,038,311 tokens, greedy,
-  defaults: all ten found each time.
+- Ten facts hidden in texts of 260,049 and 522,196 tokens, greedy, defaults: all ten found each time. At 1,038,311
+  tokens on v1.2.0: greedy 8 of 10 in the reasoning without an answer, 9 of 10 at temperature 1.0.
 - The 4-bit cache against a bf16 reference (our quality study, 2K to 512K-token documents): about 0.005 next-token
   KL, of which 0.001 comes from the 4-bit values; no loss of top-1 agreement or of a needle. fp8 showed no change.
 - 8-bit output head (the default): next-token KL against the bf16 head 0.00045 on the check set.
