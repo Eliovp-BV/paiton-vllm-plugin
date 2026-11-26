@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.0.0@sha256:2c4d4ae8c1c22459fdc85ce0056116c979b3786f123c5044f5dda806dfff61c7}"
+image="${PAITON_IMAGE:-ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.1.0@sha256:f94178899939ebeb7f394fd01f8dc3b89a9c8faa12bc033a3af2dd1a74a31fb2}"
 cache="${PAITON_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/paiton-inkling-2-mini}"
 port="${PAITON_PORT:-8042}"
 # The API listens on every interface (0.0.0.0); PAITON_BIND=127.0.0.1 keeps it on this machine.
