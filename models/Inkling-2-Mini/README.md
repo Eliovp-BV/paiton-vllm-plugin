@@ -7,7 +7,7 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 | --- | --- | ---: | --- | --- |
 | Default | `serve-docker.sh` | 1,048,576 | the model's own | [TBD RANGES: default decode] / [TBD RANGES: default prefill] |
 | Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | [TBD RANGES: fast decode] / [TBD RANGES: fast prefill] |
-| Super fast | [TBD 3-bit start] | 1,048,576 | close to the default, not the same | [TBD RANGES: w3 decode] / [TBD RANGES: w3 prefill] |
+| Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | [TBD RANGES: w3 decode] / [TBD RANGES: w3 prefill] |
 
 The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt, 4K to 128K tokens of context);
 the tables are in [Fast mode](#fast-mode) and [Super fast](#super-fast-3-bit-image). Default and fast run on the image
@@ -33,7 +33,7 @@ git clone --depth 1 https://github.com/Eliovp-BV/paiton-vllm-plugin.git
 cd paiton-vllm-plugin
 ./models/Inkling-2-Mini/serve-docker.sh            # default
 ./models/Inkling-2-Mini/serve-docker.sh --fast     # fast
-[TBD 3-bit start]                                   # super fast: the 3-bit image
+./models/Inkling-2-Mini/serve-docker.sh --w3       # super fast: the 3-bit image
 ```
 
 The first start downloads the pinned weights (20.2 GB) and the drafter (1.0 GB); super fast also downloads its 3-bit
@@ -154,7 +154,7 @@ What stays the same:
 - The weights, the arithmetic and the draft check are those of the default. Greedy replies to prompts of up to 512
   tokens are the same tokens as with the defaults (checked on our 11 check requests, alone and four at once).
 - Sampled replies follow the model's distribution: our distribution test (5-token replies, 2,500 seeds per prompt,
-  against serving without a drafter) [TBD dist --fast: cells with a difference, of 12].
+  against serving without a drafter) 0 of 12 cells differ.
 - A prompt longer than 512 tokens is read in larger pieces, which changes the order of some sums in attention, so a
   greedy reply can part from the default's after some tokens, as after a prefix-cache hit (see
   [What it does not do yet](#what-it-does-not-do-yet)): [TBD bench count on long prompts]. Both are valid outputs of
@@ -177,38 +177,41 @@ the decode cells, tok/s:
 
 ## Super fast (3-bit image)
 
-Super fast is a second image, `inkling-2-mini-w3-rdna4-v1.2.0`. It starts in this mode without an option, and at the first start
-the launcher downloads the 3-bit expert files:
+Super fast is a second image, `inkling-2-mini-w3-rdna4-v1.2.0`, and `--w3` (or `PAITON_W3=1`) starts it. At the first
+start it downloads its 3-bit expert files (9.6 GB) into the cache:
 
 ```bash
-[TBD 3-bit start]
-PAITON_W3X=~/my-w3x-folder ./models/Inkling-2-Mini/serve-docker.sh   # or a folder of 3-bit files of your own
+./models/Inkling-2-Mini/serve-docker.sh --w3
+./models/Inkling-2-Mini/serve-docker.sh --w3 --download-only                     # fetch the 3-bit files first
+PAITON_W3X=~/my-w3x-folder ./models/Inkling-2-Mini/serve-docker.sh   # a folder of 3-bit files of your own
 ```
 
 Against the default it changes four things:
 
 | Part | Default | Super fast |
 | --- | --- | --- |
-| Expert weights | the publisher's: 4-bit (layers 0 to 19) and 8-bit (layers 20 to 23) | [TBD W3 PICK: F1 3-bit in all 24 layers / F2 3-bit in layers 0 to 19, layers 20 to 23 as published] |
+| Expert weights | the publisher's: 4-bit (layers 0 to 19) and 8-bit (layers 20 to 23) | 3-bit in all 24 layers, made from the publisher's checkpoint |
 | Attention projections | bf16 | 8-bit rows (as `--int8-attention`) |
 | Draft check at a temperature above 0 | standard | relaxed (below) |
 | Prompt steps, drafts while one request runs | 512, 5 | 2,048, 4 (as `--fast`) |
 
 The first three change the output, so super fast is close to the default but not the same:
 
-- 3-bit experts: [TBD P3: next-token KL and top-1 agreement against the default, quality study].
+- 3-bit experts: in our quality study (teacher-forced, six groups from short prompts to 128K-token documents)
+  they pick the same next token as the default 95.65 % of the time (two runs of the default that differ only in the order of some attention sums agree on 97.33 %) and add 0.018 to the KL divergence per token.
 - 8-bit attention projections: about 0.003 next-token KL against the default.
 - Relaxed draft check: a drafted token is kept when the normal check keeps it, and also when the model gives it a
   probability of at least 0.1, or of at least 0.3 times that of its most likely token when that is lower. More drafts
   pass per step, and sampled replies are sharper, as at a lower temperature. Greedy replies are not touched by it.
   [TBD distribution test with the relaxed check: cells with a difference, share of the most likely token.]
-- Task set, 35 tasks: [TBD w3 task set greedy] of 35 greedy (default 34), [TBD w3 task set T1] of 105 at
-  temperature 1.0 with three seeds (default 96 of 105).
+- Task set, 35 tasks: 34 of 35 greedy, as with the default. At temperature 1.0 with three seeds the default passes
+  96 of 105, fast mode 99 and super fast 102. Three seeds can move such a total by about 5 (the default's arithmetic
+  scored 99 on the v1.0.0 image), so these totals don't rank the versions. The next-token numbers above do, and by
+  them super fast is below the other two.
 - Ten-fact check: all ten facts found in a 1,038,311-token prompt at temperature 1.0: the prompt took 788.7 s (1,317 tok/s), then 125.5 tok/s of generation.
 
 Context: 1,048,576 tokens per request, as with the default. The 3-bit experts take 5.7 GiB less (8.90 instead of 14.59 GiB)
-card memory, so the cache holds [TBD w3 cache tokens] tokens in all: room for [TBD w3: what that allows, e.g. a
-second long request].
+card memory, so the cache holds 1,218,579 tokens in all, about 170K more than one full-length request.
 
 Speed: the matrix above has a super-fast column. [TBD w3 grids and multi-user cells.]
 
@@ -352,7 +355,7 @@ string, from which the model reads a label and a value. The vision tower loads w
 - Default and fast: the weights are the publisher's files, unchanged: the experts in the 4-bit and 8-bit formats the
   model was trained in, everything else in bf16. Nothing is quantized again, with one exception: the output head is
   stored as 8-bit rows when the model loads (no measurable change in our checks, see the benchmarks).
-- Super fast: the experts come from our 3-bit files ([TBD W3 PICK: layers]), the attention projections are stored as
+- Super fast: the experts come from our 3-bit files (all 24 layers), the attention projections are stored as
   8-bit rows when the model loads, and the rest is as above.
 - Experts, attention, the small operators, the vision tower and the drafter run in Paiton's native HIP libraries for
   the R9700. One library call runs a whole forward pass. vLLM's step bookkeeping (input preparation, block tables,

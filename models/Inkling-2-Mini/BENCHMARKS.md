@@ -144,7 +144,7 @@ at once. The launcher drafts five tokens for one request and four when requests 
 `--fast` sets 2,048-token prompt steps (default 512) and four drafts while one request runs (default five); the
 weights, the arithmetic and the draft check stay those of the default. The launcher then fits 524,800
 tokens per request instead of 1,048,576. Super fast, the image `inkling-2-mini-w3-rdna4-v1.2.0`, adds 3-bit experts
-([TBD W3 PICK: layers]), 8-bit attention projections and the relaxed draft check (`0.1,0.3`, see the
+(all 24 layers), 8-bit attention projections and the relaxed draft check (`0.1,0.3`, see the
 [guide](README.md#super-fast-3-bit-image)), with 1,048,576 tokens per request.
 
 LocalMaxxing's inference matrix (lmx 0.1.66 with the site's settings: its prose prompt at temperature 1.0, 30 s per
@@ -173,17 +173,21 @@ against the default rows above.]
   longer than 512 tokens is read in larger pieces, which changes the order of some sums in attention, so a greedy
   reply can part from the default's after some tokens: [TBD bench count on long prompts].
 - Temperature 1.0: distribution test against serving without a drafter (5-token replies, 3 prompts, 2,500 seeds per
-  prompt, the token frequencies at positions 2 to 5, 12 cells): [TBD dist --fast: cells that differ, total
-  variation mean and max]. With the defaults 0 of 12 cells differ (mean 0.046, max 0.080, the size of the test's own
-  noise).
+  prompt, the token frequencies at positions 2 to 5, 12 cells): 0 of 12 cells differ, total variation mean 0.045 and
+  max 0.079, the size of the test's own noise. The defaults drew the same samples on the same image.
 
 Super fast, output against the default:
 
 - Greedy token ids against the image's own exact path for the same 3-bit weights: [TBD w1 gate: equal on the check
   requests at 1 and 4].
-- 3-bit experts in our quality study: [TBD P3: next-token KL, top-1 agreement, needles].
-- Task set, 35 tasks: greedy [TBD w3 task set greedy] of 35; temperature 1.0, seeds 1 to 3: [TBD w3 task set T1, per
-  seed and per group].
+- 3-bit experts in our quality study (teacher-forced on the model's own replies, six groups from short prompts,
+  three of them with an image, to 128K-token documents; reference: the default's experts in the arithmetic it
+  serves): top-1 agreement 95.65 %, against 97.33 % for two reference runs that differ only in the order of some
+  attention sums; worst group 2K, 93.72 % (95.80 %); 128K 94.96 % (96.64 %). KL per token 0.0177 above that floor.
+- Task set, 35 tasks: greedy 34 of 35, as with the default. Temperature 1.0, seeds 1 to 3: 35, 34 and 33 of 35
+  (102 of 105); the default 32, 32 and 32 (96), `--fast` 32, 33 and 34 (99). Three seeds can move such a total by
+  about 5 (the default's arithmetic scored 99 on the v1.0.0 image), so the totals don't rank the versions; the
+  next-token numbers above do.
 - The relaxed draft check alone, measured with the 4-bit experts: in the distribution test above 10 of 12 cells
   differ (mean 0.230, max 0.430), and 42 % of the sampled tokens were the token that serving without a drafter picks
   most often, against 29 % with the standard check. [TBD keep, or the same test on the 3-bit image.]
