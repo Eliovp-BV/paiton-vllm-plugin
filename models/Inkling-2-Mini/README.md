@@ -5,9 +5,9 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 
 | Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
 | --- | --- | ---: | --- | --- |
-| Default | `serve-docker.sh` | 1,048,576 | the model's own | 93 to 102 / 3,088 to 3,897 |
+| Default | `serve-docker.sh` | 1,048,576 | the model's own | 87 to 98 / 3,089 to 3,940 |
 | Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | 97 to 106 / 4,022 to 5,562 |
-| Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | 149 to 180 / 4,153 to 5,702 |
+| Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | 153 to 180 / 4,081 to 5,715 |
 
 The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt; generation with no context up to
 128K tokens of it, prompt speed for 8K- to 128K-token prompts);
@@ -172,24 +172,25 @@ the decode cells, tok/s:
 
 | Cell | Default | `--fast` | Super fast |
 | --- | ---: | ---: | ---: |
-| Prefill 8K | 3,897 | 5,562 | 5,702 |
-| Prefill 16K | 3,550 | 5,322 | 5,321 |
-| Prefill 32K | 3,737 | 4,888 | 5,295 |
-| Prefill 64K | 3,521 | 4,697 | 4,876 |
-| Prefill 128K | 3,088 | 4,022 | 4,153 |
-| Decode, no context | 93.9 | 102.4 | 179.7 |
-| Decode 4K | 95.2 | 100.0 | 156.3 |
-| Decode 16K | 93.1 | 105.8 | 160.5 |
-| Decode 32K | 98.3 | 106.3 | 159.2 |
-| Decode 64K | 102.3 | 96.6 | 167.5 |
-| Decode 128K | 93.8 | 96.8 | 149.4 |
+| Prefill 8K | 3,940 | 5,562 | 5,715 |
+| Prefill 16K | 3,550 | 5,322 | 5,320 |
+| Prefill 32K | 3,531 | 4,888 | 5,294 |
+| Prefill 64K | 3,524 | 4,697 | 4,697 |
+| Prefill 128K | 3,089 | 4,022 | 4,081 |
+| Decode, no context | 93.8 | 102.4 | 179.7 |
+| Decode 4K | 87.3 | 100.0 | 165.6 |
+| Decode 16K | 92.9 | 105.8 | 170.5 |
+| Decode 32K | 88.1 | 106.3 | 161.3 |
+| Decode 64K | 91.2 | 96.6 | 157.8 |
+| Decode 128K | 98.4 | 96.8 | 152.8 |
 
+- A single decode cell can move by about 10 % between two clean runs, because the number of accepted drafts varies;
+  the prompt cells move far less.
 - With two requests at once `--fast` reaches 143 to 167 tok/s in total and with four
-  230 to 246 (defaults: 150 to 170 and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
+  230 to 246 (defaults: 144 to 162 and 213 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
   524,832-token cache.
-- On LocalMaxxing's two short speed tests (512-token replies), the default averages 164.6 tok/s on `code-v1` and 169.9 on `reasoning-v1` over two fresh servers (163.7 and
-  165.4 tok/s at draft acceptance 0.608 and 0.614; 163.1 and 176.8 at 0.580 and 0.646); one `--fast` run gave 152.0 and
-  166.6. `--fast` speeds up long prompts and long prose replies, not short code, tool or chat replies: there its four drafts
+- On LocalMaxxing's two short speed tests (512-token replies), the default averages 165.4 tok/s on `code-v1` and 164.4 on `reasoning-v1` over four clean runs (155.0 to 177.6
+  and 154.7 to 176.8); one `--fast` run gave 152.0 and 166.6. `--fast` speeds up long prompts and long prose replies, not short code, tool or chat replies: there its four drafts
   per step cost about 4 %.
 - Ten facts hidden in a text of about 516,000 tokens, with `--fast`, one run each: greedy, the reply gave all ten
   (prompt 2,140 tok/s, generation 114.4 tok/s); at temperature 1.0 the reasoning named all ten, but the 4,000-token
@@ -249,9 +250,9 @@ The first three change the output, so super fast is close to the default but not
 Context: 1,048,576 tokens per request, as with the default. The 3-bit experts take 5.7 GiB less (8.90 instead of 14.59 GiB)
 card memory, so the cache holds 1,218,579 tokens in all, about 170K more than one full-length request.
 
-Speed: the matrix above has a super-fast column. With two requests at once super fast reaches 240 to 287 tok/s in
-total and with four 363 to 406 (defaults 150 to 170 and 224 to 250). One run of LocalMaxxing's two speed tests (512-token replies) gives 199.5 tok/s on `code-v1` and 201.3 on
-`reasoning-v1`.
+Speed: the matrix above has a super-fast column. With two requests at once super fast reaches 235 to 287 tok/s in
+total and with four 356 to 400 (defaults 144 to 162 and 213 to 250). LocalMaxxing's two speed tests (512-token replies) average 194.4 tok/s on `code-v1` and 198.2 on
+`reasoning-v1` over two clean runs (189.3 to 199.5 and 195.0 to 201.3).
 
 The 3-bit expert files are `EliovpAI/Inkling-2-Mini-W3-INT3-Paiton-RDNA4` at revision `0b824fcf` (27 files, 9.6 GB). We made them from the publisher's checkpoint at
 revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6` (Apache-2.0, see [NOTICE.md](NOTICE.md)); everything else (the

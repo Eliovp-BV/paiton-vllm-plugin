@@ -156,36 +156,36 @@ cell), one fresh server per version on the same card, one run each (not mirrored
 
 | Prompt | Default | `--fast` | Super fast |
 | ---: | ---: | ---: | ---: |
-| 8K | 3,897 | 5,562 | 5,702 |
-| 16K | 3,550 | 5,322 | 5,321 |
-| 32K | 3,737 | 4,888 | 5,295 |
-| 64K | 3,521 | 4,697 | 4,876 |
-| 128K | 3,088 | 4,022 | 4,153 |
+| 8K | 3,940 | 5,562 | 5,715 |
+| 16K | 3,550 | 5,322 | 5,320 |
+| 32K | 3,531 | 4,888 | 5,294 |
+| 64K | 3,524 | 4,697 | 4,697 |
+| 128K | 3,089 | 4,022 | 4,081 |
 
 Generation, total tok/s at 1 / 2 / 4 requests at once:
 
 | Context | Default | `--fast` | Super fast |
 | ---: | --- | --- | --- |
-| none | 93.9 / 153.0 / 249.7 | 102.4 / 153.1 / 244.0 | 179.7 / 287.3 / 400.5 |
-| 4K | 95.2 / 169.6 / 243.0 | 100.0 / 166.8 / 245.5 | 156.3 / 255.2 / 400.8 |
-| 16K | 93.1 / 164.1 / 245.4 | 105.8 / 164.0 / 230.1 | 160.5 / 272.3 / 405.8 |
-| 32K | 98.3 / 149.8 / 242.6 | 106.3 / 154.8 / 237.1 | 159.2 / 269.9 / 390.8 |
-| 64K | 102.3 / 163.6 / 234.6 | 96.6 / 153.9 / 240.8 | 167.5 / 257.8 / 383.1 |
-| 128K | 93.8 / 156.7 / 224.2 | 96.8 / 142.6 / - | 149.4 / 240.2 / 363.1 |
+| none | 93.8 / 151.5 / 249.7 | 102.4 / 153.1 / 244.0 | 179.7 / 286.7 / 400.0 |
+| 4K | 87.3 / 161.5 / 248.7 | 100.0 / 166.8 / 245.5 | 165.6 / 256.8 / 372.4 |
+| 16K | 92.9 / 153.7 / 243.0 | 105.8 / 164.0 / 230.1 | 170.5 / 258.9 / 377.3 |
+| 32K | 88.1 / 147.8 / 238.0 | 106.3 / 154.8 / 237.1 | 161.3 / 252.1 / 385.7 |
+| 64K | 91.2 / 159.8 / 225.1 | 96.6 / 153.9 / 240.8 | 157.8 / 261.1 / 371.4 |
+| 128K | 98.4 / 143.8 / 212.6 | 96.8 / 142.6 / - | 152.8 / 235.1 / 355.6 |
 
-Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
-524,832-token cache.
+A single decode cell can move by about 10 % between two clean runs, because the number of accepted drafts varies;
+the prompt cells move far less. Fast mode has no 4-user number at 128K: four requests
+with 128K tokens of context each need more than its 524,832-token cache.
 
-- Tokens per check step on this prose: 2.49 with the default, 2.44 with `--fast` and 3.09 with super fast (vLLM's draft
+- Tokens per check step on this prose: 2.39 with the default, 2.44 with `--fast` and 3.06 with super fast (vLLM's draft
   metrics over each whole run; super fast keeps more drafts through its relaxed check). Each context fill starts with its
   own random text, so the generation cells move by a few percent from run to run through the accepted drafts; the
   prompt cells repeat within 0.3 %.
 - LocalMaxxing's two short speed tests (512-token replies, one request), `code-v1` / `reasoning-v1`:
-  default 164.6 / 169.9 tok/s, the mean of two fresh servers (`code-v1` 163.7 and 165.4 tok/s at draft acceptance
-  0.608 and 0.614; `reasoning-v1` 163.1 and 176.8 at 0.580 and 0.646); `--fast` 152.0 / 166.6 (one run, first
-  token after 137 / 144 ms); super fast 199.5 / 201.3 (one run, first token after
-  109 / 103 ms). The accepted drafts move these short replies by
-  several percent from server to server.
+  default 165.4 / 164.4 tok/s, the mean of four clean runs (`code-v1` 155.0 to 177.6, `reasoning-v1` 154.7 to
+  176.8); `--fast` 152.0 / 166.6 (one run, first token after 137 / 144 ms); super fast 194.4 / 198.2, the mean of two
+  clean runs (189.3 to 199.5 and 195.0 to 201.3). The accepted drafts move these short replies by up to 15 % from
+  run to run.
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
   788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). `--fast` at its own context, one run each: at
   temperature 1.0 (516,065 tokens, prompt 238.5 s, 2,164 tok/s) the reasoning named all ten facts, but the 4,000-token
