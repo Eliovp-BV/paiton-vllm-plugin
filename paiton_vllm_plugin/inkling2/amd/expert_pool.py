@@ -7,7 +7,7 @@ card never holds all experts at once. The card holds two pools of slots, one per
 MXFP8 layers 20-23, 20 % of the bytes for MXFP8), seeded from the shipped plan (`expert_plan.json`, best reads per MB
 first). Per visit the library's Fetch applies the rule of native/inkling2_pool (ABI 2) to the router's ids, writes the
 layer's expert table and copies the misses from the host copy before the expert GEMMs: every routed expert is
-computed, so the output stays exact. Structs: the 16 GB plan's FABLE-BRIEF.md 3.2 to 3.4 and k12/ABI.h.
+computed, so the output stays exact. The slot and table structs follow the expert library's ABI 2 header.
 
 Hosts that cannot pin every copy (32 GB hosts: GTT is half the RAM): PAITON_INK2_POOL_RESIDENT=<NVFP4 layers> keeps
 those layers whole on the card (all 128 experts in pinned slots at the front of the NVFP4 pool, loaded straight from
