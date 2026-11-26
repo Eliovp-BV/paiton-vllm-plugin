@@ -1,6 +1,6 @@
 # Inkling 2 Mini benchmarks
 
-Measured on 25 to [TBD last date] November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap,
+Measured on 25 and 26 November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap,
 with the images `inkling-2-mini-rdna4-v1.2.0` (default and `--fast`) and `inkling-2-mini-w3-rdna4-v1.2.0` (super fast)
 or the earlier builds a table names (ROCm 10.2, vLLM 0.32), and the checkpoint `thinkingmachines/Inkling-2-Mini` at
 revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6`, with the launcher's defaults unless a row says otherwise: the

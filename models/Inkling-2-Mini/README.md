@@ -362,7 +362,7 @@ string, from which the model reads a label and a value. The vision tower loads w
   the R9700. One library call runs a whole forward pass. vLLM's step bookkeeping (input preparation, block tables,
   slot mapping, drafter bookkeeping) runs in native HIP too.
 - Memory on the card: vLLM reports 18.49 GiB for the model with the default drafter and the vision tower (18.24 with
-  `--drafter dspark`, 17.03 without a drafter, [TBD w3 model GiB] for super fast); the rest is cache.
+  `--drafter dspark`, 17.03 without a drafter, 12.14 for super fast); the rest is cache.
   The input embedding table (0.86 GiB) stays in pinned system memory, which gives about 24K more context than on the
   card and the same tokens.
 - After warm-up the launcher keeps 1 GiB of the card free of PyTorch's allocator. With it, card memory peaked at
@@ -374,7 +374,8 @@ string, from which the model reads a label and a value. The vision tower loads w
 
 - Cards with less memory than the R9700's 32 GB are not supported yet: when the card has less than 20 GiB free at
   start, the launcher stops before the download.
-- More than four requests at once is not tested. [TBD check: the 8-user grids queue four and run four.]
+- The server runs at most four requests at once (`--max-num-seqs 4`); more wait in vLLM's queue. Our 8-user grids
+  (1K- to 32K-token prompts) pass that way.
 - Super fast changes the output (3-bit experts, 8-bit attention projections, the relaxed draft check). Use the
   default or `--fast` when you need the model's own output. [TBD w3 limits from the gates and task set.]
 - With a drafter on (the default), vLLM refuses `min_p` and `logit_bias` with HTTP 400 ("not yet supported with
@@ -396,7 +397,7 @@ string, from which the model reads a label and a value. The vision tower loads w
 - Time to first token on a long prompt is the model's full prefill: 48 s for 143,840 tokens, 82 s for 218,915 and
   295 s for 522,196.
 - The first request after a start that asks for logprobs, a repetition penalty or a JSON schema waits one to two
-  seconds while vLLM compiles that option's sampling kernel (on v1.2.0: [TBD option first use]). Later requests with the option do not
+  seconds while vLLM compiles that option's sampling kernel. Later requests with the option do not
   wait.
 - The launcher uses a single card; a second card does not make a request faster.
 
@@ -428,7 +429,8 @@ Super fast needs the same files plus its 3-bit expert files: `EliovpAI/Inkling-2
   names; the plugin then leaves them in place, so its R9700 code is not used. Use the launcher and its image.
 - 22 GB of disk for the weights and the drafter, and 67 GB for the image (a 23 GB download; the base layers are the same as those of
   the Qwen3.8 27B image of 24 November, so a host that has that image downloads only the last 0.1 GB or less).
-  [TBD sizes: main image, 3-bit image, the shared layers, 3-bit files on disk.]
+  The 3-bit image has the same size and shares all but its last 0.1 GB with the main image; super fast also needs
+  9.6 GB of disk for its 3-bit expert files.
 
 Licenses and provenance: [NOTICE.md](NOTICE.md). The model is Apache-2.0; the publisher's usage policy is in
 [USAGE_POLICY](USAGE_POLICY).
