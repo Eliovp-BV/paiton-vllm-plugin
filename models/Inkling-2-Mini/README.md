@@ -60,11 +60,14 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
 
 | `--kv-cache` | Tokens per request | Real text, tok/s | 260,049-token prompt | 522,196-token prompt | 1,038,311-token prompt |
 | --- | ---: | --- | --- | --- | --- |
-| `kv4` (default) | 1,048,576 | 142.7 / 240.9 | 107 s, 10 of 10, 136 tok/s | 295 s, 10 of 10, 126 tok/s | 876 s, 8 of 10 without an answer or 10 of 10 (two texts), 104 tok/s |
+| `kv4` (default) | 1,048,576 | 142.7 / 240.9 | 102 s, 9 of 10 without an answer, 194 tok/s | 295 s, 10 of 10, 126 tok/s | 876 s, 8 of 10 without an answer or 10 of 10 (two texts), 104 tok/s |
 | `fp8` | 558,496 | 140.4 / 237.6 | 109 s, 9 of 10, 158 tok/s | 305 s, 10 of 10, 121 tok/s | does not fit |
 | `bf16` | 279,248 | 146.6 / 243.7 | 109 s, 10 of 10, 120 tok/s | does not fit | does not fit |
 
-The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
+The 260,049-token `kv4` cell is a v1.2.0 run, on a 260,062-token text with other random facts:
+greedy, the reasoning named 9 of the 10 facts and then repeated a line until the 4,000-token cap; at temperature
+1.0 the reasoning also named 9 of 10 and the cap came before the answer (prompt 2,542 tok/s). v1.0.0 found all ten on a
+different text. The 1,038,311-token `kv4` cell is a v1.2.0 run, on a text with other random facts: greedy, the reasoning named
 8 of the 10 facts, then repeated a list until the 4,000-token cap, so no answer came. At temperature 1.0 the reply
 gave 9 of 10 (875 s, 117 tok/s). v1.0.0 gives the same greedy output on this text: the same loop, 8 of 10 in the reasoning. On a second text with new random facts,
 greedy gave all ten in the reply (1,190 tok/s); at temperature 1.0 its reasoning named all ten, but the 4,000-token
