@@ -190,7 +190,7 @@ Super fast, output against the default:
   next-token numbers above do.
 - The relaxed draft check alone, measured with the 4-bit experts: in the distribution test above 10 of 12 cells
   differ (mean 0.230, max 0.430), and 42 % of the sampled tokens were the token that serving without a drafter picks
-  most often, against 29 % with the standard check. [TBD keep, or the same test on the 3-bit image.]
+  most often, against 29 % with the standard check. The 3-bit image was not run through this test.
 
 Memory with BetterBench decode and concurrency (temperature 0.7, top-p 0.95, top-k 20): [TBD gates: peaks with --fast
 and super fast, every request ok].
