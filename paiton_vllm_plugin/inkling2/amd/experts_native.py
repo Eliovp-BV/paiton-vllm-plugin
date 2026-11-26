@@ -141,7 +141,7 @@ class Inkling2NativeExperts(nn.Module):
         # Built at the first call: the tensors are on the card by then.
         _library()
         # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations (W3X-LOADER question 1)
-        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations, same 72-byte struct (lead, 10:48)
+        # format 2 / 3: 3-bit codes with the layer's NVFP4 / MXFP8 activations, same 72-byte struct
         w = (_WeightsTable if _abi >= 2 else _Weights)(format=(2 if self.nvfp4 else 3) if self.w3 else 0 if self.nvfp4 else 1)
         if self.w3:
             for name in ("w13", "w2"):

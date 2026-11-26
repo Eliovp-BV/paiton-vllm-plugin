@@ -187,7 +187,7 @@ VRAM_HEADROOM_MIB = 1024
 # (c16, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts checked while one request runs (default 5); 4 = check steps +4.6 %.
 # PAITON_RUNNER_GLUE_ACCEPT (read by the image's sampler glue, lossy): relaxed draft acceptance "eps,delta"; at a
 # temperature above 0 a draft is also kept when the model gives it at least min(eps, delta x its top probability);
-# 0.1,0.3 = prose +25 % at one request, distribution test against no drafter FAIL (sampler session, 26 Nov 2026).
+# 0.1,0.3 = prose +25 % at one request, distribution test against no drafter FAIL (26 Nov 2026).
 FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4', PAITON_RUNNER_GLUE_ACCEPT='0.1,0.3')
 WHOLE = dict(PAITON_INK2_PREFILL_CHUNK=math.inf, PAITON_INK2_DRAFTS_1=DRAFTER['num_speculative_tokens'])  # 1 to top
 FAST_PATHS = ('PAITON_INK2_W3X',)  # fast settings that name a path, so --fast cannot set them: --w3x DIR

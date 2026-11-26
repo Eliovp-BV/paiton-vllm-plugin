@@ -14,7 +14,7 @@ from safetensors.torch import save_file
 from paiton_vllm_plugin.inkling2 import w3x
 from paiton_vllm_plugin.inkling2.amd import experts_native
 
-REAL = Path('/data/paiton/opus-98/inkling-w3/w3x/i3g64e_i3g64m')  # the weights session's v1 files (testbench only)
+REAL = Path(os.environ.get('PAITON_TEST_W3X_DIR', '/nonexistent'))  # a W3X v1 folder; that test runs only when set
 HEAD = dict(format='W3X', version=1, group=64, shapes=dict(w13=[2304, 2304], w2=[2304, 1152]))
 
 
@@ -118,7 +118,7 @@ class Read(unittest.TestCase):
             with mock.patch.object(w3x, 'SHAPES', {'w13': (32, 256), 'w2': (16, 128)}), self.assertRaises(ValueError):
                 w3x.read(5, repack, w3x.codes_bytes)  # file shape is not this model's
 
-    @unittest.skipUnless((REAL / 'manifest.json').is_file(), 'needs the W3X v1 files on the testbench')
+    @unittest.skipUnless((REAL / 'manifest.json').is_file(), 'needs PAITON_TEST_W3X_DIR (a W3X v1 folder)')
     def test_real_files(self):
         with mock.patch.dict(os.environ, PAITON_INK2_W3X=str(REAL)):
             self.assertEqual(sorted(w3x.layers()), list(range(24)))
@@ -174,7 +174,7 @@ class Experts(unittest.TestCase):
                     w = e._weights()
                     self.assertEqual((w.format, w.w13, w.w2_scale, w.w13_amax, w.w2_denominator, w.table),
                                      (code, e.w13_w3.data_ptr(), e.w2_w3_scale.data_ptr(), e.w13_w3_factor.data_ptr(), 1.0, None))
-                    self.assertEqual(C.sizeof(w), 72)  # the struct the sequencer embeds (lead, 10:48)
+                    self.assertEqual(C.sizeof(w), 72)  # the struct the sequencer embeds
 
 
 if __name__ == '__main__':

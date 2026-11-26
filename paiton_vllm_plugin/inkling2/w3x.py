@@ -56,7 +56,7 @@ def _layers(folder: str) -> dict[int, Path]:
         seen.add(layer)
         if kind == "checkpoint":
             continue
-        # shortcut: per-row factors (stride 1) are the reserved formats 4 / 5 (lead, 26 Nov 10:48); load them once built
+        # shortcut: per-row factors (stride 1) are the reserved formats 4 / 5; load them once built
         stride, name = entry.get("factor_stride"), entry.get("file", "")
         if stride != 0 or isinstance(stride, bool):
             raise ValueError(f"{root}: layer {layer} has factor_stride {stride!r}; the expert library takes 0 (per matrix)")
