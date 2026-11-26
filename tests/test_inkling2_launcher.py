@@ -185,7 +185,7 @@ class Inkling2Launcher(unittest.TestCase):
                 mock.patch.object(server.os, 'execv') as execv, \
                 mock.patch('builtins.print', side_effect=lambda line, **_: lines.append(json.loads(line))), \
                 mock.patch.object(server.sys, 'argv', ['server.py', *arguments]):
-            for name in {*server.FAST, *server.FAST_PATHS} - set(preset):
+            for name in {*server.W3_FAST, *server.FAST_PATHS, 'PAITON_INK2_IMAGE'} - set(preset):
                 os.environ.pop(name, None)  # the host's own environment stays out
             server.main()
         return next(line['command'] for line in lines if 'command' in line), lines  # also for --dry-run
@@ -201,7 +201,8 @@ class Inkling2Launcher(unittest.TestCase):
         self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
         self.assertIn({'fast_profile': server.FAST}, lines)
         environment = next(line['environment'] for line in lines if 'environment' in line)
-        self.assertEqual(environment['PAITON_RUNNER_GLUE_ACCEPT'], '0.1,0.3')  # the sampler glue reads it in vLLM
+        self.assertNotIn('PAITON_RUNNER_GLUE_ACCEPT', environment)  # exact: relaxed acceptance is the 3-bit image's
+        self.assertNotIn('PAITON_INK2_PROJ', environment)
         argv, lines = self.started(PAITON_RUNNER_GLUE_ACCEPT='0.3,0.6')  # alone: command unchanged, line names it
         self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))
         self.assertIn({'fast_profile': {'PAITON_RUNNER_GLUE_ACCEPT': '0.3,0.6'}}, lines)
@@ -222,6 +223,32 @@ class Inkling2Launcher(unittest.TestCase):
         with self.assertRaises(SystemExit) as stop:  # the 16 GB profile has its own chunk and one request
             self.started('--fast', '--dry-run', '15.9')
         self.assertIn('32 GB', str(stop.exception))
+
+    def test_w3_image_starts_with_its_settings(self):
+        from paiton_vllm_plugin.inkling2 import w3x
+        w3x._layers.cache_clear()
+        with tempfile.TemporaryDirectory() as root:
+            head = dict(format='W3X', version=1, group=64, shapes=dict(w13=[2304, 2304], w2=[2304, 1152]))
+            entries = [dict(layer=i, format='w3', file=f'layer_{i:02d}.safetensors', factor_stride=0) for i in range(24)]
+            (Path(root) / 'manifest.json').write_text(json.dumps({**head, 'layers': entries}))
+            for entry in entries:
+                (Path(root) / entry['file']).write_bytes(b'')
+            with self.assertRaises(SystemExit) as stop:  # no folder: says how to give one
+                self.started(PAITON_INK2_IMAGE='w3')
+            self.assertIn('W3X folder', str(stop.exception))
+            argv, lines = self.started('--w3x', root, PAITON_INK2_IMAGE='w3')  # no flag: the whole set
+            config = json.loads(argv[argv.index('--speculative-config') + 1])
+            self.assertEqual((argv[argv.index('--max-num-batched-tokens') + 1], config['num_speculative_tokens_per_batch_size']),
+                             ('2048', [[1, 1, 4], [2, 4, 4]]))
+            line = next(line for line in lines if 'fast_profile' in line)
+            self.assertEqual(line['fast_profile'], {**server.W3_FAST, 'PAITON_INK2_W3X': root})
+            self.assertIn('not exact', line['image'])
+            environment = next(line['environment'] for line in lines if 'environment' in line)
+            self.assertEqual((environment['PAITON_RUNNER_GLUE_ACCEPT'], environment['PAITON_INK2_PROJ']), ('0.1,0.3', 'int8'))
+            self.assertEqual(argv[argv.index('--max-model-len') + 1], 'auto')  # the cache decides, up to the model's 1,048,576
+            _, lines = self.started(PAITON_INK2_IMAGE='w3', PAITON_INK2_W3X=root, PAITON_INK2_PROJ='bf16')  # -e wins
+            environment = next(line['environment'] for line in lines if 'environment' in line)
+            self.assertEqual(environment['PAITON_INK2_PROJ'], 'bf16')
 
     def test_w3x_folder_counts_its_real_expert_bytes(self):
         from paiton_vllm_plugin.inkling2 import w3x

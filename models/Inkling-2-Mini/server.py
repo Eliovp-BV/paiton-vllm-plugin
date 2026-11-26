@@ -181,14 +181,19 @@ MAX_MODEL_LEN = 'auto'
 KV_CACHE = 'kv4'
 # VRAM the allocator leaves unclaimed after warm-up (the 27B release's cap); -e PAITON_VRAM_HEADROOM_MIB=0 = off
 VRAM_HEADROOM_MIB = 1024
-# --fast (opt-in, 32 GB cards): the measured fast settings. Each is its own environment variable, so `docker run -e`
-# sets one alone or overrides it; --fast only picks the set. PAITON_INK2_PREFILL_CHUNK: prompt tokens per step (default
-# 512); 2,048 = prefill +37 % at one request, 8K to 128K, auto context 640,960 tokens instead of the full 1,048,576
-# (c16, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts checked while one request runs (default 5); 4 = check steps +4.6 %.
-# PAITON_RUNNER_GLUE_ACCEPT (read by the image's sampler glue, lossy): relaxed draft acceptance "eps,delta"; at a
-# temperature above 0 a draft is also kept when the model gives it at least min(eps, delta x its top probability);
-# 0.1,0.3 = prose +25 % at one request, distribution test against no drafter FAIL (sampler session, 26 Nov 2026).
-FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4', PAITON_RUNNER_GLUE_ACCEPT='0.1,0.3')
+# --fast (opt-in, 32 GB cards): the measured fast settings, exact. Each is its own environment variable, so `docker run
+# -e` sets one alone or overrides it; --fast only picks the set. PAITON_INK2_PREFILL_CHUNK: prompt tokens per step
+# (default 512); 2,048 = prefill +37 % at one request, 8K to 128K, auto context 524,800 tokens instead of the full
+# 1,048,576 (the sequencer's workspace for 2,048-row steps counted, c17r, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts
+# checked while one request runs (default 5); 4 = check steps +4.6 %.
+FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4')
+# The 3-bit image (built with INK2_IMAGE=w3, so PAITON_INK2_IMAGE=w3): its start without flags is the fast set plus two
+# lossy settings, with the routed experts as 3-bit codes from a W3X folder (--w3x DIR or PAITON_INK2_W3X).
+# PAITON_RUNNER_GLUE_ACCEPT (read by the image's sampler glue): relaxed draft acceptance "eps,delta"; at a temperature
+# above 0 a draft is also kept when the model gives it at least min(eps, delta x its top probability); 0.1,0.3 = prose
+# +25 % at one request, distribution test against no drafter FAIL (sampler session, 26 Nov 2026). PAITON_INK2_PROJ=int8
+# (--int8-attention): attention projections as 8-bit rows, check steps +7 % with relaxed acceptance (bench, 26 Nov).
+W3_FAST = dict(FAST, PAITON_RUNNER_GLUE_ACCEPT='0.1,0.3', PAITON_INK2_PROJ='int8')
 WHOLE = dict(PAITON_INK2_PREFILL_CHUNK=math.inf, PAITON_INK2_DRAFTS_1=DRAFTER['num_speculative_tokens'])  # 1 to top
 FAST_PATHS = ('PAITON_INK2_W3X',)  # fast settings that name a path, so --fast cannot set them: --w3x DIR
 
@@ -345,10 +350,8 @@ def main():
     parser.add_argument('--fast', action='store_true',
                         help='opt-in, 32 GB cards: the measured fast settings ('
                              + ', '.join(f'{k}={v}' for k, v in FAST.items()) + '): prefill about 37 %% faster, '
-                             '4.6 %% more check steps at one request, auto context 640,960 tokens instead of 1,048,576; '
-                             'relaxed draft acceptance at temperatures above 0 (prose about 25 %% faster at one request, '
-                             'not exact: the output distribution changes); `docker run -e NAME=value` sets or overrides '
-                             'one alone')
+                             '4.6 %% more check steps at one request, exact, auto context about 525K tokens instead of '
+                             '1,048,576; `docker run -e NAME=value` sets or overrides one alone')
     parser.add_argument('--w3x', metavar='DIR', default=None,
                         help='opt-in, not exact: routed experts as 3-bit codes from the W3X folder DIR (manifest.json '
                              'and layer files; the manifest says per layer 3-bit or the checkpoint format): 8.90 GiB '
@@ -389,8 +392,13 @@ def main():
             host = ()
         if not planned or len(host) != 2 or min(host) <= 0:
             parser.error('--plan-host MEM_GIB,GTT_GIB needs --dry-run FREE_GIB and two numbers of GiB')
+    w3_image = os.environ.get('PAITON_INK2_IMAGE') == 'w3'
     if args.w3x:
         os.environ['PAITON_INK2_W3X'] = args.w3x
+    if w3_image and not os.environ.get('PAITON_INK2_W3X'):
+        raise SystemExit('this image serves the routed experts as 3-bit codes: mount the W3X folder (manifest.json and '
+                         'its layer files) and name it, e.g. -v <folder>:/models/w3x:ro and --w3x /models/w3x, or '
+                         '-e PAITON_INK2_W3X=/models/w3x')
     experts = EXPERTS_GIB
     if os.environ.get('PAITON_INK2_W3X'):
         from paiton_vllm_plugin.inkling2 import w3x
@@ -456,15 +464,18 @@ def main():
                             # the 27B 0.32 images, plugin 67ddb9f); without it nothing else changes
                             TVM_FFI_DISABLE_TORCH_C_DLPACK='1').items():
         os.environ.setdefault(name, value)
-    for name, value in FAST.items() if args.fast else ():
+    for name, value in (W3_FAST if w3_image else FAST if args.fast else {}).items():
         os.environ.setdefault(name, value)
-    fast = {name: os.environ[name] for name in (*FAST, *FAST_PATHS) if os.environ.get(name)}
+    # the lossy settings are named too when `docker run -e` sets them on the main image (PAITON_INK2_PROJ only here)
+    fast = {name: os.environ[name] for name in (*FAST, 'PAITON_RUNNER_GLUE_ACCEPT', *(('PAITON_INK2_PROJ',) if w3_image else ()),
+                                                *FAST_PATHS) if os.environ.get(name)}
     for name, top in WHOLE.items():  # the glue checks its own setting
         value = fast.get(name, '1')
         if not value.isdigit() or not 1 <= int(value) <= top:
             raise SystemExit(f'{name}={value}: a whole number from 1' + (f' to {top}' if top < math.inf else ''))
-    if fast:  # one line names every fast setting that is on, whether from --fast or `docker run -e`
-        print(json.dumps({'fast_profile': fast}), flush=True)
+    if fast:  # one line names every fast setting that is on, whether from --fast, the 3-bit image or `docker run -e`
+        print(json.dumps({'fast_profile': fast, **({'image': 'w3: 3-bit experts, fast set, relaxed acceptance, 8-bit '
+                                                             'attention rows (not exact)'} if w3_image else {})}), flush=True)
     pinned = ((EMBED_GIB if os.environ['PAITON_INK2_HOST_EMBED'] == '1' else 0.0)
               + (EXPERTS_GIB if os.environ.get('PAITON_INK2_EXPERT_POOL_GIB') else 0.0))
     if args.host_cache_gib or args.extend_cache:
