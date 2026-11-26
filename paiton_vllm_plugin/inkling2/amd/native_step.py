@@ -315,9 +315,17 @@ def forward(model, input_ids, positions, inputs_embeds):
             layer.attn._pass_cache(p)[1].numel() == 0 or layer.conv_states[p].kv_cache.numel() == 0
             for layer in model.layers for p in range(len(layer.conv_states))):
         # vLLM's profile run (no metadata, no caches yet, max_num_batched_tokens rows) and other dummy runs: the Python
-        # loop runs them, and the workspace of the worst step grows now, so the cache is sized with it counted
-        step.reserve(max(positions.shape[0], getattr(model, "max_step_rows", 0)), positions.device, worst=True)
+        # loop runs them, then reserve_after_loop() reserves the workspace
         return None
     if step.visits is None:
         step.bind(model)
     return step.forward(input_ids, positions, inputs_embeds, attn_metadata, tuple(model.aux_hidden_state_layers))
+
+
+def reserve_after_loop(model, positions):
+    """After a Python-loop forward (vLLM's profile run): reserve the workspace of the worst step now, once the loop has
+    freed its activations, so the peak vLLM sizes the cache from is the larger of the two and not their sum. Serving
+    runs only the sequencer (ws2 on c17r, 26 Nov: reserved before the loop, the default context fell to 1,013,504)."""
+    step = getattr(model, "_native_step", None)
+    if step is not None:
+        step.reserve(max(positions.shape[0], getattr(model, "max_step_rows", 0)), positions.device, worst=True)

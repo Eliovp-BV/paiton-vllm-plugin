@@ -681,6 +681,8 @@ class Inkling2ForConditionalGeneration(
             assert input_ids is not None
             inputs_embeds = self.model.embed_input_ids(input_ids)
         out = self.model(positions, inputs_embeds)
+        if STEP:
+            native_step.reserve_after_loop(self.model, positions)
         tap = getattr(self.model, "tap", None)
         if tap:
             # Bring-up check (PAITON_INK2_TAP_DIR, eager runs): per-visit

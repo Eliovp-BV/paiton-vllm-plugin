@@ -51,14 +51,20 @@ class StepWorkspace(unittest.TestCase):
             p.stop()
 
     def run_forward(self, m, rows):
-        return native_step.forward(m, torch.zeros(rows, dtype=torch.int64), torch.arange(rows), None)
+        out = native_step.forward(m, torch.zeros(rows, dtype=torch.int64), torch.arange(rows), None)
+        if out is None:  # model.py: the Python loop runs the step, then the reservation
+            self.assertEqual(m._native_step.workspace.numel(), self.loop_sees)  # nothing new held during the loop
+            native_step.reserve_after_loop(m, torch.arange(rows))
+        return out
+
+    loop_sees = 0
 
     def test_profile_run_reserves_the_largest_step(self):
         m = model(bound=False)
         self.assertIsNone(self.run_forward(m, 2048))  # vLLM's profile run: no metadata, the Python loop runs it
         step = m._native_step
         self.assertEqual(step.workspace.numel(), WORST)  # the worst size of 1 to 2,048 rows, allocated now: the peak counts it
-        before = step.workspace
+        before, self.loop_sees = step.workspace, WORST
         self.assertIsNone(self.run_forward(m, 512))  # a smaller dummy run neither shrinks nor reallocates
         self.assertIs(step.workspace, before)
         self.context.attn_metadata = {'layer': object()}  # metadata but no caches yet: still the Python loop
