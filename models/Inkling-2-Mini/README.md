@@ -5,7 +5,7 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 
 | Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
 | --- | --- | ---: | --- | --- |
-| Default | `serve-docker.sh` | 1,048,576 | the model's own | 88 to 102 / 3,088 to 3,897 |
+| Default | `serve-docker.sh` | 1,048,576 | the model's own | 93 to 102 / 3,088 to 3,897 |
 | Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | 97 to 106 / 4,022 to 5,562 |
 | Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | [TBD RANGES: w3 decode] / [TBD RANGES: w3 prefill] |
 
@@ -168,7 +168,7 @@ the decode cells, tok/s:
 [TBD GUIDE TABLE: cells by default / --fast / super fast]
 
 - With two requests at once `--fast` reaches 143 to 167 tok/s in total and with four
-  230 to 246 (defaults: 152 to 170 and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
+  230 to 246 (defaults: 150 to 170 and 224 to 250). Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
   524,832-token cache.
 - On LocalMaxxing's two short speed tests (512-token replies), [TBD speed tests: code-v1 and reasoning-v1, default
   and --fast, after the bench's A/B]. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
