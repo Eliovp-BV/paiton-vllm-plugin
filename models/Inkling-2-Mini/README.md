@@ -5,11 +5,12 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 
 | Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
 | --- | --- | ---: | --- | --- |
-| Default | `serve-docker.sh` | 1,048,576 | the model's own | [TBD RANGES: default decode] / [TBD RANGES: default prefill] |
+| Default | `serve-docker.sh` | 1,048,576 | the model's own | 88 to 102 / 3,088 to 3,897 |
 | Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | [TBD RANGES: fast decode] / [TBD RANGES: fast prefill] |
 | Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | [TBD RANGES: w3 decode] / [TBD RANGES: w3 prefill] |
 
-The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt, 4K to 128K tokens of context);
+The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt; generation with no context up to
+128K tokens of it, prompt speed for 8K- to 128K-token prompts);
 the tables are in [Fast mode](#fast-mode) and [Super fast](#super-fast-3-bit-image). Default and fast run on the image
 `inkling-2-mini-rdna4-v1.2.0` and use the publisher's weights unchanged. Super fast is a second image,
 `inkling-2-mini-w3-rdna4-v1.2.0`, with 3-bit copies of the expert weights that we made from the publisher's
@@ -167,7 +168,7 @@ the decode cells, tok/s:
 [TBD GUIDE TABLE: cells by default / --fast / super fast]
 
 - With two requests at once `--fast` reaches [TBD RANGES: 2 users fast] tok/s in total and with four
-  [TBD RANGES: 4 users fast] (defaults: [TBD RANGES: 2 users default] and [TBD RANGES: 4 users default]).
+  [TBD RANGES: 4 users fast] (defaults: 152 to 170 and 224 to 250).
 - On LocalMaxxing's two short speed tests (512-token replies), [TBD speed tests: code-v1 and reasoning-v1, default
   and --fast]. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
   `--fast`'s four.
