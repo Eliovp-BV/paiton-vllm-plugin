@@ -6,7 +6,7 @@ vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB), in three versions:
 | Version | Start | Tokens per request | Output | One request at temperature 1.0: generation / prompt speed, tok/s |
 | --- | --- | ---: | --- | --- |
 | Default | `serve-docker.sh` | 1,048,576 | the model's own | 88 to 102 / 3,088 to 3,897 |
-| Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | [TBD RANGES: fast decode] / [TBD RANGES: fast prefill] |
+| Fast | `serve-docker.sh --fast` | 524,800 | the model's own, as with the default | 97 to 106 / 4,022 to 5,562 |
 | Super fast | `serve-docker.sh --w3` | 1,048,576 | close to the default, not the same | [TBD RANGES: w3 decode] / [TBD RANGES: w3 prefill] |
 
 The speeds are the ranges over LocalMaxxing's one-request matrix (its prose prompt; generation with no context up to
@@ -158,7 +158,7 @@ What stays the same:
   against serving without a drafter) 0 of 12 cells differ.
 - A prompt longer than 512 tokens is read in larger pieces, which changes the order of some sums in attention, so a
   greedy reply can part from the default's after some tokens, as after a prefix-cache hit (see
-  [What it does not do yet](#what-it-does-not-do-yet)): [TBD bench count on long prompts]. Both are valid outputs of
+  [What it does not do yet](#what-it-does-not-do-yet)): in our check of 10 prompts from 2,063 to 32,783 tokens, 256 greedy tokens each, none parted. Both are valid outputs of
   the model.
 
 LocalMaxxing's inference matrix (lmx 0.1.66: its prose prompt at temperature 1.0, 30 s per cell, one request), one
@@ -167,10 +167,10 @@ the decode cells, tok/s:
 
 [TBD GUIDE TABLE: cells by default / --fast / super fast]
 
-- With two requests at once `--fast` reaches [TBD RANGES: 2 users fast] tok/s in total and with four
-  [TBD RANGES: 4 users fast] (defaults: 152 to 170 and 224 to 250).
-- On LocalMaxxing's two short speed tests (512-token replies), [TBD speed tests: code-v1 and reasoning-v1, default
-  and --fast]. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
+- With two requests at once `--fast` reaches 143 to 167 tok/s in total and with four
+  230 to 246 (defaults: 152 to 170 and 224 to 250).
+- On LocalMaxxing's two short speed tests (512-token replies), `code-v1` runs at 155.0 tok/s with the default and 152.0 with
+  `--fast`, `reasoning-v1` at 163.2 and 166.6. These replies accept more drafted tokens, so the default's five drafts per step can be faster than
   `--fast`'s four.
 - [TBD fact check: ten facts at the fast context, temperature 1.0, with `--fast`.]
 
