@@ -156,6 +156,9 @@ Generation, total tok/s at 1 / 2 / 4 requests at once:
 
 [TBD BENCH GENERATION TABLE: default / --fast / super fast]
 
+Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
+524,832-token cache.
+
 - Tokens per check step on this prose: [TBD accept: default, --fast, super fast]. Each context fill starts with its
   own random text, so the generation cells move by a few percent from run to run through the accepted drafts; the
   prompt cells repeat within 0.3 %.
