@@ -187,8 +187,9 @@ the decode cells, tok/s:
   165.4 tok/s at draft acceptance 0.608 and 0.614; 163.1 and 176.8 at 0.580 and 0.646); one `--fast` run gave 152.0 and
   166.6. `--fast` speeds up long prompts and long prose replies, not short code, tool or chat replies: there its four drafts
   per step cost about 4 %.
-- Ten facts hidden in a long text, temperature 1.0, with `--fast` (one run): in a 516,065-token prompt (238.5 s,
-  2,164 tok/s) the reasoning named all ten, but the 4,000-token reply budget ran out before the answer started.
+- Ten facts hidden in a text of about 516,000 tokens, with `--fast`, one run each: greedy, the reply gave all ten
+  (prompt 2,140 tok/s, generation 114.4 tok/s); at temperature 1.0 the reasoning named all ten, but the 4,000-token
+  reply budget ran out before the answer started.
 
 `vllm bench serve` with `--fast` on the v1.2.0 image (512-token replies, new prompts in every cell, one run), total
 tok/s, greedy / temperature 1.0:

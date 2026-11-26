@@ -184,9 +184,10 @@ Fast mode has no 4-user number at 128K: four requests with 128K tokens of contex
   109 / 103 ms). The accepted drafts move these short replies by
   several percent from server to server.
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
-  788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). `--fast` at its own context, one run: in a
-  516,065-token prompt (prompt 238.5 s, 2,164 tok/s; generation 123.3 tok/s) the reasoning named all ten facts, but
-  the 4,000-token budget ran out before the answer started, as in the fp8 case above.
+  788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). `--fast` at its own context, one run each: at
+  temperature 1.0 (516,065 tokens, prompt 238.5 s, 2,164 tok/s) the reasoning named all ten facts, but the 4,000-token
+  budget ran out before the answer started, as in the fp8 case above; greedy (516,063 tokens, prompt 241.2 s,
+  2,140 tok/s) the reply gave all ten, with 1,203 tokens at 114.4 tok/s.
 
 `vllm bench serve` with `--fast` on the v1.2.0 image, same method as the 1,024-token table above (512-token replies,
 new prompts in every cell), one run per prompt length. Total tok/s and latencies:
