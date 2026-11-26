@@ -12,6 +12,10 @@ tables are in [Context and speed](#context-and-speed) and the [benchmarks](BENCH
 model on this card, so the comparison in the benchmarks is with Paiton's own first complete build, which ran at 25 to
 26 tok/s for one request and 67 to 72 for four on our real-text set (greedy), where this release gives 143 and 241.
 
+`--fast` gives up part of the context and some sampling accuracy for speed. It holds 640,960 tokens per request and,
+on LocalMaxxing's one-request matrix (its prose prompt at temperature 1.0), generates at 115 to 132 tok/s and reads
+prompts at 3,898 to 5,238 tok/s, against 83 to 110 and 2,732 to 3,772 with the defaults. See [Fast mode](#fast-mode).
+
 Start it:
 
 ```bash
@@ -23,7 +27,7 @@ cd paiton-vllm-plugin
 The first start downloads the pinned weights (20.2 GB) and the drafter (1.0 GB). The OpenAI-compatible API is on port
 8042, model name `inkling-2-mini`.
 
-[Context and speed](#context-and-speed) · [Run](#run) · [Options](#options) ·
+[Context and speed](#context-and-speed) · [Fast mode](#fast-mode) · [Run](#run) · [Options](#options) ·
 [Prompt cache in RAM or on an SSD](#prompt-cache-in-ram-or-on-an-ssd-opt-in) · [Reasoning effort](#reasoning-effort) ·
 [Images](#images) ·
 [What it does not do yet](#what-it-does-not-do-yet) · [Weights](#model-weights-and-existing-downloads)
@@ -55,9 +59,11 @@ gives the first token, the facts found out of ten hidden in the text, and the ge
   fp8 and 2,380 for bf16.
 - The generation speeds in the long-prompt cells depend on each reply (the fp8 cell at 260,049 tokens is 4,000
   tokens of reasoning), so they do not rank the formats.
-- Every number on this page comes from a build with the same native libraries as the release image. Run again on
-  the release image, the `vllm bench serve` cells came within 0.4 % of them and the 1,038,311-token prompt read at
-  1,174 tok/s against 1,172.
+- The numbers with the default settings come from builds with the same model libraries as this image (v1.0.0 and
+  the build before it). Run again on v1.0.0, the `vllm bench serve` cells came within 0.4 % of them and the
+  1,038,311-token prompt read at 1,174 tok/s against 1,172. On this image, LocalMaxxing's matrix with the defaults read
+  prompts of 8K to 128K tokens within 1.2 % of v1.0.0's run and generated at 93.8 tok/s without context against
+  93.9.
 
 ### Speed with `vllm bench serve`
 
@@ -109,6 +115,75 @@ Real text (11 requests), tok/s for one request / four at once, mirrored:
 
 With greedy decoding the token ids are the same with each drafter and without one, alone and four at once.
 
+## Fast mode
+
+`--fast` is opt-in and for 32 GB cards. It gives up part of the context and some sampling accuracy for speed:
+
+```bash
+./models/Inkling-2-Mini/serve-docker.sh --fast
+```
+
+LocalMaxxing's inference matrix (lmx 0.1.66: its prose prompt at temperature 1.0, 30 s per cell, one request), on
+this image with one fresh server per mode on the same card, one run each. Prompt speed for the prefill cells and
+generation speed for the decode cells, tok/s:
+
+| Cell | Default | `--fast` |
+| --- | ---: | ---: |
+| Prefill 4K | 2,732 | 4,100 |
+| Prefill 8K | 3,772 | 5,238 |
+| Prefill 16K | 3,546 | 4,562 |
+| Prefill 32K | 3,526 | 4,884 |
+| Prefill 64K | 3,333 | 4,528 |
+| Prefill 128K | 2,978 | 3,898 |
+| Decode, no context | 93.8 | 131.6 |
+| Decode 4K | 100.9 | 129.7 |
+| Decode 16K | 102.1 | 127.1 |
+| Decode 32K | 109.7 | 124.3 |
+| Decode 64K | 99.6 | 114.7 |
+| Decode 128K | 82.8 | 115.6 |
+
+- With two requests at once `--fast` reaches 181 to 207 tok/s in total and with four 271 to 323 (defaults: 128 to
+  162 and 222 to 254).
+- On LocalMaxxing's two short speed tests (512-token replies) the defaults are a little faster: 170.1 tok/s on
+  `code-v1` and 176.2 on `reasoning-v1` (run on v1.0.0), against 169.2 and 164.3 with `--fast`. These replies accept
+  more drafted tokens, and the defaults check five per step instead of four.
+- In a ten-fact check with a 632,802-token prompt at temperature 1.0, `--fast` found all ten facts. [PENDING: the
+  confirmation run of that check on this image with `--fast`.]
+
+[FAST-GRID: `vllm bench serve` with `--fast`, 1,024-, 8,192- and 32,768-token prompts.]
+
+It sets three values:
+
+| Variable | Default | `--fast` | What it does |
+| --- | --- | --- | --- |
+| `PAITON_INK2_PREFILL_CHUNK` | 512 | 2048 | prompt tokens per step |
+| `PAITON_INK2_DRAFTS_1` | 5 | 4 | drafted tokens checked per step while one request runs |
+| `PAITON_RUNNER_GLUE_ACCEPT` | not set | `0.1,0.3` | relaxed draft acceptance at a temperature above 0 |
+
+Each one is an environment variable of its own, so in your own `docker run` you can set one alone or override one
+with `-e NAME=value` (`serve-docker.sh` does not pass these variables on). The server prints one `fast_profile` line
+with the values it uses.
+
+What it costs:
+
+- Context: 640,960 tokens per request instead of 1,048,576. Prompt steps of 2,048 tokens need more card memory while
+  they run, so less is left for the cache.
+- Sampled replies (temperature above 0) no longer follow the model's own distribution. A drafted token is kept when
+  the normal check keeps it, and also when the model gives it a probability of at least 0.1, or of at least 0.3 times
+  that of its most likely token when that is lower. More drafts pass per step, and the output is sharper, as at a
+  lower temperature: in our distribution test 42 % of the sampled tokens were the token that serving without a
+  drafter picks most often, against 29 % with the default rule. That test (5-token replies, 2,500 seeds per prompt,
+  against serving without a drafter) finds a difference in 10 of its 12 cells with `--fast` and in none with the
+  defaults. On our 35-task set at temperature 1.0 (three seeds) `--fast` solved 95 of 105, against 99 of 105 with
+  the same prompt steps and drafts and the default acceptance rule. The gap is in the needle tasks: the replies ran
+  longer, and 6 of 15 instead of 3 hit the 512-token reply limit before the answer. No needle reply gave a wrong
+  code.
+- Greedy replies: the relaxed rule does not apply to them. With `--fast` they are the same tokens as with the
+  defaults on our 11 check requests, alone and four at once.
+
+A build with 3-bit experts for more speed is in progress; the launcher's `--w3x` option is for its files, which are
+not published yet.
+
 ## Run
 
 ```bash
@@ -158,6 +233,7 @@ Options go after the script name.
 
 | Option | What it does |
 | --- | --- |
+| `--fast` | Fast mode: 2,048-token prompt steps, four drafts while one request runs and relaxed draft acceptance at a temperature above 0; 640,960 tokens per request. See [Fast mode](#fast-mode). Off by default. |
 | `--drafter dspark` | Drafts with the draft head in the model's checkpoint instead of the default drafter (no extra download): on the real-text set 109 tok/s greedy for one request instead of 143. Greedy replies are the same tokens. |
 | `--no-drafter` | Serves without a drafter: 69 tok/s for one request and 171 for four (greedy, `vllm bench serve`), instead of 151 and 285. 1.5 GiB more for the cache; the context stays at 1,048,576. |
 | `--kv-cache fp8`, `--kv-cache bf16` | Cache format of the full-attention passes. fp8 holds 558,496 tokens per request and showed no change in our quality study; bf16 holds 279,248. Speed and long prompts per format: [Context and speed](#context-and-speed). Both have the first-hit miss in [What it does not do yet](#what-it-does-not-do-yet). |
@@ -275,9 +351,10 @@ string, from which the model reads a label and a value. The vision tower loads w
   of the sliding-window passes only at the end of a prompt and where two prompts part.
 - Time to first token on a long prompt is the model's full prefill: 48 s for 143,840 tokens, 82 s for 218,915 and
   295 s for 522,196.
-- The first request after a start that asks for logprobs, a repetition penalty or a JSON schema waits about one
-  second while vLLM compiles that option's sampling kernel (on the release image: 1.7 s instead of 0.3 s for a short
-  reply with logprobs, 1.4 s with a JSON schema). Later requests with the option do not wait.
+- The first request after a start that asks for logprobs, a repetition penalty or a JSON schema waits one to two
+  seconds while vLLM compiles that option's sampling kernel (on this image: 2.6 s instead of 0.3 s for a short reply
+  with logprobs, 1.6 s with a JSON schema, 1.0 s with a repetition penalty). Later requests with the option do not
+  wait.
 - The launcher uses a single card; a second card does not make a request faster.
 
 ## Model weights and existing downloads

@@ -1,7 +1,7 @@
 # Inkling 2 Mini benchmarks
 
 Measured on 25 and 26 November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap, with the image
-`inkling-2-mini-rdna4-v1.0.0` (ROCm 10.2, vLLM 0.32) and the checkpoint `thinkingmachines/Inkling-2-Mini` at
+`inkling-2-mini-rdna4-v1.1.0` (ROCm 10.2, vLLM 0.32) and the checkpoint `thinkingmachines/Inkling-2-Mini` at
 revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6`, with the launcher's defaults unless a row says otherwise: the
 4-bit cache (`--kv-cache kv4`) and speculative decoding with the default drafter (its checkpoint and revision are in
 [NOTICE.md](NOTICE.md)).
@@ -24,9 +24,12 @@ without the drafter.
 - `vllm bench serve` is vLLM's benchmark client in the image: real-text prompts (Python standard library source
   and a coding task) that each start with their own line, so no request reuses another's cached tokens, and
   replies run to 512 tokens. The guide's headline speeds come from it.
-- The numbers come from a build with the same native libraries as the release image. Run again on the release
-  image, the `vllm bench serve` cells came within 0.4 % of them and the 1,038,311-token prompt read at 1,174 tok/s
-  against 1,172; the 1,038,311-token row is the release image's own run.
+- The numbers with the default settings come from builds with the same model libraries as this image: v1.0.0 and
+  the build before it. Run again on v1.0.0, the `vllm bench serve` cells came within 0.4 % of them and the
+  1,038,311-token prompt read at 1,174 tok/s against 1,172; the 1,038,311-token row is v1.0.0's own run. This image
+  adds the check that `--fast` relaxes to the runner glue; with the default settings its greedy tokens are the same
+  as v1.0.0's on the 11 check requests, alone and four at once, and LocalMaxxing's matrix with the defaults read
+  prompts of 8K to 128K tokens within 1.2 % of v1.0.0's run. The [fast mode](#fast-mode---fast) numbers come from this image.
 - No other job ran on this card during an arm. The second card of the host ran other work at the same time.
 - Compare numbers within the same card: the same image and arm ran 2.6 % faster on the host's second R9700 than on
   the first. All rows of a table come from the same card; the `vllm bench serve` table is from the second card.
@@ -93,7 +96,7 @@ Four requests of 247,027 prompt tokens each at once (988,108 in the cache togeth
 peaked at 29.89 of 31.86 GiB, system memory use did not grow and vLLM preempted no request.
 
 BetterBench 0.6.0, standard decode and concurrency runs (temperature 0.7, top-p 0.95, top-k 20, prompts of changing
-length), on the release image: card memory peaked at 30.71 GiB (decode, 160 of 160 requests) and 30.63 GiB
+length), on v1.0.0 and again on this image: card memory peaked at 30.71 GiB (decode, 160 of 160 requests) and 30.63 GiB
 (concurrency, 48 of 48 at every level), with the launcher's 1 GiB allocator headroom. Without it the same runs grew
 to 31.39 and 31.45 GiB.
 
@@ -133,6 +136,67 @@ so +18.5 % for one request and +16.4 % for four.
 
 In the greedy runs the token ids of all 11 requests are the same with each drafter and without one, alone and four
 at once. The launcher drafts five tokens for one request and four when requests run side by side.
+
+## Fast mode (`--fast`)
+
+`--fast` sets 2,048-token prompt steps (default 512), four drafts while one request runs (default five) and a relaxed
+draft acceptance at a temperature above 0 (`0.1,0.3`, see the [guide](README.md#fast-mode)). The launcher then fits
+640,960 tokens per request instead of 1,048,576.
+
+LocalMaxxing's inference matrix (lmx 0.1.66 with the site's settings: its prose prompt at temperature 1.0, 30 s per
+cell), on this image, one fresh server per mode on the host's first card, one run each (not mirrored). Prompt speed,
+one request, tok/s:
+
+| Prompt | Default | `--fast` |
+| ---: | ---: | ---: |
+| 4K | 2,732 | 4,100 |
+| 8K | 3,772 | 5,238 |
+| 16K | 3,546 | 4,562 |
+| 32K | 3,526 | 4,884 |
+| 64K | 3,333 | 4,528 |
+| 128K | 2,978 | 3,898 |
+
+Generation, total tok/s at 1 / 2 / 4 requests at once:
+
+| Context | Default | `--fast` |
+| ---: | --- | --- |
+| none | 93.8 / 151.6 / 249.6 | 131.6 / 207.1 / 303.7 |
+| 4K | 100.9 / 127.8 / 246.4 | 129.7 / 188.7 / 322.5 |
+| 16K | 102.1 / 161.7 / 253.7 | 127.1 / 202.1 / 287.1 |
+| 32K | 109.7 / 156.0 / 241.3 | 124.3 / 194.8 / 314.8 |
+| 64K | 99.6 / 150.8 / 227.8 | 114.7 / 181.1 / 277.1 |
+| 128K | 82.8 / 150.1 / 222.0 | 115.6 / 185.6 / 271.0 |
+
+- With `--fast` about 3.0 tokens pass per check step on this prose (2.79 to 3.09), against about 2.4 with the
+  defaults. Each context fill starts with its own random text, so the generation cells move by a few percent from run
+  to run through the accepted drafts; the prompt cells repeat within 0.3 %.
+- A second `--fast` run on the host's second card read prompts within 0.3 % of these at 4K to 64K (128K: 3,423, while
+  a server started on the first card) and generated at one request within 7 % (122.1 to 136.0 tok/s).
+- On LocalMaxxing's two short speed tests (512-token replies, one request) the defaults are a little faster: 170.1
+  tok/s on `code-v1` and 176.2 on `reasoning-v1` (run on v1.0.0), against 169.2 and 164.3 with `--fast`. These
+  replies accept more drafted tokens, and the defaults check five per step instead of four.
+- Ten facts hidden in a 632,802-token prompt, temperature 1.0, `--fast` settings: 10 of 10 found. [PENDING: the
+  confirmation run of that check on this image with `--fast`.]
+
+[FAST-GRID: `vllm bench serve` with `--fast`, 1,024-, 8,192- and 32,768-token prompts, against the default
+rows above.]
+
+What the relaxed acceptance does to sampled replies, temperature 1.0:
+
+- Distribution test against serving without a drafter: 5-token replies, 3 prompts, 2,500 seeds per prompt, the
+  token frequencies at positions 2 to 5 (12 cells). With the default rule 0 of 12 cells differ (total variation mean
+  0.046, max 0.080, the size of the test's own noise); with `--fast` 10 of 12 differ (mean 0.230, max 0.430).
+- The output is sharper: 42 % of the sampled tokens were the token that serving without a drafter picks most often,
+  against 29 % with the default rule.
+- Task set, 35 tasks, temperature 1.0, seeds 1 to 3: 33 / 30 / 32 = 95 of 105 with `--fast`, and 32 / 33 / 34 = 99
+  of 105 with the same prompt steps and drafts and the default acceptance rule. Arithmetic 30 of 30 and tool calls
+  27 of 30 in both (one tool task never calls its tool), code output 29 against 30 of 30, needle 9 against 12 of 15.
+  With the relaxed rule the needle replies ran longer (451 against 374 tokens on average), and 6 instead of 3 stopped
+  at the 512-token reply limit before the answer line; no needle reply gave a wrong code. Three seeds per arm, so a
+  gap of four tasks is within what sampling can move.
+
+Greedy requests are not touched by the relaxed rule: with `--fast` the token ids of the 11 check requests are the same
+as with the defaults, alone and four at once.
 
 ## Quality
 
