@@ -200,6 +200,11 @@ class Inkling2Launcher(unittest.TestCase):
         argv, lines = self.started('--fast')
         self.assertEqual(parts(argv), ('2048', [[1, 1, 4], [2, 4, 4]]))
         self.assertIn({'fast_profile': server.FAST}, lines)
+        environment = next(line['environment'] for line in lines if 'environment' in line)
+        self.assertEqual(environment['PAITON_RUNNER_GLUE_ACCEPT'], '0.1,0.3')  # the sampler glue reads it in vLLM
+        argv, lines = self.started(PAITON_RUNNER_GLUE_ACCEPT='0.3,0.6')  # alone: command unchanged, line names it
+        self.assertEqual(parts(argv), ('512', [[1, 1, 5], [2, 4, 4]]))
+        self.assertIn({'fast_profile': {'PAITON_RUNNER_GLUE_ACCEPT': '0.3,0.6'}}, lines)
         for name, value, want in (('PAITON_INK2_PREFILL_CHUNK', '2048', ('2048', [[1, 1, 5], [2, 4, 4]])),
                                   ('PAITON_INK2_DRAFTS_1', '4', ('512', [[1, 1, 4], [2, 4, 4]]))):
             argv, lines = self.started(**{name: value})  # one alone, without --fast

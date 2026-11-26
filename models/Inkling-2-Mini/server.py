@@ -185,7 +185,11 @@ VRAM_HEADROOM_MIB = 1024
 # sets one alone or overrides it; --fast only picks the set. PAITON_INK2_PREFILL_CHUNK: prompt tokens per step (default
 # 512); 2,048 = prefill +37 % at one request, 8K to 128K, auto context 640,960 tokens instead of the full 1,048,576
 # (c16, 26 Nov 2026). PAITON_INK2_DRAFTS_1: drafts checked while one request runs (default 5); 4 = check steps +4.6 %.
-FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4')
+# PAITON_RUNNER_GLUE_ACCEPT (read by the image's sampler glue, lossy): relaxed draft acceptance "eps,delta"; at a
+# temperature above 0 a draft is also kept when the model gives it at least min(eps, delta x its top probability);
+# 0.1,0.3 = prose +25 % at one request, distribution test against no drafter FAIL (sampler session, 26 Nov 2026).
+FAST = dict(PAITON_INK2_PREFILL_CHUNK='2048', PAITON_INK2_DRAFTS_1='4', PAITON_RUNNER_GLUE_ACCEPT='0.1,0.3')
+WHOLE = dict(PAITON_INK2_PREFILL_CHUNK=math.inf, PAITON_INK2_DRAFTS_1=DRAFTER['num_speculative_tokens'])  # 1 to top
 FAST_PATHS = ('PAITON_INK2_W3X',)  # fast settings that name a path, so --fast cannot set them: --w3x DIR
 
 # Prompt-cache tiers (opt-in: --host-cache-gib, --extend-cache). Blocks the card's prefix cache evicts stay in pinned
@@ -342,7 +346,9 @@ def main():
                         help='opt-in, 32 GB cards: the measured fast settings ('
                              + ', '.join(f'{k}={v}' for k, v in FAST.items()) + '): prefill about 37 %% faster, '
                              '4.6 %% more check steps at one request, auto context 640,960 tokens instead of 1,048,576; '
-                             '`docker run -e NAME=value` sets or overrides one alone')
+                             'relaxed draft acceptance at temperatures above 0 (prose about 25 %% faster at one request, '
+                             'not exact: the output distribution changes); `docker run -e NAME=value` sets or overrides '
+                             'one alone')
     parser.add_argument('--w3x', metavar='DIR', default=None,
                         help='opt-in, not exact: routed experts as 3-bit codes from the W3X folder DIR (manifest.json '
                              'and layer files; the manifest says per layer 3-bit or the checkpoint format): 8.90 GiB '
@@ -453,10 +459,8 @@ def main():
     for name, value in FAST.items() if args.fast else ():
         os.environ.setdefault(name, value)
     fast = {name: os.environ[name] for name in (*FAST, *FAST_PATHS) if os.environ.get(name)}
-    for name, value in fast.items():
-        if name in FAST_PATHS:
-            continue
-        top = DRAFTER['num_speculative_tokens'] if name == 'PAITON_INK2_DRAFTS_1' else math.inf
+    for name, top in WHOLE.items():  # the glue checks its own setting
+        value = fast.get(name, '1')
         if not value.isdigit() or not 1 <= int(value) <= top:
             raise SystemExit(f'{name}={value}: a whole number from 1' + (f' to {top}' if top < math.inf else ''))
     if fast:  # one line names every fast setting that is on, whether from --fast or `docker run -e`
