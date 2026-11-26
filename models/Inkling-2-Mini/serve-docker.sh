@@ -8,8 +8,8 @@ for arg in "$@"; do
   if [[ $arg == --w3 ]]; then w3=1; else args+=("$arg"); fi
 done
 if [[ -n "${PAITON_W3X:-}" ]]; then w3=1; fi
-if [[ $w3 == 1 ]]; then default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-w3-rdna4-v1.2.0
-else default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.0.0; fi
+if [[ $w3 == 1 ]]; then default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-w3-rdna4-v1.2.0@sha256:7f1eaad71457b00f548d97fa66af9389ee6730dc8e718339cfeee5d7ed3a449e
+else default_image=ghcr.io/eliovp/paiton-vllm-plugin:inkling-2-mini-rdna4-v1.2.0@sha256:bc6b7b6d567f7afe4f40457be6b6a8d2f2d685365a263ae252a6f564a0b592cb; fi
 image="${PAITON_IMAGE:-$default_image}"
 cache="${PAITON_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/paiton-inkling-2-mini}"
 port="${PAITON_PORT:-8042}"
