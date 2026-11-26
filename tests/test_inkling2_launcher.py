@@ -251,8 +251,8 @@ class Inkling2Launcher(unittest.TestCase):
             self.assertIn('--w3x', str(stop.exception))
         w3x._layers.cache_clear()
         script = (FOLDER / 'serve-docker.sh').read_text()
-        self.assertIn('-v "$PAITON_W3X:/models/w3x:ro"', script)
-        self.assertIn('w3x=(--w3x /models/w3x)', script)
+        self.assertIn('extra+=(-v "$(dirname "$w3x_dir"):/models/w3x:ro")', script)  # links into a sibling folder resolve
+        self.assertIn('w3x=(--w3x "/models/w3x/$(basename "$w3x_dir")")', script)
 
 
 class Inkling2CacheTier(unittest.TestCase):

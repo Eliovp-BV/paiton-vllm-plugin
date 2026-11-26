@@ -16,11 +16,13 @@ if [[ -n "${PAITON_API_KEY:-}" ]]; then
   export VLLM_API_KEY="$PAITON_API_KEY"
   extra+=(-e VLLM_API_KEY)
 fi
-# Opt-in, not exact: PAITON_W3X=<folder> serves the 3-bit experts of that W3X folder (mounted read-only, launcher --w3x).
+# Opt-in, not exact: PAITON_W3X=<folder> serves the 3-bit experts of that W3X folder (launcher --w3x). Its parent is
+# mounted read-only, so a manifest whose files link into a sibling folder (../i3g64e_i3g64m/...) finds them.
 w3x=()
 if [[ -n "${PAITON_W3X:-}" ]]; then
-  extra+=(-v "$PAITON_W3X:/models/w3x:ro")
-  w3x=(--w3x /models/w3x)
+  w3x_dir="$(cd "$PAITON_W3X" && pwd)"
+  extra+=(-v "$(dirname "$w3x_dir"):/models/w3x:ro")
+  w3x=(--w3x "/models/w3x/$(basename "$w3x_dir")")
 fi
 ipc=(--ipc=host)
 # The disk tier of --extend-cache stages blocks in a /dev/shm file that only a clean shutdown removes: a private IPC

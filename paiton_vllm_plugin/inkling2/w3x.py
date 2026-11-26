@@ -73,7 +73,8 @@ def _layers(folder: str) -> dict[int, tuple[Path, dict]]:
         if stride != 0 or isinstance(stride, bool):
             raise ValueError(f"{root}: layer {layer} has factor_stride {stride!r}; the expert library takes 0 (per matrix)")
         if Path(name).name != name or not (root / name).is_file():
-            raise ValueError(f"{root}: layer {layer} names file {name!r}, not a file in that folder")
+            raise ValueError(f"{root}: layer {layer} names file {name!r}, not a file in that folder "
+                             "(or a link to a place that is not mounted)")
         den = entry.get("denominator", {})
         if not isinstance(den, dict) or not set(den) <= set(SHAPES) or not all(
                 type(v) in (int, float) and 0 < v < math.inf for v in den.values()):
