@@ -148,24 +148,39 @@ tokens per request instead of 1,048,576. Super fast, the image `inkling-2-mini-w
 [guide](README.md#super-fast-3-bit-image)), with 1,048,576 tokens per request.
 
 LocalMaxxing's inference matrix (lmx 0.1.66 with the site's settings: its prose prompt at temperature 1.0, 30 s per
-cell), one fresh server per version on [TBD card], one run each (not mirrored). Prompt speed, one request, tok/s:
+cell), one fresh server per version on the same card, one run each (not mirrored). Prompt speed, one request, tok/s:
 
-[TBD BENCH PROMPT TABLE: default / --fast / super fast]
+| Prompt | Default | `--fast` | Super fast |
+| ---: | ---: | ---: | ---: |
+| 8K | 3,897 | 5,562 | 5,702 |
+| 16K | 3,550 | 5,322 | 5,321 |
+| 32K | 3,737 | 4,888 | 5,295 |
+| 64K | 3,521 | 4,697 | 4,876 |
+| 128K | 3,088 | 4,022 | 4,153 |
 
 Generation, total tok/s at 1 / 2 / 4 requests at once:
 
-[TBD BENCH GENERATION TABLE: default / --fast / super fast]
+| Context | Default | `--fast` | Super fast |
+| ---: | --- | --- | --- |
+| none | 93.9 / 153.0 / 249.7 | 102.4 / 153.1 / 244.0 | 179.7 / 287.3 / 400.5 |
+| 4K | 95.2 / 169.6 / 243.0 | 100.0 / 166.8 / 245.5 | 156.3 / 255.2 / 388.7 |
+| 16K | 93.1 / 164.1 / 245.4 | 105.8 / 164.0 / 230.1 | 160.5 / 263.2 / 405.8 |
+| 32K | 98.3 / 149.8 / 242.6 | 106.3 / 154.8 / 237.1 | 159.2 / 269.9 / 390.8 |
+| 64K | 102.3 / 163.6 / 234.6 | 96.6 / 153.9 / 240.8 | 167.5 / 257.8 / 383.1 |
+| 128K | 93.8 / 156.7 / 224.2 | 96.8 / 142.6 / - | 149.4 / 240.2 / 363.1 |
 
 Fast mode has no 4-user number at 128K: four requests with 128K tokens of context each need more than its
 524,832-token cache.
 
-- Tokens per check step on this prose: [TBD accept: default, --fast, super fast]. Each context fill starts with its
+- Tokens per check step on this prose: 2.49 with the default, 2.44 with `--fast` and 3.09 with super fast (vLLM's draft
+  metrics over each whole run; super fast keeps more drafts through its relaxed check). Each context fill starts with its
   own random text, so the generation cells move by a few percent from run to run through the accepted drafts; the
   prompt cells repeat within 0.3 %.
 - LocalMaxxing's two short speed tests (512-token replies, one request), `code-v1` / `reasoning-v1`:
   default 164.6 / 169.9 tok/s, the mean of two fresh servers (`code-v1` 163.7 and 165.4 tok/s at draft acceptance
   0.608 and 0.614; `reasoning-v1` 163.1 and 176.8 at 0.580 and 0.646); `--fast` 152.0 / 166.6 (one run, first
-  token after 137 / 144 ms); super fast [TBD w3 speed tests]. The accepted drafts move these short replies by
+  token after 137 / 144 ms); super fast 199.5 / 201.3 (one run, first token after
+  109 / 103 ms). The accepted drafts move these short replies by
   several percent from server to server.
 - Ten facts hidden in a long text, temperature 1.0: super fast found all ten in a 1,038,311-token prompt (prompt
   788.7 s, 1,317 tok/s; generation 125.5 tok/s, 1,434 tokens). [TBD --fast at its context.]
