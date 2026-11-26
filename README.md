@@ -21,7 +21,7 @@ Docker launcher.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/speedup-dark.svg">
-    <img src="assets/speedup-light.svg" width="900" alt="Bar chart: Paiton against the stock engine for eleven models on one Radeon AI PRO R9700, from 25.2 times faster (Qwen3.8 27B) to no gain (Wan2.2 TI2V-5B)">
+    <img src="assets/speedup-light.svg" width="900" alt="Bar chart: Paiton against the stock engine for eleven models on a Radeon AI PRO R9700, from 25.2 times faster (Qwen3.8 27B) to no gain (Wan2.2 TI2V-5B)">
   </picture>
 </p>
 
@@ -38,14 +38,14 @@ its numbers.
 
 | You have | You want | Run | You get |
 | --- | --- | --- | --- |
-| One R9700 | Fast chat and coding | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | about 180 tok/s, 65K tokens per request |
-| One R9700 | Coding agents, long documents | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit, `--mode long-kv4` | 262K tokens per request, prefix caching, images with `--vision` |
-| One R9700 | The most accurate answers | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), MXFP4 | about 156 tok/s, 65K tokens per request |
-| One R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 1,048,576 tokens per request, 151 tok/s greedy and 129 at temperature 1.0 (1,024-token prompts), published weights unchanged |
-| Two R9700s | A larger model, fastest | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 3-bit | about 259 tok/s, 98K-token window; 128 GB+ of RAM |
-| Two R9700s | A larger model, most accurate | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | the 16-bit model's task scores, about 245 tok/s; 196 GB+ of RAM |
-| Two R9700s | Coding agents | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit, `--prefix-caching` | 262K-token window; a repeated 200K-token prompt starts in under 1 s |
-| One R9700 | Images, video or 3D | [Image](#image-generation) · [Video](#video-generation) · [3D](#3d-generation) | see the pictures below |
+| 1x R9700 | Fast chat and coding | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit | about 180 tok/s, 65K tokens per request |
+| 1x R9700 | Coding agents, long documents | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), 3-bit, `--mode long-kv4` | 262K tokens per request, prefix caching, images with `--vision` |
+| 1x R9700 | The most accurate answers | [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md), MXFP4 | about 156 tok/s, 65K tokens per request |
+| 1x R9700 | Chat, tools and images with reasoning | [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | 1,048,576 tokens per request, 151 tok/s greedy and 129 at temperature 1.0 (1,024-token prompts), published weights unchanged |
+| 2x R9700 | A larger model, fastest | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 3-bit | about 259 tok/s, 98K-token window; 128 GB+ of RAM |
+| 2x R9700 | A larger model, most accurate | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit | the 16-bit model's task scores, about 245 tok/s; 196 GB+ of RAM |
+| 2x R9700 | Coding agents | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md), 4-bit, `--prefix-caching` | 262K-token window; a repeated 200K-token prompt starts in under 1 s |
+| 1x R9700 | Images, video or 3D | [Image](#image-generation) · [Video](#video-generation) · [3D](#3d-generation) | see the pictures below |
 
 Speeds are for one request at a time; several requests at once add up to more (489 tok/s for eight requests on the 27B
 3-bit, 688 tok/s on Flash Next 3-bit). The exact command, downloads and host requirements for each row are in the
@@ -54,9 +54,9 @@ workspace on a Linux host.
 
 <table>
   <tr>
-    <td width="33%"><img src="models/FLUX.2-klein/assets/fox-paiton.png" alt="Fox image generated with FLUX.2 klein on one R9700"></td>
-    <td width="33%"><img src="models/MiniMax-H3/assets/fox-15s-poster.jpg" alt="Frame from a 15-second MiniMax H3 video generated on one R9700"></td>
-    <td width="33%"><img src="models/Idol/assets/turntable-lighthouse.webp" alt="Turntable of a 3D lighthouse generated from one image with Idol on one R9700"></td>
+    <td width="33%"><img src="models/FLUX.2-klein/assets/fox-paiton.png" alt="Fox image generated with FLUX.2 klein on an R9700"></td>
+    <td width="33%"><img src="models/MiniMax-H3/assets/fox-15s-poster.jpg" alt="Frame from a 15-second MiniMax H3 video generated on a single R9700"></td>
+    <td width="33%"><img src="models/Idol/assets/turntable-lighthouse.webp" alt="Turntable of a 3D lighthouse generated from one image with Idol on an R9700"></td>
   </tr>
   <tr>
     <td align="center"><a href="models/FLUX.2-klein/README.md">FLUX.2 klein</a>: text to image, about 1 s</td>
@@ -132,7 +132,7 @@ folder. For another model, follow its guide below.
 
 | Requirement | What you need |
 | --- | --- |
-| **GPU** | Radeon AI PRO R9700, 32 GB. Most guides use one card; Flash Next requires two. The [AMD Instinct](#amd-instinct) builds list their own GPUs. Other GPUs have not been qualified. |
+| **GPU** | Radeon AI PRO R9700, 32 GB. Most guides run on a single card; Flash Next needs two. The [AMD Instinct](#amd-instinct) builds list their own GPUs. Other GPUs have not been qualified. |
 | **Host** | Linux with a working AMD GPU driver. Check the model guide for any required driver version. |
 | **Containers** | Docker with access to `/dev/kfd` and `/dev/dri`. ComfyUI launchers also require Docker Compose. |
 | **Memory and storage** | Check your model's guide before downloading. Requirements depend on the model and selected profile. |
@@ -155,9 +155,9 @@ These models provide an OpenAI-compatible API through vLLM.
 
 | Model and guide | Main use | Benchmarks |
 | --- | --- | --- |
-| [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding on one R9700; accuracy, speed and long-conversation profiles | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#benchmarks) |
+| [Qwen3.8 27B](models/Qwen3.8-MXFP4-DFlash2/README.md) | Chat and coding on a single R9700; accuracy, speed and long-conversation profiles | [Results](models/Qwen3.8-MXFP4-DFlash2/README.md#benchmarks) |
 | [Qwen3.8 Flash Next](models/Qwen3.8-Flash-Next/README.md) | Chat and coding on two R9700s; 3-bit or 4-bit, with optional image input on supported 4-bit profiles | [Results](models/Qwen3.8-Flash-Next/BENCHMARKS.md) |
-| [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | Chat, coding, tools and image input on one R9700, 1,048,576 tokens per request, speculative decoding | [Results](models/Inkling-2-Mini/BENCHMARKS.md) |
+| [Inkling 2 Mini](models/Inkling-2-Mini/README.md) | Chat, coding, tools and image input on an R9700, 1,048,576 tokens per request, speculative decoding | [Results](models/Inkling-2-Mini/BENCHMARKS.md) |
 | [MiniCPM5-2B](models/MiniCPM5-2B/README.md) | Lightweight chat, coding and tools | [Results](models/MiniCPM5-2B/BENCHMARKS.md) |
 | [Qwen3.8 NEO CODER MAX 27B](models/Qwen3.8-NEO-CODER-MAX/README.md) | Coding and visual chat | [Results](models/Qwen3.8-NEO-CODER-MAX/BENCHMARKS.md) |
 | [Qwen3-Coder 30B A3B](models/Qwen3-Coder-30B/README.md) | Code generation, review, testing and tools | [Results](models/Qwen3-Coder-30B/BENCHMARKS.md) |

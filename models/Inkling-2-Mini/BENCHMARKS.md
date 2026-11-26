@@ -1,6 +1,6 @@
 # Inkling 2 Mini benchmarks
 
-Measured on 25 and 26 November 2026 on one Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap, with the image
+Measured on 25 and 26 November 2026 on a single Radeon AI PRO R9700 (gfx1201, 32 GB) at a 300 W power cap, with the image
 `inkling-2-mini-rdna4-v1.0.0` (ROCm 10.2, vLLM 0.32) and the checkpoint `thinkingmachines/Inkling-2-Mini` at
 revision `7a67ae2314b44ef05c87fd1d4d311c58aaeb18f6`, with the launcher's defaults unless a row says otherwise: the
 4-bit cache (`--kv-cache kv4`) and speculative decoding with the default drafter (its checkpoint and revision are in
@@ -28,8 +28,8 @@ without the drafter.
   image, the `vllm bench serve` cells came within 0.4 % of them and the 1,038,311-token prompt read at 1,174 tok/s
   against 1,172; the 1,038,311-token row is the release image's own run.
 - No other job ran on this card during an arm. The second card of the host ran other work at the same time.
-- Compare numbers within one card: the same image and arm ran 2.6 % faster on the host's second R9700 than on the
-  first. Every table here comes from one card; the `vllm bench serve` table is from the second card.
+- Compare numbers within the same card: the same image and arm ran 2.6 % faster on the host's second R9700 than on
+  the first. All rows of a table come from the same card; the `vllm bench serve` table is from the second card.
 
 ## Context and cache formats, greedy
 
@@ -168,7 +168,7 @@ port faults, not for quantization loss.
 
 ## Limits of these numbers
 
-- One host, one card, one power cap. A card at a higher cap or a faster host will differ.
+- Every run used the same host and a 300 W power cap. A card at a higher cap or a faster host gives other numbers.
 - The real-text set is 11 requests. It shows the size of an effect; it is too small for a second decimal.
 - The long-prompt and fact-check tables are one run per cell.
 - Four requests at once is the most we ran.

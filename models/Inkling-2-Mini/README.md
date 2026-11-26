@@ -1,9 +1,9 @@
-# Inkling 2 Mini on one R9700
+# Inkling 2 Mini on a single R9700
 
 Inkling 2 Mini is Thinking Machines' model for chat, coding, tool calls and image input. This guide serves it with
-vLLM and the Paiton plugin on one Radeon AI PRO R9700 (32 GB).
+vLLM and the Paiton plugin on a Radeon AI PRO R9700 (32 GB).
 
-One request can hold **1,048,576 tokens**, the model's full context length, on one card. With 1,024-token prompts
+One request can hold **1,048,576 tokens**, the model's full context length. With 1,024-token prompts
 and 512-token replies (`vllm bench serve`), one request generates at **151 tok/s** with greedy decoding and at
 **129 tok/s** at the model's default temperature of 1.0 (the model's own sampling settings: no top-p or top-k); four
 requests at once reach 285 and 295 tok/s in total. After a 522,196-token prompt one request still generates at
@@ -30,7 +30,7 @@ The first start downloads the pinned weights (20.2 GB) and the drafter (1.0 GB).
 
 ## Context and speed
 
-One R9700 at a 300 W power cap, the launcher's defaults unless a row says otherwise: the 4-bit cache and speculative
+Measured on an R9700 at a 300 W power cap, with the launcher's defaults unless a row says otherwise: the 4-bit cache and speculative
 decoding with the default drafter. "Real text" is our set of 11 chat, code and tool requests (64 to 160 new tokens
 each, prompt time included); a real-text cell gives one request / four at once. Real-text speeds are the mean of two
 runs in mirrored order (old, new, new, old); the long-prompt cells are one run each.
@@ -193,7 +193,7 @@ the default settings). Two options keep the prompts the card drops, so a long pr
 - `serve-docker.sh` gives the container a private 13 GB `/dev/shm` for the disk stage. A `docker run` of your own
   needs `--ipc=private --shm-size=13g`.
 
-First token on one R9700 (greedy, one request at a time; source code as the prompt; measured on the build of 25
+First token (greedy, one request at a time; source code as the prompt; measured on the build of 25
 November with the bf16 cache and the model's own draft head, [tier check on the release image]):
 
 | Prompt | Cold read | Hit on the card | Hit from RAM | From the SSD after a restart |
@@ -278,7 +278,7 @@ string, from which the model reads a label and a value. The vision tower loads w
 - The first request after a start that asks for logprobs, a repetition penalty or a JSON schema waits about one
   second while vLLM compiles that option's sampling kernel (on the release image: 1.7 s instead of 0.3 s for a short
   reply with logprobs, 1.4 s with a JSON schema). Later requests with the option do not wait.
-- One card only. Two cards do not make one request faster.
+- The launcher uses a single card; a second card does not make a request faster.
 
 ## Model weights and existing downloads
 
@@ -298,7 +298,7 @@ The cache must hold the exact revision above. [Cache paths and Docker mounts](..
 
 ## Requirements
 
-- One Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by this image.
+- A Radeon AI PRO R9700 (gfx1201, 32 GB). Other cards are not supported by this image.
 - Linux with a working AMD GPU driver, and Docker.
 - The image's vLLM (0.32.1.dev, ROCm 10.2 build). The plugin's Inkling code is built and tested for that vLLM only,
   not for a stock vLLM 0.32.0 install. vLLM versions after 0.32 bring their own Inkling 2 model classes under the same
